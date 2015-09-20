@@ -58,7 +58,11 @@ function fn_age_verification_get_categories(&$params, &$join, &$condition, &$fie
 
 function fn_age_verification_category_check($category_id)
 {
-    $age = !empty($_SESSION['auth']['age']) ? $_SESSION['auth']['age'] : 0;
+    if (!empty($_SESSION['auth']['age'])) {
+        $age = $_SESSION['auth']['age'];
+    } else {
+        $age = 0;
+    }
 
     while ($category_id) {
         $data = db_get_row("SELECT category_id, parent_id, age_verification, age_limit FROM ?:categories WHERE category_id = ?i", $category_id);
@@ -112,33 +116,6 @@ function fn_age_verification_check_age($user_data)
 }
 
 /**
- * Birthday promotion condition
- *
- */
-
-function fn_age_verification_birthday_promo($auth)
-{
-    $result = false;
-
-    if (!empty($auth['user_id'])) {
-        $birthday = db_get_field('SELECT birthday FROM ?:users WHERE user_id = ?i', $auth['user_id']);
-
-        if (!empty($birthday)) {
-            $month = date('m', $birthday);
-            $day = date('d', $birthday); 
-            $current_month = date('m', TIME);
-            $current_day = date('d', TIME);  
-
-            if ($month == $current_month && $day == $current_day) {
-                $result = true;
-            } 
-        }
-    }
-
-    return $result;
-}
-
-/**
  * Check and parse user birthday
  *
  * @param int $user_id - user ID to update (empty for new user)
@@ -146,9 +123,10 @@ function fn_age_verification_birthday_promo($auth)
  * @param array $auth - authentication information
  * @param bool $ship_to_another - flag indicates that shipping and billing fields are different
  * @param bool $notify_user - flag indicates that user should be notified
+ * @param bool $send_password - TRUE if the password should be included into the e-mail
  * @return bool Always true
  */
-function fn_age_verification_update_user_pre(&$user_id, &$user_data, &$auth, &$ship_to_another, &$notify_user)
+function fn_age_verification_update_user_pre(&$user_id, &$user_data, &$auth, &$ship_to_another, &$notify_user, &$send_password)
 {
     if (!empty($user_data['birthday']) && !is_numeric($user_data['birthday'])) {
         $user_data['birthday'] = fn_parse_date($user_data['birthday']);

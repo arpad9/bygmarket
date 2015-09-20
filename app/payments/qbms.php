@@ -17,7 +17,7 @@ use Tygh\Registry;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
-$sslcert = Registry::get('config.dir.certificates') . (isset($processor_data['processor_params']['certificate_filename']) ? $processor_data['processor_params']['certificate_filename'] : '');
+$sslcert = Registry::get('config.dir.payments') . 'certificates/' . $processor_data['processor_params']['certificate_filename'];
 $post_url = ($processor_data["processor_params"]["mode"] == 'test') ? "https://webmerchantaccount.ptc.quickbooks.com/j/AppGateway" : "https://webmerchantaccount.quickbooks.com/j/AppGateway";
 
 $post_data = array();

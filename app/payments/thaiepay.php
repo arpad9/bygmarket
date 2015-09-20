@@ -92,18 +92,32 @@ if (defined('PAYMENT_NOTIFICATION')) {
     $sess = '&' . Session::getName() . '=' . Session::getId();
     $_SESSION['thaiepay_refno'] = $order_id;
     $return_url = fn_url("payment_notification.finish?payment=thaiepay&refno={$order_id}{$sess}", AREA, 'current');
+echo <<<EOT
+<form method="post" action="https://www.thaiepay.com/epaylink/payment.aspx" name="process">
+    <input type="hidden" name="refno" value="{$order_id}">
+    <input type="hidden" name="merchantid" value="{$processor_data['processor_params']['merchantid']}">
+    <input type="hidden" name="customeremail" value="{$order_info['email']}">
+    <input type="hidden" name="productdetail" value="{$processor_data['processor_params']['details']}">
+    <input type="hidden" name="total" value="{$order_info['total']}">
+    <input type="hidden" name="cc" value="{$processor_data['processor_params']['currency']}">
+    <input type="hidden" name="lang" value="{$lang_code}">
+    <input type="hidden" name="returnurl" value="{$return_url}">
+EOT;
 
-    $post_data = array(
-        'refno' => $order_id,
-        'merchantid' => $processor_data['processor_params']['merchantid'],
-        'customeremail' => $order_info['email'],
-        'productdetail' => $processor_data['processor_params']['details'],
-        'total' => $order_info['total'],
-        'cc' => $processor_data['processor_params']['currency'],
-        'lang' => $lang_code,
-        'returnurl' => $return_url,
-    );
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'thaiepay.com server'
+));
+echo <<<EOT
+    </form>
+    <div align=center>{$msg}</div>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
 
-    fn_create_payment_form('https://www.thaiepay.com/epaylink/payment.aspx', $post_data, 'Thaiepay');
 }
 exit;

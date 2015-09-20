@@ -34,8 +34,7 @@ class XmlScheme1 extends AXmlScheme
                     'id' => $id,
                     'name' => $name,
                     'translations' => array(array('lang_code' => $this->getDefaultLanguage(), 'name' => $id, 'value' => $name)),
-                    'edition_type' => $this->_getEditionType($section),
-                    'original' => '',
+                    'edition_type' => $this->_getEditionType($section)
                 );
             }
         } elseif (isset($this->_xml->opt_settings)) {
@@ -43,8 +42,7 @@ class XmlScheme1 extends AXmlScheme
                     'id' => 'general',
                     'name' => 'General',
                     'translations' => array(array('lang_code' => $this->getDefaultLanguage(), 'name' => 'general', 'value' => 'General')),
-                    'edition_type' => 'ROOT',
-                    'original' => '',
+                    'edition_type' => 'ROOT'
                 );
         }
 

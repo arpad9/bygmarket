@@ -8,7 +8,7 @@
                     <li>{btn type="list" text=__("remove") onclick="Tygh.$.cePicker('delete_js_item', '{$holder}', '{$user_id}', 'u'); return false;"}</li>
                 {/capture}
                 <div class="hidden-tools">
-                    {dropdown content=$smarty.capture.tools_list}
+                    {dropdown content=$smarty.capture.tools_list class="dropleft"}
                 </div>
             {/if}
         </td>

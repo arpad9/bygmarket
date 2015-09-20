@@ -16,4 +16,4 @@ use Tygh\Registry;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
-Tygh::$app['view']->assign('display_base_href', true);
+Registry::get('view')->assign('display_base_href', true);

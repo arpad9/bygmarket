@@ -14,7 +14,7 @@
     {/if}
     {if $last_edited_items}
         {foreach from=$last_edited_items item=lnk}
-            <li><a {if $lnk.icon}class="{$lnk.icon}"{/if} href="{$lnk.url|fn_url}" title="{$lnk.name|strip_tags}">{$lnk.name|strip_tags|truncate:40}</a></li>
+            <li><a {if $lnk.icon}class="{$lnk.icon}"{/if} href="{$lnk.url|fn_url}" title="{$lnk.name nofilter}">{$lnk.name|truncate:40 nofilter}</a></li>
         {/foreach}
     {else}
         <li><a>{__("no_items")}</a></li>

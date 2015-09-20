@@ -65,38 +65,7 @@ if ($_SERVER['REQUEST_METHOD']	== 'POST') {
         $suffix = ".manage";
     }
 
-    if ($mode == 'delete') {
-
-        if (!empty($_REQUEST['gift_cert_id'])) {
-            $result = fn_delete_gift_certificate($_REQUEST['gift_cert_id'], @$_REQUEST['extra']);
-
-            return array(CONTROLLER_STATUS_REDIRECT, !empty($_REQUEST['return_url']) ? $_REQUEST['return_url'] : 'gift_certificates' . ($result ? '.manage' : ('.update?gift_cert_id=' . $_REQUEST['gift_cert_id'])));
-        }
-
-    }
-
-    if ($mode == 'update_status') {
-        $gift_cert_data = db_get_row("SELECT status, amount FROM ?:gift_certificates WHERE gift_cert_id = ?i", $_REQUEST['id']);
-        $min = Registry::get('addons.gift_certificates.min_amount') * 1;
-        $max = Registry::get('addons.gift_certificates.max_amount') * 1;
-
-        if ($gift_cert_data['amount'] < $min || $gift_cert_data['amount'] > $max) {
-            fn_set_notification('E', __('error'), __('gift_cert_error_amount', array(
-                '[max]' => $max,
-                '[min]' => $min
-            )));
-
-            Tygh::$app['ajax']->assign('return_status', $gift_cert_data['status']);
-        } elseif (fn_change_gift_certificate_status($_REQUEST['id'], $_REQUEST['status'], '', fn_get_notification_rules($_REQUEST))) {
-            fn_set_notification('N', __('notice'), __('status_changed'));
-        } else {
-            fn_set_notification('E', __('error'), __('error_status_not_changed'));
-            Tygh::$app['ajax']->assign('return_status', $gift_cert_data['status']);
-        }
-        exit;
-    }
-
-    return array(CONTROLLER_STATUS_OK, 'gift_certificates' . $suffix);
+    return array(CONTROLLER_STATUS_OK, "gift_certificates$suffix");
 }
 
 
@@ -117,12 +86,12 @@ if ($mode == 'add') {
             'zipcode' 		 => $user_data['s_zipcode'],
             'phone' 		 => $user_data['phone']
         );
-        Tygh::$app['view']->assign('gift_cert_data', $gift_cert_data);
+        Registry::get('view')->assign('gift_cert_data', $gift_cert_data);
     }
 
-    Tygh::$app['view']->assign('templates', fn_get_gift_certificate_templates());
-    Tygh::$app['view']->assign('states', fn_get_all_states());
-    Tygh::$app['view']->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
+    Registry::get('view')->assign('templates', fn_get_gift_certificate_templates());
+    Registry::get('view')->assign('states', fn_get_all_states());
+    Registry::get('view')->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
 
 } elseif ($mode == 'update') {
 
@@ -148,26 +117,56 @@ if ($mode == 'add') {
 
     list($log, $search) = fn_get_gift_certificate_log($_REQUEST, Registry::get('settings.Appearance.admin_elements_per_page'));
 
-    Tygh::$app['view']->assign('log', $log);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('log', $log);
+    Registry::get('view')->assign('search', $search);
 
     if (false != ($last_item = reset($log))) {
         $gift_cert_data['amount'] = $last_item['debit'];
         $gift_cert_data['products'] = $last_item['debit_products'];
     }
 
-    Tygh::$app['view']->assign('templates', fn_get_gift_certificate_templates());
-    Tygh::$app['view']->assign('states', fn_get_all_states());
-    Tygh::$app['view']->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
+    Registry::get('view')->assign('templates', fn_get_gift_certificate_templates());
+    Registry::get('view')->assign('states', fn_get_all_states());
+    Registry::get('view')->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
 
-    Tygh::$app['view']->assign('gift_cert_data', $gift_cert_data);
+    Registry::get('view')->assign('gift_cert_data', $gift_cert_data);
 
 } elseif ($mode == 'manage') {
 
     list($gift_certificates, $search) = fn_get_gift_certificates($_REQUEST, Registry::get('addons.gift_certificates.cert_per_page'));
 
-    Tygh::$app['view']->assign('gift_certificates', $gift_certificates);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('gift_certificates', $gift_certificates);
+    Registry::get('view')->assign('search', $search);
+
+    fn_gift_certificates_generate_sections('manage');
+
+} elseif ($mode == 'delete') {
+
+    if (!empty($_REQUEST['gift_cert_id'])) {
+        $result = fn_delete_gift_certificate($_REQUEST['gift_cert_id'], @$_REQUEST['extra']);
+
+        return array(CONTROLLER_STATUS_REDIRECT, !empty($_REQUEST['return_url']) ? $_REQUEST['return_url'] : "gift_certificates." . ($result ? "manage" : ("update?gift_cert_id=" . $_REQUEST['gift_cert_id'])));
+    }
+
+} elseif ($mode == 'update_status') {
+    $gift_cert_data = db_get_row("SELECT status, amount FROM ?:gift_certificates WHERE gift_cert_id = ?i", $_REQUEST['id']);
+    $min = Registry::get('addons.gift_certificates.min_amount') * 1;
+    $max = Registry::get('addons.gift_certificates.max_amount') * 1;
+
+    if ($gift_cert_data['amount'] < $min || $gift_cert_data['amount'] > $max) {
+        fn_set_notification('E', __('error'), __('gift_cert_error_amount', array(
+            '[max]' => $max,
+            '[min]' => $min
+        )));
+
+        Registry::get('ajax')->assign('return_status', $gift_cert_data['status']);
+    } elseif (fn_change_gift_certificate_status($_REQUEST['id'], $_REQUEST['status'], '', fn_get_notification_rules($_REQUEST))) {
+        fn_set_notification('N', __('notice'), __('status_changed'));
+    } else {
+        fn_set_notification('E', __('error'), __('error_status_not_changed'));
+        Registry::get('ajax')->assign('return_status', $gift_cert_data['status']);
+    }
+    exit;
 }
 
 

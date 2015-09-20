@@ -24,23 +24,4 @@ $schema['products']['content']['items']['fillings']['bestsellers'] = array (
     ),
 );
 
-$schema['products']['content']['items']['fillings']['on_sale'] = array (
-    'params' => array (
-        'on_sale' => true,
-        'sort_by' => 'on_sale',
-        'sort_order' => 'desc',
-    ),
-);
-
-$schema['products']['content']['items']['fillings']['similar'] = array (
-    'params' => array (
-        'similar' => true,
-        'request' => array (
-            'main_product_id' => '%PRODUCT_ID%'
-        )
-    )
-);
-
-$schema['products']['cache']['request_handlers'][] = '%PRODUCT_ID%';
-
 return $schema;

@@ -20,8 +20,6 @@ use Tygh\BlockManager\Layout;
 use Tygh\BlockManager\ProductTabs;
 use Tygh\BlockManager\Block;
 use Tygh\Navigation\LastView;
-use Tygh\Tools\SecurityHelper;
-use Tygh\Tools\Url;
 
 /**
  * Gets brief company data array: <i>(company_id => company_name)</i>
@@ -258,7 +256,7 @@ function fn_get_companies($params, &$auth, $items_per_page = 0, $lang_code = CAR
     $limit = '';
     if (!empty($params['items_per_page'])) {
         $params['total_items'] = db_get_field("SELECT COUNT(DISTINCT(?:companies.company_id)) FROM ?:companies $join WHERE 1 $condition");
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+        $limit = db_paginate($params['page'], $params['items_per_page']);
     }
 
     $companies = db_get_array("SELECT " . implode(', ', $fields) . " FROM ?:companies $join WHERE 1 $condition $group $sorting $limit");
@@ -286,7 +284,7 @@ function fn_company_products_check($product_ids, $notify = false)
 
 function fn_company_access_denied_notification()
 {
-    fn_set_notification('W', __('warning'), __('access_denied'), '', 'company_access_denied');
+    fn_set_notification('W', __('warning'), __('access_denied'));
 }
 
 /**
@@ -309,7 +307,7 @@ function fn_get_company_condition($db_field = 'company_id', $add_and = true, $co
         static $sharing_schema;
 
         if (empty($sharing_schema) && Registry::get('addons_initiated') === true) {
-            $sharing_schema = fn_get_schema('sharing', 'schema');
+            $sharing_schema = fn_get_schema('clone', 'sharing');
         }
 
         // Check if table was passed
@@ -343,9 +341,9 @@ function fn_get_company_condition($db_field = 'company_id', $add_and = true, $co
         $cond = $add_and ? ' AND' : '';
         // FIXME 2tl show admin
         if ($show_admin && $company_id) {
-            $cond .= db_quote(" $db_field IN (0, ?i)", $company_id);
+            $cond .= " $db_field IN (0, $company_id)";
         } else {
-            $cond .= db_quote(" $db_field = ?i", $company_id);
+            $cond .= " $db_field = $company_id";
         }
     }
 
@@ -403,7 +401,7 @@ function fn_get_company_data($company_id, $lang_code = DESCR_SL, $extra = array(
         );
     }
 
-    $condition = '';
+    $condition = fn_get_company_condition('companies.company_id');
 
     /**
      * Hook for changing parameters before SQL query
@@ -465,21 +463,6 @@ function fn_get_company_id($table, $field, $field_value, $company_id = '')
     $id = db_get_field("SELECT company_id FROM ?:$table WHERE $field = ?s $condition", $field_value);
 
     return ($id !== NULL) ? $id : false;
-}
-
-/**
- * Gets runtime company_id in any mode
- * 
- * @return int Company id | 0
- */
-function fn_get_runtime_company_id()
-{
-    $company_id = Registry::ifGet('runtime.company_id', 0);
-    if (!$company_id && Registry::get('runtime.simple_ultimate')) {
-        $company_id = Registry::get('runtime.forced_company_id');
-    }
-
-    return $company_id;
 }
 
 /**
@@ -596,13 +579,56 @@ function fn_set_company_id(&$data, $key_name = 'company_id', $only_defined = fal
     }
 }
 
-function fn_payments_set_company_id($order_id = 0, $company_id = 0, $area = AREA)
+function fn_companies_fill_shipping_info($shipping_ids, &$cart)
 {
-    if ($area != 'A' && fn_allowed_for('ULTIMATE')) {
-        if (!empty($order_id)) {
-            $company_id = db_get_field("SELECT company_id FROM ?:orders WHERE order_id = ?i", $order_id);
+    if (empty($shipping_ids) || empty($cart) || !is_array($shipping_ids)) {
+        return;
+    }
+
+    $needed_suppliers = array();
+    foreach ($cart['products'] as $k => $v) {
+        if (isset($v['company_id'])) {
+            $needed_suppliers[$v['company_id']] = '';
         }
-        Registry::set('runtime.company_id', $company_id);
+    }
+
+    ksort($needed_suppliers);
+    $_temp = array_keys($needed_suppliers);
+    $cart['shipping'] = array();
+    $total_suppliers = count($needed_suppliers);
+
+    for ($i = 0; $i < $total_suppliers; $i++) {
+        if (!is_array($cart['shipping'][$shipping_ids[$i]])) {
+            $cart['shipping'][$shipping_ids[$i]] = array();
+        }
+        if (!is_array($cart['shipping'][$shipping_ids[$i]]['rates'])) {
+            $cart['shipping'][$shipping_ids[$i]]['shipping'] = fn_get_shipping_name($shipping_ids[$i], CART_LANGUAGE);
+            $cart['shipping'][$shipping_ids[$i]]['rates'] = array();
+        }
+        $cart['shipping'][$shipping_ids[$i]]['rates'][$_temp[$i]] = '';
+    }
+}
+
+/* CORE SUPPLIERS: this function is used in mve */
+function fn_get_products_companies($products)
+{
+    $companies = array();
+
+    foreach ($products as $v) {
+        $_company_id = !empty($v['company_id']) ? $v['company_id'] : 0;
+        $companies[$_company_id] = $_company_id;
+    }
+
+    return $companies;
+}
+
+/* FIXME CORE SUPPLIERS */
+function fn_check_suppliers_functionality()
+{
+    if (!fn_allowed_for('ULTIMATE') && (fn_allowed_for('MULTIVENDOR') || Registry::get('settings.Suppliers.enable_suppliers') == 'Y')) {
+        return true;
+    } else {
+        return false;
     }
 }
 
@@ -625,25 +651,16 @@ function fn_get_companies_shipping_ids($company_id)
     return $shippings;
 }
 
+function fn_check_companies_have_suppliers($companies)
+{
+    unset($companies[0]);
+
+    return !empty($companies) ? 'Y' : 'N';
+}
+
 function fn_update_company($company_data, $company_id = 0, $lang_code = CART_LANGUAGE)
 {
-    $can_update = true;
-
-    /**
-     * Update company data (running before fn_update_company() function)
-     *
-     * @param array   $company_data Company data
-     * @param int     $company_id   Company identifier
-     * @param string  $lang_code    Two-letter language code (e.g. 'en', 'ru', etc.)
-     * @param boolean $can_update   Flag, allows addon to forbid to create/update company
-     */
-    fn_set_hook('update_company_pre', $company_data, $company_id, $lang_code, $can_update);
-
-    if ($can_update == false) {
-        return false;
-    }
-
-    SecurityHelper::sanitizeObjectData('company', $company_data);
+    fn_set_hook('update_company_pre', $company_data, $company_id, $lang_code);
 
     if (fn_allowed_for('MULTIVENDOR') && Registry::get('runtime.company_id')) {
         unset($company_data['comission'], $company_data['comission_type'], $company_data['categories'], $company_data['shippings']);
@@ -652,32 +669,23 @@ function fn_update_company($company_data, $company_id = 0, $lang_code = CART_LAN
     }
 
     if (fn_allowed_for('ULTIMATE') && !Registry::get('runtime.company_id')) {
-
-        if (isset($company_data['storefront'])) {
-            if (empty($company_data['storefront'])) {
-                fn_set_notification('E', __('error'), __('storefront_url_not_defined'));
-
-                return false;
-
-            } else {
-                if (empty($company_data['secure_storefront'])) {
-                    $company_data['secure_storefront'] = $company_data['storefront'];
-                }
-
-                $company_data['storefront'] = Url::clean($company_data['storefront']);
-                $company_data['secure_storefront'] = Url::clean($company_data['secure_storefront']);
-            }
+        if (empty($company_data['secure_storefront']) && !empty($company_data['storefront'])) {
+            $company_data['secure_storefront'] = $company_data['storefront'];
         }
+
+        $company_data['storefront'] = fn_clean_url($company_data['storefront']);
+        $company_data['secure_storefront'] = fn_clean_url($company_data['secure_storefront']);
     }
 
     unset($company_data['company_id']);
     $_data = $company_data;
 
-    if (fn_allowed_for('MULTIVENDOR')) {
+    /* FIXME CORE SUPPLIERS */
+    if (!fn_allowed_for('ULTIMATE')) {
         // Check if company with same email already exists
         $is_exist = db_get_field("SELECT email FROM ?:companies WHERE company_id != ?i AND email = ?s", $company_id, $_data['email']);
         if (!empty($is_exist)) {
-            $_text = 'error_vendor_exists';
+            $_text = (fn_allowed_for('MULTIVENDOR')) ? 'error_vendor_exists' : 'error_supplier_exists';
             fn_set_notification('E', __('error'), __($_text));
 
             return false;
@@ -708,15 +716,11 @@ function fn_update_company($company_data, $company_id = 0, $lang_code = CART_LAN
                     fn_set_notification('E', __('error'), __('secure_storefront_url_already_exists'));
                     unset($_data['secure_storefront']);
                 }
-
-                return false;
             }
         }
     }
 
-    if (isset($company_data['shippings'])) {
-        $_data['shippings'] = empty($company_data['shippings']) ? '' : fn_create_set($company_data['shippings']);
-    }
+    $_data['shippings'] = empty($company_data['shippings']) ? '' : fn_create_set($company_data['shippings']);
 
     if (!empty($_data['countries_list'])) {
         $_data['countries_list'] = implode(',', $_data['countries_list']);
@@ -774,39 +778,37 @@ function fn_update_company($company_data, $company_id = 0, $lang_code = CART_LAN
         $action = 'update';
     }
 
-    /**
-     * Update company data (running after fn_update_company() function)
-     *
-     * @param array  $company_data Company data
-     * @param int    $company_id   Company integer identifier
-     * @param string $lang_code    Two-letter language code (e.g. 'en', 'ru', etc.)
-     * @param string $action       Flag determines if company was created (add) or just updated (update).
-     */
-    fn_set_hook('update_company', $company_data, $company_id, $lang_code, $action);
-
-    $logo_ids = array();
+    $object_ids = array();
 
     if ($action == 'add') {
-        $theme_name = !empty($company_data['theme_name']) ? $company_data['theme_name'] : Registry::get('config.base_theme');
 
+        $layout_id = 0;
         if (fn_allowed_for('ULTIMATE')) {
-            $clone_from = !empty($company_data['clone_from']) && $company_data['clone_from'] != 'all'
-                ? $company_data['clone_from']
-                : null;
+            $theme_name = 'basic';
 
-            if (!is_null($clone_from)) {
-                $theme_name = fn_get_theme_path('[theme]', 'C', $clone_from);
-            }
+            // Create new layout
+            $layout_id = Layout::instance($company_id)->update(array(
+                'name' => __('main'),
+                'theme_name' => $theme_name,
+                'is_default' => 1
+            ));
+
+            fn_install_theme($layout_id, $theme_name, $company_id);
         }
 
-        if (fn_allowed_for('ULTIMATE')) {
-            $logo_ids = fn_install_theme($theme_name, $company_id, false);
-        } else {
-            $logo_ids = fn_create_theme_logos_by_layout_id($theme_name, 0, $company_id, true);
+        $types = fn_get_logo_types(true);
+
+        foreach ($types as $type => $data) {
+            $object_ids[$type] = fn_create_logo(array(
+                'type' => $type,
+                'layout_id' => !empty($data['for_layout']) ? $layout_id : 0
+            ), $company_id);
         }
     }
 
-    fn_attach_image_pairs('logotypes', 'logos', 0, $lang_code, $logo_ids);
+    fn_attach_image_pairs('logotypes', 'logos', 0, $lang_code, $object_ids);
+
+    fn_set_hook('update_company', $company_data, $company_id, $lang_code, $action);
 
     return $company_id;
 }
@@ -835,23 +837,19 @@ function fn_companies_filter_company_product_categories(&$request, &$product_dat
             unset($request['category_id']);
             $changed = true;
         }
-
         if (!empty($product_data['main_category']) && !in_array($product_data['main_category'], $company_data['category_ids'])) {
             unset($product_data['main_category']);
             $changed = true;
         }
-
-        if (!empty($product_data['category_ids'])) {
-            $inline = is_array($product_data['category_ids']) ? false : true;
-            $categories = is_array($product_data['category_ids']) ? $product_data['category_ids'] : explode(',', $product_data['category_ids']);
-
-            $_categories = array_intersect($categories, $company_data['category_ids']);
-            if (count($_categories) != count($categories)) {
-                $changed = true;
+        if (!empty($product_data['categories'])) {
+            $categories = explode(',', $product_data['categories']);
+            foreach ($categories as $k => $v) {
+                if (!in_array($v, $company_data['category_ids'])) {
+                    unset($categories[$k]);
+                    $changed = true;
+                }
             }
-
-            $product_data['category_ids'] = $inline ? implode(',', $_categories) : $_categories;
-
+            $product_data['categories'] = implode(',', $categories);
         }
     }
 
@@ -864,37 +862,18 @@ function fn_delete_company($company_id)
         return false;
     }
 
-    $can_delete = true;
-
-    /**
-     * Performs company pre-delete actions
-     *
-     * @param int     $company_id Company integer identifier
-     * @param boolean $can_delete Flag if company can be deleted
-     */
-    fn_set_hook('delete_company_pre', $company_id, $can_delete);
-
     if (fn_allowed_for('MULTIVENDOR')) {
         // Do not delete vendor if there're any orders associated with this company
         if (db_get_field("SELECT COUNT(*) FROM ?:orders WHERE company_id = ?i", $company_id)) {
-            fn_set_notification('W', __('warning'), __('unable_delete_vendor_orders_exists'), '', 'company_has_orders');
-            $can_delete = false;
+            fn_set_notification('W', __('warning'), __('unable_delete_vendor_orders_exists'));
+
+            return false;
         }
     }
 
-    if (fn_allowed_for('ULTIMATE')) {
-        // Forbid to delete the last company
-        if (db_get_field("SELECT COUNT(*) FROM ?:companies") == 1) {
-            fn_set_notification('W', __('warning'), __('unable_to_delete_last_storefront'));
-            $can_delete = false;
-        }
-    }
+    fn_set_hook('delete_company_pre', $company_id);
 
-    if ($can_delete == false) {
-        return false;
-    }
-
-    $result = db_query("DELETE FROM ?:companies WHERE company_id = ?i", $company_id);
+    db_query("DELETE FROM ?:companies WHERE company_id = ?i", $company_id);
 
     // deleting categories
     $cat_ids = db_get_fields("SELECT category_id FROM ?:categories WHERE company_id = ?i", $company_id);
@@ -946,17 +925,8 @@ function fn_delete_company($company_id)
         fn_delete_product_option($option_id);
     }
 
-    // deleting company admins and users
-    if (Registry::get('settings.Stores.share_users') != 'Y') {
-        $users_condition = db_quote(' OR company_id = ?i', $company_id);
-    } else {
-        $users_condition = '';
-
-        // Unassign users from deleted company
-        db_query('UPDATE ?:users SET company_id = 0 WHERE company_id = ?i', $company_id);
-    }
-
-    $user_ids = db_get_fields("SELECT user_id FROM ?:users WHERE company_id = ?i AND user_type = ?s ?p", $company_id, 'V', $users_condition);
+    // deleting company admins
+    $user_ids = db_get_fields("SELECT user_id FROM ?:users WHERE company_id = ?i AND user_type = 'V'", $company_id);
     foreach ($user_ids as $user_id) {
         fn_delete_user($user_id);
     }
@@ -983,27 +953,9 @@ function fn_delete_company($company_id)
         fn_delete_logo($type, $company_id);
     }
 
-    $payment_ids = db_get_fields('SELECT payment_id FROM ?:payments WHERE company_id = ?i', $company_id);
-    foreach ($payment_ids as $payment_id) {
-        fn_delete_payment($payment_id);
-    }
+    fn_set_hook('delete_company', $company_id);
 
-    // Delete sitemap sections and links
-    $params = array(
-        'company_id' => $company_id,
-    );
-    $section_ids = fn_get_sitemap_sections($params);
-    fn_delete_sitemap_sections(array_keys($section_ids));
-
-    /**
-     * Performs company post-delete actions
-     *
-     * @param int     $company_id Company integer identifier
-     * @param boolean $result     Company deletion result
-     */
-    fn_set_hook('delete_company', $company_id, $result);
-
-    return $result;
+    return true;
 }
 
 function fn_chown_company($from, $to)
@@ -1126,7 +1078,7 @@ function fn_companies_change_status($company_id, $status_to, $reason = '', &$sta
 
     $account = $username = '';
     if ($status_from == 'N' && ($status_to == 'A' || $status_to == 'P')) {
-        if (Registry::get('settings.Vendors.create_vendor_administrator_account') == 'Y') {
+        if (Registry::get('settings.Suppliers.create_vendor_administrator_account') == 'Y') {
             if (!empty($company_data['request_user_id'])) {
                 $password_change_timestamp = db_get_field("SELECT password_change_timestamp FROM ?:users WHERE user_id = ?i", $company_data['request_user_id']);
                 $_set = '';
@@ -1209,7 +1161,7 @@ function fn_companies_change_status($company_id, $status_to, $reason = '', &$sta
 
         Mailer::sendMail(array(
             'to' => $company_data['email'],
-            'from' => 'default_company_support_department',
+            'from' => 'company_support_department',
             'data' => array(
                 'user_data' => $user_data,
                 'reason' => $reason,
@@ -1231,13 +1183,18 @@ function fn_get_company_by_product_id($product_id)
     return db_get_row("SELECT * FROM ?:companies AS com LEFT JOIN ?:products AS prod ON com.company_id = prod.company_id WHERE prod.product_id = ?i", $product_id);
 }
 
-function fn_get_companies_sorting()
+function fn_get_companies_sorting($simple_mode = true)
 {
     $sorting = array(
         'company' => array('description' => __('name'), 'default_order' => 'asc'),
     );
 
     fn_set_hook('companies_sorting', $sorting);
+    if ($simple_mode) {
+        foreach ($sorting as &$sort_item) {
+            $sort_item = $sort_item['description'];
+        }
+    }
 
     return $sorting;
 }

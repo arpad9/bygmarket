@@ -13,27 +13,23 @@
 ****************************************************************************/
 
 use Tygh\Bootstrap;
-use Tygh\Debugger;
-use Tygh\Exceptions\DatabaseException;
 use Tygh\Registry;
+use Tygh\Debugger;
 
 // Register autoloader
 $this_dir = dirname(__FILE__);
 $classLoader = require($this_dir . '/app/lib/vendor/autoload.php');
 $classLoader->add('Tygh', $this_dir . '/app');
-class_alias('\Tygh\Tygh', 'Tygh');
 
 // Prepare environment and process request vars
-list($_REQUEST, $_SERVER, $_GET, $_POST) = Bootstrap::initEnv($_GET, $_POST, $_SERVER, $this_dir);
+list($_REQUEST, $_SERVER) = Bootstrap::initEnv($_GET, $_POST, $_SERVER, $this_dir);
 
 // Get config data
 $config = require(DIR_ROOT . '/config.php');
 
 if (isset($_REQUEST['version'])) {
-    die(PRODUCT_NAME . ' <b>' . PRODUCT_VERSION . ' ' . (PRODUCT_STATUS != '' ? (' (' . PRODUCT_STATUS . ')') : '') . (PRODUCT_BUILD != '' ? (' ' . PRODUCT_BUILD) : '') . '</b>');
+    die(PRODUCT_NAME . ': version <b>' . PRODUCT_VERSION . ' ' . PRODUCT_EDITION . (PRODUCT_STATUS != '' ? (' (' . PRODUCT_STATUS . ')') : '') . (PRODUCT_BUILD != '' ? (' ' . PRODUCT_BUILD) : '') . '</b>');
 }
-
-Debugger::init(false, $config);
 
 // Start debugger log
 Debugger::checkpoint('Before init');
@@ -74,36 +70,24 @@ foreach ($fn_list as $file) {
     require($config['dir']['functions'] . $file);
 }
 
+Registry::set('class_loader', $classLoader);
 Registry::set('config', $config);
 unset($config);
 
-
-$application = Tygh\Tygh::createApplication();
-$application['class_loader'] = $classLoader;
-
 // Connect to database
 if (!db_initiate(Registry::get('config.db_host'), Registry::get('config.db_user'), Registry::get('config.db_password'), Registry::get('config.db_name'))) {
-    throw new DatabaseException('Cannot connect to the database server');
+    fn_error('Cannot connect to the database server');
 }
 
 register_shutdown_function(array('\\Tygh\\Registry', 'save'));
 
-fn_init_stack(
-    array('fn_init_error_handler'),
-    array('fn_init_unmanaged_addons')
-);
-
-if (defined('API')) {
-    fn_init_stack(
-        array('fn_init_api')
-    );
-}
+// define lifetime for the cache data
+date_default_timezone_set('UTC'); // setting temporary timezone to avoid php warnings
 
 fn_init_stack(
-    array('fn_init_crypt'),
-    array('fn_init_imagine'),
     array('fn_init_storage'),
-    array('fn_init_ua')
+    array('fn_init_ua'),
+    array('fn_init_ajax')
 );
 
 if (fn_allowed_for('ULTIMATE')) {
@@ -112,7 +96,6 @@ if (fn_allowed_for('ULTIMATE')) {
 
 fn_init_stack(
     array(array('\\Tygh\\Session', 'init'), &$_REQUEST),
-    array('fn_init_ajax'),
     array('fn_init_company_id', &$_REQUEST),
     array('fn_check_cache', $_REQUEST),
     array('fn_init_settings'),
@@ -121,7 +104,7 @@ fn_init_stack(
     array('fn_simple_ultimate', &$_REQUEST)
 );
 
-if (!Registry::get('config.tweaks.disable_localizations') && !fn_allowed_for('ULTIMATE:FREE')) {
+if (!fn_allowed_for('ULTIMATE:FREE')) {
     fn_init_stack(array('fn_init_localization', &$_REQUEST));
 }
 
@@ -131,7 +114,8 @@ fn_init_stack(array('fn_init_language', &$_REQUEST),
     array('fn_init_full_path', $_REQUEST),
     array('fn_init_layout', &$_REQUEST),
     array('fn_init_user'),
-    array('fn_init_templater')
+    array('fn_init_templater'),
+    array('fn_init_search')
 );
 
 // Run INIT

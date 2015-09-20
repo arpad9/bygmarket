@@ -32,36 +32,97 @@ if ($mode == 'view') {
 
             $selected_layout = fn_get_products_layout($params);
 
-            Tygh::$app['view']->assign('selected_layout', $selected_layout);
-            Tygh::$app['view']->assign('products', $products);
-            Tygh::$app['view']->assign('search', $search);
+            Registry::get('view')->assign('selected_layout', $selected_layout);
+            Registry::get('view')->assign('products', $products);
+            Registry::get('view')->assign('search', $search);
         }
 
         if (Registry::get('addons.tags.tags_for_pages') == 'Y') {
-
-            $page_types = fn_get_page_object_by_type();
             $params = $_REQUEST;
-            $params['page_type'] = array_keys($page_types);
-            $params['status'] = array('A');
-            $params['simple'] = true;
+            $params['status'] = (!empty($_REQUEST['see']) && $_REQUEST['see'] == 'my') ? array('A', 'H') : array('A');
 
             list($pages, $params) = fn_get_pages($params);
-
-            Tygh::$app['view']->assign('pages', $pages);
-            Tygh::$app['view']->assign('page_types', $page_types);
+            Registry::get('view')->assign('pages', $pages);
         }
 
         $tag = $_REQUEST['tag'];
     }
 
-    $title = __('items_marked_by_tag', array(
-        '[tag]' => $tag
-    ));
+    if (empty($_REQUEST['see']) || $_REQUEST['see'] != 'my') {
+        $title = __('items_marked_by_tag', array(
+            '[tag]' => $tag
+        ));
+    } else {
+        $title = __('my_items_marked_by_tag', array(
+            '[tag]' => $tag
+        ));
+    }
 
-    Tygh::$app['view']->assign('page_title', $title);
+    Registry::get('view')->assign('page_title', $title);
     fn_add_breadcrumb($title);
 
     if (!empty($products) || !empty($pages)) {
-        Tygh::$app['view']->assign('tag_objects_exist', true);
+        Registry::get('view')->assign('tag_objects_exist', true);
+    }
+
+// summary mode: tag - product list, tag - product list
+} elseif ($mode == 'summary') {
+    fn_add_breadcrumb(__('tags'));
+    if (!empty($auth['user_id'])) {
+        list($user_tags) = fn_get_tags(array('user_id' => $auth['user_id']));
+        foreach ($user_tags as &$tag) {
+            $tag['total'] = 0;
+            if (Registry::get('addons.tags.tags_for_products') == 'Y') {
+                $product_ids = db_get_fields(
+                    "SELECT object_id FROM ?:tag_links WHERE object_type = ?s AND user_id = ?i AND tag_id = ?i",
+                    'P', $auth['user_id'], $tag['tag_id']
+                );
+                $tag['products'] = fn_get_product_name($product_ids);
+                $tag['total'] += count($product_ids);
+            }
+
+            if (Registry::get('addons.tags.tags_for_products') == 'Y') {
+                $page_ids = db_get_fields(
+                    "SELECT object_id FROM ?:tag_links WHERE object_type = ?s AND user_id = ?i AND tag_id = ?i",
+                    'A', $auth['user_id'], $tag['tag_id']
+                );
+                $tag['pages'] = fn_get_page_name($page_ids);
+                $tag['total'] += count($page_ids);
+            }
+        }
+
+        Registry::get('view')->assign('tags_summary', $user_tags);
+    }
+
+// ajax autocomplete mode
+} elseif ($mode == 'list') {
+    if (defined('AJAX_REQUEST')) {
+        $tags = fn_get_tag_names(array('tag' => $_REQUEST['q']));
+        Registry::get('ajax')->assign('autocomplete', $tags);
+
+        exit();
+    }
+
+} elseif ($mode == 'update'  && !empty($auth['user_id'])) {
+    if (defined('AJAX_REQUEST')) {
+        $params = $_REQUEST;
+        $params['user_id'] = $auth['user_id'];
+        fn_update_tag($params);
+
+        Registry::get('ajax')->assign('tag_name', fn_get_tag_names($params));
+        exit();
+    }
+
+} elseif ($mode == 'delete' && !empty($auth['user_id'])) {
+    $params = $_REQUEST;
+    $params['user_id'] = $auth['user_id'];
+
+    if (!empty($params['tag']) || !empty($params['tag_id'])) {
+        fn_delete_tags_by_params($params);
+    }
+
+    if (defined('AJAX_REQUEST')) {
+        Registry::get('ajax')->assign('tag_name', fn_get_tag_names($params));
+        exit();
     }
 }

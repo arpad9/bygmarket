@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 if ($mode == 'picker' && !empty($_REQUEST['picker_for']) && $_REQUEST['picker_for'] == 'polls') {
 
-    Tygh::$app['view']->assign('button_names', array (
+    Registry::get('view')->assign('button_names', array (
         'but_close_text' => __('add_polls_and_close'),
         'but_text' => __('add_polls')
     ));

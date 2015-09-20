@@ -17,7 +17,7 @@ use Tygh\Registry;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
-$post_address = "https://gateway.sagepayments.net/cgi-bin/eftBankcard.dll?transaction";
+$post_address = "https://va.eftsecure.net/cgi-bin/eftBankcard.dll?transaction";
 
 $post = array();
 $post['M_id'] = $processor_data["processor_params"]["merchant_id"];

@@ -53,6 +53,7 @@
 </div>
 
 {include file="views/companies/components/balance_info.tpl"}
+<div class="clear" /></div>
 
 <div class="buttons-container">
     {include file="buttons/save_cancel.tpl" but_name="dispatch[companies.payouts_add]" cancel_action="close"}

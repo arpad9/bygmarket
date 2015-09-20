@@ -32,6 +32,7 @@
     </ul>
 
     <script type="text/javascript">
+    //<![CDATA[
     {literal}
     Tygh.$(document).ready(function() {
         var $ = Tygh.$;
@@ -48,6 +49,7 @@
         });
     });
     {/literal}
+    //]]>
     </script>
 </div>
 

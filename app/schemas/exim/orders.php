@@ -23,10 +23,6 @@ $schema = array(
     'key' => array('order_id'),
     'order' => 0,
     'table' => 'orders',
-    'permissions' => array(
-        'import' => 'edit_order',
-        'export' => 'view_orders',
-    ),
     'condition' => array(
         'conditions' => array('is_parent_order' => 'N'),
         'use_company_condition' => true,
@@ -66,7 +62,7 @@ $schema = array(
         'Date' => array(
             'db_field' => 'timestamp',
             'process_get' => array('fn_timestamp_to_date', '#this'),
-            'convert_put' => array('fn_date_to_timestamp', '#this'),
+            'convert_put' => array('fn_date_to_timestamp'),
         ),
         'Status' => array(
             'db_field' => 'status',
@@ -79,8 +75,6 @@ $schema = array(
         ),
         'IP address' => array(
             'db_field' => 'ip_address',
-            'process_get' => array('fn_ip_from_db', '#this'),
-            'convert_put' => array('fn_ip_to_db', '#this')
         ),
         'Details' => array(
             'db_field' => 'details',
@@ -122,7 +116,9 @@ $schema = array(
             'db_field' => 'lastname'
         ),
         'Company' => array(
-            'db_field' => 'company'
+            'db_field' => 'company_id',
+            'process_get' => array('fn_get_company_name', '#this'),
+            'convert_put' => array('fn_get_company_id_by_name', '#this'),
         ),
         'Fax' => array(
             'db_field' => 'fax'
@@ -194,33 +190,5 @@ $schema = array(
         )
     ),
 );
-
-if (fn_allowed_for('ULTIMATE')) {
-    $schema['export_fields']['Store'] = array(
-        'db_field' => 'company_id',
-        'process_get' => array('fn_get_company_name', '#this'),
-        'convert_put' => array('fn_get_company_id_by_name', '#this'),
-    );
-    if (!Registry::get('runtime.company_id')) {
-        $schema['export_fields']['Store']['required'] = true;
-    }
-    $schema['import_process_data']['check_product_company_id'] = array(
-        'function' => 'fn_import_check_order_company_id',
-        'args' => array('$primary_object_id', '$object', '$pattern', '$options', '$processed_data', '$processing_groups', '$skip_record'),
-        'import_only' => true,
-    );
-}
-
-if (fn_allowed_for('MULTIVENDOR')) {
-    $schema['export_fields']['Vendor'] = array(
-        'db_field' => 'company_id',
-        'process_get' => array('fn_get_company_name', '#this'),
-        'convert_put' => array('fn_get_company_id_by_name', '#this'),
-    );
-
-    if (!Registry::get('runtime.company_id')) {
-        $schema['export_fields']['Vendor']['required'] = true;
-    }
-}
 
 return $schema;

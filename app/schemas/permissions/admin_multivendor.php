@@ -17,9 +17,6 @@ $schema['companies'] = array (
         'manage' => array (
             'permissions' => array ('GET' => 'view_vendors', 'POST' => 'manage_vendors'),
         ),
-        'add' => array (
-            'permissions' => 'manage_vendors',
-        ),
         'update' => array (
             'permissions' => array ('GET' => 'view_vendors', 'POST' => 'manage_vendors'),
         ),

@@ -12,7 +12,11 @@
 {/if}
 
 {if $put_request_vars}
-    {array_to_fields data=$smarty.request skip=["callback"]}
+{foreach from=$smarty.request key="k" item="v"}
+{if $v && $k != "callback"}
+<input type="hidden" name="{$k}" value="{$v}" />
+{/if}
+{/foreach}
 {/if}
 
 {capture name="simple_search"}

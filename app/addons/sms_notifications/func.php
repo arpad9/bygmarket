@@ -20,8 +20,8 @@ if (!defined('BOOTSTRAP')) { die('Access denied'); }
 function fn_sms_notifications_place_order(&$order_id, &$action, &$fake1, &$cart)
 {
     if ($action !== 'save' && Registry::get('addons.sms_notifications.sms_new_order_placed') == 'Y') {
-        Tygh::$app['view']->assign('order_id', $order_id);
-        Tygh::$app['view']->assign('total', $cart['total']);
+        Registry::get('view')->assign('order_id', $order_id);
+        Registry::get('view')->assign('total', $cart['total']);
 
         $send_info = Registry::get('addons.sms_notifications.sms_send_payment_info');
         $send_email = Registry::get('addons.sms_notifications.sms_send_customer_email');
@@ -32,14 +32,14 @@ function fn_sms_notifications_place_order(&$order_id, &$action, &$fake1, &$cart)
             $shippings = array ();
         }
 
-        Tygh::$app['view']->assign('send_info', $send_info == 'Y' ? true : false);
-        Tygh::$app['view']->assign('send_email', $send_email == 'Y' ? true : false);
-        Tygh::$app['view']->assign('send_min_amount', $send_min_amount == 'Y' ? true : false);
+        Registry::get('view')->assign('send_info', $send_info == 'Y' ? true : false);
+        Registry::get('view')->assign('send_email', $send_email == 'Y' ? true : false);
+        Registry::get('view')->assign('send_min_amount', $send_min_amount == 'Y' ? true : false);
 
         $order = fn_get_order_info($order_id);
 
-        Tygh::$app['view']->assign('order_email', $order['email']);
-        Tygh::$app['view']->assign('order_payment_info', $order['payment_method']['payment']);
+        Registry::get('view')->assign('order_email', $order['email']);
+        Registry::get('view')->assign('order_payment_info', $order['payment_method']['payment']);
 
         if (count($shippings) && !isset($shippings['N'])) {
             $in_shipping = false;
@@ -57,7 +57,7 @@ function fn_sms_notifications_place_order(&$order_id, &$action, &$fake1, &$cart)
         }
 
         if ($in_shipping && $order['subtotal'] > doubleval($send_min_amount)) {
-            $body = Tygh::$app['view']->fetch('addons/sms_notifications/views/sms/components/order_sms.tpl');
+            $body = Registry::get('view')->fetch('addons/sms_notifications/views/sms/components/order_sms.tpl');
             fn_send_sms_notification($body);
         }
     }
@@ -66,8 +66,8 @@ function fn_sms_notifications_place_order(&$order_id, &$action, &$fake1, &$cart)
 function fn_sms_notifications_update_profile(&$action, &$user_data)
 {
     if ($action == 'add' && AREA == 'C' && Registry::get('addons.sms_notifications.sms_new_cusomer_registered') == 'Y') {
-        Tygh::$app['view']->assign('customer', $user_data['firstname'] . (empty($user_data['lastname']) ? '' : $user_data['lastname']));
-        $body = Tygh::$app['view']->fetch('addons/sms_notifications/views/sms/components/new_profile_sms.tpl');
+        Registry::get('view')->assign('customer', $user_data['firstname'] . (empty($user_data['lastname']) ? '' : $user_data['lastname']));
+        $body = Registry::get('view')->fetch('addons/sms_notifications/views/sms/components/new_profile_sms.tpl');
         fn_send_sms_notification($body);
     }
 }
@@ -77,9 +77,9 @@ function fn_sms_notifications_update_product_amount(&$new_amount, &$product_id)
     if ($new_amount <= Registry::get('settings.General.low_stock_threshold') && Registry::get('addons.sms_notifications.sms_product_negative_amount') == 'Y') {
         $lang_code = Registry::get('settings.Appearance.backend_default_language');
 
-        Tygh::$app['view']->assign('product_id', $product_id);
-        Tygh::$app['view']->assign('product', db_get_field("SELECT product FROM ?:product_descriptions WHERE product_id = ?i AND lang_code = ?s", $product_id, $lang_code));
-        $body = Tygh::$app['view']->fetch('addons/sms_notifications/views/sms/components/low_stock_sms.tpl');
+        Registry::get('view')->assign('product_id', $product_id);
+        Registry::get('view')->assign('product', db_get_field("SELECT product FROM ?:product_descriptions WHERE product_id = ?i AND lang_code = ?s", $product_id, $lang_code));
+        $body = Registry::get('view')->fetch('addons/sms_notifications/views/sms/components/low_stock_sms.tpl');
         fn_send_sms_notification($body);
     }
 }

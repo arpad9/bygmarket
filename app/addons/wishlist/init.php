@@ -21,6 +21,5 @@ fn_register_hooks(
     'init_user_session_data',
     'pre_add_to_cart',
     'get_carts',
-    'get_additional_information',
-    'sucess_user_login'
+    'get_additional_information'
 );

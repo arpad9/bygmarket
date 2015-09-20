@@ -15,12 +15,7 @@
 use Tygh\Registry;
 use Tygh\Session;
 
-if (!defined('BOOTSTRAP')) {
-    define('FORCE_SESSION_START', true);
-    require './init_payment.php';
-    include(Registry::get('config.dir.payments') . 'amazon/amazon_callback.php');
-    exit;
-}
+if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
 include_once (Registry::get('config.dir.payments') . 'amazon/amazon_func.php');
 
@@ -28,7 +23,7 @@ if (defined('PAYMENT_NOTIFICATION')) {
     define('AMAZON_MAX_TIME', 60); // Time for awaiting callback
     $amazon_order_id = $_REQUEST['amznPmtsOrderIds'];
 
-    $view = Tygh::$app['view'];
+    $view = Registry::get('view');
     $view->assign('order_action', __('placing_order'));
     $view->display('views/orders/components/placing_order.tpl');
     fn_flush();
@@ -69,7 +64,7 @@ if (defined('PAYMENT_NOTIFICATION')) {
 
     fn_set_hook('amazon_products', $amazon_products, $cart);
     // Get cart items
-    $amazon_order = array();
+    $amazon_items = '<Items>';
     foreach ($amazon_products as $key => $product) {
         // Get product options
         $item_options = ' ';
@@ -81,41 +76,78 @@ if (defined('PAYMENT_NOTIFICATION')) {
             $item_options = ' [' . trim($item_options, '; ') . ']';
         }
 
-        $amazon_order['Cart']['Items']['Item'][] = array(
-            'SKU' => (empty($product['product_code']) ? 'pid_' . $product['product_id'] : substr(strip_tags($product['product_code']), 0, 250)),
-            'MerchantId' => $processor_data['processor_params']['merchant_id'],
-            'Title' => substr(strip_tags($product['product']), 0, 250) . $item_options,
-            'Price' => array(
-                'Amount' => fn_format_price($product['price']),
-                'CurrencyCode' => $_currency,
-            ),
-            'Quantity' => $product['amount'],
-            'ItemCustomData' => array(
-                'CartID' => $key
-            )
-        );
+        $item =
+        '<Item>' .
+            '<SKU>' . (empty($product['product_code']) ? 'pid_' . $product['product_id'] : substr(strip_tags($product['product_code']), 0, 250)) . '</SKU>' .
+            '<MerchantId>' . $processor_data['processor_params']['merchant_id'] . '</MerchantId>' .
+            '<Title>' . substr(strip_tags(fn_get_product_name($product['product_id'])), 0, 250) . $item_options . '</Title>' .
+            '<Price>' .
+                '<Amount>' . fn_format_price($product['price']) . '</Amount>' .
+                '<CurrencyCode>' . $_currency . '</CurrencyCode>' .
+            '</Price>' .
+            '<Quantity>' . $product['amount'] . '</Quantity>' .
+            '<ItemCustomData>' .
+                '<CartID>' . $key . '</CartID>' .
+            '</ItemCustomData>' .
+        '</Item>';
+
+        $amazon_items .= $item;
     }
 
-    $amazon_order['Cart']['CartCustomData'] = array (
-        // Generate request ID using the SESSION_ID
-        'ClientRequestId' => base64_encode(Session::getId() . ';' . $_payment_id)
-    );
+    // NOTE: we do not need to calculate the taxes here. We will pass it to the Amazon on the callback request
+    // Prepare taxes
+    /*$tax_subtotal = 0;
+    $tax_description = '';
+    if (!empty($cart['taxes'])) {
+        foreach ($cart['taxes'] as $tax_id => $tax) {
+            if ($tax['price_includes_tax'] != 'Y') {
+                $tax_subtotal += $tax['tax_subtotal'];
+                $tax_description .= strip_tags($tax['description']) . ';';
+            }
+        }
+
+    }
+    $tax_description = empty($tax_description) ? __('taxes') : $tax_description;
+    $tax =
+        '<Item>' .
+            '<SKU>taxes</SKU>' .
+            '<MerchantId>' . $processor_data['processor_params']['merchant_id'] . '</MerchantId>' .
+            '<Title>' . substr($tax_description, 0, 250) . '</Title>' .
+            '<Price>' .
+                '<Amount>' . fn_format_price($tax_subtotal) . '</Amount>' .
+                '<CurrencyCode>' . $_currency . '</CurrencyCode>' .
+            '</Price>' .
+            '<Quantity>1</Quantity>' .
+        '</Item>';
+    $amazon_items .= $tax;*/
+
+    $amazon_items .= '</Items>';
+
+    // Generate request ID using the SESSION_ID
+    $request_id = '<ClientRequestId>' . base64_encode(Session::getId() . ';' . $_payment_id) . '</ClientRequestId>';
+    $amazon_items .= '<CartCustomData>' . $request_id . '</CartCustomData>';
+
+    $callback_url = Registry::get('config.https_location') . '/app/payments/amazon/amazon_callback.php';
+    $cancel_url = fn_url('checkout.cart');
+    $return_url = Registry::get('config.http_location') . '/' . Registry::get('config.customer_index') . '?dispatch=payment_notification.placement&amp;payment=amazon_checkout';
+
+    $process_on_failure = $processor_data['processor_params']['process_on_failure'] == 'Y' ? 'true' : 'false';
 
     // Activate the Amazon callbacks functionality
-    $amazon_order['ReturnUrl'] = Registry::get('config.http_location') . '/' . Registry::get('config.customer_index') . '?dispatch=payment_notification.placement&payment=amazon_checkout';
-    $amazon_order['CancelUrl'] = fn_url('checkout.cart');
-    $amazon_order['OrderCalculationCallbacks'] = array(
-        'CalculateTaxRates' => 'true',
-        'CalculatePromotions' => 'true',
-        'CalculateShippingRates' => 'true',
-        'OrderCallbackEndpoint' => Registry::get('config.origin_http_location') . '/app/payments/amazon_checkout.php',
-        'ProcessOrderOnCallbackFailure' => $processor_data['processor_params']['process_on_failure'] == 'Y' ? 'true' : 'false',
-    );
-
-    $amazon_order['DisablePromotionCode'] = 'true';
+    $callback = <<<CALLBACK
+<ReturnUrl>$return_url</ReturnUrl>
+<CancelUrl>$cancel_url</CancelUrl>
+<OrderCalculationCallbacks>
+    <CalculateTaxRates>true</CalculateTaxRates>
+    <CalculatePromotions>true</CalculatePromotions>
+    <CalculateShippingRates>true</CalculateShippingRates>
+    <OrderCallbackEndpoint>$callback_url</OrderCallbackEndpoint>
+    <ProcessOrderOnCallbackFailure>$process_on_failure</ProcessOrderOnCallbackFailure>
+</OrderCalculationCallbacks>
+CALLBACK;
 
     $amazon_cart = '<?xml version="1.0" encoding="UTF-8"?>' .
-    '<Order xmlns="http://payments.amazon.com/checkout/2009-05-15/">' . fn_array_to_xml($amazon_order) . '</Order>';
+    '<Order xmlns="http://payments.amazon.com/checkout/2009-05-15/"><Cart>' . $amazon_items . '</Cart>' . $callback . '<DisablePromotionCode>true</DisablePromotionCode></Order>';
 
     // Calculate cart signature
     if (!empty($processor_data['processor_params']['aws_access_public_key'])) {
@@ -131,36 +163,37 @@ if (defined('PAYMENT_NOTIFICATION')) {
 
     // The necessary Amazon scripts
     if ($processor_data['processor_params']['test'] == 'Y') {
-        if ($processor_data['processor_params']['currency'] == 'USD') {
-            $scripts = '<script type="text/javascript" src="https://static-na.payments-amazon.com/cba/js/us/sandbox/PaymentWidgets.js"></script>';
-        } elseif ($processor_data['processor_params']['currency'] == 'EUR') {
-            $scripts = '<script type="text/javascript" src="https://static-eu.payments-amazon.com/cba/js/de/sandbox/PaymentWidgets.js"></script>';
-        } else {
-            $scripts = '<script type="text/javascript" src="https://static-eu.payments-amazon.com/cba/js/gb/sandbox/PaymentWidgets.js"></script>';
-        }
+        $scripts = '<script type="text/javascript" src="https://images-na.ssl-images-amazon.com/images/G/01/cba/js/widget/sandbox/widget.js"></script>';
     } else {
-        if ($processor_data['processor_params']['currency'] == 'USD') {
-            $scripts = '<script type="text/javascript" src="https://static-na.payments-amazon.com/cba/js/us/PaymentWidgets.js"></script>';
-        } elseif ($processor_data['processor_params']['currency'] == 'EUR') {
-            $scripts = '<script type="text/javascript" src="https://static-eu.payments-amazon.com/cba/js/de/PaymentWidgets.js"></script>';
-        } else {
-            $scripts = '<script type="text/javascript" src="https://static-eu.payments-amazon.com/cba/js/gb/PaymentWidgets.js"></script>';
-        }
+        $scripts = '<script type="text/javascript" src="https://images-na.ssl-images-amazon.com/images/G/01/cba/js/widget/widget.js"></script>';
     }
+    /*if ($processor_data['processor_params']['test'] == 'Y') {
+        $scripts .= '<script type="text/javascript" src="https://payments-sandbox.amazon.com/cba/js/PaymentWidgets.js"></script>';
+    } else {
+        $scripts .= '<script type="text/javascript" src="https://static-na.payments-amazon.com/cba/js/us/PaymentWidgets.js"></script>';
+    }*/
 
     if (empty($_payment_id)) {
         $_payment_id = '0';
     }
 
     $checkout_buttons[$_payment_id] = '
+    <html><body>' . '
+
+    <form method=POST action="' . $base_domain . '/checkout/' . $merchant_id . '">
+        <input type="hidden" name="order-input" value="type:' . $order_type . ';order:' . $base64cart . $sign . '">
+        <input src="https://payments.amazon.com/gp/cba/button?ie=UTF8&color=' . $processor_data['processor_params']['button_color'] . '&background=' . $processor_data['processor_params']['button_background'] . '&size=' . $processor_data['processor_params']['button_size'] . '" type="image">
+    </form></body></html>';
+
+    /*$checkout_buttons[$_payment_id] = '
     ' . $scripts . '
-    <div id="cbaButton"></div>
+    <div id="cbaButton1"></div>
     <script>
         new CBA.Widgets.StandardCheckoutWidget({
         merchantId:"' . $merchant_id . '",
         orderInput: {format: "XML",
         value: "type:' . $order_type . ';order:' . $base64cart . ';' . $sign . '"},
         buttonSettings: {size:"' . $processor_data['processor_params']['button_size'] . '", color:"' . $processor_data['processor_params']['button_color'] . '",
-        background:"' . $processor_data['processor_params']['button_background'] . '"}}).render("cbaButton");
-    </script>';
+        background:"' . $processor_data['processor_params']['button_background'] . '"}}).render("cbaButton1");
+    </script>';*/
 }

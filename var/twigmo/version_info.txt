@@ -1,0 +1,1 @@
+a:3:{s:12:"next_version";s:3:"3.8";s:11:"description";s:125:"Twigmo 3.8 is available. <a href="http://www.twigmo.com/twigmo-3-8-platinum-plan-beta-release/" target="_blank">Read more</a>";s:10:"update_url";s:59:"http://cp.twigmo.com/download/cscart/3.8/twigmo.cscart4.tgz";}

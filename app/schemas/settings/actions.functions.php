@@ -20,16 +20,14 @@ use Tygh\Settings;
 /**
  * Check if secure connection is available
  */
-function fn_settings_actions_security_secure_storefront(&$new_value, $old_value)
+function fn_settings_actions_general_secure_auth(&$new_value, $old_value)
 {
-    if ($new_value !== 'none') {
-        $company_id = fn_get_runtime_company_id();
-
-        if (!fn_allowed_for('ULTIMATE') || (fn_allowed_for('ULTIMATE') && $company_id)) {
+    if ($new_value == 'Y') {
+        if (!fn_allowed_for('ULTIMATE') || (fn_allowed_for('ULTIMATE') && Registry::get('runtime.company_id'))) {
 
             $suffix = '';
             if (fn_allowed_for('ULTIMATE')) {
-                $suffix = '&company_id=' . $company_id;
+                $suffix = '&company_id=' . Registry::get('runtime.company_id');
             }
 
             $storefront_url = fn_url('index.index?check_https=Y' . $suffix, 'C', 'https');
@@ -37,8 +35,10 @@ function fn_settings_actions_security_secure_storefront(&$new_value, $old_value)
             $content = Http::get($storefront_url);
             if (empty($content) || $content != 'OK') {
                 // Disable https
-                Settings::instance()->updateValue('secure_storefront', 'none', 'Security');
-                $new_value = 'none';
+                Settings::instance()->updateValue('secure_checkout', 'N', 'General');
+                Settings::instance()->updateValue('secure_admin', 'N', 'General');
+                Settings::instance()->updateValue('secure_auth', 'N', 'General');
+                $new_value = 'N';
 
                 fn_set_notification('W', __('warning'), __('warning_https_disabled'));
             }
@@ -49,26 +49,17 @@ function fn_settings_actions_security_secure_storefront(&$new_value, $old_value)
 /**
  * Check if secure connection is available
  */
-function fn_settings_actions_security_secure_admin(&$new_value, $old_value)
+function fn_settings_actions_general_secure_checkout(&$new_value, $old_value)
 {
-    if ($new_value !== 'N') {
-        $suffix = '';
-        if (fn_allowed_for('ULTIMATE')) {
-            $suffix = '&company_id=' . Registry::get('runtime.company_id');
-        }
+    return fn_settings_actions_general_secure_auth($new_value, $old_value);
+}
 
-        $admin_url = fn_url('index.index?check_https=Y' . $suffix, 'A', 'https');
-
-        $content = Http::get($admin_url);
-
-        if (empty($content) || $content != 'OK') {
-            // Disable https
-            Settings::instance()->updateValue('secure_admin', 'N', 'Security');
-            $new_value = 'N';
-
-            fn_set_notification('W', __('warning'), __('warning_https_disabled'));
-        }
-    }
+/**
+ * Check if secure connection is available
+ */
+function fn_settings_actions_general_secure_admin(&$new_value, $old_value)
+{
+    return fn_settings_actions_general_secure_auth($new_value, $old_value);
 }
 
 /**
@@ -88,6 +79,134 @@ function fn_settings_actions_general_search_objects(&$new_value, $old_value)
 {
     if ($new_value == 'N') {
         $new_value = '';
+    }
+}
+
+/**
+ * Enable/disable Canada Post
+ */
+function fn_settings_actions_shippings_can_enabled(&$new_value, $old_value)
+{
+    $currencies = Registry::get('currencies');
+    if ($new_value == 'Y' && empty($currencies['CAD'])) {
+        fn_set_notification('E', __('warning'), __('canada_post_activation_error'), 'S');
+        $new_value = 'N';
+    }
+}
+
+/**
+ * Enable/disable EMS
+ */
+function fn_settings_actions_shippings_ems_enabled(&$new_value, $old_value)
+{
+    $currencies = Registry::get('currencies');
+    if ($new_value == 'Y' && (empty($currencies['RUB']) || $currencies['RUB']['is_primary'] == 'N')) {
+        fn_set_notification('E', __('warning'), __('ems_activation_error'), 'S');
+        $new_value = 'N';
+    }
+}
+
+/**
+ * Enable/disable Russian Post
+ */
+function fn_settings_actions_shippings_russian_post_enabled(&$new_value, $old_value)
+{
+    $currencies = Registry::get('currencies');
+    if ($new_value == 'Y' && (empty($currencies['RUB']) || $currencies['RUB']['is_primary'] == 'N')) {
+        fn_set_notification('E', __('warning'), __('russian_post_activation_error'), 'S');
+        $new_value = 'N';
+    } elseif ($new_value == 'Y') {
+        fn_set_notification('W', __('warning'), __('russian_post_consuming_error'));
+    }
+}
+
+/**
+ * Enable/disable Temando
+ */
+function fn_settings_actions_shippings_temando_enabled(&$new_value, $old_value)
+{
+    if ($new_value == 'Y') {
+        $fields = fn_get_table_fields('user_profiles');
+
+        $billing_profile_field_id = db_get_field("SELECT field_id FROM ?:profile_fields WHERE field_name = ?s", 'b_suburb');
+        if (empty($billing_profile_field_id)) {
+            $profile_data = array(
+                'field_name' => '',
+                'profile_show' => 'Y',
+                'profile_required' => 'N',
+                'checkout_show' => 'Y',
+                'checkout_required' => 'N',
+                'partner_show' => 'Y',
+                'partner_required' => 'N',
+                'field_type' => 'I',
+                'position' => '170',
+                'is_default' => 'Y',
+                'section' => 'BS',
+                'matching_id' => '',
+                'class' => '',
+                'description' => 'Suburb',
+                'add_values' => array(
+                    array(
+                        'position' => '',
+                        'description' => ''
+                    )
+                )
+            );
+            $profile_field = array();
+            $profile_field['b'] = fn_update_profile_field($profile_data, 0);
+            $profile_field['s'] = db_get_field("SELECT field_id FROM ?:profile_fields WHERE field_name = ?s", 's_suburb');
+
+        }
+        //We should just update settings if they was created previously, and create new setting othervise.
+        $setting_data_c_suburb = array(
+            'name' => 'company_suburb',
+            'edition_type' => 'ROOT,ULT:VENDOR',
+            'section_id' => 5,
+            'type' => 'I',
+            'position' => 41,
+            'is_global' => 'Y'
+        );
+        if (Settings::instance()->isExists('company_suburb', 'Company')) {
+            $setting_data_c_suburb['object_id'] = Settings::instance()->getId('company_suburb', 'Company');
+        } else {
+            $descriptions_c = array();
+            foreach (fn_get_translation_languages() as $lang_code => $lang_value) {
+                $descriptions_c[] = array(
+                    'value' => 'Company suburb',
+                    'object_type' => 'O',
+                    'lang_code' => $lang_code
+                );
+            }
+        }
+        Settings::instance()->update($setting_data_c_suburb, null, (isset($descriptions_c) ? $descriptions_c : null));
+
+        $setting_data_d_suburb = array(
+            'name' => 'default_suburb',
+            'edition_type' => 'ROOT,ULT:VENDOR',
+            'section_id' => 2,
+            'type' => 'I',
+            'position' => 115,
+            'is_global' => 'Y'
+        );
+        if (Settings::instance()->isExists('default_suburb', 'General')) {
+            $setting_data_d_suburb['object_id'] = Settings::instance()->getId('default_suburb', 'General');
+        } else {
+            $descriptions_d = array();
+            foreach (fn_get_translation_languages() as $lang_code => $lang_value) {
+                $descriptions_d[] = array(
+                    'value' => 'Default suburb',
+                    'object_type' => 'O',
+                    'lang_code' => $lang_code
+                );
+            }
+        }
+        Settings::instance()->update($setting_data_d_suburb, null, (isset($descriptions_d) ? $descriptions_d : null));
+    } else {
+        //Disable settings
+        $c_id = Settings::instance()->getId('company_suburb', 'Company');
+        Settings::instance()->update(array('object_id' => $c_id, 'edition_type' => 'NONE'));
+        $d_id = Settings::instance()->getId('default_suburb', 'General');
+        Settings::instance()->update(array('object_id' => $d_id, 'edition_type' => 'NONE'));
     }
 }
 
@@ -116,13 +235,6 @@ function fn_settings_actions_upgrade_center_license_number(&$new_value, &$old_va
     }
 }
 
-function fn_settings_actions_appearance_backend_default_language(&$new_value, &$old_value)
-{
-    if (fn_allowed_for('ULTIMATE')) {
-        db_query("UPDATE ?:companies SET lang_code = ?s", $new_value);
-    }
-}
-
 if (fn_allowed_for('ULTIMATE')) {
     function fn_settings_actions_stores_share_users(&$new_value, $old_value)
     {
@@ -133,9 +245,4 @@ if (fn_allowed_for('ULTIMATE')) {
             $new_value = $old_value;
         }
     }
-}
-
-function fn_settings_actions_appearance_notice_displaying_time(&$new_value, $old_value)
-{
-    $new_value = fn_convert_to_numeric($new_value);
 }

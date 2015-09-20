@@ -69,30 +69,45 @@ $customer_url = fn_url("payment_notification.process?payment=scb&order_id=$order
 $_order_id = ($order_info['repaid']) ? ($order_id . '_' . $order_info['repaid']) : $order_id;
 $today = date('Ymdhis');
 
-$post_data = array(
-    'mid' => $processor_data['processor_params']['merchant_id'],
-    'terminal' => $processor_data['processor_params']['terminal_id'],
-    'version' => '2_5_1',
-    'command' => 'CRAUTH',
-    'ref_no' => $_order_id,
-    'ref_date' => $today,
-    'service_id' => '00',
-    'cust_id' => $order_info['user_id'],
-    'cur_abbr' => $processor_data['processor_params']['currency'],
-    'amount' => $order_info['total'],
-    'cust_lname' => $order_info['lastname'],
-    'cust_fname' => $order_info['firstname'],
-    'cust_email' => $order_info['email'],
-    'cust_country' => $order_info['b_country'],
-    'cust_address1' => $order_info['b_address'],
-    'description' => 'Shopping cart',
-    'cust_address2' => $order_info['b_address_2'],
-    'cust_city' => $order_info['b_city'],
-    'cust_province' => $order_info['b_state'],
-    'cust_zip' => $order_info['b_zipcode'],
-    'backURL' => $customer_url,    
-);
+echo <<<EOT
+<form method="post" action="https://sips.scb.co.th/cc/webcredit/web_credit_payment.phtml" name="process">
+    <input type="hidden" name="mid" value="{$processor_data['processor_params']['merchant_id']}">
+    <input type="hidden" name="terminal" value="{$processor_data['processor_params']['terminal_id']}">
+    <input type="hidden" name="version" value="2_5_1">
+    <input type="hidden" name="command" value="CRAUTH">
+    <input type="hidden" name="ref_no" value="{$_order_id}">
+    <input type="hidden" name="ref_date" value="{$today}">
+    <input type="hidden" name="service_id" value="00">
+    <input type="hidden" name="cust_id" value="{$order_info['user_id']}">
+    <input type="hidden" name="cur_abbr" value="{$processor_data['processor_params']['currency']}">
+    <input type="hidden" name="amount" value="{$order_info['total']}">
+    <input type="hidden" name="cust_lname" value="{$order_info['lastname']}">
+    <input type="hidden" name="cust_fname" value="{$order_info['firstname']}">
+    <input type="hidden" name="cust_email" value="{$order_info['email']}">
+    <input type="hidden" name="cust_country" value="{$order_info['b_country']}">
+    <input type="hidden" name="cust_address1" value="{$order_info['b_address']}">
+    <input type="hidden" name="description" value="Shopping cart">
+    <input type="hidden" name="cust_address2" value="{$order_info['b_address_2']}">
+    <input type="hidden" name="cust_city" value="{$order_info['b_city']}">
+    <input type="hidden" name="cust_province" value="{$order_info['b_state']}">
+    <input type="hidden" name="cust_zip" value="{$order_info['b_zipcode']}">
+    <input type="hidden" name="backURL" value="{$customer_url}">
 
-fn_create_payment_form('https://sips.scb.co.th/cc/webcredit/web_credit_payment.phtml', $post_data, 'SCB');
+EOT;
+
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'SCB server'
+));
+echo <<<EOT
+    </form>
+   <p><div align=center>{$msg}</div></p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
 exit;
 }

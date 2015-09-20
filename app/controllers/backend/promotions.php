@@ -55,16 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $suffix = ".manage";
     }
 
-    if ($mode == 'delete') {
-
-        if (!empty($_REQUEST['promotion_id'])) {
-            fn_delete_promotions($_REQUEST['promotion_id']);
-        }
-
-        $suffix = ".manage";
-    }
-
-    return array(CONTROLLER_STATUS_OK, 'promotions' . $suffix);
+    return array(CONTROLLER_STATUS_OK, "promotions$suffix");
 }
 
 // ----------------------------- GET routines -------------------------------------------------
@@ -96,13 +87,13 @@ if ($mode == 'update') {
         return array(CONTROLLER_STATUS_NO_PAGE);
     }
 
-    Tygh::$app['view']->assign('promotion_data', $promotion_data);
+    Registry::get('view')->assign('promotion_data', $promotion_data);
 
-    Tygh::$app['view']->assign('zone', $promotion_data['zone']);
-    Tygh::$app['view']->assign('schema', fn_promotion_get_schema());
+    Registry::get('view')->assign('zone', $promotion_data['zone']);
+    Registry::get('view')->assign('schema', fn_promotion_get_schema());
 
     if (fn_allowed_for('ULTIMATE') && !Registry::get('runtime.company_id')) {
-        Tygh::$app['view']->assign('picker_selected_companies', fn_ult_get_controller_shared_companies($_REQUEST['promotion_id']));
+        Registry::get('view')->assign('picker_selected_companies', fn_ult_get_controller_shared_companies($_REQUEST['promotion_id']));
     }
 
 // Add promotion
@@ -132,27 +123,27 @@ if ($mode == 'update') {
         ),
     ));
 
-    Tygh::$app['view']->assign('zone', $zone);
-    Tygh::$app['view']->assign('schema', fn_promotion_get_schema());
+    Registry::get('view')->assign('zone', $zone);
+    Registry::get('view')->assign('schema', fn_promotion_get_schema());
 
 } elseif ($mode == 'dynamic') {
-    Tygh::$app['view']->assign('schema', fn_promotion_get_schema());
-    Tygh::$app['view']->assign('prefix', $_REQUEST['prefix']);
-    Tygh::$app['view']->assign('elm_id', $_REQUEST['elm_id']);
+    Registry::get('view')->assign('schema', fn_promotion_get_schema());
+    Registry::get('view')->assign('prefix', $_REQUEST['prefix']);
+    Registry::get('view')->assign('elm_id', $_REQUEST['elm_id']);
 
     if (!empty($_REQUEST['zone'])) {
-        Tygh::$app['view']->assign('zone', $_REQUEST['zone']);
+        Registry::get('view')->assign('zone', $_REQUEST['zone']);
     }
 
     if (!empty($_REQUEST['condition'])) {
-        Tygh::$app['view']->assign('condition_data', array('condition' => $_REQUEST['condition']));
+        Registry::get('view')->assign('condition_data', array('condition' => $_REQUEST['condition']));
 
     } elseif (!empty($_REQUEST['bonus'])) {
-        Tygh::$app['view']->assign('bonus_data', array('bonus' => $_REQUEST['bonus']));
+        Registry::get('view')->assign('bonus_data', array('bonus' => $_REQUEST['bonus']));
     }
 
     if (fn_allowed_for('ULTIMATE') && !Registry::get('runtime.company_id')) {
-        Tygh::$app['view']->assign('picker_selected_companies', fn_ult_get_controller_shared_companies($_REQUEST['promotion_id'], 'promotions', 'update'));
+        Registry::get('view')->assign('picker_selected_companies', fn_ult_get_controller_shared_companies($_REQUEST['promotion_id'], 'promotions', 'update'));
     }
 
 // promotions list
@@ -160,9 +151,17 @@ if ($mode == 'update') {
 
     list($promotions, $search) = fn_get_promotions($_REQUEST, Registry::get('settings.Appearance.admin_elements_per_page'), DESCR_SL);
 
-    Tygh::$app['view']->assign('search', $search);
-    Tygh::$app['view']->assign('promotions', $promotions);
+    Registry::get('view')->assign('search', $search);
+    Registry::get('view')->assign('promotions', $promotions);
 
+// Delete selected promotions
+} elseif ($mode == 'delete') {
+
+    if (!empty($_REQUEST['promotion_id'])) {
+        fn_delete_promotions($_REQUEST['promotion_id']);
+    }
+
+    return array(CONTROLLER_STATUS_REDIRECT, "promotions.manage");
 }
 
 function fn_update_promotion($data, $promotion_id, $lang_code = DESCR_SL)
@@ -235,14 +234,7 @@ function fn_promotions_check_group_conditions(&$conditions, $parents = array())
     } else {
         foreach ($conditions as $k => $c) {
             if (!empty($c['conditions'])) {
-                fn_promotions_check_group_conditions(
-                    $conditions[$k]['conditions'],
-                    fn_array_merge(
-                        $parents,
-                        array(array('set_value' => $c['set_value'], 'set' => $c['set'])),
-                        false
-                    )
-                );
+                fn_promotions_check_group_conditions($conditions[$k]['conditions'], fn_array_merge($parents, array('set_value' => $c['set_value'], 'set' => $c['set']), false));
 
                 if (!$c['conditions']) {
                     unset($c['conditions']);

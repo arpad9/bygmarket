@@ -40,7 +40,7 @@
     <td class="nowrap">
         {capture name="tools_list"}
             <li>{btn type="list" text=__("edit") href="rma.details?return_id=`$request.return_id`"}</li>
-            <li>{btn type="list" class="cm-confirm cm-post" text=__("delete") href="rma.delete?return_id=`$request.return_id`"}</li>
+            <li>{btn type="list" class="cm-confirm" text=__("delete") href="rma.delete?return_id=`$request.return_id`"}</li>
         {/capture}
         <div class="hidden-tools">
             {dropdown content=$smarty.capture.tools_list}
@@ -57,13 +57,9 @@
 
 {capture name="buttons"}
     {capture name="tools_list"}
-        <li>{btn type="list" text=__("rma_reasons") href="rma.properties?property_type=R"}</li>
-        <li>{btn type="list" text=__("rma_actions") href="rma.properties?property_type=A"}</li>
-        <li>{btn type="list" text=__("rma_request_statuses") href="statuses.manage?type=R"}</li>
         {if $return_requests}
-            <li class="divider"></li>
-            <li>{btn type="list" text=__("bulk_print_packing_slip") dispatch="dispatch[rma.bulk_slip_print]" form="rma_list_form" class="cm-process-items cm-new-window"}</li>
             <li>{btn type="delete_selected" dispatch="dispatch[rma.m_delete_returns]" form="rma_list_form"}</li>
+            <li>{btn type="list" text=__("bulk_print") dispatch="dispatch[rma.bulk_slip_print]" form="rma_list_form" class="cm-process-items cm-new-window"}</li>
         {/if}
     {/capture}
     {dropdown content=$smarty.capture.tools_list}

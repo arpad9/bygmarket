@@ -16,63 +16,73 @@ use Tygh\Registry;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
-/**
- * Get search objects data
- *
- * @param string $area Area ('A' for admin or 'C' for customer)
- * @return array Search objects data
- */
-function fn_get_search_objects($area = AREA)
+//
+// Add default search objects
+//
+function fn_init_search()
 {
-    $schema = fn_get_schema('search', 'schema');
-
-    $search = array (
-        'conditions' => array(
-            'functions' => array (),
-            'values' => array ()
+    fn_search_init_object();
+    fn_search_register_object(
+        'products',
+        'fn_create_products_condition',
+        array(
+            'pshort' => 'Y',
+            'pfull' => 'Y',
+            'pname' => 'Y',
+            'pkeywords' => 'Y',
         ),
-        'more_data' => array(),
-        'titles' => array(),
-        'default' => array(),
-        'default_params' => array(),
+        __('products'),
+        '',
+        'fn_gather_additional_products_data_for_search',
+        'products.manage?compact=Y&q=%search%&pshort=Y&pfull=Y&pname=Y&pkeywords=Y&pcode=%search%&pid=%search%&match=any&content_id=products_content',
+        'products.update?product_id=%id%',
+        false
     );
 
-    foreach ($schema as $object => $object_data) {
-        if (!empty($object_data['action_link']) && $area != 'C') {
-            if (fn_check_view_permissions($object_data['action_link'], 'GET') == false) {
-                continue;
-            }
-        }
+    fn_search_register_object(
+        'pages',
+        'fn_create_pages_condition',
+        array(
+            'pdescr' => 'Y',
+            'pname' => 'Y',
+        ),
+        __('pages'),
+        '',
+        '',
+        'pages.manage?compact=Y&q=%search%&match=any&content_id=pages_content&pdescr=Y',
+        'pages.update?page_id=%id%',
+        true
+    );
 
-        $search['conditions']['functions'][$object] = $object_data['condition_function'];
+    if (AREA == 'A') {
+        fn_search_register_object(
+            'orders',
+            'fn_create_orders_condition',
+            array(),
+            __('orders'),
+            '',
+            '',
+            'orders.manage?order_id=%search%&compact=Y&email=%search%&cname=%search%&content_id=order_content',
+            'orders.details?order_id=%id%',
+            false
+        );
 
-        $search['titles'][$object] = $object_data['title'];
-
-        $search['more_data'][$object] = $object_data['more_data_function'];
-        $search['bulk_data'][$object] = $object_data['bulk_data_function'];
-
-        $search['default_params'][$object] = $object_data['default_params'];
-
-        $search['action_links'][$object] = $object_data['action_link'];
-        $search['detailed_links'][$object] = $object_data['detailed_link'];
-
-        $search['show_in_search'][$object] = $object_data['show_in_search'];
-
-        if (!empty($object_data['default']) &&  $object_data['default'] == true) {
-            $search['default'][] = $object;
-        }
+        fn_search_register_object(
+            'users',
+            'fn_create_users_condition',
+            array(),
+            __('customers'),
+            '',
+            '',
+            'profiles.manage?name=%search%&email=%search%&user_login=%search%&compact=Y&content_id=users_content',
+            'profiles.update?user_id=%id%',
+            false
+        );
     }
 
-    /**
-     * Additionally processes search schema
-     *
-     * @param array  $schema Search objects schema
-     * @param string $area   Area ('A' for admin or 'C' for customer)
-     * @param array  $search Search objects data
-     */
-    fn_set_hook('get_search_objects_post', $schema, $area, $search);
+    fn_set_hook('search_init');
 
-    return $search;
+    return array(INIT_STATUS_OK);
 }
 
 function fn_gather_additional_products_data_for_search(&$products)
@@ -80,14 +90,38 @@ function fn_gather_additional_products_data_for_search(&$products)
     fn_gather_additional_products_data($products, array('get_icon' => true, 'get_detailed' => true));
 }
 
+//
+// Init search data
+//
+function fn_search_init_object()
+{
+    $search_object = array (
+        'conditions' => array(
+            'functions' => array (),
+            'values' => array ()
+        ),
+        'more_data' => array(),
+        'titles' => array(),
+        'default' => '',
+        'default_params' => array(),
+    );
+
+    Registry::set('search_object', $search_object);
+}
+
 function fn_search_get_objects()
 {
-    $schema = fn_get_schema('search', 'schema');
-    $data = array();
+    $data = array ();
 
-    foreach ($schema as $object => $object_data) {
-        if (!empty($object_data['show_in_search']) &&  $object_data['show_in_search'] == true) {
-            $data[$object] = $object_data['title'];
+    $search = Registry::get('search_object');
+
+    if (!empty($search['conditions']['functions'])) {
+        foreach ($search['conditions']['functions'] as $object => $entry) {
+            if (!$search['show_in_search'][$object]) {
+                continue;
+            }
+
+            $data[$object] = $search['titles'][$object];
         }
     }
 
@@ -96,13 +130,13 @@ function fn_search_get_objects()
 
 function fn_search_get_customer_objects()
 {
-    $schema = fn_get_schema('search', 'schema');
-
     $data = array ();
+
+    $search = Registry::get('search_object');
 
     $objects = Registry::get('settings.General.search_objects');
 
-    fn_set_hook('customer_search_objects', $schema, $objects);
+    fn_set_hook('customer_search_objects', $search, $objects);
 
     if (AREA == 'A') {
         $objects['orders'] = 'Y';
@@ -110,17 +144,59 @@ function fn_search_get_customer_objects()
         $objects['pages'] = 'Y';
     }
 
-    foreach ($schema as $object => $object_data) {
-        if (!empty($object_data['default']) &&  $object_data['default'] == true) {
+    foreach ($search['conditions']['functions'] as $object => $entry) {
+        if ($search['default'] == $object) {
             continue;
         }
 
         if (!empty($objects[$object]) && $objects[$object] == 'Y') {
-            $data[$object] = $object_data['title'];
+            $data[$object] = $search['titles'][$object];
         }
     }
 
     return $data;
+}
+
+//
+// Add new search object
+//
+function fn_search_register_object($object, $condition_function, $default_params = array(), $title = '', $more_data_function = '', $bulk_data_function = '', $action_link = '', $detailed_link = '', $show_in_search = true)
+{
+    if (empty($title)) {
+        $title = $object;
+    }
+
+    if (!empty($action_link) && AREA != 'C') {
+        if (fn_check_view_permissions($action_link, 'GET') == false) {
+            return false;
+        }
+    }
+
+    $search = Registry::get('search_object');
+
+    $search['conditions']['functions'][$object] = $condition_function;
+
+    $search['titles'][$object] = $title;
+
+    $search['more_data'][$object] = $more_data_function;
+    $search['bulk_data'][$object] = $bulk_data_function;
+
+    $search['default_params'][$object] = $default_params;
+
+    $search['action_links'][$object] = $action_link;
+    $search['detailed_links'][$object] = $detailed_link;
+
+    $search['show_in_search'][$object] = $show_in_search;
+
+    if (isset($search['default']) && !$search['default']) {
+        $search['default'] = $object;
+    }
+
+    fn_set_hook('register_search_object', $object, $condition_function, $default_params, $title, $more_data_function, $bulk_data_function, $action_link, $detailed_link, $show_in_search, $search);
+
+    $search = Registry::set('search_object', $search);
+
+    return true;
 }
 
 //
@@ -130,7 +206,7 @@ function fn_search($params, $items_per_page = 0, $lang_code = CART_LANGUAGE)
 {
     $data = array ();
 
-    $search = fn_get_search_objects();
+    $search = Registry::get('search_object');
 
     $pieces = array ();
     $search_type = '';
@@ -144,7 +220,7 @@ function fn_search($params, $items_per_page = 0, $lang_code = CART_LANGUAGE)
     $params = array_merge($default_params, $params);
 
     foreach ($search['conditions']['functions'] as $object => $function) {
-        if (in_array($object, $search['default'])) {
+        if ($search['default'] == $object) {
             continue;
         }
 
@@ -164,17 +240,14 @@ function fn_search($params, $items_per_page = 0, $lang_code = CART_LANGUAGE)
     $params['search_string'] = $params['q'];
 
     foreach ($search['conditions']['functions'] as $object => $function) {
-        if (!empty($function) && is_callable($function)) {
+        if (!empty($function) && function_exists($function)) {
             $_params = $params;
             if (!empty($search['default_params'][$object])) {
                 $_params = fn_array_merge($_params, $search['default_params'][$object]);
             }
-            $search['conditions']['values'][$object] = call_user_func($function, $_params, $lang_code);
-            $search['action_links'][$object] = str_replace(
-                '%search%', urlencode($params['q']), $search['action_links'][$object]
-            );
+            $search['conditions']['values'][$object] = $function($_params, $lang_code);
+            $search['action_links'][$object] = str_replace('%search%', $params['q'], $search['action_links'][$object]);
         }
-
     }
 
     fn_set_hook('search_by_objects', $search['conditions']['values'], $params);
@@ -198,7 +271,7 @@ function fn_search($params, $items_per_page = 0, $lang_code = CART_LANGUAGE)
 
         if (!empty($params['items_per_page'])) {
             $params['total_items'] = db_get_field('SELECT COUNT(id) FROM _search');
-            $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+            $limit = db_paginate($params['page'], $params['items_per_page']);
             if (preg_match("/\s+(\d+),/", $limit, $begin)) {
                 $begin = intval($begin[1]);
             } else {
@@ -292,7 +365,7 @@ function fn_search_simple($params, $search, $object, $items_per_page = 0)
 
     if (!empty($params['items_per_page'])) {
         $params['total_items'] = db_get_field("SELECT COUNT(DISTINCT($entry[table].$entry[key])) FROM ?:$object as $entry[table] $entry[join] WHERE $entry[condition]");
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+        $limit = db_paginate($params['page'], $params['items_per_page']);
         if (preg_match("/\s+(\d+),/", $limit, $begin)) {
             $begin = intval($begin[1]);
         } else {
@@ -399,11 +472,11 @@ function fn_create_products_condition($params, $lang_code = CART_LANGUAGE)
      * @param array  $params    List of search parameters
      * @param string $lang_code 2-letter language code
      */
-    fn_set_hook('create_products_condition_pre', $params, $lang_code);
+    fn_set_hook('create_pages_condition_pre', $params, $lang_code);
 
     $params['get_conditions'] = true;
     if (AREA == 'A') {
-        $params['pcode_from_q'] = 'Y';
+        $params['pcode'] = $params['q'];
         $params['pid'] = $params['q'];
     }
 
@@ -426,7 +499,7 @@ function fn_create_products_condition($params, $lang_code = CART_LANGUAGE)
      * @param string $lang_code 2-letter language code
      * @param array  $data      Result search scheme
      */
-    fn_set_hook('create_products_condition_post', $params, $lang_code, $data);
+    fn_set_hook('create_pages_condition_post', $params, $lang_code, $data);
 
     return $data;
 }
@@ -446,7 +519,7 @@ function fn_create_orders_condition($params, $lang_code = CART_LANGUAGE)
      * @param array  $params    List of search parameters
      * @param string $lang_code 2-letter language code
      */
-    fn_set_hook('create_orders_condition_pre', $params, $lang_code);
+    fn_set_hook('create_pages_condition_pre', $params, $lang_code);
 
     $params['get_conditions'] = true;
     if (!empty($params['q'])) {
@@ -474,7 +547,7 @@ function fn_create_orders_condition($params, $lang_code = CART_LANGUAGE)
      * @param string $lang_code 2-letter language code
      * @param array  $data      Result search scheme
      */
-    fn_set_hook('create_orders_condition_post', $params, $lang_code, $data);
+    fn_set_hook('create_pages_condition_post', $params, $lang_code, $data);
 
     return $data;
 }
@@ -494,7 +567,7 @@ function fn_create_users_condition($params, $lang_code = CART_LANGUAGE)
      * @param array  $params    List of search parameters
      * @param string $lang_code 2-letter language code
      */
-    fn_set_hook('create_users_condition_pre', $params, $lang_code);
+    fn_set_hook('create_pages_condition_pre', $params, $lang_code);
 
     $params['get_conditions'] = true;
     if (!empty($params['q'])) {
@@ -522,7 +595,7 @@ function fn_create_users_condition($params, $lang_code = CART_LANGUAGE)
      * @param string $lang_code 2-letter language code
      * @param array  $data      Result search scheme
      */
-    fn_set_hook('create_users_condition_post', $params, $lang_code, $data);
+    fn_set_hook('create_pages_condition_post', $params, $lang_code, $data);
 
     return $data;
 }

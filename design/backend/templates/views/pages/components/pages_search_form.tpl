@@ -9,7 +9,11 @@
 <form action="{""|fn_url}" name="pages_search_form" method="get" class="{$form_meta}">
 <input type="hidden" name="get_tree" value="" />
 {if $put_request_vars}
-    {array_to_fields data=$smarty.request skip=["callback"]}
+    {foreach from=$smarty.request key="k" item="v"}
+        {if $v && $k != "callback"}
+            <input type="hidden" name="{$k}" value="{$v}" />
+        {/if}
+    {/foreach}
 {/if}
 
 {capture name="simple_search"}
@@ -18,8 +22,6 @@
     <label>{__("find_results_with")}</label>
     <input type="text" name="q" size="20" value="{$search.q}" />
 </div>
-
-{if $page_types|sizeof > 1}
 <div class="sidebar-field">
     <label>{__("type")}</label>
     <select class="small" name="page_type">
@@ -29,26 +31,15 @@
         {/foreach}
     </select>
 </div>
-{else}
-    {foreach from=$page_types key="t" item="p"}
-    <input type="hidden" name="page_type" value="{$t}" />
-    {/foreach}
-{/if}
-
 <div class="sidebar-field">
     <label>{__("parent_page")}</label>
     {if "pages"|fn_show_picker:$smarty.const.PAGE_THRESHOLD}
-
-        {if $is_exclusive_page_type}
-        {$extra_url = "&page_type=`$search.page_type`"}
-        {/if}
-
-        {include file="pickers/pages/picker.tpl" data_id="location_page" input_name="parent_id" item_ids=$search.parent_id hide_link=true hide_delete_button=true default_name=__("all_pages") extra="" no_container=true prepend=true}
+        {include file="pickers/pages/picker.tpl" data_id="location_page" input_name="parent_id" item_ids=$search.parent_id hide_link=true hide_delete_button=true show_root=true default_name=__("all_pages") extra=""}
     {else}
         <select name="parent_id">
             <option value="">- {__("all_pages")} -</option>
-            {foreach from=$parent_pages item="p"}
-                <option value="{$p.page_id}" {if $search.parent_id == $p.page_id}selected="selected"{/if}>{$p.page|escape|truncate:35:"...":true|indent:$p.level:"&#166;&nbsp;&nbsp;&nbsp;&nbsp;":"&#166;--&nbsp;" nofilter}</option>
+            {foreach from=""|fn_get_pages_plain_list item="p"}
+                <option value="{$p.page_id}" {if $search.parent_id == $p.page_id}selected="selected"{/if}>{$p.page|escape|indent:$p.level:"&#166;&nbsp;&nbsp;&nbsp;&nbsp;":"&#166;--&nbsp;" nofilter}</option>
             {/foreach}
         </select>
     {/if}
@@ -92,7 +83,7 @@
 </div>
 {/capture}
 
-{include file="common/advanced_search.tpl" simple_search=$smarty.capture.simple_search advanced_search=$smarty.capture.advanced_search dispatch=$dispatch view_type=$view_type in_popup=$in_popup}
+{include file="common/advanced_search.tpl" simple_search=$smarty.capture.simple_search advanced_search=$smarty.capture.advanced_search dispatch=$dispatch view_type="pages" in_popup=$in_popup}
 
 </form>
 {if $in_popup}

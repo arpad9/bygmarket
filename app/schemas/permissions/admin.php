@@ -14,7 +14,7 @@
 
 use \Tygh\Registry;
 
-$schema =  array(
+$scheme =  array(
     'orders' => array (
         'modes' => array (
             'update_status' => array (
@@ -46,8 +46,8 @@ $schema =  array(
     'sitemap' => array (
         'permissions' => 'manage_sitemap',
     ),
-    'datakeeper' => array (
-        'permissions' => 'backup_restore',
+    'database' => array (
+        'permissions' => 'database_maintenance',
     ),
     'product_options' => array (
         'modes' => array (
@@ -137,19 +137,9 @@ $schema =  array(
         ),
         'permissions' => array ('GET' => 'view_usergroups', 'POST' => 'manage_usergroups'),
     ),
-    'customization' => array (
-        'modes' => array (
-            'update_mode' => array(
-                'param_permissions' => array (
-                    'type' => array (
-                        'live_editor' => 'manage_translation',
-                        'design' => 'manage_design',
-                        'theme_editor' => 'manage_design',
-                    )
-                ),
-            ),
-        ),
-     ),
+    'site_layout' => array (
+        'permissions' => 'manage_site_layout',
+    ),
     'profiles' => array (
         'modes' => array (
             'delete' => array (
@@ -225,9 +215,6 @@ $schema =  array(
     'settings_wizard' => array (
         'permissions' => 'update_settings',
     ),
-    'robots' => array (
-        'permissions' => 'update_settings',
-    ),
     'upgrade_center' => array (
         'permissions' => 'upgrade_store',
     ),
@@ -264,31 +251,6 @@ $schema =  array(
         'permissions' => array ('GET' => 'view_locations', 'POST' => 'manage_locations'),
     ),
     'exim' => array (
-        'modes' => array (
-            'export' => array (
-                'param_permissions' => array(
-                    'section' => array(
-                        'features' => 'view_catalog',
-                        'orders' => 'view_orders',
-                        'products' => 'view_catalog',
-                        'translations' => 'view_languages',
-                        'users' => 'view_users',
-                    ),
-                )
-            ),
-            'import' => array (
-                'param_permissions' => array(
-                    'section' => array(
-                        'features' => 'manage_catalog',
-                        'orders' => 'edit_order',
-                        'products' => 'manage_catalog',
-                        'translations' => 'manage_languages',
-                        'users' => 'manage_users',
-                    ),
-                )
-            )
-        ),
-
         'permissions' => 'exim_access',
     ),
     'languages' => array (
@@ -357,8 +319,8 @@ $schema =  array(
         ),
         'permissions' => 'edit_order',
     ),
-    'file_editor' => array (
-        'permissions' => 'edit_files',
+    'template_editor' => array (
+        'permissions' => 'edit_templates',
     ),
     'block_manager' => array (
         'permissions' => 'edit_blocks',
@@ -392,14 +354,14 @@ $schema =  array(
         'modes' => array (
             'update_position' => array(
                 'param_permissions' => array (
-                    'table' => array (
+                    'table_names' => array (
                         'product_tabs' => 'manage_catalog',
                     )
                 )
             ),
             'update_status' => array (
                 'param_permissions' => array (
-                    'table' => array (
+                    'table_names' => array (
                         'categories' => 'manage_catalog',
                         'states' => 'manage_locations',
                         'usergroups' => 'manage_usergroups',
@@ -427,22 +389,13 @@ $schema =  array(
                 )
             ),
         )
-    ),
-    'storage' => array (
-        'permissions' => 'manage_storage',
-    ),
-    'themes' => array (
-        'permissions' => 'manage_themes',
-    ),
-    'templates' => array(
-        'permissions' => 'edit_files'
     )
 );
 
 if (Registry::get('config.tweaks.disable_localizations') == true || fn_allowed_for('ULTIMATE:FREE')) {
-    $schema['localizations'] = $schema['root']['localizations'] = array(
+    $scheme['localizations'] = $scheme['root']['localizations'] = array(
         'permissions' => 'none',
     );
 }
 
-return $schema;
+return $scheme;

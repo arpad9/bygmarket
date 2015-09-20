@@ -17,15 +17,22 @@ if (!defined('BOOTSTRAP')) { die('Access denied'); }
 if ($mode == 'view') {
     if (!empty($_REQUEST['page'])) {
         $page = intval($_REQUEST['page']);
-        $filename = fn_get_files_dir_path() . 'google_sitemap/sitemap' . $page . '.xml';
+        $filename = fn_get_cache_path(false) . 'google_sitemap/sitemap' . $page . '.xml';
     } else {
         $page = 0;
-        $filename = fn_get_files_dir_path() . 'google_sitemap/sitemap.xml';
+        $filename = fn_get_cache_path(false) . 'google_sitemap/sitemap.xml';
     }
 
     if (file_exists($filename)) {
         header("Content-Type: text/xml;charset=utf-8");
+
         readfile($filename);
         exit();
+
+    } else {
+        @ignore_user_abort(true);
+        set_time_limit(3600);
+
+        fn_google_sitemap_get_content($page);
     }
 }

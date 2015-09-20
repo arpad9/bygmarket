@@ -31,6 +31,7 @@
     </select>
 
     <script type="text/javascript">
+    //<![CDATA[
     (function(_, $) {
         $(document).ready(function(){
             $('#mixed_condition_element_{$p_md}').on('change', function() {
@@ -38,6 +39,7 @@
             }).trigger('change');
         });
     }(Tygh, Tygh.$));
+    //]]>
     </script>
 
     {/if}
@@ -88,9 +90,7 @@
     
     {elseif $schema.conditions[$condition_data.condition].type == "mixed"}
         <select id="mixed_select_{$p_md}" name="{$prefix}[value]" class="input-medium hidden"></select>
-        <div class="cm-ajax-select-object shift-input shift-left">
-            {include file="common/ajax_select_object.tpl" data_url="" text="" result_elm="mixed_input_`$p_md`" id="mixed_ajax_select_`$p_md`" js_action="$('#mixed_input_`$p_md`').toggleBy(($('#mixed_input_`$p_md`').val() != 'disable_select')); if ($('#mixed_input_`$p_md`').val() == 'disable_select') $('#mixed_input_`$p_md`').val('');"}
-        </div>
+        {include file="common/ajax_select_object.tpl" data_url="" text="" result_elm="mixed_input_`$p_md`" id="mixed_ajax_select_`$p_md`" js_action="$('#mixed_input_`$p_md`').toggleBy(($('#mixed_input_`$p_md`').val() != 'disable_select')); if ($('#mixed_input_`$p_md`').val() == 'disable_select') $('#mixed_input_`$p_md`').val('');"}
         <input id="mixed_input_{$p_md}" type="text" name="{$prefix}[value]" value="{$condition_data.value}" class="hidden input-medium" />
         <input id="mixed_input_{$p_md}_name" type="text" name="{$prefix}[value_name]" value="{$condition_data.value_name}" class="hidden input-medium" />
     {/if}

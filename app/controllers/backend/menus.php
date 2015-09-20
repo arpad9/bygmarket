@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    return array(CONTROLLER_STATUS_OK, 'menus.manage');
+    return array(CONTROLLER_STATUS_OK, "menus.manage");
 }
 
 // ---------------------- GET routines ---------------------------------------
@@ -47,7 +47,15 @@ if ($mode == 'manage') {
 
     $menus = Menu::getList('', DESCR_SL);
 
-    Tygh::$app['view']->assign('menus', $menus);
+    Registry::get('view')->assign('menus', $menus);
+
+} elseif ($mode == 'delete') {
+
+    if (!empty($_REQUEST['menu_id'])) {
+        Menu::delete($_REQUEST['menu_id']);
+    }
+
+    return array(CONTROLLER_STATUS_OK, "menus.manage");
 
 } elseif ($mode == 'update') {
     $menu_id = isset($_REQUEST['menu_data']['menu_id']) ? $_REQUEST['menu_data']['menu_id'] : 0;
@@ -63,5 +71,5 @@ if ($mode == 'manage') {
         $menu_data = current(Menu::getList(db_quote(' AND ?:menus.menu_id=?i', $menu_id), DESCR_SL));
     }
 
-    Tygh::$app['view']->assign('menu_data', $menu_data);
+    Registry::get('view')->assign('menu_data', $menu_data);
 }

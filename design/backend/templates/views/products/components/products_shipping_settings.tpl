@@ -57,6 +57,7 @@
 </div>
 
 <script type="text/javascript">
+//<![CDATA[
 {literal}
 function fn_product_shipping_settings(elm)
 {
@@ -74,4 +75,5 @@ function fn_product_shipping_settings(elm)
 }
 
 {/literal}
+//]]>
 </script>

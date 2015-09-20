@@ -15,31 +15,15 @@
 namespace Tygh;
 
 use Tygh\Debugger;
-use Tygh\Exceptions\DatabaseException;
 use Tygh\Registry;
 
 class Database
 {
+    private static $_dbs = array(); // database connections list
+    private static $_db; // current database connection
+    private static $_table_prefix; // table prefix for current connection
     public static $raw = false; // if set to true, next query will be executed without additional processing by hooks
 
-    protected static $reconnects = 0;
-    protected static $max_reconnects = 3;
-    protected static $lost_connection_codes = array(
-        2006,
-        2013
-    );
-    protected static $skip_error_codes = array(
-        1091, // column exists/does not exist during alter table
-        1176, // key does not exist during alter table
-        1050, // table already exist
-        1060  // column exists
-    );
-    protected static $dbs = array(); // database connections list
-    protected static $db; // current database connection
-    protected static $dbc_name; // current database connection name (main by default)
-    protected static $table_prefix; // table prefix for current connection
-
-    private static $table_fields_cache = array();
     /**
      * Connects to the database server
      * @param  string  $user     user name
@@ -57,76 +41,32 @@ class Database
 
         $params['table_prefix'] = ($params['dbc_name'] == 'main') ? Registry::get('config.table_prefix') : $params['table_prefix'];
 
-        if (empty(self::$dbs[$params['dbc_name']])) {
-            $db_class = Registry::ifGet('config.database_backend', 'mysqli');
-            $db_class = '\\Tygh\\Backend\\Database\\' . ucfirst($db_class);
+        if (empty(self::$_dbs[$params['dbc_name']])) {
+            $_db_class = Registry::ifGet('config.database_backend', 'mysqli');
+            $_db_class = '\\Tygh\\Backend\\Database\\' . ucfirst($_db_class);
 
-            self::$dbs[$params['dbc_name']] = array(
-                'db' => new $db_class(),
-                'user' => $user,
-                'passwd' => $passwd,
-                'host' => $host,
-                'database' => $database,
-                'params' => $params,
+            self::$_dbs[$params['dbc_name']] = array(
+                'db' => new $_db_class(),
+                'table_prefix' => $params['table_prefix']
             );
-
-            Debugger::checkpoint('Before database connect');
-            $result = self::$dbs[$params['dbc_name']]['db']->connect($user, $passwd, $host, $database);
-            Debugger::checkpoint('After database connect');
-
-            if (!$result) {
-                self::$dbs[$params['dbc_name']] = null;
-            }
-        } else {
-            $result = true;
+            self::$_db = & self::$_dbs[$params['dbc_name']]['db'];
+            self::$_table_prefix = self::$_dbs[$params['dbc_name']]['table_prefix'];
         }
 
-        if ($result) {
-            self::$dbc_name = $params['dbc_name'];
-            self::$db = & self::$dbs[$params['dbc_name']]['db'];
-            self::$table_prefix = $params['table_prefix'];
-
-            if (empty($params['names'])) {
-                $params['names'] = 'utf8';
-            }
-            if (empty($params['group_concat_max_len'])) {
-                $params['group_concat_max_len'] = 3000; // 3Kb
-            }
-
-            self::$db->initCommand(self::quote("SET NAMES ?s, sql_mode = ?s, SESSION group_concat_max_len = ?i", $params['names'], '', $params['group_concat_max_len']));
-            self::$reconnects = 0;
-        }
-
-        return $result;
+        return self::$_db->connect($user, $passwd, $host, $database);
     }
 
     /**
      * Changes database for current or passed connection
-     * @param  string  $database database name
-     * @param  string  $dbc_name database connection name
-     * @return boolean true if database was changed, false - otherwise
+     * @param string $database database name
+     * @param string $dbc_name database connection name
      */
-    public static function changeDb($database, $params = array())
+    public static function changeDb($database, $dbc_name = 'main')
     {
-        if (empty($params['dbc_name'])) {
-            $params['dbc_name'] = 'main';
+        if (!empty(self::$_dbs[$dbc_name]) && self::$_dbs[$dbc_name]['db']->changeDb($database)) {
+            self::$_db = & self::$_dbs[$dbc_name]['db'];
+            self::$_table_prefix = self::$_dbs[$dbc_name]['table_prefix'];
         }
-
-        if (!empty(self::$dbs[$params['dbc_name']])) {
-            if (self::$dbs[$params['dbc_name']]['db']->changeDb($database)) {
-
-                self::$dbc_name = $params['dbc_name'];
-                self::$db = & self::$dbs[$params['dbc_name']]['db'];
-                self::$table_prefix = !empty($params['table_prefix']) ? $params['table_prefix'] : self::$dbs[$params['dbc_name']]['params']['table_prefix'];
-
-                return true;
-            } elseif (self::tryReconnect()) {
-                return self::changeDb($database, $params);
-            }
-        }
-
-
-        return false;
     }
 
     /**
@@ -140,11 +80,11 @@ class Database
     {
         if ($_result = call_user_func_array(array('self', 'query'), func_get_args())) {
 
-            while ($arr = self::$db->fetchRow($_result)) {
+            while ($arr = self::$_db->fetchRow($_result)) {
                 $result[] = $arr;
             }
 
-            self::$db->freeResult($_result);
+            self::$_db->freeResult($_result);
         }
 
         return !empty($result) ? $result : array();
@@ -164,13 +104,13 @@ class Database
         array_unshift($args, $query);
 
         if ($_result = call_user_func_array(array('self', 'query'), $args)) {
-            while ($arr = self::$db->fetchRow($_result)) {
+            while ($arr = self::$_db->fetchRow($_result)) {
                 if (isset($arr[$field])) {
                     $result[$arr[$field]] = $arr;
                 }
             }
 
-            self::$db->freeResult($_result);
+            self::$_db->freeResult($_result);
         }
 
         return !empty($result) ? $result : array();
@@ -187,9 +127,9 @@ class Database
     {
         if ($_result = call_user_func_array(array('self', 'query'), func_get_args())) {
 
-            $result = self::$db->fetchRow($_result);
+            $result = self::$_db->fetchRow($_result);
 
-            self::$db->freeResult($_result);
+            self::$_db->freeResult($_result);
 
         }
 
@@ -207,13 +147,13 @@ class Database
     {
         if ($_result = call_user_func_array(array('self', 'query'), func_get_args())) {
 
-            $result = self::$db->fetchRow($_result, 'indexed');
+            $result = self::$_db->fetchRow($_result, 'indexed');
 
-            self::$db->freeResult($_result);
+            self::$_db->freeResult($_result);
 
         }
 
-        return (isset($result) && is_array($result)) ? $result[0] : '';
+        return (isset($result) && is_array($result)) ? $result[0] : NULL;
     }
 
     /**
@@ -228,11 +168,11 @@ class Database
         $result = array();
 
         if ($_result = call_user_func_array(array('self', 'query'), func_get_args())) {
-            while ($arr = self::$db->fetchRow($_result, 'indexed')) {
+            while ($arr = self::$_db->fetchRow($_result, 'indexed')) {
                 $result[] = $arr[0];
             }
 
-            self::$db->freeResult($_result);
+            self::$_db->freeResult($_result);
         }
 
         return $result;
@@ -254,7 +194,7 @@ class Database
         array_unshift($args, $query);
 
         if ($_result = call_user_func_array(array('self', 'query'), $args)) {
-            while ($arr = self::$db->fetchRow($_result)) {
+            while ($arr = self::$_db->fetchRow($_result)) {
                 if (!empty($field_2)) {
                     $result[$arr[$field]][$arr[$field_2]] = !empty($value) ? $arr[$value] : $arr;
                 } else {
@@ -262,7 +202,7 @@ class Database
                 }
             }
 
-            self::$db->freeResult($_result);
+            self::$_db->freeResult($_result);
 
         }
 
@@ -285,11 +225,11 @@ class Database
         array_unshift($args, $query);
 
         if ($_result = call_user_func_array(array('self', 'query'), $args)) {
-            while ($arr = self::$db->fetchRow($_result)) {
+            while ($arr = self::$_db->fetchRow($_result)) {
                 $result[$arr[$key]] = $arr[$value];
             }
 
-            self::$db->freeResult($_result);
+            self::$_db->freeResult($_result);
         }
 
         return !empty($result) ? $result : array();
@@ -320,7 +260,7 @@ class Database
      */
     public static function createDb($database)
     {
-        if (self::query("CREATE DATABASE IF NOT EXISTS `" . self::$db->escape($database) . "`")) {
+        if (self::query("CREATE DATABASE IF NOT EXISTS `" . self::$_db->escape($database) . "`")) {
             return true;
         }
 
@@ -332,7 +272,7 @@ class Database
      *
      * @param string $query unparsed query
      * @param mixed ... unlimited number of variables for placeholders
-     * @return mixed result set for "SELECT" statement / generated ID for an AUTO_INCREMENT field for insert statement / Affected rows count for DELETE/UPDATE statements
+     * @return mixed result set or the ID generated for an AUTO_INCREMENT field for insert statement
      */
     public static function query($query)
     {
@@ -348,52 +288,41 @@ class Database
             if (!self::$raw) {
                 fn_set_hook('db_query_process', $query);
             }
+
             if (defined('DEBUG_QUERIES')) {
                 fn_print_r($query);
             }
 
             $time_start = microtime(true);
+            $result = self::$_db->query($query);
 
-            $result = self::$db->query($query);
+            Debugger::set_query($query, microtime(true) - $time_start);
 
-            if (!self::error($result, $query)) {
+            self::_error($result, $query);
 
-                $insert_id = self::$db->insertId();
-                Debugger::set_query($query, microtime(true) - $time_start);
+            // Get last inserted ID
+            $i_id = self::$_db->insertId();
 
-                if (!self::$raw) {
-                    fn_set_hook('db_query_executed', $query, $result);
-                }
+            if (!self::$raw) {
+                fn_set_hook('db_query_executed', $query, $result);
+            }
 
-                // "true" will be returned for Update/Delete/Insert/Replace statements. "SELECT" returns MySQLi/PDO object
-                if ($result === true) {
-                    $cmd = substr($query, 0, 6);
+            // Check if it was insert statement with auto_increment value and return it
+            if ($result === true) {
+                if (!empty($i_id)) {
+                    $result = $i_id;
 
-                    // Check if it was insert statement with auto_increment value and return it
-                    if (!empty($insert_id)) {
-                        $result = $insert_id;
+                } elseif (substr($query, 0, 6) == 'UPDATE') {
+                    $a_row = self::$_db->affectedRows($result);
 
-                    } elseif ($cmd == 'UPDATE' || $cmd == 'DELETE' || $cmd == 'INSERT') {
-                        $result = self::$db->affectedRows($result);
+                    if (!empty($a_row)) {
+                        $result = $a_row;
+
+                    } elseif (preg_match("/^UPDATE (.+) SET .+ WHERE (.+)/", $query, $m)) {
+                        $result = self::getField('SELECT count(*) FROM ' . $m[1] . ' WHERE ' . $m[2]) > 0;
                     }
-
-                    // Check if query updated data in the database and run cache handlers
-                    if (!empty($result) && preg_match("/^(UPDATE|INSERT INTO|REPLACE INTO|DELETE FROM) " . self::$table_prefix . "(\w+) /", $query, $m)) {
-                        Registry::setChangedTables($m[2]);
-                    }
                 }
-            } else {
-                // Lost connection, try to reconnect
-                if (self::tryReconnect()) {
-                    return self::query($query);
 
-                // Assume that the table is broken
-                // Try to repair
-                } elseif (preg_match("/'(\S+)\.(MYI|MYD)/", self::$db->error(), $matches)) {
-                    self::$db->query("REPAIR TABLE $matches[1]");
-
-                    return self::query($query);
-                }
             }
         }
 
@@ -426,78 +355,90 @@ class Database
      */
     public static function process($pattern, $data = array(), $replace = true)
     {
+        static $session_vars_updated = false;
+        $command = 'get';
+        $group_concat_len = 3000; // 3Kb
+
+        // Check if query updates data in the database
+        if (preg_match("/^(UPDATE|INSERT INTO|REPLACE INTO|DELETE FROM) \?\:(\w+) /", $pattern, $m)) {
+            $table_name = $m[2];//str_replace(TABLE_PREFIX, '', $m[2]);
+            Registry::setChangedTables($table_name);
+
+            $command = ($m[1] == 'DELETE FROM') ? 'delete' : 'set';
+
+        }
+
+        if (strpos($pattern, 'GROUP_CONCAT(') !== false && $session_vars_updated == false) {
+            self::query('SET SESSION group_concat_max_len = ?i', $group_concat_len);
+            $session_vars_updated = true;
+        }
+
         // Replace table prefixes
         if ($replace) {
-            $pattern = str_replace('?:', self::$table_prefix, $pattern);
+            $pattern = str_replace('?:', self::$_table_prefix, $pattern);
         }
 
         if (!empty($data) && preg_match_all("/\?(i|s|l|d|a|n|u|e|m|p|w|f)+/", $pattern, $m)) {
             $offset = 0;
             foreach ($m[0] as $k => $ph) {
                 if ($ph == '?u' || $ph == '?e') {
+                    $data[$k] = self::checkTableFields($data[$k], $table_name);
 
-                    $table_pattern = '\?\:';
-                    if ($replace) {
-                        $table_pattern = self::$table_prefix;
-                    }
-                    if (preg_match("/^(UPDATE|INSERT INTO|REPLACE INTO|DELETE FROM) " . $table_pattern . "(\w+) /", $pattern, $m)) {
-                        $data[$k] = self::checkTableFields($data[$k], $m[2]);
-                        if (empty($data[$k])) {
-                            return false;
-                        }
+                    if (empty($data[$k])) {
+                        return false;
                     }
                 }
 
                 if ($ph == '?i') { // integer
-                    $pattern = self::strReplace($ph, self::intVal($data[$k]), $pattern, $offset); // Trick to convert int's and longint's
+                    $pattern = self::_strReplace($ph, self::_intVal($data[$k]), $pattern, $offset); // Trick to convert int's and longint's
 
                 } elseif ($ph == '?s') { // string
 
-                    $pattern = self::strReplace($ph, "'" . self::$db->escape($data[$k]) . "'", $pattern, $offset);
+                    $pattern = self::_strReplace($ph, "'" . self::$_db->escape($data[$k]) . "'", $pattern, $offset);
 
                 } elseif ($ph == '?l') { // string for LIKE operator
-                    $pattern = self::strReplace($ph, "'" . self::$db->escape(str_replace("\\", "\\\\", $data[$k])) . "'", $pattern, $offset);
+                    $pattern = self::_strReplace($ph, "'" . self::$_db->escape(str_replace("\\", "\\\\", $data[$k])) . "'", $pattern, $offset);
 
                 } elseif ($ph == '?d') { // float
-                    $pattern = self::strReplace($ph, sprintf('%01.2f', $data[$k]), $pattern, $offset);
+                    $pattern = self::_strReplace($ph, sprintf('%01.2f', $data[$k]), $pattern, $offset);
 
                 } elseif ($ph == '?a') { // array FIXME: add trim
                     $data[$k] = !is_array($data[$k]) ? array($data[$k]) : $data[$k];
                     if (!empty($data[$k])) {
-                        $pattern = self::strReplace($ph, implode(', ', self::filterData($data[$k], true)), $pattern, $offset);
+                        $pattern = self::_strReplace($ph, implode(', ', self::_filterData($data[$k], true)), $pattern, $offset);
                     } else {
-                        if (Debugger::isActive() || fn_is_development()) {
+                        if (defined('DEVELOPMENT')) {
                             trigger_error('Empty array was passed into SQL statement IN()', E_USER_DEPRECATED);
                         }
-                        $pattern = self::strReplace($ph, 'NULL', $pattern, $offset);
+                        $pattern = self::_strReplace($ph, 'NULL', $pattern, $offset);
                     }
 
                 } elseif ($ph == '?n') { // array of integer FIXME: add trim
                     $data[$k] = !is_array($data[$k]) ? array($data[$k]) : $data[$k];
-                    $pattern = self::strReplace($ph, !empty($data[$k]) ? implode(', ', array_map(array('self', 'intVal'), $data[$k])) : "''", $pattern, $offset);
+                    $pattern = self::_strReplace($ph, !empty($data[$k]) ? implode(', ', array_map(array('self', '_intVal'), $data[$k])) : "''", $pattern, $offset);
 
                 } elseif ($ph == '?u' || $ph == '?w') { // update/condition with and
                     $clue = ($ph == '?u') ? ', ' : ' AND ';
-                    $q = implode($clue, self::filterData($data[$k], false));
-                    $pattern = self::strReplace($ph, $q, $pattern, $offset);
+                    $q = implode($clue, self::_filterData($data[$k], false));
+                    $pattern = self::_strReplace($ph, $q, $pattern, $offset);
 
                 } elseif ($ph == '?e') { // insert
-                    $filtered = self::filterData($data[$k], true);
-                    $pattern = self::strReplace($ph, "(" . implode(', ', array_keys($filtered)) . ") VALUES (" . implode(', ', array_values($filtered)) . ")", $pattern, $offset);
+                    $filtered = self::_filterData($data[$k], true);
+                    $pattern = self::_strReplace($ph, "(" . implode(', ', array_keys($filtered)) . ") VALUES (" . implode(', ', array_values($filtered)) . ")", $pattern, $offset);
 
                 } elseif ($ph == '?m') { // insert multi
                     $values = array();
                     foreach ($data[$k] as $value) {
-                        $filtered = self::filterData($value, true);
+                        $filtered = self::_filterData($value, true);
                         $values[] = "(" . implode(', ', array_values($filtered)) . ")";
                     }
-                    $pattern = self::strReplace($ph, "(" . implode(', ', array_keys($filtered)) . ") VALUES " . implode(', ', $values), $pattern, $offset);
+                    $pattern = self::_strReplace($ph, "(" . implode(', ', array_keys($filtered)) . ") VALUES " . implode(', ', $values), $pattern, $offset);
 
                 } elseif ($ph == '?f') { // field/table/database name
-                    $pattern = self::strReplace($ph, self::field($data[$k]), $pattern, $offset);
+                    $pattern = self::_strReplace($ph, self::_field($data[$k]), $pattern, $offset);
 
                 } elseif ($ph == '?p') { // prepared statement
-                    $pattern = self::strReplace($ph, self::tablePrefixReplace('?:', self::$table_prefix, $data[$k]), $pattern, $offset);
+                    $pattern = self::_strReplace($ph, self::_tablePrefixReplace('?:', self::$_table_prefix, $data[$k]), $pattern, $offset);
                 }
             }
         }
@@ -515,11 +456,13 @@ class Database
      */
     public static function getTableFields($table_name, $exclude = array(), $wrap = false)
     {
-        if (!isset(self::$table_fields_cache[$table_name])) {
-            self::$table_fields_cache[$table_name] = self::getColumn("SHOW COLUMNS FROM ?:$table_name");
+        static $table_fields_cache = array();
+
+        if (!isset($table_fields_cache[$table_name])) {
+            $table_fields_cache[$table_name] = self::getColumn("SHOW COLUMNS FROM ?:$table_name");
         }
 
-        $fields = self::$table_fields_cache[$table_name];
+        $fields = $table_fields_cache[$table_name];
         if (!$fields) {
             return false;
         }
@@ -546,10 +489,10 @@ class Database
      */
     public static function checkTableFields($data, $table_name)
     {
-        $fields = self::getTableFields($table_name);
-        if (is_array($fields)) {
+        $_fields = self::getTableFields($table_name);
+        if (is_array($_fields)) {
             foreach ($data as $k => $v) {
-                if (!in_array($k, $fields)) {
+                if (!in_array($k, $_fields)) {
                     unset($data[$k]);
                 }
             }
@@ -566,35 +509,6 @@ class Database
     }
 
     /**
-     * Get enum/set possible values in field of database
-     *
-     * @param  string $table_name Table name
-     * @param  string $field_name Field name
-     * @return array  List of elements
-     */
-    public static function getListElements($table_name, $field_name)
-    {
-        $column_info = self::getRow('SHOW COLUMNS FROM ?:?p WHERE Field = ?s', $table_name, $field_name);
-
-        if (
-            !empty($column_info)
-            && preg_match('/^(\w{3,4})\((.*)\)$/', $column_info['Type'], $matches)
-            && in_array($matches[1], array('set', 'enum'))
-            && !empty($matches[2])
-        ) {
-            $elements = array();
-            foreach (explode(',', $matches[2]) as $element) {
-                $elements[] = trim($element, "'");
-            }
-
-            return $elements;
-        }
-
-        return false;
-
-    }
-
-    /**
      * Placeholder replace helper
      *
      * @param  string $needle      string to replace
@@ -603,16 +517,12 @@ class Database
      * @param  int    $offset      offset to search from
      * @return string with replaced fragment
      */
-    protected static function strReplace($needle, $replacement, $subject, &$offset)
+    private static function _strReplace($needle, $replacement, $subject, &$offset)
     {
         $pos = strpos($subject, $needle, $offset);
         $offset = $pos + strlen($replacement);
 
-        // substr_replace does not work properly with mb_* and UTF8 encoded strings.
-        //$return = substr_replace($subject, $replacement, $pos, 2);
-        $return = substr($subject, 0, $pos) . $replacement . substr($subject, $pos + 2);
-
-        return $return;
+        return substr_replace($subject, $replacement, $pos, 2);
     }
 
     /**
@@ -625,7 +535,7 @@ class Database
      * @param  string $subject     string to search for replace
      * @return string
      */
-    protected static function tablePrefixReplace($needle, $replacement, $subject)
+    private static function _tablePrefixReplace($needle, $replacement, $subject)
     {
         // check that needle exists
         if (($pos = strpos($subject, $needle)) === false) {
@@ -663,7 +573,7 @@ class Database
      * @param  mixed $int variable to convert
      * @return mixed int/intval variable
      */
-    protected static function intVal($int)
+    private static function _intVal($int)
     {
         return $int + 0;
     }
@@ -674,7 +584,7 @@ class Database
      * @param  string $field field to check
      * @return mixed  passed variable if valid, empty string otherwise
      */
-    protected static function field($field)
+    private static function _field($field)
     {
         if (preg_match("/([\w]+)/", $field, $m) && $m[0] == $field) {
             return $field;
@@ -690,14 +600,13 @@ class Database
      * @param  string   $query  SQL query, passed to server
      * @return mixed    false if no error, dies with error message otherwise
      */
-    protected static function error($result, $query)
+    private static function _error($result, $query)
     {
-        if ((!empty($result) || !self::errorCode())) {
+        if (!empty($result) || self::$_db->errorCode() == 0) {
             // it's ok
         } else {
-
             $error = array (
-                'message' => self::$db->error() . ' <b>(' . self::$db->errorCode() . ')</b>',
+                'message' => self::$_db->error() . ' <b>(' . self::$_db->errorCode() . ')</b>',
                 'query' => $query,
             );
 
@@ -711,7 +620,7 @@ class Database
                     'backtrace' => debug_backtrace()
                 ));
 
-                throw new DatabaseException($error['message'] . "<p>{$error['query']}</p>");
+                fn_error($error);
             }
         }
 
@@ -724,7 +633,7 @@ class Database
      * @param  bool  $key_value return result as key-value array if set true or as array of field-value pairs if set to false
      * @return array filtered data
      */
-    protected static function filterData($data, $key_value)
+    private static function _filterData($data, $key_value)
     {
         $filtered = array();
         foreach ($data as $field => $value) {
@@ -735,48 +644,17 @@ class Database
             } elseif (is_null($value)) {
                 $value = 'NULL';
             } else {
-                $value = "'" . self::$db->escape($value) . "'";
+                $value = "'" . self::$_db->escape($value) . "'";
             }
 
             if ($key_value == true) {
-                $filtered['`' . self::field($field) . '`'] = $value;
+                $filtered['`' . self::_field($field) . '`'] = $value;
             } else {
-                $filtered[] = '`' . self::field($field) . '` = ' . $value;
+                $filtered[] = '`' . self::_field($field) . '` = ' . $value;
             }
 
         }
 
         return $filtered;
-    }
-
-    /**
-     * Gets last error code
-     * @return integer last error code
-     */
-    protected static function errorCode()
-    {
-        $errno = self::$db->errorCode();
-
-        return in_array($errno, self::$skip_error_codes) ? 0 : $errno;
-    }
-
-    /**
-     * Tries to reconnect to current databse
-     * @return boolean true on reconnect try
-     */
-    protected static function tryReconnect()
-    {
-        if (in_array(self::errorCode(), self::$lost_connection_codes) && self::$reconnects < self::$max_reconnects) {
-            self::$db->disconnect();
-            self::$reconnects++;
-
-            $dbc_data = self::$dbs[self::$dbc_name];
-
-            self::connect($dbc_data['user'], $dbc_data['passwd'], $dbc_data['host'], $dbc_data['database'], $dbc_data['params']);
-
-            return true;
-        }
-
-        return false;
     }
 }

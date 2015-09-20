@@ -65,25 +65,40 @@ if (!defined('BOOTSTRAP') && is_array($_POST)) {
     $responder_url = fn_payment_url('current', "nochex.php");
     $_order_id = ($order_info['repaid']) ? ($order_id . '_' . $order_info['repaid']) : $order_id;
 
-    $post_data = array(
-        'merchant_id' => $processor_data['processor_params']['merchantid'],
-        'amount' => $order_info['total'],
-        'status' => 'test',
-        'description' => $processor_data['processor_params']['payment_description'],
-        'order_id' => $_order_id,
-        'success_url' => $return_url_s,
-        'cancel_url' => $return_url_c,
-        'callback_url' => $responder_url,
-        'billing_fullname' => $order_info['b_firstname'] . ' ' . $order_info['b_lastname'],
-        'billing_address' => $order_info['b_address'] . ' ' . $order_info['b_address_2'] . ' ' . $order_info['b_city'] . ' ' . $order_info['b_state'],
-        'billing_postcode' => $order_info['b_zipcode'],
-        'delivery_fullname' => $order_info['s_firstname'] . ' ' . $order_info['s_lastname'],
-        'delivery_address' => $order_info['s_address'] . ' ' . $order_info['s_address_2'] . ' ' . $order_info['s_city'] . ' ' . $order_info['s_state'],
-        'delivery_postcode' => $order_info['b_zipcode'],
-        'email_address' => $order_info['email'],
-        'customer_phone_number' => $order_info['phone'],        
-    );
+echo <<<EOT
+<form method="post" action="https://secure.nochex.com/" name="process">
+<input type="hidden" name="merchant_id" value="{$processor_data['processor_params']['merchantid']}" />
+<input type="hidden" name="amount" value="{$order_info['total']}" />
+<input type="hidden" name="status" value="test" />
+<input type="hidden" name="description" value="{$processor_data['processor_params']['payment_description']}" />
+<input type="hidden" name="order_id" value="{$_order_id}" />
+<input type="hidden" name="success_url" value="{$return_url_s}" />
+<input type="hidden" name="cancel_url" value="{$return_url_c}" />
+<input type="hidden" name="callback_url" value="{$responder_url}" />
 
-    fn_create_payment_form('https://secure.nochex.com', $post_data, 'Nochex');
+<input type="hidden" name="billing_fullname" value="{$order_info['b_firstname']} {$order_info['b_lastname']}" />
+<input type="hidden" name="billing_address" value="{$order_info['b_address']} {$order_info['b_address_2']} {$order_info['b_city']} {$order_info['b_state']}" />
+<input type="hidden" name="billing_postcode" value="{$order_info['b_zipcode']}" />
+<input type="hidden" name="delivery_fullname" value="{$order_info['s_firstname']} {$order_info['s_lastname']}" />
+<input type="hidden" name="delivery_address" value="{$order_info['s_address']} {$order_info['s_address_2']} {$order_info['s_city']} {$order_info['s_state']}" />
+<input type="hidden" name="delivery_postcode" value="{$order_info['b_zipcode']}" />
+<input type="hidden" name="email_address" value="{$order_info['email']}" />
+<input type="hidden" name="customer_phone_number" value="{$order_info['phone']}" />
+EOT;
+
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'Nochex server'
+));
+echo <<<EOT
+    </form>
+   <p><div align=center>{$msg}</div></p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
 }
 exit;

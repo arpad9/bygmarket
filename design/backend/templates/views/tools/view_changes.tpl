@@ -99,11 +99,13 @@
 
     {$changes_tree_keys=$changes_tree|array_keys}
     <script type="text/javascript">
+        //<![CDATA[
         Tygh.$(document).ready(function(){ldelim}
           //  alert('#on_changes_{$changes_tree_keys.0}');
             Tygh.$('#on_changes_{$changes_tree_keys.0}').click();
         {rdelim}
         );
+        //]]>
     </script>
 {/capture}
 

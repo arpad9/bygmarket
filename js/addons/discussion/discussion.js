@@ -20,7 +20,6 @@
             var jelm = $(elm);
                 
             var data = {
-                method: 'post',
                 obj: jelm,
                 status: jelm.data('caStatus'),
                 callback: _check_status_switch

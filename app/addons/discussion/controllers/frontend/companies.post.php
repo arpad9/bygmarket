@@ -21,7 +21,13 @@ if ($mode == 'view') {
         $discussion = fn_get_discussion($_REQUEST['company_id'], 'M', true, $_REQUEST);
 
         if (empty($discussion) || $discussion['type'] != 'D') {
-            
+
+            if (!empty($discussion['thread_id'])) {
+                $thread_condition = fn_generate_thread_condition($discussion);
+                $discussion['total_posts'] = db_get_field("SELECT COUNT(*) FROM ?:discussion_posts WHERE $thread_condition AND ?:discussion_posts.status = 'A'");
+            }
+            Registry::get('view')->assign('discussion', $discussion);
+
             $navigation_tabs = Registry::get('navigation.tabs');
             $navigation_tabs['discussion'] = array(
                 'title' => __('discussion_title_company'),
@@ -29,11 +35,6 @@ if ($mode == 'view') {
             );
 
             Registry::set('navigation.tabs', $navigation_tabs);
-
-            $company_data = Tygh::$app['view']->getTemplateVars('company_data');
-            $company_data['discussion'] = $discussion;
-
-            Tygh::$app['view']->assign('company_data', $company_data);
         }
     }
 }

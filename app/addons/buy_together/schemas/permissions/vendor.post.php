@@ -16,6 +16,6 @@ $schema['controllers']['buy_together'] = array (
     'permissions' => true,
 );
 
-$schema['controllers']['tools']['modes']['update_status']['param_permissions']['table']['buy_together'] = true;
+$schema['controllers']['tools']['modes']['update_status']['param_permissions']['table_names']['buy_together'] = true;
 
 return $schema;

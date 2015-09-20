@@ -94,19 +94,26 @@ if (!empty($_REQUEST['etat']) && !empty($_REQUEST['id_trans']) && !empty($_REQUE
     $lang = $order_info['lang_code'];
     $divers = base64_encode('key=' . md5($total_amount . Registry::get('config.crypt_key') . $order_id) . '&order_id=' . $order_id);
 
-    $post_data = array(
-        'site' => $site_id,
-        'ref' => $order_id,
-        'montant' => $total_amount,
-        'devise' => $currency,
-        'divers' => $divers,
-        'email' => $email,
-        'test' => $test,
-        'debug' => $debug,
-        'nocurrencies' => $nocurrencies,
-        'lang' => $lang,        
-    );
-
-    fn_create_payment_form($url[$processor], $post_data);
-    exit;
+echo <<<EOT
+        <form action="{$url[$processor]}" method="post" name="process">
+            <input type="hidden" name="site" value="{$site_id}" />
+            <input type="hidden" name="ref" value="{$order_id}" />
+            <input type="hidden" name="montant" value="{$total_amount}" />
+            <input type="hidden" name="devise" value="{$currency}" />
+            <input type="hidden" name="divers" value="{$divers}" />
+            <input type="hidden" name="email" value="{$email}" />
+            <input type="hidden" name="test" value="{$test}" />
+            <input type="hidden" name="debug" value="{$debug}" />
+            <input type="hidden" name="nocurrencies" value="{$nocurrencies}" />
+            <input type="hidden" name="lang" value="{$lang}" />
+        </form>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+    </body>
+</html>
+EOT;
+exit;
 }

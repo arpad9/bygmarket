@@ -1,5 +1,6 @@
 {if !$smarty.request.extra}
 <script type="text/javascript">
+//<![CDATA[
 (function(_, $) {
     _.tr('text_items_added', '{__("text_items_added")|escape:"javascript"}');
 
@@ -36,6 +37,7 @@
         return false;        
     });
 }(Tygh, Tygh.$));
+//]]>
 </script>
 {/if}
 
@@ -54,8 +56,11 @@
         {include file="common/check_items.tpl"}</th>
         {/if}
     <th>{__("id")}</th>
+    {if $settings.General.use_email_as_login != "Y"}
+    <th>{__("username")}</th>
+    {/if}
     <th>{__("email")}</th>
-    <th>{__("person_name")}</th>
+    <th>{__("name")}</th>
     <th>{__("registered")}</th>
     <th>{__("type")}</th>
     <th class="right">{__("active")}</th>
@@ -71,6 +76,9 @@
         {/if}
     </td>
     <td>{$user.user_id}</td>
+    {if $settings.General.use_email_as_login != "Y"}
+    <td><span>{$user.user_login}</span></td>
+    {/if}
     <td><span class="user-email">{$user.email}</span></td>
     <td><span class="user-name">{if $user.firstname || $user.lastname}{$user.firstname} {$user.lastname}{else}-{/if}</span></td>
     <td>{$user.timestamp|date_format:"`$settings.Appearance.date_format`, `$settings.Appearance.time_format`"}</td>

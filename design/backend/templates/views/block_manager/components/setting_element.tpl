@@ -31,14 +31,12 @@ Tygh.$(document).ready(function() {
     {assign var="values_settings" value=$option.values_settings.$value}
 
     {if $values_settings}
-        <div class="setting-select-values">
         {foreach from=$values_settings.settings item=setting_data key=setting_name}
             {include file="views/block_manager/components/setting_element.tpl" option=$setting_data name=$setting_name block=$block html_id="block_`$html_id`_properties_`$name`_`$setting_name`" html_name="block_data[properties][`$name`][`$value`][`$setting_name`]" editable=$editable value=$block.properties.$name.$value.$setting_name}
         {/foreach}
-        </div>
     {/if}
 {elseif $option.type == "input" || $option.type == "input_long"}
-    <input type="text" id="{$html_id}" class="input-medium" name="{$html_name}" value="{if $value || $value === "0"}{$value}{else}{$option.default_value}{/if}" />
+    <input type="text" id="{$html_id}" class="input-medium" name="{$html_name}" value="{if $value}{$value}{else}{$option.default_value}{/if}" />
 
 {elseif $option.type == "multiple_checkboxes"}
 
@@ -50,10 +48,6 @@ Tygh.$(document).ready(function() {
         <!--processForm-->
     {/if}
 {elseif $option.type == "picker"} 
-    {foreach from=$option.picker_params key="picker_param_key" item="picker_param_value"}
-        {assign var=$picker_param_key value=$picker_param_value}
-    {/foreach}
-
     {include_ext file=$option.picker checkbox_name="block_items" 
         data_id="objects_`$item.chain_id`_" 
         input_name="`$html_name`"

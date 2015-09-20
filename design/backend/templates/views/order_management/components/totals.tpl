@@ -24,9 +24,9 @@
             </td>
             <td class="right">
             <span {if $cart.stored_subtotal_discount == "Y"}style="display: none;"{/if} data-ca-switch-id="manual_subtotal_discount">
-            {include file="common/price.tpl" value=$cart.subtotal_discount|default:$cart.original_subtotal_discount}</span>
+            {include file="common/price.tpl" value=$cart.original_subtotal_discount|default:$cart.subtotal_discount}</span>
                 <span {if $cart.stored_subtotal_discount != "Y"}style="display: none;"{/if} data-ca-switch-id="manual_subtotal_discount">
-                    {include file="common/price.tpl" value=$cart.subtotal_discount|default:$cart.original_subtotal_discount view="input" input_name="subtotal_discount" input_val=$cart.subtotal_discount class="input-small"}
+                    {include file="common/price.tpl" value=$cart.original_subtotal_discount|default:$cart.subtotal_discount view="input" input_name="subtotal_discount" input_val=$cart.subtotal_discount class="input-small"}
                 </span>
             </td>
         </tr>
@@ -44,7 +44,7 @@
         <tr class="toggle-elm nowrap">
             <td class="right">&nbsp;<span>&middot;</span>&nbsp;{$tax.description}{if $tax.price_includes_tax == "Y" && $settings.Appearance.cart_prices_w_taxes != "Y"}&nbsp;{__("included")}{/if}{strip}(<span {if $cart.stored_taxes == "Y"}class="hidden"{/if} data-ca-switch-id="manual_taxes">{include file="common/modifier.tpl" mod_value=$tax.rate_value mod_type=$tax.rate_type}</span>
         <span {if $cart.stored_taxes != "Y"}class="hidden"{/if} data-ca-switch-id="manual_taxes">
-            <input type="text" class="cm-numeric input-small" size="5" name="taxes[{$key}]" data-a-sign="% " data-m-dec="3" data-a-pad="false" data-p-sign="s" value="{$tax.rate_value}" /></span>){/strip}
+            <input type="text" class="cm-numeric input-small" size="5" name="taxes[{$key}]" data-a-sign="% " data-p-sign="s" value="{$tax.rate_value}" /></span>){/strip}
             </td>
             <td class="right">{include file="common/price.tpl" value=$tax.tax_subtotal}</td>
         </tr>
@@ -93,19 +93,16 @@
         {foreach from=$cart.coupons item="coupon" key="key"}
             <tr>
                 <td class="right"> {$key}&nbsp;
-                {include file="buttons/button.tpl" but_href="order_management.delete_coupon?c_id=`$key`" but_icon="icon-trash" but_role="delete_item" but_meta="cm-ajax cm-post" but_target_id=$result_ids}</td>
+                {include file="buttons/button.tpl" but_href="order_management.delete_coupon?c_id=`$key`" but_icon="icon-trash" but_role="delete_item" but_meta="cm-ajax" but_target_id=$result_ids}</td>
                 <td class="right">&nbsp;</td>
             </tr>
         {/foreach}
     {/if}
 
-    <tr id="payment_surcharge_line">
-        <td class="right">{__("payment_surcharge")}</td>
-        <td class="right">{include file="common/price.tpl" value=$cart.payment_surcharge span_id="payment_surcharge_value" class="list_price"}</td>
-    </tr>
-
-    {* FIXME: Order total should include surcharge when calculating whole order total *}
-    {$cart.total = $cart.total + $cart.payment_surcharge}
+        <tr class="hidden" id="payment_surcharge_line">
+            <td class="right">{__("payment_surcharge")}</td>
+            <td class="right">{include file="common/price.tpl" value="0.00" span_id="payment_surcharge_value" class="list_price"}</td>
+        </tr>
 
     {hook name="order_management:totals"}
     {/hook}
@@ -119,7 +116,7 @@
 
         <tr class="hidden cm-om-totals-recalculate">
             <td colspan="2">
-                <button class="btn cm-ajax" type="submit" name="dispatch[order_management.update_totals]" value="Recalculate" data-ca-check-filter="#om_ajax_update_totals"><i class="icon-refresh"></i> {__("recalculate_totals")}</button>
+                <button class="btn" type="submit" name="dispatch[order_management.update_totals]" value="Recalculate" data-ca-check-filter="#om_update_totals"><i class="icon-refresh"></i> {__("recalculate_totals")}</button>
             </td>
         </tr>
 

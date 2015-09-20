@@ -12,7 +12,7 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-$schema = array(
+$scheme = array(
     'products.update' => array(
         'func' => array('fn_get_product_name', '@product_id'),
         'icon' => 'product-item',
@@ -53,18 +53,14 @@ $schema = array(
     'companies.update' => array(
         'func' => array('fn_get_company_name', '@company_id'),
         'text' => (fn_allowed_for('MULTIVENDOR')) ? 'vendor' : 'store'
-    ),
-    'product_features.update' => array(
-        'func' => array('fn_get_feature_name', '@feature_id'),
-        'text' => 'feature'
-    ),
+    )
 );
 
 if (!fn_allowed_for('ULTIMATE:FREE')) {
-    $schema['usergroups.assign_privileges'] = array(
+    $scheme['usergroups.assign_privileges'] = array(
         'func' => array('fn_get_usergroup_name', '@usergroup_id'),
         'text' => 'usergroup'
     );
 }
 
-return $schema;
+return $scheme;

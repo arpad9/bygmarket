@@ -10,7 +10,7 @@
             <optgroup label="{$cat.category}">
             {assign var="close_optgroup" value=true}
         {else}
-            <option value="{$cat.category_id}" {if $cat.disabled}disabled="disabled"{/if} {if $id == $cat.category_id}selected="selected"{/if} title="{$cat.category}">{$cat.category|truncate:25:"...":true|escape|indent:$cat.level:"&#166;&nbsp;&nbsp;&nbsp;&nbsp;":"&#166;--&nbsp;" nofilter}</option>
+            <option value="{$cat.category_id}" {if $cat.disabled}disabled="disabled"{/if} {if $id == $cat.category_id}selected="selected"{/if} title="{$cat.category}">{$cat.category|escape|indent:$cat.level:"&#166;&nbsp;&nbsp;&nbsp;&nbsp;":"&#166;--&nbsp;" nofilter}</option>
         {/if}
     {/foreach}
     {if $close_optgroup}

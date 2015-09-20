@@ -17,7 +17,6 @@ $schema['gift_certificates_verify'] = array(
         'addons/gift_certificates/blocks/gift_certificates_verify.tpl' => array(),
     ),
     'wrappers' => 'blocks/wrappers',
-    'cache' => true
 );
 
 return $schema;

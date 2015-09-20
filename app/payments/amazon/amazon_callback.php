@@ -15,7 +15,9 @@
 use Tygh\Registry;
 use Tygh\Session;
 
-if (!defined('BOOTSTRAP')) { die('Access denied'); }
+define('AREA', 'C');
+define('SKIP_SESSION_VALIDATION', true);
+require './../../../init.php';
 
 include_once (Registry::get('config.dir.payments') . 'amazon/amazon_func.php');
 
@@ -40,12 +42,14 @@ if (!empty($_POST['order-calculations-error'])) {
     $code = (string) $xml->OrderCalculationsErrorCode;
     $message = (string) $xml->OrderCalculationsErrorMessage;
 
-    fn_log_event('requests', 'http', array(
-        'url' => 'amazon_callback',
-        'data' => '',
-        'response' => var_export(array($code, $message), true),
-    ));
-    exit;
+    $file = fopen('./../../../var/amazon_error_log.txt', 'a');
+
+    if (!empty($file)) {
+        fputs($file, 'time: ' . date('r', time()) . ";\n" . 'code: ' . $code . ";\n" . 'message: ' . $message . ";\n\n");
+        fclose($file);
+    }
+
+    die;
 }
 
 $xml = @simplexml_load_string($xml_response);
@@ -72,7 +76,10 @@ if ($message_recognizer == 'OrderCalculationsRequest') {
     // Restart session
     if (!empty($amazon_sess_id)) {
         Session::resetId($amazon_sess_id);
-        fn_payments_set_company_id(0, $_SESSION['settings']['company_id']['value']);
+        if (AREA != 'A' && fn_allowed_for('ULTIMATE') && !defined('COMPANY_ID')) {
+            $company_id = $_SESSION['settings']['company_id']['value'];
+            Registry::set('runtime.company_id', $company_id);
+        }
         $_SESSION['cart'] = empty($_SESSION['cart']) ? array() : $_SESSION['cart'];
         $cart = & $_SESSION['cart'];
         $_SESSION['auth'] = empty($_SESSION['auth']) ? array() : $_SESSION['auth'];
@@ -119,7 +126,6 @@ if ($message_recognizer == 'OrderCalculationsRequest') {
     }
 
     $cart['user_data'] = $user_data;
-    $cart['calculate_shipping'] = true;
     list($cart_products, $_SESSION['shipping_product_groups']) = fn_calculate_cart_content($cart, $auth, 'A', true, 'F', true);
 
     $cart_shippings = array();
@@ -208,23 +214,27 @@ if ($message_recognizer == 'OrderCalculationsRequest') {
                 $rate = 0;
             }
 
-            $callback_response['TaxTables']['TaxTable'][] = array(
-                'TaxTableId' => 'tax_' . $tax_id,
-                'TaxRules' => array(
-                    'TaxRule' => array(
-                        'Rate' => $rate,
-                        'PredefinedRegion' => 'WorldAll',
+            $callback_response['TaxTables'][] = array(
+                'TaxTable' => array(
+                    'TaxTableId' => 'tax_' . $tax_id,
+                    'TaxRules' => array(
+                        'TaxRule' => array(
+                            'Rate' => $rate,
+                            'PredefinedRegion' => 'WorldAll',
+                        ),
                     ),
                 ),
             );
         }
     } else {
-        $callback_response['TaxTables']['TaxTable'][] = array(
-            'TaxTableId' => 'tax_default',
-            'TaxRules' => array(
-                'TaxRule' => array(
-                    'Rate' => '0',
-                    'PredefinedRegion' => 'WorldAll',
+        $callback_response['TaxTables'][] = array(
+            'TaxTable' => array(
+                'TaxTableId' => 'tax_default',
+                'TaxRules' => array(
+                    'TaxRule' => array(
+                        'Rate' => '0',
+                        'PredefinedRegion' => 'WorldAll',
+                    ),
                 ),
             ),
         );
@@ -238,51 +248,32 @@ if ($message_recognizer == 'OrderCalculationsRequest') {
             'Benefit' => array(
                 'FixedAmountDiscount' => array(
                     'Amount' => empty($cart['subtotal_discount']) ? 0 : fn_format_price($cart['subtotal_discount']),
-                    'CurrencyCode' => $processor_data['processor_params']['currency'], // FIXME: use the cart currency convertion
+                    'CurrencyCode' => 'USD', // FIXME: use the cart currency convertion
                 ),
             ),
         ),
     );
 
     $callback_response['Promotions'] = $promotion_data;
-    fn_set_hook('amazon_calculate_promotions', $callback_response, $cart, $processor_data);
     $callback_response['Response']['CallbackOrders']['CallbackOrder']['CallbackOrderItems'] = '';
 
     $free_shipping = false;
-    $shipping_no_required = false;
-    $shipping_required = false;
     foreach ($cart_products as $k => $product_data) {
-        if ($product_data['free_shipping'] == 'Y' && $product_data['is_edp'] != 'Y') {
+        if ($product_data['free_shipping'] == 'Y' || ($product_data['is_edp'] == 'Y' && $product_data['edp_shipping'] == 'N')) {
             $free_shipping = true;
-
-        } elseif ($product_data['is_edp'] == 'Y' && $product_data['edp_shipping'] == 'N') {
-            $shipping_no_required = true;
-
         } else {
-            $shipping_required = true;
+            $shipping_required = "true";
         }
     }
 
-    if (!$shipping_required) {
-        $cart_shippings = array();
-
-        if ($free_shipping) {
-            $cart_shippings[] = array(
-                'shipping' => __('free_shipping'),
-                'delivery_time' => '',
-                'rates' => array(
-                    '0' => 0,
-                ),
-            );
-        } elseif ($shipping_no_required) {
-            $cart_shippings[] = array(
-                'shipping' => __("no_shipping_required"),
-                'delivery_time' => '',
-                'rates' => array(
-                    '0' => 0,
-                ),
-            );
-        }
+    if (empty($cart_shippings) && $free_shipping && !isset($shipping_required)) {
+        $cart_shippings[] = array(
+            'name' => __('free_shipping'),
+            'delivery_time' => '',
+            'rates' => array(
+                '0' => 0,
+            ),
+        );
     }
 
     if ($calculate_shippings && !empty($cart_shippings)) {
@@ -293,9 +284,13 @@ if ($message_recognizer == 'OrderCalculationsRequest') {
             // We need to include the tax value to the shipping rate
             $tax_rate = 0;
             if (!empty($shipping['taxes'])) {
-                foreach ($shipping['taxes'] as $_tax_id => $tax) {
-                    if ($tax['price_includes_tax'] != 'Y') {
-                        $tax_rate += $tax['tax_subtotal'];
+                foreach ($shipping['taxes'] as $_tax_id => $taxes) {
+                    if (!empty($taxes)) {
+                        foreach ($taxes as $tax_id => $tax) {
+                            if ($tax['price_includes_tax'] != 'Y') {
+                                $tax_rate += $tax['tax_subtotal'];
+                            }
+                        }
                     }
                 }
             }
@@ -314,22 +309,26 @@ if ($message_recognizer == 'OrderCalculationsRequest') {
             }
 
             $shipping_data = array(
-                'ShippingMethodId' => $shipping['shipping'] . ' ' . $shipping['delivery_time'],
-                'ServiceLevel' => $service_level,
-                'Rate' => array(
-                    'ShipmentBased' => array(
-                        'Amount' => fn_format_price(array_sum($shipping['rates']) + $tax_rate),
-                        'CurrencyCode' => $processor_data['processor_params']['currency'], // FIXME: use the cart currency convertion
+                'ShippingMethod' => array(
+                    'ShippingMethodId' => $shipping['shipping'] . ' ' . $shipping['delivery_time'],
+                    'ServiceLevel' => $service_level,
+                    'Rate' => array(
+                        'ShipmentBased' => array(
+                            'Amount' => fn_format_price(array_sum($shipping['rates']) + $tax_rate),
+                            'CurrencyCode' => 'USD', // FIXME: use the cart currency convertion
+                        ),
                     ),
+                    'IncludedRegions' => array(
+                        'PredefinedRegion' => 'WorldAll',
+                    ),
+                    'DisplayableShippingLabel' => $shipping['shipping'] . (empty($tax_rate) ? '' : (' (' . __('price_includes_tax') . ': $' . fn_format_price($tax_rate) . ')')),
                 ),
-                'IncludedRegions' => array(
-                    'PredefinedRegion' => 'WorldAll',
-                ),
-                'DisplayableShippingLabel' => $shipping['shipping'] . (empty($tax_rate) ? '' : (' (' . __('price_includes_tax') . ': $' . fn_format_price($tax_rate) . ')')),
             );
 
-            $items_shipping['ShippingMethodId'][] = $shipping['shipping'] . ' ' . $shipping['delivery_time'];
-            $callback_response['ShippingMethods']['ShippingMethod'][] = $shipping_data;
+            $items_shipping[] = array(
+                'ShippingMethodId' => $shipping['shipping'] . ' ' . $shipping['delivery_time']
+            );
+            $callback_response['ShippingMethods'][] = $shipping_data;
         }
     }
 
@@ -347,12 +346,14 @@ if ($message_recognizer == 'OrderCalculationsRequest') {
         }
 
         $item = array(
-            'CallbackOrderItemId' => $sku,
-            'TaxTableId' => $tax_table_id,
-            'ShippingMethodIds' => $items_shipping,
+            'CallbackOrderItem' => array(
+                'CallbackOrderItemId' => $sku,
+                'TaxTableId' => $tax_table_id,
+                'ShippingMethodIds' => $items_shipping,
+            )
         );
 
-        $callback_response['Response']['CallbackOrders']['CallbackOrder']['CallbackOrderItems']['CallbackOrderItem'][] = $item;
+        $callback_response['Response']['CallbackOrders']['CallbackOrder']['CallbackOrderItems'][] = $item;
     }
 
     $callback_response['CartPromotionId'] = 'cart-discount';
@@ -360,32 +361,36 @@ if ($message_recognizer == 'OrderCalculationsRequest') {
     // Update the tax info
     if ($tax_calculation_type == 'default' && $tax_subtotal > 0) {
         $tax = array(
-            'SKU' => 'taxes',
-            'MerchantId' => $processor_data['processor_params']['merchant_id'],
-            'Title' => substr($tax_description, 0, 250),
-            'Price' => array(
-                'Amount' => fn_format_price($tax_subtotal),
-                'CurrencyCode' => $processor_data['processor_params']['currency'],
+            'UpdatedCartItem' => array(
+                'SKU' => 'taxes',
+                'MerchantId' => $processor_data['processor_params']['merchant_id'],
+                'Title' => substr($tax_description, 0, 250),
+                'Price' => array(
+                    'Amount' => fn_format_price($tax_subtotal),
+                    'CurrencyCode' => $processor_data['processor_params']['currency'],
+                ),
+                'Quantity' => 1,
+                'UpdateType' => 'REMOVE',
             ),
-            'Quantity' => 1,
-            'UpdateType' => 'REMOVE',
         );
-        $callback_response['Response']['CallbackOrders']['CallbackOrder']['UpdatedCartItems']['UpdatedCartItem'][] = $tax;
+        $callback_response['Response']['CallbackOrders']['CallbackOrder']['UpdatedCartItems'][] = $tax;
 
         $tax = array(
-            'SKU' => 'taxes',
-            'MerchantId' => $processor_data['processor_params']['merchant_id'],
-            'Title' => __('taxes') . ': ' . substr($tax_description, 0, 240),
-            'Price' => array(
-                'Amount' => fn_format_price($tax_subtotal),
-                'CurrencyCode' => $processor_data['processor_params']['currency'],
+            'UpdatedCartItem' => array(
+                'SKU' => 'taxes',
+                'MerchantId' => $processor_data['processor_params']['merchant_id'],
+                'Title' => __('taxes') . ': ' . substr($tax_description, 0, 240),
+                'Price' => array(
+                    'Amount' => fn_format_price($tax_subtotal),
+                    'CurrencyCode' => $processor_data['processor_params']['currency'],
+                ),
+                'Quantity' => 1,
+                'ShippingMethodIds' => $items_shipping,
+                'UpdateType' => 'ADD',
             ),
-            'Quantity' => 1,
-            'ShippingMethodIds' => $items_shipping,
-            'UpdateType' => 'ADD',
         );
 
-        $callback_response['Response']['CallbackOrders']['CallbackOrder']['UpdatedCartItems']['UpdatedCartItem'][] = $tax;
+        $callback_response['Response']['CallbackOrders']['CallbackOrder']['UpdatedCartItems'][] = $tax;
     }
 
     // Generate the full XML response
@@ -420,7 +425,11 @@ if ($message_recognizer == 'OrderCalculationsRequest') {
     // Restart session
     if (!empty($amazon_sess_id)) {
         Session::resetId($amazon_sess_id);
-        fn_payments_set_company_id(0, $_SESSION['settings']['company_id']['value']);
+        if (AREA != 'A' && fn_allowed_for('ULTIMATE') && !defined('COMPANY_ID')) {
+            $company_id = $_SESSION['settings']['company_id']['value'];
+
+            Registry::set('runtime.company_id', $company_id);
+        }
         $cart = & $_SESSION['cart'];
         $auth = & $_SESSION['auth'];
     }

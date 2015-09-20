@@ -38,7 +38,6 @@ return array(
         'params' => array (
             'plain' => false,
             'group_by_level' => true,
-            'max_nesting_level' => 3,
             'request' => array (
                 'active_category_id' => '%CATEGORY_ID%',
             ),
@@ -150,18 +149,6 @@ return array(
             ),
         )
     ),
-    'blocks/products/products_bar.tpl' => array (
-        'bulk_modifier' => array(
-            'fn_gather_additional_products_data' => array (
-                'products' => '#this',
-                'params' => array (
-                    'get_icon' => true,
-                    'get_detailed' => true,
-                    'get_options' => true,
-                ),
-            ),
-        )
-    ),
     'blocks/products/products_text_links.tpl' => array (
         'settings' => array(
             'item_number' => array (
@@ -206,7 +193,6 @@ return array(
                     'get_icon' => true,
                     'get_detailed' => true,
                     'get_options' => true,
-                    'get_additional' => true,
                 ),
             ),
         ),
@@ -360,13 +346,32 @@ return array(
                 'type' => 'checkbox',
                 'default_value' => 'N'
             ),
-            'scroll_per_page' =>  array (
-                'type' => 'checkbox',
-                'default_value' => 'N'
+            'scroller_direction' => array (
+                'type' => 'selectbox',
+                'values' => array (
+                    'up' => 'up',
+                    'down' => 'down',
+                    'left' => 'left',
+                    'right' => 'right'
+                ),
+                'default_value' => 'left'
             ),
-            'speed' =>  array (
-                'type' => 'input',
-                'default_value' => 400
+            'speed' => array (
+                'type' => 'selectbox',
+                'values' => array (
+                    'slow' => 'slow',
+                    'normal' => 'normal',
+                    'fast' => 'fast'
+                ),
+                'default_value' => 'normal'
+            ),
+            'easing' => array (
+                'type' => 'selectbox',
+                'values' => array (
+                    'linear' => 'linear',
+                    'swing' => 'swing'
+                ),
+                'default_value' => 'swing'
             ),
             'pause_delay' =>  array (
                 'type' => 'input',
@@ -374,15 +379,11 @@ return array(
             ),
             'item_quantity' =>  array (
                 'type' => 'input',
-                'default_value' => 5
+                'default_value' => 1
             ),
             'thumbnail_width' =>  array (
                 'type' => 'input',
                 'default_value' => 80
-            ),
-            'outside_navigation' => array (
-                'type' => 'checkbox',
-                'default_value' => 'Y'
             )
         ),
         'bulk_modifier' => array (
@@ -430,38 +431,6 @@ return array(
                 'type' => 'input',
                 'default_value' => '6'
             ),
-        ),
-    ),
-    'blocks/our_brands.tpl' => array (
-        'settings' => array(
-            'not_scroll_automatically' => array (
-                'type' => 'checkbox',
-                'default_value' => 'N'
-            ),
-            'scroll_per_page' =>  array (
-                'type' => 'checkbox',
-                'default_value' => 'N'
-            ),
-            'speed' =>  array (
-                'type' => 'input',
-                'default_value' => 400
-            ),
-            'pause_delay' =>  array (
-                'type' => 'input',
-                'default_value' => 3
-            ),
-            'item_quantity' =>  array (
-                'type' => 'input',
-                'default_value' => 6
-            ),
-            'thumbnail_width' =>  array (
-                'type' => 'input',
-                'default_value' => 50
-            ),
-            'outside_navigation' => array (
-                'type' => 'checkbox',
-                'default_value' => 'Y'
-            )
         ),
     ),
 );

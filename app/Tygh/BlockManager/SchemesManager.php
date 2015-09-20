@@ -14,7 +14,6 @@
 
 namespace Tygh\BlockManager;
 
-use Tygh\Languages\Helper as LanguageHelper;
 use Tygh\Registry;
 
 class SchemesManager
@@ -35,10 +34,8 @@ class SchemesManager
     {
         $descriptions = self::_getScheme('dispatch_descriptions');
 
-        LanguageHelper::preloadLangVars(array_values($descriptions), $lang_code);
-
         foreach ($descriptions as $dispatch => $lang_var) {
-            $descriptions[$dispatch] = __($lang_var, array(), $lang_code);
+            $descriptions[$dispatch] = __($lang_var, '', $lang_code);
         }
 
         return $descriptions;
@@ -49,27 +46,16 @@ class SchemesManager
      * @static
      * @param  string     $dispatch URL dispatch (controller.mode.action)
      * @param  string     $area     Area ('A' for admin or 'C' for customer)
-     * @param  array      $request  requrest data
      * @return array|bool Array of dynamic object data, false otherwise
      */
-    public static function getDynamicObject($dispatch, $area = 'A', $request = array())
+    public static function getDynamicObject($dispatch, $area = 'A')
     {
         $area = self::_normalizeArea($area);
 
         $objects = self::_getScheme('dynamic_objects');
 
-        if (strpos($dispatch, '?') !== false) {
-            list($dispatch, $q) = explode('?', $dispatch);
-            parse_str($q, $request);
-        }
-
         foreach ($objects as $object_type => $properties) {
             if (isset($properties[$area]) && $properties[$area] == $dispatch) {
-
-                if (!empty($properties['check_params']) && !empty($request)) {
-                    $properties['customer_dispatch'] = $properties['check_params']($request);
-                }
-
                 $properties['object_type'] = $object_type;
 
                 return $properties;
@@ -83,17 +69,12 @@ class SchemesManager
      * Returns dynamic object data
      * @static
      * @param  string     $type Type of dinamic object
-     * @param  array      $request  requrest data
      * @return array|bool Array of dynamic object data, false otherwise
      */
-    public static function getDynamicObjectByType($type, $request = array())
+    public static function getDynamicObjectByType($type)
     {
         $objects = self::_getScheme('dynamic_objects');
         if (isset($objects[$type])) {
-
-            if (!empty($objects[$type]['check_params']) && !empty($request)) {
-                $objects[$type]['customer_dispatch'] = $objects[$type]['check_params']($request);
-            }
             return $objects[$type];
         }
 
@@ -127,7 +108,7 @@ class SchemesManager
 
         $cache_name = 'scheme_block_' . $block_type;
 
-        Registry::registerCache(array('scheme_block', $cache_name), array('addons'), Registry::cacheLevel('static'));
+        Registry::registerCache($cache_name, array('addons'), Registry::cacheLevel('static'));
 
         if (Registry::isExist($cache_name) == true && $no_cache == false) {
             return Registry::get($cache_name);
@@ -454,47 +435,15 @@ class SchemesManager
      * @param  string $theme_path Path to theme
      * @return string Name of template
      */
-    public static function generateTemplateName($path, $theme_path, $area = AREA)
+    public static function generateTemplateName($path, $theme_path)
     {
-        $name = fn_get_file_description($theme_path . $path, 'block-description', true);
+        $name = fn_get_file_description($theme_path . $path, 'block-description');
 
         if (empty($name)) {
             $name = fn_basename($path, '.tpl');
-        }
-
-        if ($area == 'A') {
             $name = __($name);
         }
 
         return $name;
-    }
-
-    /**
-     * Gets block descriptions
-     * @param array $blocks blocks list
-     * @param string $lang_code language code
-     * @return array blocks list with descriptions
-     */
-    public static function getBlockDescriptions($blocks, $lang_code = CART_LANGUAGE)
-    {
-        $descriptions = array();
-        foreach ($blocks as $type => $block) {
-            $descriptions[$type] = 'block_' . $type . '_description';
-        }
-
-        LanguageHelper::preloadLangVars($descriptions, $lang_code);
-
-        foreach ($blocks as $type => $block) {
-             $description = __($descriptions[$type], array(), $lang_code);
-
-             // language variable does not exist
-             if ($description == '_' . $descriptions[$type]) {
-                $description = '';
-             }
-
-             $blocks[$type]['description'] = $description;
-        }
-
-        return $blocks;
     }
 }

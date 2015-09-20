@@ -1,11 +1,9 @@
-
+{assign var="data_id" value=$data_id|default:"categories_list"}
 {if !$rnd}{math equation="rand()" assign="rnd"}{/if}
-
-{$data_id = $data_id|default:"categories_list"}
-{$data_id = "`$data_id`_`$rnd`"}
-{$view_mode = $view_mode|default:"mixed"}
-{$start_pos = $start_pos|default:0}
-{$default_name = $default_name|escape:"url"}
+{assign var="data_id" value="`$data_id`_`$rnd`"}
+{assign var="view_mode" value=$view_mode|default:"mixed"}
+{assign var="start_pos" value=$start_pos|default:0}
+{assign var="but_meta" value=$but_meta}
 
 {script src="js/tygh/picker.js"}
 
@@ -51,7 +49,6 @@
                     <div class="clearfix">
                         <div class="pull-right">
                     {/if}
-                        
                         {include file="buttons/button.tpl" but_id="opener_picker_`$data_id`" but_href="categories.picker?display=`$display`&company_ids=`$company_ids`&picker_for=`$picker_for`&extra=`$extra_var`&checkbox_name=`$checkbox_name`&root=`$default_name`&except_id=`$except_id`&data_id=`$data_id``$extra_url`"|fn_url but_text=$_but_text but_role=$_but_role but_icon=$_but_icon but_target_id="content_`$data_id`" but_meta="`$but_meta` btn cm-dialog-opener"}
                     {if $placement == 'right'}
                     </div>
@@ -96,7 +93,7 @@
         <table  width="100%" class="table table-middle">
         <thead>
         <tr>
-            {if $positions}<th width="5%">{__("position_short")}</th>{/if}
+            {if $positions}<th>{__("position_short")}</th>{/if}
             <th>{__("name")}</th>
             <th>&nbsp;</th>
         </tr>

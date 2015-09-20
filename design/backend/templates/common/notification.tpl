@@ -11,7 +11,7 @@
                 </div>
             </div>
         {else}
-        <div class="alert cm-notification-content{if $message.type == "N"} alert-success{elseif $message.type == "W"} alert-warning{elseif $message.type == "E"} alert-error{elseif $message.type == "S"} alert-info{/if} {if $message.message_state == "I"} cm-auto-hide{/if}" id="notification_{$key}" data-ca-notification-key="{$key}">
+        <div class="alert cm-notification-content{if $message.type == "N"} alert-success{elseif $message.type == "W"} alert-warning{elseif $message.type == "E"} alert-error{/if} {if $message.message_state == "I"} cm-auto-hide{/if}" id="notification_{$key}" data-ca-notification-key="{$key}">
             <button type="button" class="close cm-notification-close{if $message.message_state == "S"} cm-notification-close-ajax{/if}" {if $message.message_state != "S"}data-dismiss="alert"{/if}>×</button>
             <strong>{$message.title}</strong>
             {$message.message nofilter}

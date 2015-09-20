@@ -41,11 +41,8 @@ class Temando implements IService
     private function _prepareAnythings()
     {
         $things = array();
-
-        if (!empty($this->_shipping_info['package_info']['packages'])) {
-            foreach ($this->_shipping_info['package_info']['packages'] as $key => $data) {
-                $things[] = $this->_preparePackage($data);
-            }
+        foreach ($this->_shipping_info['package_info']['packages'] as $key => $data) {
+            $things[] = $this->_preparePackage($data);
         }
 
         return $things;
@@ -75,31 +72,36 @@ class Temando implements IService
 
     private function _prepareAnywhere()
     {
+        $company_suburb = Registry::get('settings.Company.company_suburb');
         $code = $this->_shipping_info['service_params']['temando_method'];
         $origination = $this->_shipping_info['package_info']['origination'];
         $location = $this->_shipping_info['package_info']['location'];
 
+        if ($code != 'Door to Door') {
+            $x = array (
+                'originState' => $origination['state'],
+                'originCity' => $origination['city'],
+                'destinationState' => $location['state'],
+                'destinationCity' => $location['city']
+            );
+        } else {
+            $x = array (
+                'originSuburb' => (!empty($company_suburb)) ? $company_suburb : $origination['city'],
+                'destinationSuburb' => $location['suburb']
+            );
+        }
         $where = array(
-            'originSuburb' => $origination['city'],
-            'originCountry' => 'AU',
-            'originCode' => $origination['zipcode'],
-
-            'destinationSuburb' => $location['city'],
-            'destinationCountry' => 'AU',
-            'destinationCode' => $location['zipcode'],
-
             'itemNature' => 'Domestic',
             'itemMethod' => $code,
+            'originCountry' => 'AU',
+            'originCode' => $origination['zipcode'],
+            'destinationCountry' => 'AU',
+            'destinationCode' => $location['zipcode'],
             'destinationIs' => 'Residence',
             'originIs' => 'Business'
         );
 
-        if ($code != 'Door to Door') {
-            $where['originState'] = $origination['state'];
-            $where['destinationState'] = $location['state'];
-        }
-
-        return $where;
+        return fn_array_merge($where, $x);
     }
 
     private function _temandoConnect($connect_url, $username, $password)
@@ -158,7 +160,7 @@ class Temando implements IService
             'general' => array('goodsValue' => $this->_shipping_info['package_info']['C'])
         );
 
-        $url = (!empty($shipping_settings['test_mode']) && $shipping_settings['test_mode'] == 'Y') ? 'https://api-demo.temando.com/schema/2009_06/server.wsdl' : 'https://api.temando.com/schema/2009_06/server.wsdl';
+        $url = (!empty($shipping_settings['test_mode']) && $shipping_settings['test_mode'] == 'Y') ? 'https://training-api.temando.com/schema/2009_06/server.wsdl' : 'https://api.temando.com/schema/2009_06/server.wsdl';
         $request_data['client'] = $this->_temandoConnect($url, $username, $password);
 
         return $request_data;

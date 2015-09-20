@@ -10,7 +10,8 @@
 {assign var=html_id value="tab_`$id`"}
 
 <script type="text/javascript">
-var html_id = "{$html_id}";
+//<![CDATA[
+    var html_id = "{$html_id}";
 {literal}
 (function(_, $) {
     $(document).ready(function() {
@@ -48,14 +49,11 @@ var html_id = "{$html_id}";
                     href += '&assign_to=' + 'ajax_update_block_' + html_id;
 
                 var prop_container = 'new_block_' + block_type;
-
-                // Remove properties container if it exist
-                if ($('#' + prop_container).length != 0) {
-                    $('#' + prop_container).remove();
+                
+                if ($('#' + prop_container).length == 0) {
+                    // Create properties container
+                    var contanier = $('<div id="' + prop_container + '"></div>').appendTo(_.body);
                 }
-
-                // Create properties container
-                var container = $('<div id="' + prop_container + '"></div>').appendTo(_.body);
 
                 $('#' + prop_container).ceDialog('open', {href: fn_url(href), title: Tygh.tr('add_block') + ': ' + $(this).find('strong').text()});
             } else if (action == 'existing-block') {
@@ -82,6 +80,7 @@ var html_id = "{$html_id}";
 
 }(Tygh, Tygh.$));
 {/literal}
+//]]>
 </script>
 
 <form action="{""|fn_url}" name="update_product_tab_form_{$id}" method="post" class=" form-horizontal">
@@ -91,11 +90,11 @@ var html_id = "{$html_id}";
 
     <div class="tabs cm-j-tabs">
         <ul class="nav nav-tabs">
-            <li id="general_{$html_id}" class="cm-js{if $active_tab == "block_general_`$html_id`"} active{/if}">
+            <li id="general_{$html_id}" class="cm-js{if $active_tab == "block_general_`$html_id`"} active cm-active{/if}">
                 <a>{__("general")}</a>
             </li>
             {if $dynamic_object_scheme && $id > 0}
-                <li id="tab_status_{$html_id}" class="cm-js{if $active_tab == "block_status_`$html_id`"} active{/if}">
+                <li id="tab_status_{$html_id}" class="cm-js{if $active_tab == "block_status_`$html_id`"} active cm-active{/if}">
                     <a>{__("status")}</a>
                 </li>
             {/if}
@@ -126,7 +125,7 @@ var html_id = "{$html_id}";
 
                 {if $tab_data.is_primary !== 'Y' && "block_manager.update_block"|fn_check_view_permissions}
                     <div class="control-group">
-                        <label for="elm_block_{$html_id}" class="cm-required control-label">{__("block")}:</label>
+                        <label for="ajax_update_block_{$html_id}" class="cm-required control-label">{__("block")}:</label>
                         <div class="controls clearfix help-inline-wrap">
                             {include file="common/popupbox.tpl"
                                 act="general"
@@ -141,7 +140,7 @@ var html_id = "{$html_id}";
                             }
                             <br><br>
                             <div id="ajax_update_block_{$html_id}">
-                                <input type="hidden" name="block_data[block_id]" id="elm_block_{$html_id}" value="{$tab_data.block_id|default:''}" />
+                                <input type="hidden" name="block_data[block_id]" id="ajax_update_block_{$html_id}" value="{$tab_data.block_id|default:''}" />
                                 {if $tab_data.block_id > 0}
                                     {include file="views/block_manager/render/block.tpl" block_data=$block_data external_render=true 
                                     external_id=$html_id}        

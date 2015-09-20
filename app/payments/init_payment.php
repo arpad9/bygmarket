@@ -13,7 +13,7 @@
 ****************************************************************************/
 
 define('AREA', 'C');
-require dirname(__FILE__) . '/../../init.php';
+require './../../init.php';
 
 $backtrace = debug_backtrace();
 $processor = fn_basename(fn_unified_path($backtrace[0]['file']), '.php');

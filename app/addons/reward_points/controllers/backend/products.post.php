@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 //
 if ($mode == 'manage') {
 
-    $selected_fields = Tygh::$app['view']->getTemplateVars('selected_fields');
+    $selected_fields = Registry::get('view')->getTemplateVars('selected_fields');
 
     $selected_fields[] = array('name' => '[data][is_pbp]', 'text' => __('pay_by_points'));
     if (Registry::get('addons.reward_points.auto_price_in_points') == 'Y') {
@@ -76,15 +76,15 @@ if ($mode == 'manage') {
     $selected_fields[] = array('name' => '[data][is_op]', 'text' => __('override_gc_points_brief'));
     //$selected_fields[] = array('name' => '[reward_points][amount]',	'text' => __('reward_points'));
 
-    Tygh::$app['view']->assign('selected_fields', $selected_fields);
+    Registry::get('view')->assign('selected_fields', $selected_fields);
 
 } elseif ($mode == 'm_update') {
 
     $selected_fields = $_SESSION['selected_fields'];
 
-    $field_groups = Tygh::$app['view']->getTemplateVars('field_groups');
-    $filled_groups = Tygh::$app['view']->getTemplateVars('filled_groups');
-    $field_names = Tygh::$app['view']->getTemplateVars('field_names');
+    $field_groups = Registry::get('view')->getTemplateVars('field_groups');
+    $filled_groups = Registry::get('view')->getTemplateVars('filled_groups');
+    $field_names = Registry::get('view')->getTemplateVars('field_names');
 
     if (!empty($selected_fields['data']['is_pbp'])) {
         $field_groups['C']['is_pbp'] = 'products_data';
@@ -113,13 +113,13 @@ if ($mode == 'manage') {
             $field_names['reward_points'][$usergroup_id] = $v['usergroup'];
         }
 
-        $products_data = \Tygh::$app['view']->getTemplateVars('products_data');
+        $products_data = Registry::get('view')->getTemplateVars('products_data');
 
         foreach ($products_data as $key => $value) {
             $products_data[$key]['reward_points'] = fn_get_reward_points($key, 'P');
         }
 
-        \Tygh::$app['view']->assign('products_data', $products_data);
+        Registry::get('view')->assign('products_data', $products_data);
 
     }*/
 
@@ -135,9 +135,9 @@ if ($mode == 'manage') {
         unset($field_names['is_op']);
     }
 
-    Tygh::$app['view']->assign('field_groups', $field_groups);
-    Tygh::$app['view']->assign('filled_groups', $filled_groups);
-    Tygh::$app['view']->assign('field_names', $field_names);
+    Registry::get('view')->assign('field_groups', $field_groups);
+    Registry::get('view')->assign('filled_groups', $filled_groups);
+    Registry::get('view')->assign('field_names', $field_names);
 
 } elseif ($mode == 'update') {
 
@@ -146,8 +146,8 @@ if ($mode == 'manage') {
         'js' => true
     ));
 
-    Tygh::$app['view']->assign('reward_points', fn_get_reward_points($_REQUEST['product_id'], PRODUCT_REWARD_POINTS));
-    Tygh::$app['view']->assign('object_type', PRODUCT_REWARD_POINTS);
+    Registry::get('view')->assign('reward_points', fn_get_reward_points($_REQUEST['product_id'], PRODUCT_REWARD_POINTS));
+    Registry::get('view')->assign('object_type', PRODUCT_REWARD_POINTS);
 
 } elseif ($mode == 'add') {
 
@@ -159,17 +159,8 @@ if ($mode == 'manage') {
     ));
     // [/Page sections]
 
-    Tygh::$app['view']->assign('object_type', PRODUCT_REWARD_POINTS);
+    Registry::get('view')->assign('object_type', PRODUCT_REWARD_POINTS);
 
 }
 
-Tygh::$app['view']->assign(
-    'reward_usergroups',
-    fn_get_usergroups(
-        array(
-            'type'            => 'C',
-            'status'          => array('A', 'H'),
-            'include_default' => true
-        )
-    )
-);
+Registry::get('view')->assign('reward_usergroups', fn_array_merge(fn_get_default_usergroups(), fn_get_usergroups('C')));

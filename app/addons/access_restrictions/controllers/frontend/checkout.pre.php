@@ -27,17 +27,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     '[cc_number]' => $_REQUEST['payment_info']['card_number']
                 )));
 
-                return array(CONTROLLER_STATUS_REDIRECT, 'checkout.checkout');
+                return array(CONTROLLER_STATUS_REDIRECT, "checkout." . (Registry::get('settings.General.checkout_style') != 'multi_page' ? 'checkout' : 'summary'));
             }
         }
     }
 
     if ($mode == 'update_steps' && !empty($_REQUEST['update_step']) && $_REQUEST['update_step'] != 'step_one') {
         if (!empty($cart['user_data']) && fn_email_is_blocked($cart['user_data'])) {
-            return array(CONTROLLER_STATUS_REDIRECT, 'checkout.customer_info');
+            return array(CONTROLLER_STATUS_REDIRECT, "checkout.customer_info");
         }
     }
 
     return;
 }
 
+/*if ($mode == 'checkout') {
+    if (fn_email_is_blocked($cart['user_data'])) {
+        if (Registry::get('settings.General.one_page_checkout') == 'Y') {
+            $completed_steps = array();
+            $show_steps = array('step_one');
+            $edit_steps = array('step_one');
+        } else {
+            return array(CONTROLLER_STATUS_REDIRECT, "checkout.customer_info");
+        }
+    }
+}*/

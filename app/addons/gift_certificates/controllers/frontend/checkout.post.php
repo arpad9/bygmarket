@@ -23,21 +23,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($mode == 'apply_coupon') {
         $gift_cert_code = empty($_REQUEST['coupon_code']) ? '' : strtoupper(trim($_REQUEST['coupon_code']));
         $company_id = Registry::get('runtime.company_id');
+
         if (!empty($gift_cert_code)) {
             if (true == fn_check_gift_certificate_code($gift_cert_code, true, $company_id)) {
                 $_SESSION['promotion_notices']['gift_certificates'] = array(
                     'applied' => true,
                     'messages' => array()
                 );
+
                 if (!isset($_SESSION['cart']['use_gift_certificates'][$gift_cert_code])) {
                     $_SESSION['cart']['use_gift_certificates'][$gift_cert_code] = 'Y';
                     $_SESSION['cart']['pending_certificates'][] = $gift_cert_code;
-                    $_SESSION['promotion_notices']['gift_certificates']['messages'][] = 'text_gift_cert_applied';
-                    if (isset($cart['pending_coupon'])) {
-                        unset($cart['pending_coupon']);
-                    }
+                    fn_set_notification('N', __('notice'), __('text_gift_cert_applied'), '', 'gift_cert_applied');
+
+                    $_SESSION['promotion_notices']['gift_certificates']['messages'][] = 'gift_cert_applied';
                 } else {
-                    $_SESSION['promotion_notices']['gift_certificates']['messages'][] = 'certificate_already_used';
+                    fn_set_notification('W', __('warning'), __('certificate_already_used'), '', 'gift_cert_already_used');
+
+                    $_SESSION['promotion_notices']['gift_certificates']['messages'][] = 'gift_cert_already_used';
                 }
 
             } else {
@@ -49,22 +52,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     "SELECT status FROM ?:gift_certificates WHERE gift_cert_code = ?s ?p",
                     $gift_cert_code, fn_get_gift_certificate_company_condition('?:gift_certificates.company_id')
                 );
-                    $_SESSION['promotion_notices']['gift_certificates']['messages'][] = 'no_such_coupon';
+                if (!empty($status) && !strstr('A', $status)) {
+                    fn_set_notification('W', __('warning'), __('certificate_code_not_available'), '', 'gift_cert_code_not_available');
+
+                    $_SESSION['promotion_notices']['gift_certificates']['messages'][] = 'gift_cert_code_not_available';
+                } else {
+                    fn_set_notification('W', __('warning'), __('certificate_code_not_valid'), '', 'gift_cert_code_not_valid');
+
+                    $_SESSION['promotion_notices']['gift_certificates']['messages'][] = 'gift_cert_code_not_valid';
+                }
             }
         }
+        fn_check_promotion_notices();
 
-        return array(CONTROLLER_STATUS_REDIRECT, 'checkout.' . (!empty($_REQUEST['redirect_mode']) ? $_REQUEST['redirect_mode'] : 'cart'));
-    }
-
-    if ($mode == 'delete_use_certificate' && !empty($gift_cert_code)) {
-        fn_delete_gift_certificate_in_use($gift_cert_code, $_SESSION['cart']);
-
-        if (fn_cart_is_empty($_SESSION['cart']) && defined('AJAX_REQUEST')) {
-            Tygh::$app['ajax']->assign('force_redirection', fn_url('checkout.cart'));
-        }
-
-        return array(CONTROLLER_STATUS_REDIRECT, 'checkout.' . (!empty($_REQUEST['redirect_mode']) ? $_REQUEST['redirect_mode'] : 'checkout') . '.show_payment_options');
+        return array(CONTROLLER_STATUS_REDIRECT, "checkout." . (!empty($_REQUEST['redirect_mode']) ? $_REQUEST['redirect_mode'] : 'checkout') . '.show_payment_options');
     }
 
     return;
+}
+
+if ($mode == 'delete_use_certificate' && !empty($gift_cert_code)) {
+    fn_delete_gift_certificate_in_use($gift_cert_code, $_SESSION['cart']);
+
+    return array(CONTROLLER_STATUS_REDIRECT, "checkout." . (!empty($_REQUEST['redirect_mode']) ? $_REQUEST['redirect_mode'] : 'checkout') . '.show_payment_options');
 }

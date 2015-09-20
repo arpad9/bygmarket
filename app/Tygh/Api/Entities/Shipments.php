@@ -17,7 +17,6 @@ namespace Tygh\Api\Entities;
 use Tygh\Api\AEntity;
 use Tygh\Api\Response;
 use Tygh\Settings;
-use Tygh\Registry;
 
 class Shipments extends AEntity
 {
@@ -36,14 +35,10 @@ class Shipments extends AEntity
             }
 
         } else {
-            $items_per_page = $this->safeGet($params, 'items_per_page', Registry::get('settings.Appearance.admin_elements_per_page'));
+
             $params['advanced_info'] = isset($params['advanced_info']) ? $params['advanced_info'] : true;
 
-            list($data, $params) = fn_get_shipments_info($params, $items_per_page);
-            $data = array(
-                'shipments' => $data,
-                'params' => $params,
-            );
+            list($data, ) = fn_get_shipments_info($params);
             $status = Response::STATUS_OK;
         }
 
@@ -62,15 +57,11 @@ class Shipments extends AEntity
         unset($params['shipment_id']);
 
         if (empty($params['order_id'])) {
-            $data['message'] = __('api_required_field', array(
-                '[field]' => 'order_id'
-            ));
+            $data['message'] = __('api_need_order_id');
             $valid_params = false;
 
         } elseif (empty($params['shipping_id'])) {
-            $data['message'] = __('api_required_field', array(
-                '[field]' => 'shipping_id'
-            ));
+            $data['message'] = __('api_need_shipping_id');
             $valid_params = false;
         }
 
@@ -132,10 +123,11 @@ class Shipments extends AEntity
     public function delete($id)
     {
         $data = array();
-        $status = Response::STATUS_NOT_FOUND;
+        $status = Response::STATUS_BAD_REQUEST;
 
         if (fn_delete_shipments($id)) {
-            $status = Response::STATUS_NO_CONTENT;
+            $status = Response::STATUS_OK;
+            $data['message'] = 'Ok';
         }
 
         return array(
@@ -144,13 +136,13 @@ class Shipments extends AEntity
         );
     }
 
-    public function privileges()
+    public function priveleges()
     {
         return array(
             'create' => 'edit_order',
             'update' => 'edit_order',
             'delete' => 'edit_order',
-            'index'  => 'view_orders'
+            'index'  => 'view_order'
         );
     }
 

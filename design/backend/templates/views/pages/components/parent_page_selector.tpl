@@ -3,12 +3,7 @@
     <label class="control-label cm-required" for="elm_parent_id">{__("parent_page")}:</label>
     <div class="controls">
         {if !$parent_pages}
-
-            {if $is_exclusive_page_type}
-            {$extra_url = "&page_type=`$page_type`"}
-            {/if}
-
-            {include file="pickers/pages/picker.tpl" data_id="location_page" input_name="page_data[parent_id]" item_ids=$page_data.parent_id|default:"0" hide_link=true hide_delete_button=true default_name=__("root_level") display_input_id="elm_parent_id" except_id=$page_data.page_id company_id=$page_data.company_id prepend=true}
+            {include file="pickers/pages/picker.tpl" data_id="location_page" input_name="page_data[parent_id]" item_ids=$page_data.parent_id|default:"0" hide_link=true hide_delete_button=true show_root=true default_name=__("root_level") display_input_id="elm_parent_id" except_id=$page_data.page_id company_id=$page_data.company_id prepend=true}
         {else}
             <select name="page_data[parent_id]" id="elm_parent_id">
                 <option value="0">- {__("root_page")} -</option>

@@ -2,6 +2,7 @@
 {math equation="rand()" assign="rnd"}
 {assign var="data_id" value="`$data_id`_`$rnd`"}
 {assign var="view_mode" value=$view_mode|default:"mixed"}
+{assign var="miltiple" value=$multiple|default:true}
 {assign var="start_pos" value=$start_pos|default:0}
 
 {script src="js/tygh/picker.js"}
@@ -76,7 +77,12 @@
 
     {if $item_ids}
     {foreach name="items" from=$item_ids item="f_id"}
-        {include file="pickers/filters/js.tpl" filter_id=$f_id holder=$data_id input_name=$input_name hide_link=$hide_link hide_delete_button=$hide_delete_button hide_input=true first_item=$smarty.foreach.items.first position_field=$positions position=$smarty.foreach.items.iteration+$start_pos extra_class="input-large"}
+        <div class="input-append">
+            <div class="pull-left">
+                {include file="pickers/filters/js.tpl" filter_id=$f_id holder=$data_id input_name=$input_name hide_link=$hide_link hide_delete_button=$hide_delete_button hide_input=true first_item=$smarty.foreach.items.first position_field=$positions position=$smarty.foreach.items.iteration+$start_pos extra_class="input-large"}
+            </div>
+            {$smarty.capture.add_buttons nofilter}
+        </div>
     {/foreach}
     {elseif !$multiple}
         <div class="input-append">

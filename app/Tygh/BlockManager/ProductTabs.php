@@ -72,7 +72,7 @@ class ProductTabs extends CompanySingleton
         );
 
         foreach ($tabs as $tab_id => $tab) {
-            if (!empty($tab['addon'])) {
+            if (fn_allowed_for('ULTIMATE:FREE') && !empty($tab['addon'])) {
                 $addons = Registry::get('addons');
                 if ($addons[$tab['addon']]['status'] != 'A') {
                     unset($tabs[$tab_id]);
@@ -299,7 +299,7 @@ class ProductTabs extends CompanySingleton
      * Return list with all product tab templates
      *
      * @param  bool  $from_themes_repository get templates from themes repository or from installed theme folder
-     * @param  bool  $with_addons            If true addons templates will be added to result list
+     * @param  bool  $with_addons           If true addons templates will be added to result list
      * @return array Array of templates of product tabs
      */
     public function getTemplates($from_themes_repository = false, $with_addons = true)

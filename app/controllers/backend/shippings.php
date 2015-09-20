@@ -13,6 +13,7 @@
 ****************************************************************************/
 
 use Tygh\Registry;
+use Tygh\Settings;
 use Tygh\Shippings\Shippings;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
@@ -54,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         if (!empty($_REQUEST['shipping_data']) && is_array($_REQUEST['shipping_data'])) {
             foreach ($_REQUEST['shipping_data'] as $k => $v) {
-                if (empty($v)) {
+                if (empty($v['shipping'])) {
                     continue;
                 }
 
@@ -80,14 +81,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'W' => $weight,
                 'C' => 100,
                 'I' => 1,
-                'packages' => array(
-                    array(
-                        'products' => array(),
-                        'amount' => 1,
-                        'weight' => $weight,
-                        'cost' => 100
-                    )
-                ),
                 'origination' => array(
                     'name' => Registry::get('settings.Company.company_name'),
                     'address' => Registry::get('settings.Company.company_address'),
@@ -107,12 +100,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $shipping = Shippings::getShippingForTest($_REQUEST['shipping_id'], $shipping_data['service_id'], $service_params, $package_info);
             $rates = Shippings::calculateRates(array($shipping));
 
-            Tygh::$app['view']->assign('data', $rates[0]);
-            Tygh::$app['view']->assign('weight', $weight);
-            Tygh::$app['view']->assign('service', db_get_field("SELECT description FROM ?:shipping_service_descriptions WHERE service_id = ?i AND lang_code = ?s", $shipping_data['service_id'], DESCR_SL));
+            Registry::get('view')->assign('data', $rates[0]);
+            Registry::get('view')->assign('weight', $weight);
+            Registry::get('view')->assign('service', db_get_field("SELECT description FROM ?:shipping_service_descriptions WHERE service_id = ?i AND lang_code = ?s", $shipping_data['service_id'], DESCR_SL));
         }
 
-        Tygh::$app['view']->display('views/shippings/components/test.tpl');
+        Registry::get('view')->display('views/shippings/components/test.tpl');
         exit;
 
     }
@@ -134,20 +127,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $suffix = '.manage';
     }
 
-    // Delete shipping method
-    if ($mode == 'delete') {
-
-        if (!empty($_REQUEST['shipping_id']) && fn_check_company_id('shippings', 'shipping_id', $_REQUEST['shipping_id'])) {
-            fn_delete_shipping($_REQUEST['shipping_id']);
-        }
-
-        $suffix = '.manage';
-    }
-
-    return array(CONTROLLER_STATUS_OK, 'shippings' . $suffix);
+    return array(CONTROLLER_STATUS_OK, "shippings$suffix");
 }
 
 if ($mode == 'configure') {
+
+    static $templates = array();
+    static $addons_path = array();
 
     $shipping_id = !empty($_REQUEST['shipping_id']) ? $_REQUEST['shipping_id'] : 0;
 
@@ -158,43 +144,47 @@ if ($mode == 'configure') {
         }
     }
 
-    $module = !empty($_REQUEST['module']) ? basename($_REQUEST['module']) : '';
-    if (!empty($module)) {
-        $view = Tygh::$app['view'];
-        $service_template = '';
+    if (empty($templates)) {
+        $templates = fn_get_dir_contents(fn_get_theme_path('[themes]/[theme]') . '/templates/views/shippings/components/services/', false, true, '.tpl');
 
-        $tpl = 'views/shippings/components/services/' . $module . '.tpl';
-        if ($view->templateExists($tpl)) {
-            $service_template = $tpl;
-        } else {
-            $addons = Registry::get('addons');
-            foreach ($addons as $addon => $data) {
-                $tpl = 'addons/' . $addon .'/views/shippings/components/services/' . $module . '.tpl';
-                if ($view->templateExists($tpl)) {
-                    $service_template = $tpl;
-                    break;
+        // Get addons templates as well
+        $path = fn_get_theme_path('[themes]/[theme]') . '/templates/addons/[addon]/views/shippings/components/services/';
+
+        $addons = Registry::get('addons');
+        foreach ($addons as $addon_id => $addon) {
+            $addon_path = str_replace('[addon]', $addon_id, $path);
+            $addon_templates = fn_get_dir_contents($addon_path, false, true, '.tpl');
+
+            if (!empty($addon_templates)) {
+                $templates = array_merge($templates, $addon_templates);
+
+                foreach ($addon_templates as $template) {
+                    $addons_path[basename($template, '.tpl')] = str_replace('[addon]', $addon_id, 'addons/[addon]/views/shippings/components/services/');
                 }
             }
         }
-
-        if (!empty($service_template)) {
-
-            if (isset($shipping['service_params'])) {
-                $shipping['service_params'] = unserialize($shipping['service_params']);
-                if (empty($shipping['service_params'])) {
-                    $shipping['service_params'] = array();
-                }
-            } else {
-                $shipping['service_params'] = fn_get_shipping_params($shipping_id);
-            }
-        }
-
-        Tygh::$app['view']->assign('shipping', $shipping);
-        Tygh::$app['view']->assign('service_template', $service_template);
-
-        $code = !empty($_REQUEST['code']) ? $_REQUEST['code'] : '';
-        Tygh::$app['view']->assign('code', $code);
     }
+
+    $module = !empty($_REQUEST['module']) ? $_REQUEST['module'] : '';
+
+    if ($module && !in_array("$module.tpl", $templates)) {
+        exit;
+    }
+
+    if (isset($shipping['service_params'])) {
+        $shipping['service_params'] = unserialize($shipping['service_params']);
+        if (empty($shipping['service_params'])) {
+            $shipping['service_params'] = array();
+        }
+    } else {
+        $shipping['service_params'] = fn_get_shipping_params($shipping_id);
+    }
+    Registry::get('view')->assign('shipping', $shipping);
+    Registry::get('view')->assign('service_template', $module);
+    Registry::get('view')->assign('addons_path', $addons_path);
+
+    $code = !empty($_REQUEST['code']) ? $_REQUEST['code'] : '';
+    Registry::get('view')->assign('code', $code);
 // Add new shipping method
 } elseif ($mode == 'add') {
 
@@ -206,16 +196,15 @@ if ($mode == 'configure') {
         )
     );
 
-    $services = fn_get_shipping_services();
-    Tygh::$app['view']->assign('services', $services);
-    Tygh::$app['view']->assign('carriers', fn_get_carriers_from_services($services));
-    Tygh::$app['view']->assign('rate_data', $rate_data);
-    Tygh::$app['view']->assign('taxes', fn_get_taxes());
-    Tygh::$app['view']->assign('usergroups', fn_get_usergroups(array('type' => 'C', 'status' => array('A', 'H')), DESCR_SL));
+    Registry::get('view')->assign('shipping_settings', Settings::instance()->getValues('Shippings'));
+    Registry::get('view')->assign('services', fn_get_shipping_services());
+    Registry::get('view')->assign('rate_data', $rate_data);
+    Registry::get('view')->assign('taxes', fn_get_taxes());
+    Registry::get('view')->assign('usergroups', fn_get_usergroups('C', DESCR_SL));
 
 // Collect shipping methods data
 } elseif ($mode == 'update') {
-    $shipping = fn_get_shipping_info($_REQUEST['shipping_id'], DESCR_SL);
+    $shipping = fn_get_shipping_info($_REQUEST['shipping_id']);
 
     if (empty($shipping)) {
         return array(CONTROLLER_STATUS_NO_PAGE);
@@ -238,7 +227,7 @@ if ($mode == 'configure') {
         }
     }
 
-    Tygh::$app['view']->assign('shipping', $shipping);
+    Registry::get('view')->assign('shipping', $shipping);
 
     $tabs = array (
         'general' => array (
@@ -255,9 +244,10 @@ if ($mode == 'configure') {
         ),
     );
 
-    $services = fn_get_shipping_services();
-    if (!empty($shipping['rate_calculation']) && $shipping['rate_calculation'] == 'R' && !empty($services[$shipping['service_id']]['module'])) {
-        $tabs['configure']['href'] = 'shippings.configure?shipping_id=' . $shipping['shipping_id'] . '&module=' . $services[$shipping['service_id']]['module'] . '&code=' . urlencode($services[$shipping['service_id']]['code']);
+    $service = fn_get_shipping_service_data($shipping['service_id']);
+    $shipping_settings = Settings::instance()->getValues('Shippings');
+    if (!empty($shipping['rate_calculation']) && $shipping['rate_calculation'] == 'R' && !empty($service['module']) && $shipping_settings[$service['module'] . '_enabled'] == 'Y') {
+        $tabs['configure']['href'] = 'shippings.configure?shipping_id=' . $shipping['shipping_id'] . '&module=' . $service['module'] . '&code=' . $service['code'];
         $tabs['configure']['hidden'] = 'N';
     } else {
         $tabs['configure']['hidden'] = 'Y';
@@ -265,23 +255,40 @@ if ($mode == 'configure') {
 
     if (Registry::get('runtime.company_id') && Registry::get('runtime.company_id') != $shipping['company_id']) {
         unset($tabs['configure']);
-        Tygh::$app['view']->assign('hide_for_vendor', true);
+        Registry::get('view')->assign('hide_for_vendor', true);
     }
 
     Registry::set('navigation.tabs', $tabs);
 
-    Tygh::$app['view']->assign('services', $services);
-    Tygh::$app['view']->assign('carriers', fn_get_carriers_from_services($services));
-    Tygh::$app['view']->assign('taxes', fn_get_taxes());
-    Tygh::$app['view']->assign('usergroups', fn_get_usergroups(array('type' => 'C', 'status' => array('A', 'H')), DESCR_SL));
+    Registry::get('view')->assign('services', fn_get_shipping_services());
+    Registry::get('view')->assign('taxes', fn_get_taxes());
+    Registry::get('view')->assign('usergroups', fn_get_usergroups('C', DESCR_SL));
 
 // Show all shipping methods
 } elseif ($mode == 'manage') {
 
     $company_id = Registry::ifGet('runtime.company_id', null);
-    Tygh::$app['view']->assign('shippings', fn_get_available_shippings($company_id));
+    Registry::get('view')->assign('shippings', fn_get_available_shippings($company_id));
 
-    Tygh::$app['view']->assign('usergroups', fn_get_usergroups(array('type' => 'C', 'status' => array('A', 'H')), DESCR_SL));
+    Registry::get('view')->assign('usergroups', fn_get_usergroups('C', DESCR_SL));
+
+// Delete shipping method
+} elseif ($mode == 'delete') {
+
+    if (!empty($_REQUEST['shipping_id']) && fn_check_company_id('shippings', 'shipping_id', $_REQUEST['shipping_id'])) {
+        fn_delete_shipping($_REQUEST['shipping_id']);
+    }
+
+    return array(CONTROLLER_STATUS_REDIRECT, "shippings.manage");
+
+// Delete selected rate
+} elseif ($mode == 'delete_rate_value') {
+
+    if (fn_check_company_id('shippings', 'shipping_id', $_REQUEST['shipping_id'])) {
+        fn_delete_rate_values(array($_REQUEST['rate_type'] => array($_REQUEST['amount'] => 'Y')), $_REQUEST['shipping_id'], $_REQUEST['destination_id']);
+    }
+
+    return array(CONTROLLER_STATUS_REDIRECT, "shippings.update?shipping_id=$_REQUEST[shipping_id]&destination_id=$_REQUEST[destination_id]&selected_section=shipping_charges");
 }
 
 function fn_delete_rate_values($delete_rate_data, $shipping_id, $destination_id)
@@ -310,29 +317,24 @@ function fn_delete_rate_values($delete_rate_data, $shipping_id, $destination_id)
     }
 
     if (fn_is_empty($rate_values)) {
-        db_query("DELETE FROM ?:shipping_rates WHERE shipping_id = ?i AND destination_id = ?i", $shipping_id, $destination_id);
+            db_query("DELETE FROM ?:shipping_rates WHERE shipping_id = ?i AND destination_id = ?i", $shipping_id, $destination_id);
     } else {
         db_query("UPDATE ?:shipping_rates SET ?u WHERE shipping_id = ?i AND destination_id = ?i", array('rate_value' => serialize($rate_values)), $shipping_id, $destination_id);
     }
 }
 
-function fn_get_shipping_services($lang_code = DESCR_SL)
+function fn_get_shipping_services()
 {
-    return db_get_hash_array(
-        "SELECT ?:shipping_services.service_id, ?:shipping_services.code, ?:shipping_services.module, ?:shipping_service_descriptions.description " .
-        "FROM ?:shipping_services " .
-        "LEFT JOIN ?:shipping_service_descriptions ON " .
-            "?:shipping_service_descriptions.service_id = ?:shipping_services.service_id AND ?:shipping_service_descriptions.lang_code = ?s " .
-        "ORDER BY ?:shipping_service_descriptions.description, ?:shipping_services.module",
-    'service_id', $lang_code);
-}
+    $shipping_settings = Settings::instance()->getValues('Shippings');
 
-function fn_get_carriers_from_services($services)
-{
-    $carriers = array();
-    foreach ($services as $service) {
-        $carriers[$service['module']] = __("carrier_" . $service['module']);
+    $enabled_services = array();
+    foreach ($shipping_settings as $setting_name => $val) {
+        if (strpos($setting_name, '_enabled') !== false && $val == 'Y') {
+            $enabled_services[] = str_replace('_enabled', '', $setting_name);
+        }
     }
 
-    return $carriers;
+    $services = empty($enabled_services) ? array() : db_get_array("SELECT ?:shipping_services.*, ?:shipping_service_descriptions.description FROM ?:shipping_services LEFT JOIN ?:shipping_service_descriptions ON ?:shipping_service_descriptions.service_id = ?:shipping_services.service_id AND ?:shipping_service_descriptions.lang_code = ?s WHERE ?:shipping_services.module IN (?a) ORDER BY ?:shipping_service_descriptions.description", DESCR_SL, $enabled_services);
+
+    return $services;
 }

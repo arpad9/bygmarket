@@ -13,11 +13,7 @@
         <div class="clearfix">
             <div class="pull-right">
     {/if}
-
-    {if $type != "single"}
     <a data-ca-external-click-id="opener_picker_{$data_id}" class="cm-external-click btn {$meta}"><i class="icon-plus"></i> {__("add_product")}</a>
-    {/if}
-
     {if $placement == 'right'}
             </div>
         </div>
@@ -31,7 +27,7 @@
     <table class="table table-middle">
     <thead>
     <tr>
-        {if $positions}<th width="5%">{__("position_short")}</th>{/if}
+        {if $positions}<th>{__("position_short")}</th>{/if}
         <th width="100%">{__("name")}</th>
         <th>&nbsp;</th>
         <th>&nbsp;</th>
@@ -108,14 +104,6 @@
     </tr>
     </tbody>
     </table>
-{elseif $type == "single"}
-<div class="cm-display-radio" id="{$data_id}">
-    <input id="{if $input_id}{$input_id}{else}c{$data_id}_ids{/if}" type="hidden" class="cm-picker-value" name="{$input_name}" value="{if $item_ids|is_array}{","|implode:$item_ids}{/if}" />
-    <div class="input-append choose-input">
-        {include file="pickers/products/js.tpl" product_id="" holder=$data_id hide_input=$hide_input input_name=$input_name hide_link=$hide_link hide_delete_button=$hide_delete_button type="single"}
-        {$smarty.capture.add_buttons nofilter}
-    </div>
-</div>
 {/if}
 {/if}
 {if $view_mode != "list"}

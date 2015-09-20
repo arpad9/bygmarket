@@ -20,7 +20,7 @@ function fn_settings_actions_addons_hidpi(&$new_value, $old_value)
     Storage::instance('images')->deleteDir('thumbnails');
 
     if ($new_value == 'A') {
-        $formats = fn_get_supported_image_format_variants();
+        $formats = fn_check_gd_formats();
 
         // Set thumbnail generation format to png to improve quality
         if (!empty($formats['png'])) {

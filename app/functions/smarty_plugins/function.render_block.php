@@ -39,12 +39,7 @@ function smarty_function_render_block($params, &$smarty)
 
         $block = Block::instance()->getById($block_id, $snapping_id, $dynamic_object, DESCR_SL);
 
-        $render_params = array(
-            'use_cache' => isset($params['use_cache']) ? (bool) $params['use_cache'] : true,
-            'parse_js' => isset($params['parse_js']) ? (bool) $params['parse_js'] : true,
-        );
-
-        return RenderManager::renderBlock($block, array(), 'C', $render_params);
+        return RenderManager::renderBlock($block);
     }
 }
 

@@ -8,18 +8,16 @@
 {if $separate}{capture name="mainbox"}{/if}
 <div id="content_group{$_addon}">
     <div id="content_{$_addon}">
-    <div class="tabs cm-j-tabs {if $separate}cm-track{/if} {if $subsections|count == 1}hidden{/if}">
+    <div class="tabs cm-j-tabs {if $subsections|count == 1}hidden{/if}">
         <ul class="nav nav-tabs">
             {foreach from=$subsections key="section" item="subs"}
                 {assign var="tab_id" value="`$_addon`_`$section`"}
-                <li class="cm-js {if $smarty.request.selected_section == $tab_id}active{/if}" id="{$tab_id}"><a>{$subs.description}</a></li>
+                <li class="cm-js {if $smarty.request.selected_section == $tab_id}cm-active active{/if}" id="{$tab_id}"><a>{$subs.description}</a></li>
             {/foreach}
         </ul>
     </div>
     <div class="cm-tabs-content" id="tabs_content_{$_addon}">
         <form action="{""|fn_url}" method="post" name="update_addon_{$_addon}_form" class=" form-edit form-horizontal" enctype="multipart/form-data">
-
-        <input type="hidden" name="selected_section" value="{$smarty.request.selected_section}" />
         <input type="hidden" name="addon" value="{$smarty.request.addon}" />
         {if $smarty.request.return_url}
         <input type="hidden" name="redirect_url" value="{$smarty.request.return_url}" />
@@ -33,18 +31,8 @@
 
         <div id="content_{$_addon}_{$section}" class="settings{if $subsections.$section.type == "SEPARATE_TAB"} cm-hide-save-button{/if}">
             {capture name="header_first"}false{/capture}
-
             {foreach from=$field_item key="name" item="data" name="fe_addons"}
-
-                {if $data.parent_id && $field_item[$data.parent_id]}
-                    {$parent_item = $field_item[$data.parent_id]}
-                    {$parent_item_html_id = "addon_option_`$_addon`_`$parent_item.name`"}
-                {else}
-                    {$parent_item = []}
-                    {$parent_item_html_id = ""}
-                {/if}
-
-                {include file="common/settings_fields.tpl" item=$data section=$_addon html_id="addon_option_`$_addon`_`$data.name`" html_name="addon_data[options][`$data.object_id`]" index=$smarty.foreach.fe_addons.iteration total=$smarty.foreach.fe_addons.total class="setting-wide" parent_item=$parent_item parent_item_html_id=$parent_item_html_id}
+                {include file="common/settings_fields.tpl" item=$data section=$_addon html_id="addon_option_`$_addon`_`$data.name`" html_name="addon_data[options][`$data.object_id`]" index=$smarty.foreach.fe_addons.index class="setting-wide" total=$smarty.foreach.fe_addons.total}
             {/foreach}
         </div>
         

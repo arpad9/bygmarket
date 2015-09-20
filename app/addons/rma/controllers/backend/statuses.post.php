@@ -24,7 +24,7 @@ if ($mode == 'manage') {
 
     if ($_REQUEST['type'] == STATUSES_RETURN) {
 
-        Tygh::$app['view']->assign('title', __('rma_request_statuses'));
+        Registry::get('view')->assign('title', __('rma_request_statuses'));
 
         fn_rma_generate_sections('statuses');
     }

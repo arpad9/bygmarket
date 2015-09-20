@@ -19,49 +19,115 @@
 {/if}
 
 <script type="text/javascript">
+//<![CDATA[
     Tygh.$('.btn-toolbar').hide(); // FIXME
+//]]>
 </script>
 
-{if $addons.searchanise.status == 'D'}
-    <script type="text/javascript">
-        SearchaniseAdmin = {ldelim}{rdelim};
-        SearchaniseAdmin.host = '{$se_service_url}';
-        SearchaniseAdmin.AddonStatus = 'disabled';
-    </script>
-    <script type="text/javascript" src="{$se_service_url}/js/init.js"></script>
 
-{elseif !"ULTIMATE"|fn_allowed_for}
-    {include file="addons/searchanise/settings/components/se_admin_panel.tpl"}
-{else}
-    {if !$runtime.company_id} {* Is root admin. *}
-        {if ""|fn_se_is_registered == false} {* Only root admin can register. *}
+{if $addons.searchanise.status == 'D'}
+<script type="text/javascript">
+//<![CDATA[
+    SearchaniseAdmin = {ldelim}{rdelim};
+    SearchaniseAdmin.host = '{$se_service_url}';
+    SearchaniseAdmin.AddonStatus = 'disabled';
+//]]>
+</script>
+<script type="text/javascript" src="{$se_service_url}/js/init.js"></script>
+{elseif "ULTIMATE"|fn_allowed_for}
+
+    {if !$runtime.company_id}{*-root admin-*}
+        {if ""|fn_se_is_registered == false}{*-only root admin can register-*}
             <script type="text/javascript">
+            //<![CDATA[
                 SearchaniseAdmin = {ldelim}{rdelim};
                 SearchaniseAdmin.host = '{$se_service_url}';
                 SearchaniseAdmin.PrivateKey = '';
                 SearchaniseAdmin.ConnectLink = '{"searchanise.signup"|fn_url:'A':'current'}';
                 SearchaniseAdmin.AddonStatus = 'enabled';
+            //]]>
             </script>
             <script type="text/javascript" src="{$se_service_url}/js/init.js"></script>
-        {else}
-            {* If active only one store.*}
-            {if $runtime.forced_company_id} 
-                {include file="addons/searchanise/settings/components/se_admin_panel.tpl"}
-
-            {* After register we always need select a vendor. *}
-            {else}
-                {include file="common/select_company.tpl" hide_title=true select_id="searchanise_company_select" assign="mb"}
-                {$smarty.capture.mainbox nofilter}
-            {/if}
+        {else}{*-after register we always need select a vendor-*}
+            {include file="common/select_company.tpl" hide_title=true select_id="searchanise_company_select" assign="mb"}
+            {$smarty.capture.mainbox nofilter}
         {/if}
-    {else} {* Vendor selected *}
-        {if ""|fn_se_is_registered == false} {* Only root admin can register. *}
+    {else}{*-vendor selected-*}
+        {if ""|fn_se_is_registered == false}{*-only root can register-*}
             <p>
                 {__("text_se_only_root_can_register")}
                 <br /><br /><br /><br />
             </p>
         {else}
-            {include file="addons/searchanise/settings/components/se_admin_panel.tpl"}
+            <script type="text/javascript">
+            //<![CDATA[
+                SearchaniseAdmin = {ldelim}{rdelim};
+                SearchaniseAdmin.host = '{$se_service_url}';
+                SearchaniseAdmin.PrivateKey = '{$se_parent_private_key}';
+                SearchaniseAdmin.OptionsLink = '{"searchanise.options"|fn_url:'A':'current'}';
+                SearchaniseAdmin.ReSyncLink = '{"searchanise.export"|fn_url:'A':'current'}';
+                SearchaniseAdmin.LastRequest = '{"last_request"|fn_se_get_simple_setting|fn_parse_date|date_format:"`$date_format`"}';
+                SearchaniseAdmin.LastResync = '{"last_resync"|fn_se_get_simple_setting|fn_parse_date|date_format:"`$date_format`"}';
+                SearchaniseAdmin.ConnectLink = '{"searchanise.signup"|fn_url:'A':'current'}';
+                SearchaniseAdmin.AddonStatus = 'enabled';
+
+                SearchaniseAdmin.Engines = [];
+                {foreach from=$se_company_id|fn_se_get_engines_data item='e'}
+                SearchaniseAdmin.Engines.push({ldelim}
+                        PrivateKey: '{$e.private_key}',
+                        LangCode: '{$e.lang_code|upper}',
+                        Name : '{$e.language_name}',
+                        ExportStatus: '{$e.import_status}'{if $currencies[$secondary_currency]},
+                        PriceFormat: {ldelim}
+                            rate : {$currencies[$secondary_currency].coefficient},
+                            decimals: {$currencies[$secondary_currency].decimals},
+                            decimals_separator: '{$currencies[$secondary_currency].decimals_separator}',
+                            thousands_separator: '{$currencies[$secondary_currency].thousands_separator}',
+                            symbol: '{$currencies[$secondary_currency].symbol}',
+                            after: {if $currencies[$secondary_currency].after == 'N'}false{else}true{/if}
+                        {rdelim}{/if}
+                    {rdelim});
+                {/foreach}
+            //]]>
+            </script>
+            <script type="text/javascript" src="{$se_service_url}/js/init.js"></script>
         {/if}
-    {/if}    
+    {/if}
+
+{else}
+<script type="text/javascript">
+//<![CDATA[
+    SearchaniseAdmin = {ldelim}{rdelim};
+    SearchaniseAdmin.host = '{$se_service_url}';
+    SearchaniseAdmin.PrivateKey = '{$se_parent_private_key}';
+    SearchaniseAdmin.OptionsLink = '{"searchanise.options"|fn_url:'A':'current'}';
+    SearchaniseAdmin.ReSyncLink = '{"searchanise.export"|fn_url:'A':'current'}';
+    SearchaniseAdmin.LastRequest = '{"last_request"|fn_se_get_simple_setting|fn_parse_date|date_format:"`$date_format`"}';
+    SearchaniseAdmin.LastResync = '{"last_resync"|fn_se_get_simple_setting|fn_parse_date|date_format:"`$date_format`"}';
+    SearchaniseAdmin.ConnectLink = '{"searchanise.signup"|fn_url:'A':'current'}';
+    SearchaniseAdmin.AddonStatus = {if $addons.searchanise.status == 'A'}'enabled'{else}'disabled'{/if};
+
+    SearchaniseAdmin.Engines = [];
+    {foreach from=$se_company_id|fn_se_get_engines_data item='e'}
+    SearchaniseAdmin.Engines.push({ldelim}
+            PrivateKey: '{$e.private_key}',
+            LangCode: '{$e.lang_code|upper}',
+            Name : '{$e.language_name}',
+            ExportStatus: '{$e.import_status}'{if $currencies[$secondary_currency]},
+            PriceFormat: {ldelim}
+                rate : {$currencies[$secondary_currency].coefficient},
+                decimals: {$currencies[$secondary_currency].decimals},
+                decimals_separator: '{$currencies[$secondary_currency].decimals_separator}',
+                thousands_separator: '{$currencies[$secondary_currency].thousands_separator}',
+                symbol: '{$currencies[$secondary_currency].symbol}',
+                after: {if $currencies[$secondary_currency].after == 'N'}false{else}true{/if}
+            {rdelim}{/if}
+        {rdelim});
+    {/foreach}
+//]]>
+</script>
+
+<script type="text/javascript" src="{$se_service_url}/js/init.js"></script>
 {/if}
+
+{*$se_options|fn_print_r*}

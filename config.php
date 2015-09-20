@@ -18,8 +18,6 @@ if (!defined('BOOTSTRAP')) { die('Access denied'); }
  * Static options
  */
 
-define('NEW_FEATURE_GROUP_ID', 'OG');
-
 // These constants define when select box with categories list should be replaced with picker
 define('CATEGORY_THRESHOLD', 100); // if number of categories less than this value, all categories will be retrieved, otherwise subcategories will be retrieved by ajax
 define('CATEGORY_SHOW_ALL', 100);  // if number of categories less than this value, categories tree will be expanded
@@ -34,8 +32,8 @@ define('PRODUCT_FEATURE_VARIANTS_THRESHOLD', 40); // if number of product featur
 // Maximum number of recently viewed products, stored in session
 define('MAX_RECENTLY_VIEWED', 10);
 
-// Number of product features per page to display on product details page in admin panel
-define('PRODUCT_FEATURES_THRESHOLD', 50);
+// Product filters settings
+define('FILTERS_RANGES_VIEW_ALL_COUNT', 20);
 
 // Week days
 define('SUNDAY',    0);
@@ -92,15 +90,14 @@ define('SESSION_ONLINE', 60 * 5); // 5 minutes
 // Number of seconds before installation script will be redirected to itself to avoid server timeouts
 define('INSTALL_DB_EXECUTION', SECONDS_IN_HOUR); // 1 hour
 
-//Uncomment to enable the developer tools: debugger, PHP and SQL loggers, etc.
-//define('DEBUG_MODE', true);
+// Uncomment this line if you experience problems with mysql5 server (disables strict mode)
+//define('MYSQL5', true);
 
-//Uncomment to enable error reporting.
-//define('DEVELOPMENT', true);
+//Uncomment to enable the developer tools: debugger, PHP and SQL loggers, etc.
+//define('DEBUGGER', true);
 
 // Theme description file name
-define('THEME_MANIFEST', 'manifest.json');
-define('THEME_MANIFEST_INI', 'manifest.ini');
+define('THEME_MANIFEST', 'manifest.ini');
 
 // Controller return statuses
 define('CONTROLLER_STATUS_REDIRECT', 302);
@@ -113,10 +110,6 @@ define('INIT_STATUS_OK', 1);
 define('INIT_STATUS_REDIRECT', 2);
 define('INIT_STATUS_FAIL', 3);
 
-define('PLACE_ORDER_STATUS_OK', 1);
-define('PLACE_ORDER_STATUS_TO_CART', 2);
-define('PLACE_ORDER_STATUS_DENIED', 3);
-
 // Maximum number of items in "Last edited items" list (in the backend)
 define('LAST_EDITED_ITEMS_COUNT', 10);
 
@@ -126,13 +119,10 @@ define('AUTO_META_DESCRIPTION', true);
 // Database default tables prefix
 define('DEFAULT_TABLE_PREFIX', 'cscart_');
 
-define('CS_PHP_VERSION', phpversion());
-
 // Product information
-define('PRODUCT_NAME', 'Multi-Vendor');
-define('PRODUCT_VERSION', '4.3.4');
+define('PRODUCT_NAME', 'CS-Cart');
+define('PRODUCT_VERSION', '4.0.1');
 define('PRODUCT_STATUS', '');
-
 
 define('PRODUCT_EDITION', 'MULTIVENDOR');
 define('PRODUCT_BUILD', '');
@@ -151,17 +141,9 @@ define('POPULARITY_BUY', 10);
 // Limits
 define('FILTERS_LIMIT', 3);
 
-define('MAILING_LIST_ID', 1);
-
 // Session options
 // define('SESS_VALIDATE_IP', true); // link session ID with ip address
 define('SESS_VALIDATE_UA', true); // link session ID with user-agent
-
-define('BILLING_ADDRESS_PREFIX', 'b');
-define('SHIPPING_ADDRESS_PREFIX', 's');
-
-define('DB_MAX_ROW_SIZE', 10000);
-define('DB_ROWS_PER_PASS', 40);
 
 /*
  * Dynamic options
@@ -173,8 +155,7 @@ $config['dir'] = array(
     'functions' => DIR_ROOT . '/app/functions/',
     'lib' => DIR_ROOT . '/app/lib/',
     'addons' => DIR_ROOT . '/app/addons/',
-    'design_frontend' => DIR_ROOT . '/design/themes/',
-    'design_backend' => DIR_ROOT . '/design/backend/',
+    'design' => DIR_ROOT . '/design/',
     'payments' => DIR_ROOT . '/app/payments/',
     'schemas' => DIR_ROOT . '/app/schemas/',
     'themes_repository' => DIR_ROOT . '/var/themes_repository/',
@@ -184,14 +165,10 @@ $config['dir'] = array(
     'cache_templates' => DIR_ROOT . '/var/cache/templates/',
     'cache_registry' => DIR_ROOT . '/var/cache/registry/',
     'files' => DIR_ROOT . '/var/files/',
+    'exim' => DIR_ROOT . '/var/exim/',
     'cache_misc' => DIR_ROOT . '/var/cache/misc/',
-    'cache_static' => DIR_ROOT . '/var/cache/static/',
-    'layouts' => DIR_ROOT . '/var/layouts/',
-    'snapshots' => DIR_ROOT . '/var/snapshots/',
-    'lang_packs' => DIR_ROOT . '/var/langs/',
-    'certificates' => DIR_ROOT . '/var/certificates/',
-    'store_import' => DIR_ROOT . '/var/store_import/',
-    'backups' => DIR_ROOT . '/var/backups/',
+
+    // below should be relative paths, the absolute ones will be generated in fn_init_storage
 );
 
 // List of forbidden file extensions (for uploaded files)
@@ -208,52 +185,20 @@ $config['forbidden_file_extensions'] = array (
 
 $config['forbidden_mime_types'] = array (
     'text/x-php',
+    'application/octet-stream',
     'text/x-perl',
     'text/x-python',
     'text/x-shellscript'
 );
 
-$config['js_css_cache_msg'] = "/*
-ATTENTION! Please do not modify this file, it's auto-generated and all your changes will be lost.
-The complete list of files it's generated from:
-[files]
-*/
-
-";
-
-$config['base_theme'] = 'responsive';
-
-// FIXME: backward compatibility
 // Updates server address
 $config['updates_server'] = 'http://updates.cs-cart.com';
-
-// external resources, related to product
-$config['resources'] = array(
-    'knowledge_base' => 'http://kb.cs-cart.com/installation',
-    'updates_server' => 'http://updates.cs-cart.com',
-    'twitter' => 'cscart',
-    'feedback_api' => 'http://www.cs-cart.com/index.php?dispatch=feedback',
-    'product_url' => 'http://www.cs-cart.com',
-    'helpdesk_url' => 'http://www.cs-cart.com/helpdesk',
-    'license_url' => 'http://www.cs-cart.com/licenses.html',
-    'marketplace_url' => 'http://marketplace.cs-cart.com',
-    'admin_protection_url' => 'http://kb.cs-cart.com/adminarea-protection',
-    'widget_mode_url' => 'http://kb.cs-cart.com/widget-mode',
-    'upgrade_center_specialist_url' => 'http://marketplace.cs-cart.com/developers-catalog.html?services=M',
-    'upgrade_center_team_url' => 'https://www.cs-cart.com/index.php?dispatch=communication.tickets&submit_ticket=Y',
-    //'demo_store_url' => 'http://demo.cs-cart.com/' . strtolower(PRODUCT_EDITION) . '/'
-);
-
-// Debugger token
-$config['debugger_token'] = 'debug';
 
 // Get local configuration
 require_once($config['dir']['root'] . '/config.local.php');
 
-// Backward compatibility
-if (!empty($config['saas_uid']) && empty($config['store_prefix'])) {
-    $config['store_prefix'] = $config['saas_uid'];
-}
+// Demo store address
+$config['demo_store_url'] = 'http://demo.cs-cart.com/' . strtolower(PRODUCT_EDITION) . '/';
 
 // Define host directory depending on the current connection
 $config['current_path'] = (defined('HTTPS')) ? $config['https_path'] : $config['http_path'];
@@ -262,7 +207,5 @@ $config['http_location'] = 'http://' . $config['http_host'] . $config['http_path
 $config['https_location'] = 'https://' . $config['https_host'] . $config['https_path'];
 $config['current_location'] = (defined('HTTPS')) ? $config['https_location'] : $config['http_location'];
 $config['current_host'] = (defined('HTTPS')) ? $config['https_host'] : $config['http_host'];
-
-$config['allowed_pack_exts'] = array('tgz', 'gz', 'zip');
 
 return $config;

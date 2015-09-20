@@ -17,36 +17,35 @@ use Tygh\Registry;
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-
-    if ($mode == 'set_post_status') {
-
-        $new_status = ($_REQUEST['new_status'] === 'A') ? 'A' : 'D';
-        db_query("UPDATE ?:discussion_posts SET ?u WHERE post_id = ?i", array('status' => $new_status), $_REQUEST['post_id']);
-
-        $post = db_get_row("SELECT * FROM ?:discussion_posts WHERE post_id = ?i", $_REQUEST['post_id']);
-        Tygh::$app['view']->assign('post', $post);
-        if (defined('AJAX_REQUEST')) {
-            Tygh::$app['view']->display('addons/discussion/views/index/components/dashboard_status.tpl');
-            exit;
-        }
-
-        return array(CONTROLLER_STATUS_OK, fn_url());
-    }
-
-    if ($mode == 'delete_post' && defined('AJAX_REQUEST')) {
-        db_query("DELETE FROM ?:discussion_messages WHERE post_id = ?i", $_REQUEST['post_id']);
-        db_query("DELETE FROM ?:discussion_rating WHERE post_id = ?i", $_REQUEST['post_id']);
-        db_query("DELETE FROM ?:discussion_posts WHERE post_id = ?i", $_REQUEST['post_id']);
-
-        return array(CONTROLLER_STATUS_OK, fn_url());
-    }
-    
     return;
 }
 
 // No action for vendor at the index
 if (Registry::get('runtime.company_id') && fn_allowed_for('MULTIVENDOR')) {
     return;
+}
+
+if ($mode == 'set_post_status') {
+
+    $new_status = ($_REQUEST['new_status'] === 'A') ? 'A' : 'D';
+    db_query("UPDATE ?:discussion_posts SET ?u WHERE post_id = ?i", array('status' => $new_status), $_REQUEST['post_id']);
+
+    $post = db_get_row("SELECT * FROM ?:discussion_posts WHERE post_id = ?i", $_REQUEST['post_id']);
+    Registry::get('view')->assign('post', $post);
+    if (defined('AJAX_REQUEST')) {
+        Registry::get('view')->display('addons/discussion/views/index/components/dashboard_status.tpl');
+        exit;
+    }
+
+    return array(CONTROLLER_STATUS_OK, fn_url());
+}
+
+if ($mode == 'delete_post' && defined('AJAX_REQUEST')) {
+    db_query("DELETE FROM ?:discussion_messages WHERE post_id = ?i", $_REQUEST['post_id']);
+    db_query("DELETE FROM ?:discussion_rating WHERE post_id = ?i", $_REQUEST['post_id']);
+    db_query("DELETE FROM ?:discussion_posts WHERE post_id = ?i", $_REQUEST['post_id']);
+
+    return array(CONTROLLER_STATUS_OK, fn_url());
 }
 
 $latest_posts = db_get_array(
@@ -59,16 +58,15 @@ $latest_posts = db_get_array(
 
 if (!empty($latest_posts)) {
     foreach ($latest_posts as $k => $v) {
-        $latest_posts[$k]['ip_address'] = fn_ip_from_db($v['ip_address']);
         $latest_posts[$k]['object_data'] = fn_get_discussion_object_data($v['object_id'], $v['object_type'], DESCR_SL);
         $latest_posts[$k]['rating'] = fn_get_discussion_rating($v['rating_value']);
     }
 }
 
-Tygh::$app['view']->assign('discussion_objects', fn_get_discussion_objects());
-Tygh::$app['view']->assign('latest_posts', $latest_posts);
+Registry::get('view')->assign('discussion_objects', fn_get_discussion_objects());
+Registry::get('view')->assign('latest_posts', $latest_posts);
 
 if ($mode == 'delete_post' && defined('AJAX_REQUEST')) { // FIXME - bad style
-    Tygh::$app['view']->display('addons/discussion/views/index/components/dashboard.tpl');
+    Registry::get('view')->display('addons/discussion/views/index/components/dashboard.tpl');
     exit;
 }

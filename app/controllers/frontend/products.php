@@ -23,26 +23,20 @@ if (!defined('BOOTSTRAP')) { die('Access denied'); }
 if ($mode == 'search') {
 
     $params = $_REQUEST;
-    fn_add_breadcrumb(__('search_results'));
 
     if (!empty($params['search_performed']) || !empty($params['features_hash'])) {
 
+        fn_add_breadcrumb(__('advanced_search'), "products.search" . (!empty($_REQUEST['advanced_filter']) ? '?advanced_filter=Y' : ''));
+        fn_add_breadcrumb(__('search_results'));
         $params = $_REQUEST;
         $params['extend'] = array('description');
-
+        
+        /*echo '<pre>';
+        print_r($params);
+        die('here');*/
         list($products, $search) = fn_get_products($params, Registry::get('settings.Appearance.products_per_page'));
 
-        if (defined('AJAX_REQUEST') && (!empty($params['features_hash']) && !$products)) {
-            fn_filters_not_found_notification();
-            exit;
-        }
-
-        fn_gather_additional_products_data($products, array(
-            'get_icon' => true,
-            'get_detailed' => true,
-            'get_additional' => true,
-            'get_options'=> true
-        ));
+        fn_gather_additional_products_data($products, array('get_icon' => true, 'get_detailed' => true, 'get_additional' => true, 'get_options'=> true));
 
         if (!empty($products)) {
             $_SESSION['continue_url'] = Registry::get('config.current_url');
@@ -50,11 +44,21 @@ if ($mode == 'search') {
 
         $selected_layout = fn_get_products_layout($params);
 
-        Tygh::$app['view']->assign('products', $products);
-        Tygh::$app['view']->assign('search', $search);
-        Tygh::$app['view']->assign('selected_layout', $selected_layout);
+        Registry::get('view')->assign('products', $products);
+        Registry::get('view')->assign('search', $search);
+        Registry::get('view')->assign('selected_layout', $selected_layout);
+    } else {
+        fn_add_breadcrumb(__('advanced_search'));
     }
 
+    if (!empty($params['advanced_filter'])) {
+        $params['get_all'] = 'Y';
+        $params['get_custom'] = 'Y';
+
+        list($filters, $view_all_filter) = fn_get_filters_products_count($params);
+        Registry::get('view')->assign('filter_features', $filters);
+        Registry::get('view')->assign('view_all_filter', $view_all_filter);
+    }
 //
 // View product details
 //
@@ -67,31 +71,18 @@ if ($mode == 'search') {
         $uids = explode(',', db_get_field("SElECT usergroup_ids FROM ?:products WHERE product_id = ?i", $_REQUEST['product_id']));
 
         if (!in_array(USERGROUP_ALL, $uids) && !in_array(USERGROUP_GUEST, $uids)) {
-            return array(CONTROLLER_STATUS_REDIRECT, 'auth.login_form?return_url=' . urlencode(Registry::get('config.current_url')));
+            return array(CONTROLLER_STATUS_REDIRECT, "auth.login_form?return_url=" . urlencode(Registry::get('config.current_url')));
         }
     }
 
-    $product = fn_get_product_data(
-        $_REQUEST['product_id'],
-        $auth,
-        CART_LANGUAGE,
-        '',
-        true,
-        true,
-        true,
-        true,
-        fn_is_preview_action($auth, $_REQUEST),
-        true,
-        false,
-        true
-    );
+    $product = fn_get_product_data($_REQUEST['product_id'], $auth, CART_LANGUAGE, '', true, true, true, true, fn_is_preview_action($auth, $_REQUEST));
 
     if (empty($product)) {
         return array(CONTROLLER_STATUS_NO_PAGE);
     }
 
     if ((empty($_SESSION['current_category_id']) || empty($product['category_ids'][$_SESSION['current_category_id']])) && !empty($product['main_category'])) {
-        if (!empty($_SESSION['breadcrumb_category_id']) && in_array($_SESSION['breadcrumb_category_id'], $product['category_ids'])) {
+        if (!empty($_SESSION['breadcrumb_category_id']) && !empty($product['category_ids'][$_SESSION['breadcrumb_category_id']])) {
             $_SESSION['current_category_id'] = $_SESSION['breadcrumb_category_id'];
         } else {
             $_SESSION['current_category_id'] = $product['main_category'];
@@ -99,35 +90,22 @@ if ($mode == 'search') {
     }
 
     if (!empty($product['meta_description']) || !empty($product['meta_keywords'])) {
-        Tygh::$app['view']->assign('meta_description', $product['meta_description']);
-        Tygh::$app['view']->assign('meta_keywords', $product['meta_keywords']);
+        Registry::get('view')->assign('meta_description', $product['meta_description']);
+        Registry::get('view')->assign('meta_keywords', $product['meta_keywords']);
 
     } else {
-        $meta_tags = db_get_row(
-            "SELECT meta_description, meta_keywords"
-            . " FROM ?:category_descriptions"
-            . " WHERE category_id = ?i AND lang_code = ?s",
-            $_SESSION['current_category_id'],
-            CART_LANGUAGE
-        );
+        $meta_tags = db_get_row("SELECT meta_description, meta_keywords FROM ?:category_descriptions WHERE category_id = ?i AND lang_code = ?s", $_SESSION['current_category_id'], CART_LANGUAGE);
         if (!empty($meta_tags)) {
-            Tygh::$app['view']->assign('meta_description', $meta_tags['meta_description']);
-            Tygh::$app['view']->assign('meta_keywords', $meta_tags['meta_keywords']);
+            Registry::get('view')->assign('meta_description', $meta_tags['meta_description']);
+            Registry::get('view')->assign('meta_keywords', $meta_tags['meta_keywords']);
         }
     }
     if (!empty($_SESSION['current_category_id'])) {
         $_SESSION['continue_url'] = "categories.view?category_id=$_SESSION[current_category_id]";
 
-        $parent_ids = fn_explode(
-            '/',
-            db_get_field(
-                "SELECT id_path FROM ?:categories WHERE category_id = ?i",
-                $_SESSION['current_category_id']
-            )
-        );
+        $parent_ids = fn_explode('/', db_get_field("SELECT id_path FROM ?:categories WHERE category_id = ?i", $_SESSION['current_category_id']));
 
         if (!empty($parent_ids)) {
-            Registry::set('runtime.active_category_ids', $parent_ids);
             $cats = fn_get_category_name($parent_ids);
             foreach ($parent_ids as $c_id) {
                 fn_add_breadcrumb($cats[$c_id], "categories.view?category_id=$c_id");
@@ -141,11 +119,11 @@ if ($mode == 'search') {
     }
 
     fn_gather_additional_product_data($product, true, true);
-    Tygh::$app['view']->assign('product', $product);
+    Registry::get('view')->assign('product', $product);
 
     // If page title for this product is exist than assign it to template
     if (!empty($product['page_title'])) {
-        Tygh::$app['view']->assign('page_title', $product['page_title']);
+        Registry::get('view')->assign('page_title', $product['page_title']);
     }
 
     $params = array (
@@ -155,7 +133,7 @@ if ($mode == 'search') {
     list($files) = fn_get_product_files($params);
 
     if (!empty($files)) {
-        Tygh::$app['view']->assign('files', $files);
+        Registry::get('view')->assign('files', $files);
     }
 
     /* [Product tabs] */
@@ -181,7 +159,7 @@ if ($mode == 'search') {
             ));
         }
     }
-    Tygh::$app['view']->assign('tabs', $tabs);
+    Registry::get('view')->assign('tabs', $tabs);
     /* [/Product tabs] */
 
     // Set recently viewed products history
@@ -201,9 +179,9 @@ if ($mode == 'search') {
         }
     }
 
-    Tygh::$app['view']->assign('show_qty', true);
-    Tygh::$app['view']->assign('product_notification_enabled', $product_notification_enabled);
-    Tygh::$app['view']->assign('product_notification_email', (isset($_SESSION['product_notifications']) ? $_SESSION['product_notifications']['email'] : ''));
+    Registry::get('view')->assign('show_qty', true);
+    Registry::get('view')->assign('product_notification_enabled', $product_notification_enabled);
+    Registry::get('view')->assign('product_notification_email', (isset($_SESSION['product_notifications']) ? $_SESSION['product_notifications']['email'] : ''));
 
     if ($mode == 'quick_view') {
         if (defined('AJAX_REQUEST')) {
@@ -214,6 +192,36 @@ if ($mode == 'search') {
         }
     }
 
+} elseif ($mode == 'product_notifications') {
+
+    $data = array (
+        'product_id' => $_REQUEST['product_id'],
+        'user_id' => $_SESSION['auth']['user_id'],
+        'email' => (!empty($_SESSION['cart']['user_data']['email']) ? $_SESSION['cart']['user_data']['email'] : (!empty($_REQUEST['email']) ? $_REQUEST['email'] : ''))
+    );
+
+    if (!empty($data['email']) && fn_validate_email($data['email'])) {
+        $_SESSION['product_notifications']['email'] = $data['email'];
+        if ($_REQUEST['enable'] == 'Y') {
+            db_query("REPLACE INTO ?:product_subscriptions ?e", $data);
+            if (!isset($_SESSION['product_notifications']['product_ids']) || (is_array($_SESSION['product_notifications']['product_ids']) && !in_array($data['product_id'], $_SESSION['product_notifications']['product_ids']))) {
+                $_SESSION['product_notifications']['product_ids'][] = $data['product_id'];
+            }
+            fn_set_notification('N', __('notice'), __('product_notification_subscribed'));
+        } else {
+            db_query("DELETE FROM ?:product_subscriptions WHERE product_id = ?i AND user_id = ?i AND email = ?s", $data['product_id'], $data['user_id'], $data['email']);
+            if (isset($_SESSION['product_notifications']) && isset($_SESSION['product_notifications']['product_ids']) && in_array($data['product_id'], $_SESSION['product_notifications']['product_ids'])) {
+                $_SESSION['product_notifications']['product_ids'] = array_diff($_SESSION['product_notifications']['product_ids'], array($data['product_id']));
+            }
+            fn_set_notification('N', __('notice'), __('product_notification_unsubscribed'));
+        }
+    }
+
+    if (defined('AJAX_REQUEST')) {
+        die(empty($data['product_id']) ? 'Access denied' : 'OK');
+    } else {
+        return array(CONTROLLER_STATUS_REDIRECT, 'products.view?product_id=' . $data['product_id']);
+    }
 } elseif ($mode == 'options') {
 
     if (!defined('AJAX_REQUEST') && !empty($_REQUEST['product_data'])) {
@@ -222,14 +230,6 @@ if ($mode == 'search') {
 
         return array(CONTROLLER_STATUS_REDIRECT, 'products.view?product_id=' . $product_id);
     }
-} elseif ($mode == 'product_notifications') {
-    fn_update_product_notifications(array(
-        'product_id' => $_REQUEST['product_id'],
-        'user_id' => $_SESSION['auth']['user_id'],
-        'email' => (!empty($_SESSION['cart']['user_data']['email']) ? $_SESSION['cart']['user_data']['email'] : (!empty($_REQUEST['email']) ? $_REQUEST['email'] : '')),
-        'enable' => $_REQUEST['enable']
-    ));
-    exit;
 }
 
 function fn_add_product_to_recently_viewed($product_id, $max_list_size = MAX_RECENTLY_VIEWED)
@@ -276,29 +276,4 @@ function fn_set_product_popularity($product_id, $popularity_view = POPULARITY_VI
     }
 
     return false;
-}
-
-function fn_update_product_notifications($data)
-{
-    if (!empty($data['email']) && fn_validate_email($data['email'])) {
-        $_SESSION['product_notifications']['email'] = $data['email'];
-        if ($data['enable'] == 'Y') {
-            db_query("REPLACE INTO ?:product_subscriptions ?e", $data);
-            if (!isset($_SESSION['product_notifications']['product_ids']) || (is_array($_SESSION['product_notifications']['product_ids']) && !in_array($data['product_id'], $_SESSION['product_notifications']['product_ids']))) {
-                $_SESSION['product_notifications']['product_ids'][] = $data['product_id'];
-            }
-
-            fn_set_notification('N', __('notice'), __('product_notification_subscribed'));
-        } else {
-            $deleted = db_query("DELETE FROM ?:product_subscriptions WHERE product_id = ?i AND user_id = ?i AND email = ?s", $data['product_id'], $data['user_id'], $data['email']);
-
-            if (isset($_SESSION['product_notifications']) && isset($_SESSION['product_notifications']['product_ids']) && in_array($data['product_id'], $_SESSION['product_notifications']['product_ids'])) {
-                $_SESSION['product_notifications']['product_ids'] = array_diff($_SESSION['product_notifications']['product_ids'], array($data['product_id']));
-            }
-
-            if (!empty($deleted)) {
-                fn_set_notification('N', __('notice'), __('product_notification_unsubscribed'));
-            }
-        }
-    }
 }

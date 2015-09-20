@@ -20,7 +20,7 @@ if (!defined('BOOTSTRAP')) { die('Access denied'); }
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     if ($mode == 'send') {
-        if (fn_image_verification('email_share', $_REQUEST) == false) {
+        if (fn_image_verification('use_for_email_share', $_REQUEST) == false) {
             fn_save_post_data('send_data');
 
             return array(CONTROLLER_STATUS_REDIRECT);
@@ -28,14 +28,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         if (!empty($_REQUEST['send_data']['to_email'])) {
 
-            $lnk = fn_url(Registry::get('config.current_url'));
-            $redirect_url = fn_query_remove($_REQUEST['redirect_url'], 'selected_section');
-            $index_script = Registry::get('config.customer_index');
-
-            if (strpos($lnk, $index_script) !== false) {
-                $redirect_url = str_replace($index_script, '', $redirect_url);
+            $lnk = fn_query_remove($_REQUEST['redirect_url'], 'selected_section');
+            $http_path = Registry::get('config.http_path');
+            if (!empty($http_path) && strpos($lnk, $http_path) !== false) {
+                $lnk = str_replace(Registry::get('config.http_path'), '', $lnk);
+            } else {
+                $lnk = '/' . ltrim($lnk, '/');
             }
-            $lnk .= $redirect_url;
 
             $from = array(
                 'email' => !empty($_REQUEST['send_data']['from_email']) ? $_REQUEST['send_data']['from_email'] : Registry::get('settings.Company.company_users_department'),
@@ -46,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'to' => $_REQUEST['send_data']['to_email'],
                 'from' => $from,
                 'data' => array(
-                    'link' => fn_url($lnk),
+                    'link' => Registry::get('config.http_location') . $lnk,
                     'send_data' => $_REQUEST['send_data']
                 ),
                 'tpl' => 'addons/social_buttons/mail.tpl',

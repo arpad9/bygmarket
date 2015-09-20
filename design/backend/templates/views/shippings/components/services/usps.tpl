@@ -23,7 +23,6 @@
     <label class="control-label" for="ship_usps_mailtype">{__("ship_usps_mailtype")}</label>
     <div class="controls">
     <select id="ship_usps_mailtype" name="shipping_data[service_params][mailtype]">
-        <option value="All" {if $shipping.service_params.mailtype == "All"}selected="selected"{/if}>{__("all")}</option>
         <option value="Package" {if $shipping.service_params.mailtype == "Package"}selected="selected"{/if}>{__("package")}</option>
         <option value="Postcards or aerogrammes" {if $shipping.service_params.mailtype == "Postcards or aerogrammes"}selected="selected"{/if}>{__("ship_usps_mailtype_postcards_or_aerogrammes")}</option>
         <option value="Matter for the blind" {if $shipping.service_params.mailtype == "Matter for the blind"}selected="selected"{/if}>{__("ship_usps_mailtype_matter_for_the_blind")}</option>
@@ -159,11 +158,6 @@
     <select id="ship_usps_container_priority" name="shipping_data[service_params][container_priority]">
         <option value="" {if $shipping.service_params.container_priority == ""}selected="selected"{/if}>{__("none")}</option>
         <option value="Flat Rate Envelope" {if $shipping.service_params.container_priority == "Flat Rate Envelope"}selected="selected"{/if}>{__("ship_usps_container_priority_flat_rate_envelope")}</option>
-        <option value="Padded Flat Rate Envelope" {if $shipping.service_params.container_priority == "Padded Flat Rate Envelope"}selected="selected"{/if}>{__("ship_usps_container_priority_padded_flat_rate_envelope")}</option>
-        <option value="Legal Flat Rate Envelope" {if $shipping.service_params.container_priority == "Legal Flat Rate Envelope"}selected="selected"{/if}>{__("ship_usps_container_priority_legal_flat_rate_envelope")}</option>
-        <option value="Sm Flat Rate Envelope" {if $shipping.service_params.container_priority == "Sm Flat Rate Envelope"}selected="selected"{/if}>{__("ship_usps_container_priority_sm_flat_rate_envelope")}</option>
-        <option value="Window Flat Rate Envelope" {if $shipping.service_params.container_priority == "Window Flat Rate Envelope"}selected="selected"{/if}>{__("ship_usps_container_priority_window_flat_rate_envelope")}</option>
-        <option value="Gift Card Flat Rate Envelope" {if $shipping.service_params.container_priority == "Gift Card Flat Rate Envelope"}selected="selected"{/if}>{__("ship_usps_container_priority_gift_card_flat_rate_envelope")}</option>
         <option value="Flat Rate Box" {if $shipping.service_params.container_priority == "Flat Rate Box"}selected="selected"{/if}>{__("ship_usps_container_priority_flat_rate_box")}</option>
         <option value="Rectangular" {if $shipping.service_params.container_priority == "Rectangular"}selected="selected"{/if}>{__("ship_usps_container_priority_rectangular")}</option>
         <option value="NonRectangular" {if $shipping.service_params.container_priority == "NonRectangular"}selected="selected"{/if}>{__("ship_usps_container_priority_nonrectangular")}</option>
@@ -216,14 +210,6 @@
     <label class="control-label" for="ship_usps_priority_girth">{__("ship_usps_priority_girth")}</label>
     <div class="controls">
     <input id="ship_usps_priority_girth" type="text" name="shipping_data[service_params][priority_girth]" size="30" value="{$shipping.service_params.priority_girth}" />
-    </div>
-</div>
-
-<div class="control-group">
-    <label class="control-label" for="ground_only">{__("ground_only")}</label>
-    <div class="controls">
-    <input type="hidden" name="shipping_data[service_params][ground_only]" value="N" />
-    <input id="ground_only" type="checkbox" name="shipping_data[service_params][ground_only]" value="Y" {if $shipping.service_params.ground_only == "Y"}checked="checked"{/if}/>
     </div>
 </div>
 

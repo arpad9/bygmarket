@@ -69,18 +69,11 @@ class Ups implements IService
                 if (!($service_code && $total_charge)) {
                     continue;
                 }
-
+                //$rated_packages = $shipment[$i]->getElementsByName("RatedPackage");
+                //$days_to_delivery = $shipment[$i]->getValueByPath("/GuaranteedDaysToDelivery");
+                //$delivery_time = $shipment[$i]->getValueByPath("/ScheduledDeliveryTime");
                 if (!empty($total_charge)) {
-                    $return[$service_code] = array(
-                        'rate' => $total_charge
-                    );
-
-                    if (!empty($shipment->ScheduledDeliveryTime)) {
-                        $return[$service_code]['delivery_time'] = (string) $shipment->ScheduledDeliveryTime;
-
-                    } elseif (!empty($shipment->GuaranteedDaysToDelivery)) {
-                        $return[$service_code]['delivery_time'] = (string) $shipment->GuaranteedDaysToDelivery;
-                    }
+                    $return[$service_code] = $total_charge;
                 }
             }
         }
@@ -99,18 +92,13 @@ class Ups implements IService
         $return = array(
             'cost' => false,
             'error' => false,
-            'delivery_time' => false,
         );
 
         $code = $this->_shipping_info['service_code'];
         $rates = $this->processRates($response);
 
         if (isset($rates[$code])) {
-            $return['cost'] = $rates[$code]['rate'];
-
-            if (isset($rates[$code]['delivery_time'])) {
-                $return['delivery_time'] = $rates[$code]['delivery_time'];
-            }
+            $return['cost'] = $rates[$code];
         } else {
             $return['error'] = $this->processErrors($response);
         }
@@ -224,25 +212,6 @@ class Ups implements IService
 EOT;
         }
 
-        $shipment_service_options = $package_service_options = '';
-
-        if ($origination_country == $destination_country) {
-            if (!empty($shipping_settings['delivery_confirmation']) && $shipping_settings['delivery_confirmation'] == 'Y') {
-                $package_service_options = '<PackageServiceOptions><DeliveryConfirmation><DCISType>' . $shipping_settings['dcist_type'] . '</DCISType></DeliveryConfirmation></PackageServiceOptions>';
-            }
-        } else {
-            /*
-                Domestic confirmation:              International confirmation:
-                    1 - No Signature                -
-                    2 - Signature Required          1 - Signature Required
-                    3 - Adult Signature required    2 - Adult Signature Required
-            */
-
-            if (!empty($shipping_settings['delivery_confirmation']) && $shipping_settings['delivery_confirmation'] == 'Y' && $shipping_settings['dcist_type'] > 1) {
-                $shipment_service_options = '<ShipmentServiceOptions><DeliveryConfirmation><DCISType>' . ($shipping_settings['dcist_type'] - 1) . '</DCISType></DeliveryConfirmation></ShipmentServiceOptions>';
-            }
-        }
-
     if (empty($this->_shipping_info['package_info']['packages'])) {
     $packages =<<<EOT
         <Package>
@@ -263,7 +232,6 @@ EOT;
                 </UnitOfMeasurement>
                 <Weight>$weight</Weight>
             </PackageWeight>
-            $package_service_options
         </Package>
 EOT;
     } else {
@@ -294,7 +262,6 @@ EOT;
                 </UnitOfMeasurement>
                 <Weight>$weight</Weight>
             </PackageWeight>
-            $package_service_options
         </Package>
 EOT;
         }
@@ -357,7 +324,6 @@ EOT;
         </ShipFrom>
         $packages
         $shipper_rate_information
-        $shipment_service_options
       </Shipment>
     </RatingServiceSelectionRequest>
 EOT;

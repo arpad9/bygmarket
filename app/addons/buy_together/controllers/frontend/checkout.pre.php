@@ -20,6 +20,6 @@ if ($mode == 'place_order') {
 
     // Check for the valid combinations
     if (fn_buy_together_calculate_cart_items($cart, $cart['products'], $auth) == false) {
-        return array(CONTROLLER_STATUS_REDIRECT, 'checkout.cart');
+        return array(CONTROLLER_STATUS_REDIRECT, "checkout.cart");
     }
 }

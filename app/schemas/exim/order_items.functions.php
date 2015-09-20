@@ -12,8 +12,6 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-use Tygh\Registry;
-
 /**
  * Get item extra information
  * @param array $data extra data
@@ -35,31 +33,20 @@ function fn_exim_orders_get_extra($data)
  * @param array $data data to set
  * @return bool true on success, false otherwise
  */
-function fn_exim_orders_set_extra($data)
+function fn_exim_orders_set_extra($ids, $data)
 {
     $data = json_decode($data, true);
 
     if (!is_array($data)) {
-        return '';
+        return false;
     }
 
     $data = serialize($data);
+    $insert = array(
+        'extra' => $data,
+    );
 
-    return $data;
-}
+    db_query("UPDATE ?:order_details SET ?u WHERE order_id = ?i AND item_id = ?i", $insert, $ids['order_id'], $ids['item_id']);
 
-function fn_check_order_existence(&$primary_object_id, &$object, &$pattern, &$options, &$processed_data, &$processing_groups, &$skip_record)
-{
-    $result = false;
-    if ($object['order_id']) {
-        $order_data = db_get_row("SELECT order_id, company_id FROM ?:orders WHERE order_id = ?i", $object['order_id']);
-        if (!empty($order_data) && (Registry::get('runtime.simple_ultimate') || (!Registry::get('runtime.simple_ultimate') && (Registry::get('runtime.company_id') == $order_data['company_id'] || Registry::get('runtime.company_id') === 0)))) {
-            $result = true;
-        }
-    }
-
-    if (!$result) {
-        $skip_record = true;
-        $processed_data['S']++;
-    }
+    return true;
 }

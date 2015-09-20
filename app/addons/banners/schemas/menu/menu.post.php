@@ -21,9 +21,9 @@ $schema['central']['marketing']['items']['banners'] = array(
 );
 
 if (!empty($schema['top']['addons']['items']['statistics'])) {
-    $schema['top']['addons']['items']['statistics']['subitems']['banners'] = array(
+    $schema['top']['administration']['items']['statistics']['subitems']['banners'] = array(
         'href' => 'statistics.banners',
-        'position' => 900
+        'position' => 200
     );
 }
 

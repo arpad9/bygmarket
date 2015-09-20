@@ -15,7 +15,6 @@
 use Tygh\Registry;
 use Tygh\Storage;
 use Tygh\Settings;
-use Tygh\Tools\ImageHelper;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -46,14 +45,10 @@ function fn_attach_absolute_image_paths(&$image_data, $object_type)
     $image_id = !empty($image_data['images_image_id'])? $image_data['images_image_id'] : $image_data['image_id'];
     $path = $object_type . '/' . floor($image_id / MAX_FILES_IN_DIR);
 
-    $image_name = '';
-    $image_data['relative_path'] = $image_data['http_image_path'] = $image_data['https_image_path'] = $image_data['absolute_path'] = '';
-
     if (!empty($image_data['image_path'])) {
         $image_name = $image_data['image_path'];
         $image_data['relative_path'] = $path . '/' . $image_name;
         $image_data['http_image_path'] = Storage::instance('images')->getUrl($path . '/' . $image_name, 'http');
-        $image_data['https_image_path'] = Storage::instance('images')->getUrl($path . '/' . $image_name, 'https');
         $image_data['absolute_path'] = Storage::instance('images')->getAbsolutePath($path . '/' . $image_name);
         $image_data['image_path'] = Storage::instance('images')->getUrl($path . '/' . $image_name);
     }
@@ -99,22 +94,16 @@ function fn_update_image($image_data, $image_id = 0, $image_type = 'product', $l
     // Delete existing image
     if (!empty($image_path)) {
         Storage::instance('images')->delete($images_path . $image_path);
-
-        // Clear all existing thumbnails
-        fn_delete_image_thumbnails($images_path . $image_path);
     }
 
     fn_set_hook('update_image', $image_data, $image_id, $image_type, $images_path, $_data);
 
-    $params = array(
-        'file' => $image_data['path'],
-    );
+    // Clear all existing thumbnails
+    fn_delete_image_thumbnails($image_data['name'], $img_id_subdir);
 
-    if (!empty($image_data['params'])) {
-        $params = fn_array_merge($params, $image_data['params']);
-    }
-
-    list($_data['image_size'], $_data['image_path']) = Storage::instance('images')->put($images_path . $image_data['name'], $params);
+    list($_data['image_size'], $_data['image_path']) = Storage::instance('images')->put($images_path . $image_data['name'], array(
+        'file' => $image_data['path']
+    ));
 
     $_data['image_path'] = fn_basename($_data['image_path']); // we need to store file name only
 
@@ -125,20 +114,6 @@ function fn_update_image($image_data, $image_id = 0, $image_type = 'product', $l
     }
 
     return $image_id;
-}
-
-function fn_add_image_link($pair_target_id, $pair_id)
-{
-    $pair_data = db_get_row("SELECT * FROM ?:images_links WHERE pair_id = ?i", $pair_id);
-    unset($pair_data['pair_id']);
-    $pair_data['object_id'] = $pair_target_id;
-
-    return db_query("INSERT INTO ?:images_links ?e", $pair_data);
-}
-
-function fn_get_count_image_link($image_id)
-{
-    return db_get_field("SELECT COUNT(*) FROM ?:images_links WHERE image_id = ?i OR detailed_id = ?i", $image_id, $image_id);
 }
 
 //
@@ -155,28 +130,23 @@ function fn_delete_image($image_id, $pair_id, $object_type = 'product')
         return false;
     }
 
-    fn_set_hook('delete_image_pre', $image_id, $pair_id, $object_type);
+    $img_id_subdir = floor($image_id / MAX_FILES_IN_DIR) . "/";
+    $_image_file = $object_type . '/' . $img_id_subdir . '/' . $_image_file;
 
+    Storage::instance('images')->delete($_image_file);
+
+    db_query("DELETE FROM ?:images WHERE image_id = ?i", $image_id);
+    db_query("DELETE FROM ?:common_descriptions WHERE object_id = ?i AND object_holder = 'images'", $image_id);
     db_query("UPDATE ?:images_links SET " . ($object_type == 'detailed' ? 'detailed_id' : 'image_id') . " = '0' WHERE pair_id = ?i", $pair_id);
+
     $_ids = db_get_row("SELECT image_id, detailed_id FROM ?:images_links WHERE pair_id = ?i", $pair_id);
 
     if (empty($_ids['image_id']) && empty($_ids['detailed_id'])) {
         db_query("DELETE FROM ?:images_links WHERE pair_id = ?i", $pair_id);
     }
 
-    if (fn_get_count_image_link($image_id) == 0) {
-
-        $img_id_subdir = floor($image_id / MAX_FILES_IN_DIR);
-        $_image_file = $object_type . '/' . $img_id_subdir . '/' . $_image_file;
-
-        Storage::instance('images')->delete($_image_file);
-
-        db_query("DELETE FROM ?:images WHERE image_id = ?i", $image_id);
-        db_query("DELETE FROM ?:common_descriptions WHERE object_id = ?i AND object_holder = 'images'", $image_id);
-
-        // Clear all existing thumbnails
-        fn_delete_image_thumbnails($_image_file);
-    }
+    // Clear all existing thumbnails
+    fn_delete_image_thumbnails(fn_basename($_image_file), $img_id_subdir);
 
     fn_set_hook('delete_image', $image_id, $pair_id, $object_type, $_image_file);
 
@@ -187,46 +157,23 @@ function fn_delete_image($image_id, $pair_id, $object_type = 'product')
  * Deletes all thumbnails of specified file
  *
  * @param string $filename file name
- * @param string $prefix path prefix
+ * @param string $dir file directory prefix (e.g. "0/")
  * @return boolean always true
  */
-function fn_delete_image_thumbnails($filename, $prefix = '')
+function fn_delete_image_thumbnails($filename, $dir)
 {
     $filename = fn_substr($filename, 0, strrpos($filename, '.'));
 
-    if (!empty($filename)) {
-        Storage::instance('images')->deleteByPattern($prefix . 'thumbnails/*/*/' . $filename . '*');
-    }
+    Storage::instance('images')->deleteByPattern('thumbnails/' . $dir . '*/*/' . $filename . '*');
 
     return true;
 }
 
-/**
- * Gets image pairs (icon, detailed)
- *
- * @param array/int $object_ids List of Object IDs or Object ID
- * @param string $object_type Type: product, category, banner, etc.
- * @param string $pair_type (M)ain or (A)dditional
- * @param bool $get_icon
- * @param bool $get_detailed
- * @param string $lang_code 2-letters code
- * @return array Pair data
- */
+//
+// Get image pair(s)
+//
 function fn_get_image_pairs($object_ids, $object_type, $pair_type, $get_icon = true, $get_detailed = true, $lang_code = CART_LANGUAGE)
 {
-    /**
-     * Changes input params for fn_get_image_pairs function
-     *
-     * @param  array/int $object_ids   List of Object IDs or Object ID
-     * @param  string    $object_type  Type: product, category, banner, etc.
-     * @param  string    $pair_type    (M)ain or (A)dditional
-     * @param  bool      $get_icon
-     * @param  bool      $get_detailed
-     * @param  string    $lang_code    2-letters code
-     * @return array     Pair data
-     */
-    fn_set_hook('get_image_pairs_pre', $object_ids, $object_type, $pair_type, $get_icon, $get_detailed, $lang_code);
-
     $icon_pairs = $detailed_pairs = $pairs_data = array();
 
     $cond = is_array($object_ids)? db_quote("AND ?:images_links.object_id IN (?n)", $object_ids) : db_quote("AND ?:images_links.object_id = ?i", $object_ids);
@@ -276,13 +223,11 @@ function fn_get_image_pairs($object_ids, $object_type, $pair_type, $get_icon = t
 
                 $_pair['icon'] = array(
                     'image_path' => $icon['image_path'],
-                    'alt' => $icon['alt'],
-                    'image_x' => $icon['image_x'],
-                    'image_y' => $icon['image_y'],
-                    'http_image_path' => $icon['http_image_path'],
-                    'https_image_path' => $icon['https_image_path'],
-                    'absolute_path' => $icon['absolute_path'],
-                    'relative_path' => $icon['relative_path']
+                    'alt'        => $icon['alt'],
+                    'image_x'    => $icon['image_x'],
+                    'image_y'    => $icon['image_y'],
+                    'http_image_path'  => $icon['http_image_path'],
+                    'absolute_path'    => $icon['absolute_path']
                 );
             }
 
@@ -297,13 +242,11 @@ function fn_get_image_pairs($object_ids, $object_type, $pair_type, $get_icon = t
                 $detailed = fn_attach_absolute_image_paths($pair, 'detailed');
                 $pairs_data[$object_id][$pair_id]['detailed'] = array(
                     'image_path' => $detailed['image_path'],
-                    'alt' => $detailed['alt'],
-                    'image_x' => $detailed['image_x'],
-                    'image_y' => $detailed['image_y'],
-                    'http_image_path' => $detailed['http_image_path'],
-                    'https_image_path' => $detailed['https_image_path'],
-                    'absolute_path' => $detailed['absolute_path'],
-                    'relative_path' => $detailed['relative_path']
+                    'alt'        => $detailed['alt'],
+                    'image_x'    => $detailed['image_x'],
+                    'image_y'    => $detailed['image_y'],
+                    'http_image_path'  => $detailed['http_image_path'],
+                    'absolute_path'    => $detailed['absolute_path']
                 );
             } elseif (empty($pairs_data[$object_id][$pair_id]['pair_id'])) {
                 $pairs_data[$object_id][$pair_id] = array(
@@ -317,13 +260,11 @@ function fn_get_image_pairs($object_ids, $object_type, $pair_type, $get_icon = t
                     $detailed = fn_attach_absolute_image_paths($pair, 'detailed');
                     $pairs_data[$object_id][$pair_id]['detailed'] = array(
                         'image_path' => $detailed['image_path'],
-                        'alt' => $detailed['alt'],
-                        'image_x' => $detailed['image_x'],
-                        'image_y' => $detailed['image_y'],
-                        'http_image_path' => $detailed['http_image_path'],
-                        'https_image_path' => $detailed['https_image_path'],
-                        'absolute_path' => $detailed['absolute_path'],
-                        'relative_path' => $detailed['relative_path']
+                        'alt'        => $detailed['alt'],
+                        'image_x'    => $detailed['image_x'],
+                        'image_y'    => $detailed['image_y'],
+                        'http_image_path'  => $detailed['http_image_path'],
+                        'absolute_path'    => $detailed['absolute_path']
                     );
                 }
             }
@@ -332,19 +273,6 @@ function fn_get_image_pairs($object_ids, $object_type, $pair_type, $get_icon = t
     } else {
         $pairs_data = db_get_hash_multi_array("SELECT pair_id, image_id, detailed_id, object_id FROM ?:images_links WHERE object_type = ?s AND type = ?s $cond", array('object_id', 'pair_id'), $object_type, $pair_type);
     }
-
-    /**
-     * Changes pair data informatin
-     *
-     * @param array/int $object_ids   List of Object IDs or Object ID
-     * @param string    $object_type  Type: product, category, banner, etc.
-     * @param string    $pair_type    (M)ain or (A)dditional
-     * @param bool      $get_icon
-     * @param bool      $get_detailed
-     * @param string    $lang_code    2-letters code
-     * @param array     $pairs_data   Pairs data
-     */
-    fn_set_hook('get_image_pairs_post', $object_ids, $object_type, $pair_type, $get_icon, $get_detailed, $lang_code, $pairs_data);
 
     if (is_array($object_ids)) {
         return $pairs_data;
@@ -586,158 +514,165 @@ function fn_clone_image_pairs($target_object_id, $object_id, $object_type, $lang
 
 // ----------- Utility functions -----------------
 
-/**
- * Resizes image
- * @param string $src source image path
- * @param integer $new_width new image width
- * @param integer $new_height new image height
- * @param string $bg_color new image background color
- * @param array $custom_settings custom convertion settings
- * @return array - new image contents and format
- */
-function fn_resize_image($src, $new_width = 0, $new_height = 0, $bg_color = '#ffffff', $custom_settings = array())
+//
+// Resize image
+//
+function fn_resize_image($src, $new_width = 0, $new_height = 0, $bg_color = '#ffffff')
 {
-    static $general_settings = array();
-    if (empty($general_settings)) {
-        $general_settings = Settings::instance()->getValues('Thumbnails');
-    }
+    static $notification_set = false;
+    static $gd_settings = array();
 
-    gc_collect_cycles();
+    if (file_exists($src) && (!empty($new_width) || !empty($new_height)) && extension_loaded('gd')) {
+        $img_functions = array(
+            'png' => function_exists('imagepng'),
+            'jpg' => function_exists('imagejpeg'),
+            'gif' => function_exists('imagegif'),
+        );
 
-    $settings = empty($custom_settings) ? $general_settings : $custom_settings;
+        if (empty($gd_settings)) {
+            $gd_settings = Settings::instance()->getValues('Thumbnails');
+        }
 
-    /** @var \Imagine\Image\ImagineInterface $imagine */
-    $imagine = Tygh::$app['image'];
+        list($width, $height, $mime_type) = fn_get_image_size($src);
+        if (empty($width) || empty($height)) {
+            return false;
+        }
 
-    $format = $settings['convert_to'];
-    if ($format === 'original') {
-        if ($original_file_type = fn_get_image_extension(fn_get_mime_content_type($src, false))) {
-            $format = $original_file_type;
+        $ext = fn_get_image_extension($mime_type);
+        if (empty($img_functions[$ext])) {
+            if ($notification_set == false) {
+                fn_set_notification('E', __('error'), __('error_image_format_not_supported', array(
+                    '[format]' => $ext
+                )));
+                $notification_set = true;
+            }
+
+            return false;
+        }
+
+        if (empty($new_width) || empty($new_height)) {
+            if ($width < $new_width) {
+                $new_width = $width;
+            }
+            if ($height < $new_height) {
+                $new_height = $height;
+            }
+        }
+
+        $dst_width = $new_width;
+        $dst_height = $new_height;
+
+        if (empty($new_height)) { // if we passed width only, calculate height
+            $dst_height = $new_height = ($height / $width) * $new_width;
+
+        } elseif (empty($new_width)) { // if we passed height only, calculate width
+            $dst_width = $new_width = ($width / $height) * $new_height;
+
+        } else { // we passed width and height, we need to fit image in this sizes
+            if ($new_width * $height / $width > $dst_height) {
+                $new_width = $width * $dst_height / $height;
+            }
+            $new_height = ($height / $width) * $new_width;
+            if ($new_height * $width / $height > $dst_width) {
+                $new_height = $height * $dst_width / $width;
+            }
+            $new_width = ($width / $height) * $new_height;
+
+            $make_box = true;
+        }
+
+        $new_width = intval($new_width);
+        $new_height = intval($new_height);
+
+        $dst = imagecreatetruecolor($dst_width, $dst_height);
+
+        if (function_exists('imageantialias')) {
+            imageantialias($dst, true);
+        }
+
+        if ($ext == 'gif') {
+            $new = imagecreatefromgif($src);
+        } elseif ($ext == 'jpg') {
+            $new = imagecreatefromjpeg($src);
+        } elseif ($ext == 'png') {
+            $new = imagecreatefrompng($src);
+        }
+
+        list($r, $g, $b) = (empty($bg_color)) ? fn_parse_rgb('#ffffff') : fn_parse_rgb($bg_color);
+        $c = imagecolorallocate($dst, $r, $g, $b);
+
+        if (empty($bg_color) && ($ext == 'png' || $ext == 'gif')) {
+            if (function_exists('imagecolorallocatealpha') && function_exists('imagecolortransparent') && function_exists('imagesavealpha') && function_exists('imagealphablending')) {
+                $c = imagecolorallocatealpha($dst, 255, 255, 255, 127);
+                imagecolortransparent($dst, $c);
+                imagesavealpha($dst, true);
+                imagealphablending($dst, false);
+            }
+        }
+
+        imagefilledrectangle($dst, 0, 0, $dst_width, $dst_height, $c);
+
+        if (!empty($make_box)) {
+            $x = intval(($dst_width - $new_width) / 2);
+            $y = intval(($dst_height - $new_height) / 2);
         } else {
-            $format = 'png';
-        }
-    }
-
-    $transparency = null;
-    if (empty($bg_color)) {
-        $bg_color = '#FFF';
-
-        if ($format == 'png' || $format == 'gif') {
-            $transparency = 0;
-        }
-    } elseif (!preg_match('/^#([0-9a-f]{3}){1,2}$/i', $bg_color)) {
-        $bg_color = '#FFF';
-    }
-
-    try {
-        $image = $imagine->open($src);
-
-        list($new_width, $new_height) = ImageHelper::originalProportionsFallback(
-            $image->getSize()->getWidth(), $image->getSize()->getHeight(), $new_width, $new_height
-        );
-
-        // This is a non-necessary operation
-        // which can however trigger exceptions if isn't supported by a driver
-        fn_catch_exception(function () use ($image) {
-            $image->usePalette(new \Imagine\Image\Palette\RGB());
-        });
-
-        $filter = ($imagine instanceof \Imagine\Gd\Imagine)
-            ? \Imagine\Image\ImageInterface::FILTER_UNDEFINED
-            : \Imagine\Image\ImageInterface::FILTER_LANCZOS;
-
-        $new_size = new \Imagine\Image\Box($new_width, $new_height);
-        $thumbnail = $image->thumbnail(
-            $new_size,
-            \Imagine\Image\ImageInterface::THUMBNAIL_INSET,
-            $filter
-        );
-
-        // In case that created thumbnail is smaller than required size, we create
-        // an empty canvas of required size and center thumbnail on it
-        $thumbnail_coordinates = new \Imagine\Image\Point(
-            (int)(($new_size->getWidth() - $thumbnail->getSize()->getWidth()) / 2),
-            (int)(($new_size->getHeight() - $thumbnail->getSize()->getHeight()) / 2)
-        );
-
-        if (!$image->palette()->supportsAlpha()) {
-            $transparency = null;
-        }
-        $canvas_color = $image->palette()->color($bg_color, $transparency);
-
-        $canvas = $imagine->create($new_size, $canvas_color);
-
-        $canvas->paste($thumbnail, $thumbnail_coordinates);
-
-        unset($thumbnail, $image);
-
-        $thumbnail = $canvas;
-
-        $options = array(
-            'jpeg_quality' => $settings['jpeg_quality'],
-            'png_compression_level' => 9,
-            'filter' => $filter,
-            'flatten' => true,
-        );
-
-        $return = array($thumbnail->get($format, $options), $format);
-
-        unset($thumbnail);
-
-        gc_collect_cycles();
-
-        return $return;
-    } catch (\Exception $e) {
-        $error_message = __('error_unable_to_create_thumbnail', array(
-            '[error]' => $e->getMessage(),
-            '[file]' => $src
-        ));
-
-        if (AREA == 'A') {
-            fn_set_notification('E', __('error'), $error_message);
+            $x = 0;
+            $y = 0;
         }
 
-        gc_collect_cycles();
+        imagecopyresampled($dst, $new, $x, $y, 0, 0, $new_width, $new_height, $width, $height);
 
-        return false;
-    }
-}
+        // Free memory from image
+        imagedestroy($new);
 
-/**
- * @deprecated in favour of use fn_get_supported_image_format_variants()
- * @since 4.3.1
- */
-function fn_check_gd_formats()
-{
-    return fn_get_supported_image_format_variants();
-}
+        if ($gd_settings['convert_to'] == 'original') {
+            $convert_to = $ext;
+        } elseif (!empty($img_functions[$gd_settings['convert_to']])) {
+            $convert_to = $gd_settings['convert_to'];
+        } else {
+            $convert_to = key($img_functions);
+        }
 
-/**
- * @return array List of supported image formats to be used as setting variants
- */
-function fn_get_supported_image_format_variants()
-{
-    $formats = array(
-        'original' => __('same_as_source'),
-    );
+        ob_start();
+        if ($convert_to == 'gif') {
+            imagegif($dst);
+        } elseif ($convert_to == 'jpg') {
+            imagejpeg($dst, null, $gd_settings['jpeg_quality']);
+        } elseif ($convert_to == 'png') {
+            imagepng($dst);
+        }
+        $content = ob_get_clean();
 
-    $supported_formats = ImageHelper::getSupportedFormats();
-
-    if (in_array('jpg', $supported_formats)) {
-        $formats['jpg'] = 'JPEG';
-    }
-    if (in_array('png', $supported_formats)) {
-        $formats['png'] = 'PNG';
-    }
-    if (in_array('gif', $supported_formats)) {
-        $formats['gif'] = 'GIF';
+        return array($content, $convert_to);
     }
 
-    return $formats;
+    return false;
 }
 
 //
-// Get $_dataimage extension by MIME type
+// Check supported GDlib formats
+//
+function fn_check_gd_formats()
+{
+    $avail_formats = array(
+        'original' => __('same_as_source'),
+    );
+
+    if (function_exists('imagegif')) {
+        $avail_formats['gif'] = 'GIF';
+    }
+    if (function_exists('imagejpeg')) {
+        $avail_formats['jpg'] = 'JPEG';
+    }
+    if (function_exists('imagepng')) {
+        $avail_formats['png'] = 'PNG';
+    }
+
+    return $avail_formats;
+}
+
+//
+// Get image extension by MIME type
 //
 function fn_get_image_extension($image_type)
 {
@@ -749,8 +684,7 @@ function fn_get_image_extension($image_type)
         'application/x-shockwave-flash' => 'swf',
         'image/psd' => 'psd',
         'image/bmp' => 'bmp',
-        'image/x-icon' => 'ico',
-        'image/vnd.microsoft.icon' => 'ico',
+        'image/x-icon' => 'ico'
     );
 
     return isset($image_types[$image_type]) ? $image_types[$image_type] : false;
@@ -820,61 +754,62 @@ function fn_generate_thumbnail($image_path, $width, $height = 0, $lazy = false)
         return '';
     }
 
-    $filename = 'thumbnails/' . $width . (empty($height) ? '' : '/' . $height) . '/' . $image_path;
+    if (strpos($image_path, '://') === false) {
+        if (strpos($image_path, '/') !== 0) { // relative path
+            $image_path = Registry::get('config.current_path') . '/' . $image_path;
+        }
+        $image_path = (defined('HTTPS') ? ('https://' . Registry::get('config.https_host')) : ('http://' . Registry::get('config.http_host'))) . $image_path;
+    }
+
+    $_path = str_replace(Registry::get('config.current_location') . '/', '', $image_path);
+    $is_external_url = (strpos($_path, '://') !== false);
+
+    $image_url = explode('/', $_path);
+    $image_name = array_pop($image_url);
+    $image_dir = array_pop($image_url);
+    $image_dir .= '/' . $width . (empty($height) ? '' : '/' . $height);
+
     if (Registry::get('settings.Thumbnails.convert_to') != 'original') {
-        $filename = preg_replace("/\.[^.]*?$/", "." . Registry::get('settings.Thumbnails.convert_to'), $filename);
+        $image_name = preg_replace("/\.[^.]*?$/", "." . Registry::get('settings.Thumbnails.convert_to'), $image_name);
+    }
+
+    $filename = 'thumbnails/' . $image_dir . '/' . $image_name;
+
+    if ($is_external_url) {
+        $real_path = htmlspecialchars_decode($_path, ENT_QUOTES);
+    } else { // we're making thumbnail from local image
+        $real_path = htmlspecialchars_decode(Registry::get('config.dir.root') . '/' . $_path, ENT_QUOTES);
     }
 
     $th_filename = '';
-
-    if ($lazy || Storage::instance('images')->isExist($filename)) {
-        $th_filename = $filename;
-
-        if ($lazy) {
-            // We should encode special characters that filename parts may contain,
-            // because filename will be transmitted via HTTP GET parameter
-            $th_filename = implode('/', array_map(
-                'rawurlencode',
-                explode('/', ltrim(
-                    $th_filename, '/'
-                ))
-            ));
-        }
-    } else {
-
-        // for lazy thumbnails: find original filename
-        if (Registry::get('config.tweaks.lazy_thumbnails')
-            && Registry::get('settings.Thumbnails.convert_to') != 'original'
-            && !Storage::instance('images')->isExist($image_path)
-        ){
-            foreach (array('png', 'jpg', 'gif', 'jpeg') as $ext) {
-                $image_path = preg_replace("/\.[^.]*?$/", "." . $ext, $image_path);
-                if (Storage::instance('images')->isExist($image_path)) {
-                    break;
-                }
-            }
-        }
-
+    if (!Storage::instance('images')->isExist($filename, $lazy)) {
         /**
          * Actions before thumbnail generate, if thumbnail is not exists, after validations
          *
          * @param string $real_path Real path to image
          * @param string $lazy lazy generation - returns script URL that generates thumbnail
          */
-        fn_set_hook('generate_thumbnail_file_pre', $image_path, $lazy, $filename, $width, $height);
+        fn_set_hook('generate_thumbnail_file_pre', $real_path, $lazy, $filename, $width, $height);
 
-        list(, , ,$tmp_path) = fn_get_image_size(Storage::instance('images')->getAbsolutePath($image_path));
+        if ($lazy == false) {
 
-        if (!empty($tmp_path)) {
-            list($cont, $format) = fn_resize_image($tmp_path, $width, $height, Registry::get('settings.Thumbnails.thumbnail_background_color'));
+            list(, , ,$tmp_path) = fn_get_image_size($real_path);
 
-            if (!empty($cont)) {
-                list(, $th_filename) = Storage::instance('images')->put($filename, array(
-                    'contents' => $cont,
-                    'caching' => true
-                ));
+            if (!empty($tmp_path)) {
+                list($cont, $format) = fn_resize_image($tmp_path, $width, $height, Registry::get('settings.Thumbnails.thumbnail_background_color'));
+
+                if (!empty($cont)) {
+                    list(, $th_filename) = Storage::instance('images')->put($filename, array(
+                        'contents' => $cont,
+                        'caching' => true
+                    ));
+                }
             }
+        } else {
+            $th_filename = fn_url('image.thumbnail?w=' . $width . '&h=' . $height . '&image_path=' . urlencode($image_path), AREA, 'current');
         }
+    } else {
+        $th_filename = $filename;
     }
 
     /**
@@ -888,10 +823,6 @@ function fn_generate_thumbnail($image_path, $width, $height = 0, $lazy = false)
     return !empty($th_filename) ? Storage::instance('images')->getUrl($th_filename) : '';
 }
 
-/**
- * @deprecated
- * @since 4.3.1
- */
 function fn_parse_rgb($color)
 {
     $r = hexdec(substr($color, 1, 2));
@@ -901,13 +832,12 @@ function fn_parse_rgb($color)
     return array($r, $g, $b);
 }
 
+
 function fn_image_to_display($images, $image_width = 0, $image_height = 0)
 {
     if (empty($images)) {
         return array();
     }
-
-    $image_data = array();
 
     // image pair passed
     if (!empty($images['icon']) || !empty($images['detailed'])) {
@@ -916,17 +846,15 @@ function fn_image_to_display($images, $image_width = 0, $image_height = 0)
             $original_height = $images['icon']['image_y'];
             $image_path = $images['icon']['image_path'];
             $absolute_path = $images['icon']['absolute_path'];
-            $relative_path = $images['icon']['relative_path'];
         } else {
             $original_width = $images['detailed']['image_x'];
             $original_height = $images['detailed']['image_y'];
             $image_path = $images['detailed']['image_path'];
             $absolute_path = $images['detailed']['absolute_path'];
-            $relative_path = $images['detailed']['relative_path'];
         }
 
         $detailed_image_path = !empty($images['detailed']['image_path']) ? $images['detailed']['image_path'] : '';
-        $alt = !empty($images['icon']['alt']) ? $images['icon']['alt'] : (!empty($images['detailed']['alt']) ? $images['detailed']['alt'] : '');
+        $alt = !empty($images['icon']['alt']) ? $images['icon']['alt'] : $images['detailed']['alt'];
 
     // single image passed only
     } else {
@@ -936,22 +864,25 @@ function fn_image_to_display($images, $image_width = 0, $image_height = 0)
         $alt = $images['alt'];
         $detailed_image_path = '';
         $absolute_path = $images['absolute_path'];
-        $relative_path = $images['relative_path'];
     }
 
-    list($image_width, $image_height) = ImageHelper::originalProportionsFallback(
-        $original_width, $original_height, $image_width, $image_height
-    );
+    if (!empty($image_height) && empty($image_width)) {
+        $image_width = intval($image_height * $original_width / $original_height);
+    }
 
-    if (!empty($image_width) && !empty($relative_path) && !empty($absolute_path)) {
-        $image_path = fn_generate_thumbnail($relative_path, $image_width, $image_height, Registry::get('config.tweaks.lazy_thumbnails'));
+    if (!empty($image_width) && empty($image_height)) {
+        $image_height = intval($image_width * $original_height / $original_width);
+    }
+
+    if (!empty($image_width)) {
+        $image_path = fn_generate_thumbnail($image_path, $image_width, $image_height, true);
     } else {
         $image_width = $original_width;
         $image_height = $original_height;
     }
 
     if (!empty($image_path)) {
-        $image_data = array(
+        return array(
             'image_path' => $image_path,
             'detailed_image_path' => $detailed_image_path,
             'alt' => $alt,
@@ -962,15 +893,5 @@ function fn_image_to_display($images, $image_width = 0, $image_height = 0)
         );
     }
 
-    /**
-     * Additionally processes image data
-     *
-     * @param array $image_data Image data
-     * @param array $images     Array with initial images
-     * @param $image_width Result image width
-     * @param $image_height Result image height
-     */
-    fn_set_hook('image_to_display_post', $image_data, $images, $image_width, $image_height);
-
-    return $image_data;
+    return array();
 }

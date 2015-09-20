@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     return;
 }
 if ($mode == 'update') {
-    $page =  Tygh::$app['view']->getTemplateVars('page_data');
+    $page =  Registry::get('view')->getTemplateVars('page_data');
     $discussion = fn_get_discussion($_REQUEST['page_id'], 'A', true, $_REQUEST);
 
     if (!empty($discussion) && $discussion['type'] != 'D' && $page['page_type'] != PAGE_TYPE_LINK) {
@@ -36,7 +36,7 @@ if ($mode == 'update') {
                 'js' => true
             ));
 
-            Tygh::$app['view']->assign('discussion', $discussion);
+            Registry::get('view')->assign('discussion', $discussion);
         }
     }
 

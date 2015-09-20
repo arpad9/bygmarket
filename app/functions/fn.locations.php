@@ -32,21 +32,7 @@ function fn_get_countries($params, $items_per_page = 0, $lang_code = CART_LANGUA
         'items_per_page' => $items_per_page
     );
 
-    /**
-     * Change parameters for getting countries list
-     *
-     * @param array $params         Params list
-     * @param int   $items_per_page Countries per page
-     * @param str   $lang_code      Language code
-     * @param array $default_params Default params
-     */
-    fn_set_hook('get_countries_pre', $params,  $items_per_page, $lang_code, $default_params);
-
     $params = array_merge($default_params, $params);
-
-    // Unset all SQL variables
-    $fields = $joins = array();
-    $condition = $sorting = $limit = $group = '';
 
     $fields = array(
         'a.code',
@@ -57,7 +43,7 @@ function fn_get_countries($params, $items_per_page = 0, $lang_code = CART_LANGUA
         'b.country'
     );
 
-    $condition = 'WHERE 1';
+    $condition = '1';
     if (!empty($params['only_avail'])) {
         $condition .= db_quote(" AND a.status = ?s", 'A');
     }
@@ -66,42 +52,13 @@ function fn_get_countries($params, $items_per_page = 0, $lang_code = CART_LANGUA
         $condition .= db_quote(" AND b.country LIKE ?l", '%' . $params['q'] . '%');
     }
 
-    $joins[] = db_quote("LEFT JOIN ?:country_descriptions as b ON b.code = a.code AND b.lang_code = ?s", $lang_code);
-
     $limit = '';
     if (!empty($params['items_per_page'])) {
-        $params['total_items'] = db_get_field("SELECT count(*) FROM ?:countries $condition");
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+        $params['total_items'] = db_get_field("SELECT count(*) FROM ?:countries WHERE ?p", $condition);
+        $limit = db_paginate($params['page'], $params['items_per_page']);
     }
 
-    $sorting = "ORDER BY b.country";
-
-    /**
-     * Prepare params for getting countries SQL query
-     *
-     * @param array $params         Params list
-     * @param int   $items_per_page Countries per page
-     * @param str   $lang_code      Language code
-     * @param array $fields         Fields list
-     * @param array $joins          Joins list
-     * @param str   $condition      Conditions query
-     * @param str   $group          Group condition
-     * @param str   $sorting        Sorting condition
-     * @param str   $limit          Limit condition
-     */
-    fn_set_hook('get_countries', $params,  $items_per_page, $lang_code, $fields, $joins, $condition, $group, $sorting, $limit);
-
-    $countries = db_get_array("SELECT " . implode(', ', $fields) . " FROM ?:countries as a ". implode(' ', $joins)." $condition $group $sorting $limit");
-
-    /**
-     * Actions after countries list was prepared
-     *
-     * @param array $params         Params list
-     * @param int   $items_per_page States per page
-     * @param str   $lang_code      Language code
-     * @param array $states         List of selected states
-     */
-    fn_set_hook('get_countries_post', $params,  $items_per_page, $lang_code, $countries);
+    $countries = db_get_array("SELECT " . implode(', ', $fields) . " FROM ?:countries as a LEFT JOIN ?:country_descriptions as b ON b.code = a.code AND b.lang_code = ?s WHERE ?p ORDER BY b.country $limit", $lang_code, $condition);
 
     return array($countries, $params);
 }
@@ -136,21 +93,7 @@ function fn_get_states($params = array(), $items_per_page = 0, $lang_code = CART
         'items_per_page' => $items_per_page
     );
 
-    /**
-     * Change parameters for getting states list
-     *
-     * @param array $params         Params list
-     * @param int   $items_per_page States per page
-     * @param str   $lang_code      Language code
-     * @param array $default_params Default params
-     */
-    fn_set_hook('get_states_pre', $params,  $items_per_page, $lang_code, $default_params);
-
     $params = array_merge($default_params, $params);
-
-    // Unset all SQL variables
-    $fields = $joins = array();
-    $condition = $sorting = $limit = $group = '';
 
     $fields = array(
         'a.state_id',
@@ -161,11 +104,7 @@ function fn_get_states($params = array(), $items_per_page = 0, $lang_code = CART
         'c.country'
     );
 
-    $joins[] = db_quote("LEFT JOIN ?:state_descriptions as b ON b.state_id = a.state_id AND b.lang_code = ?s", $lang_code);
-    $joins[] = db_quote("LEFT JOIN ?:country_descriptions as c ON c.code = a.country_code AND c.lang_code = ?s", $lang_code);
-
-    $condition = 'WHERE 1';
-
+    $condition = '1';
     if (!empty($params['only_avail'])) {
         $condition .= db_quote(" AND a.status = ?s", 'A');
     }
@@ -178,43 +117,18 @@ function fn_get_states($params = array(), $items_per_page = 0, $lang_code = CART
         $condition .= db_quote(" AND a.country_code = ?s", $params['country_code']);
     }
 
-    $sorting = "ORDER BY c.country, b.state";
-
+    $limit = '';
     if (!empty($params['items_per_page'])) {
-        $params['total_items'] = db_get_field("SELECT count(*) FROM ?:states as a $condition");
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+        $params['total_items'] = db_get_field("SELECT count(*) FROM ?:states as a WHERE ?p", $condition);
+        $limit = db_paginate($params['page'], $params['items_per_page']);
     }
-
-    /**
-     * Prepare params for getting states SQL query
-     *
-     * @param array $params         Params list
-     * @param int   $items_per_page States per page
-     * @param str   $lang_code      Language code
-     * @param array $fields         Fields list
-     * @param array $joins          Joins list
-     * @param str   $condition      Conditions query
-     * @param str   $group          Group condition
-     * @param str   $sorting        Sorting condition
-     * @param str   $limit          Limit condition
-     */
-    fn_set_hook('get_states', $params,  $items_per_page, $lang_code, $fields, $joins, $condition, $group, $sorting, $limit);
 
     $states = db_get_array(
         "SELECT " . implode(', ', $fields) . " FROM ?:states as a " .
-        implode(' ', $joins) .
-        "$condition $group $sorting $limit"
-        );
-
-    /**
-     * Actions after states list was prepared
-     *
-     * @param array $params         Params list
-     * @param int   $items_per_page States per page
-     * @param str   $lang_code      Language code
-     * @param array $states         List of selected states
-     */
-    fn_set_hook('get_states_post', $params,  $items_per_page, $lang_code, $states);
+        "LEFT JOIN ?:state_descriptions as b ON b.state_id = a.state_id AND b.lang_code = ?s " .
+        "LEFT JOIN ?:country_descriptions as c ON c.code = a.country_code AND c.lang_code = ?s " .
+        "WHERE ?p ORDER BY c.country, b.state $limit",
+    $lang_code, $lang_code, $condition);
 
     return array($states, $params);
 }
@@ -267,21 +181,17 @@ function fn_get_state_name($state_code, $country_code, $lang_code = CART_LANGUAG
 function fn_get_country_name($country_code, $lang_code = CART_LANGUAGE)
 {
     static $countries = array();
-    if (empty($countries[$lang_code][$country_code])) {
-        $countries[$lang_code][$country_code] = db_get_field("SELECT country FROM ?:country_descriptions WHERE code = ?s AND lang_code = ?s", $country_code, $lang_code);
+    if (empty($countries[$country_code])) {
+        $countries[$country_code] = db_get_field("SELECT country FROM ?:country_descriptions WHERE code = ?s AND lang_code = ?s", $country_code, $lang_code);
     }
 
-    return $countries[$lang_code][$country_code];
+    return $countries[$country_code];
 }
 
 // Get countries name (results are cached)
 function fn_get_countries_name($country_codes, $lang_code = CART_LANGUAGE)
 {
-    $countries = array();
-
-    if (!empty($country_codes)) {
-        $countries = db_get_hash_array("SELECT country, code FROM ?:country_descriptions WHERE code IN (?a) AND lang_code = ?s", 'code', $country_codes, $lang_code);
-    }
+    $countries = db_get_hash_array("SELECT country, code FROM ?:country_descriptions WHERE code IN (?a) AND lang_code = ?s", 'code', $country_codes, $lang_code);
 
     return $countries;
 }
@@ -291,49 +201,11 @@ function fn_get_countries_name($country_codes, $lang_code = CART_LANGUAGE)
 //
 function fn_get_destinations($lang_code = CART_LANGUAGE)
 {
-    // Unset all SQL variables
-    $fields = $joins = array();
-    $condition = $sorting = $limit = $group = '';
-
-    // Define fields that should be retrieved
-    $fields = array (
-        'a.destination_id',
-        'a.status',
-        'a.localization',
-        'b.destination',
-    );
-
-    $joins[] = db_quote("LEFT JOIN ?:destination_descriptions as b ON a.destination_id = b.destination_id AND b.lang_code = ?s", $lang_code);
-
-    $condition = 'WHERE 1';
-    $sorting = "ORDER BY b.destination";
-
-    /**
-     * Prepare params for getting destinations SQL query
-     *
-     * @param str   $lang_code Language code
-     * @param array $fields    Fields list
-     * @param array $join      Joins list
-     * @param str   $condition Conditions query
-     * @param str   $group     Group condition
-     * @param str   $sorting   Sorting condition
-     * @param str   $limit     Limit condition
-     */
-    fn_set_hook('get_destinations', $lang_code, $fields, $joins, $condition, $group, $sorting, $limit);
-
-    $destinations = db_get_hash_array("SELECT " . implode(', ', $fields) . " FROM ?:destinations as a " . implode(' ', $joins) . " $condition $group $sorting $limit", 'destination_id');
+    $destinations = db_get_hash_array("SELECT a.destination_id, a.status, a.localization, b.destination FROM ?:destinations as a LEFT JOIN ?:destination_descriptions as b ON a.destination_id = b.destination_id AND b.lang_code = ?s ORDER BY destination", 'destination_id', $lang_code);
 
     $default = $destinations[1];
     unset($destinations[1]);
     array_unshift($destinations, $default);
-
-    /**
-     * Actions after getting destinations list
-     *
-     * @param str   $lang_code    Language code
-     * @param array $destinations Destinations list
-     */
-    fn_set_hook('get_destinations_post', $lang_code, $destinations);
 
     return $destinations;
 }
@@ -384,15 +256,6 @@ function fn_check_element($elms, $elm, $partial = false)
 //
 function fn_get_available_destination($location)
 {
-    $result = false;
-
-    /**
-     * Prepare params for getting available destination
-     *
-     * @param array $location Location for which destination is required
-     */
-    fn_set_hook('get_available_destination_pre', $location);
-
     $country = !empty($location['country']) ? $location['country'] : '';
     $state = !empty($location['state']) ? $location['state'] : '';
     $zipcode = !empty($location['zipcode']) ? $location['zipcode'] : '';
@@ -406,14 +269,9 @@ function fn_get_available_destination($location)
         $condition = '';
         if (AREA == 'C') {
             $condition .= fn_get_localizations_condition('localization');
-
-            if (!empty($condition)) {
-                $condition = db_quote('OR (1 ?p)', $condition);
-            }
         }
 
-        $__dests = db_get_array("SELECT a.* FROM ?:destination_elements as a LEFT JOIN ?:destinations as b ON b.destination_id = a.destination_id WHERE b.status = 'A' ?p", $condition);
-
+        $__dests = db_get_array("SELECT a.* FROM ?:destination_elements as a LEFT JOIN ?:destinations as b ON b.destination_id = a.destination_id WHERE b.status = 'A' AND (b.destination_id = 1 OR (1 ?p))", $condition);
         $destinations = array();
         foreach ($__dests as $k => $v) {
             $destinations[$v['destination_id']][$v['element_type']][] = $v['element'];
@@ -477,7 +335,7 @@ function fn_get_available_destination($location)
                 }
             }
 
-            $significance = number_format($significance, 4, '.', '');
+            $significance = number_format($significance, 2, '.', '');
 
             if ($suitable == true) {
                 $concur_destinations[$significance][] = $dest_id;
@@ -488,20 +346,13 @@ function fn_get_available_destination($location)
             ksort($concur_destinations, SORT_NUMERIC);
             $concur_destinations = array_pop($concur_destinations);
 
-            $result = reset($concur_destinations);
+            return reset($concur_destinations);
+        } else {
+            return false;
         }
     }
 
-    /**
-     * Post processing of available destination
-     *
-     * @param array $location            Location information
-     * @param str   $result              Available destination
-     * @param array $concur_destinations Destinations list
-     */
-    fn_set_hook('get_available_destination_post', $location, $result, $concur_destinations);
-
-    return $result;
+    return false;
 }
 
 //
@@ -550,7 +401,7 @@ function fn_get_browser_language($languages = array())
 function fn_get_localizations($lang_code = CART_LANGUAGE, $status_check = false)
 {
     $localizations = array();
-    if (!Registry::get('config.tweaks.disable_localizations') && !fn_allowed_for('ULTIMATE:FREE')) {
+    if (!fn_allowed_for('ULTIMATE:FREE')) {
         $status_condition = ($status_check) ? " WHERE a.status = 'A'" : '';
         $language_condition = (isset($_SESSION['auth']['area']) && ($_SESSION['auth']['area'] == 'A')) ? '' : "LEFT JOIN ?:localization_elements AS c ON a.localization_id = c.localization_id AND c.element_type = 'L' RIGHT JOIN ?:languages AS d ON c.element = d.lang_code AND d.status = 'A'";
         $localizations = db_get_hash_array("SELECT a.localization_id, a.status, b.localization, a.is_default FROM ?:localizations as a LEFT JOIN ?:localization_descriptions as b ON a.localization_id = b.localization_id AND b.lang_code = ?s ?p ?p ORDER BY localization", 'localization_id', $lang_code, $language_condition, $status_condition);

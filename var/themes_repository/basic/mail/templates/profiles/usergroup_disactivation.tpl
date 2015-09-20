@@ -13,10 +13,10 @@
 </tr>
 <tr>
     <td>{__("username")}:</td>
-    <td>{$user_data.email}</td>
+    <td>{if $settings.General.use_email_as_login == 'Y'}{$user_data.email}{else}{$user_data.user_login}{/if}</td>
 </tr>
 <tr>
-    <td>{__("person_name")}:</td>
+    <td>{__("name")}:</td>
     <td>{$user_data.firstname}&nbsp;{$user_data.lastname}</td>
 </tr>
 </table>

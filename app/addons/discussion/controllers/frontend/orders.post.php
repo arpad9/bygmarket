@@ -28,7 +28,7 @@ if ($mode == 'details') {
 
                 Registry::set('navigation.tabs', $navigation_tabs);
 
-                Tygh::$app['view']->assign('discussion', $discussion);
+                Registry::get('view')->assign('discussion', $discussion);
             }
         }
     }

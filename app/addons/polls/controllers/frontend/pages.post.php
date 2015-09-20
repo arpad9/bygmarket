@@ -30,17 +30,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         $ip = fn_get_ip();
 
-        if (db_get_field(
-            'SELECT vote_id FROM ?:polls_votes WHERE page_id = ?i AND ip_address = ?s',
-            $_REQUEST['page_id'],
-            fn_ip_to_db($ip['host'])
-        )) {
+        if (db_get_field('SELECT vote_id FROM ?:polls_votes WHERE page_id = ?i AND ip_address = ?s', $_REQUEST['page_id'], $ip['host'])) {
             return array(CONTROLLER_STATUS_REDIRECT);
         }
 
         $prefix = isset($_REQUEST['obj_prefix']) ? $_REQUEST['obj_prefix'] : '';
 
-        if (fn_image_verification('polls', $_REQUEST) == false) {
+        if (fn_image_verification('use_for_polls', $_REQUEST) == false) {
             return array(CONTROLLER_STATUS_REDIRECT);
         }
 
@@ -91,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         $data = array (
             'page_id' => $_REQUEST['page_id'],
-            'ip_address' => fn_ip_to_db($ip['host']),
+            'ip_address' => $ip['host'],
             'user_id' => empty($auth['user_id']) ? 0 : $auth['user_id'],
             'time' => TIME,
             'type' => 'E'

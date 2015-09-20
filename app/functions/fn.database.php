@@ -244,6 +244,16 @@ function db_initiate($host, $user, $password, $name, $params = array())
     $is_connected = Database::connect($user, $password, $host, $name, $params);
 
     if ($is_connected) {
+        if (empty($params['names'])) {
+            $params['names'] = 'utf8';
+        }
+
+        Database::query("SET NAMES ?s", $params['names']);
+
+        if (defined('MYSQL5')) {
+            Database::query("set @@sql_mode = ''");
+        }
+
         Registry::set('runtime.database.skip_errors', false);
 
         return true;
@@ -255,13 +265,13 @@ function db_initiate($host, $user, $password, $name, $params = array())
 /**
  * Change default connect to $dbc_name
  *
- * @param array $params Params for database connection
+ * @param string $dbc_name Alias for database connection that was passed to db_initiate
  * @param string $name Database name
  * @return bool True on success false otherwise
  */
-function db_connect_to($params, $name)
+function db_connect_to($dbc_name, $name)
 {
-    return Database::changeDb($name, $params);
+    return Database::changeDb($name, $dbc_name);
 }
 
 /**
@@ -283,10 +293,9 @@ function db_get_found_rows()
  * @param bool $log Log database export action
  * @param bool $show_progress Show or do not show process by printing ' .'
  * @param bool $move_progress_bar Move COMET progress bar or not on show progress
- * @param array $change_table_prefix Array with 2 keys (from, to) to change table prefix
  * @return bool false, if file is not accessible
  */
-function db_export_to_file($file_name, $dbdump_tables, $dbdump_schema, $dbdump_data, $log = true, $show_progress = true, $move_progress_bar = true, $change_table_prefix = array())
+function db_export_to_file($file_name, $dbdump_tables, $dbdump_schema, $dbdump_data, $log = true, $show_progress = true, $move_progress_bar = true)
 {
     $fd = @fopen($file_name, 'w');
     if (!$fd) {
@@ -307,27 +316,20 @@ function db_export_to_file($file_name, $dbdump_tables, $dbdump_schema, $dbdump_d
     $insert_statements = array();
 
     if ($show_progress && $move_progress_bar) {
-        fn_set_progress('step_scale', sizeof($dbdump_tables) * ((int) $dbdump_schema + (int) $dbdump_data));
+        fn_set_progress('parts', sizeof($dbdump_tables) * ((int) $dbdump_schema + (int) $dbdump_data));
     }
 
     // get status data
     $t_status = Database::getHash("SHOW TABLE STATUS", 'Name');
 
     foreach ($dbdump_tables as $k => $table) {
-        $_table = !empty($change_table_prefix) ? str_replace($change_table_prefix['from'], $change_table_prefix['to'], $table) : $table;
         if ($dbdump_schema) {
             if ($show_progress) {
                 fn_set_progress('echo', '<br />' . __('backupping_schema') . ': <b>' . $table . '</b>', $move_progress_bar);
             }
-            fwrite($fd, "\nDROP TABLE IF EXISTS " . $_table . ";\n");
-            $scheme = Database::getRow("SHOW CREATE TABLE $table");
-            $_scheme = array_pop($scheme);
-
-            if ($change_table_prefix) {
-                $_scheme = str_replace($change_table_prefix['from'], $change_table_prefix['to'], $_scheme);
-            }
-
-            fwrite($fd, $_scheme . ";\n\n");
+            fwrite($fd, "\nDROP TABLE IF EXISTS " . $table . ";\n");
+            $__scheme = Database::getRow("SHOW CREATE TABLE $table");
+            fwrite($fd, array_pop($__scheme) . ";\n\n");
         }
 
         if ($dbdump_data) {
@@ -351,7 +353,7 @@ function db_export_to_file($file_name, $dbdump_tables, $dbdump_schema, $dbdump_d
                     foreach ($_tdata as $v) {
                         $values[] = ($v !== null) ? "'$v'" : 'NULL';
                     }
-                    fwrite($fd, "INSERT INTO $_table (`" . implode('`, `', array_keys($_tdata)) . "`) VALUES (" . implode(', ', $values) . ");\n");
+                    fwrite($fd, "INSERT INTO $table (`" . implode('`, `', array_keys($_tdata)) . "`) VALUES (" . implode(', ', $values) . ");\n");
                 }
 
                 if ($show_progress) {
@@ -406,8 +408,10 @@ function db_import_sql_file($file, $buffer = 16384, $show_status = true, $show_c
             $fs = filesize($file);
 
             if ($show_status && $move_progress_bar) {
-                fn_set_progress('step_scale', ceil($fs / $buffer));
+                fn_set_progress('parts', ceil($fs / $buffer));
             }
+
+            $br = (Registry::get('runtime.controller') == 'upgrade_center') ? '<br />' : '';
 
             while (!feof($fd)) {
                 $str = $rest.fread($fd, $buffer);
@@ -415,7 +419,7 @@ function db_import_sql_file($file, $buffer = 16384, $show_status = true, $show_c
                 $rest = fn_parse_queries($ret, $str);
 
                 if ($show_status) {
-                    fn_set_progress('echo', '<br />'. __('importing_data'), $move_progress_bar);
+                    fn_set_progress('echo', $br . __('importing_data'), $move_progress_bar);
                 }
 
                 if (!empty($ret)) {
@@ -429,7 +433,7 @@ function db_import_sql_file($file, $buffer = 16384, $show_status = true, $show_c
                                 }
                                 $table_name = $check_prefix ? fn_check_db_prefix($matches[1], Registry::get('config.table_prefix')) : $matches[1];
                                 if ($show_status) {
-                                    fn_set_progress('echo', '<br />'. $_text . ': <b>' . $table_name . '</b>', $move_progress_bar);
+                                    fn_set_progress('echo', $br . $_text . ': <b>' . $table_name . '</b>', false);
                                 }
                             }
 
@@ -544,54 +548,10 @@ function db_sort(&$params, $sortings, $default_by = '', $default_order = '')
  * @param int $items_per_page items per page
  * @return string SQL substring
  */
-function db_paginate(&$page, $items_per_page, $total_items = 0)
+function db_paginate($page, $items_per_page)
 {
     $page = intval($page);
-    if (empty($page)) {
-        $page  = 1;
-    }
-
     $items_per_page = intval($items_per_page);
 
-    // Check if page in valid limits
-    if ($total_items > 0) {
-        $page = db_get_valid_page($page, $items_per_page, $total_items);
-    }
-
     return ' LIMIT ' . (($page - 1) * $items_per_page) . ', ' . $items_per_page;
-}
-
-function db_get_valid_page($page, $items_per_page, $total_items)
-{
-    if (($page - 1) * $items_per_page >= $total_items) {
-        $page = ceil($total_items / $items_per_page);
-    }
-
-    return empty($page) ? 1 : $page;
-}
-
-/**
- * Get enum/set possible values in field of database
- *
- * @param string $table_name         Table name
- * @param string $field_name         Field name
- * @param bool   $get_with_lang_vars Getting with lang vars
- * @param string $lang_code          Lang code
- * @param string $lang_prefix        Lang vars prefix
- * @return array List of elements
- */
-function db_get_list_elements($table_name, $field_name, $get_with_lang_vars = false, $lang_code = CART_LANGUAGE, $lang_prefix = '')
-{
-    $elements = Database::getListElements($table_name, $field_name);
-
-    if ($elements && $get_with_lang_vars) {
-        $lang_elements = array();
-        foreach ($elements as $element) {
-            $lang_elements[$element] = __($lang_prefix . $element, array(), $lang_code);
-        }
-
-        return $lang_elements;
-    }
-
-    return $elements;
 }

@@ -53,13 +53,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $gift_cert['gift_cert_id'] = $gift_cert_wishlist_id;
-                Tygh::$app['view']->assign('gift_cert', $gift_cert);
-                $msg = Tygh::$app['view']->fetch('addons/wishlist/views/wishlist/components/product_notification.tpl');
+                Registry::get('view')->assign('gift_cert', $gift_cert);
+                $msg = Registry::get('view')->fetch('addons/wishlist/views/wishlist/components/product_notification.tpl');
                 fn_set_notification('I', __('text_gift_cert_added_to_wishlist'), $msg, 'I');
             }
         }
 
-        return array(CONTROLLER_STATUS_REDIRECT, 'wishlist.view');
+        return array(CONTROLLER_STATUS_REDIRECT, "wishlist.view");
     }
 
     if ($mode == 'update') {
@@ -75,18 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             fn_save_cart_content($wishlist, $auth['user_id'], $_REQUEST['type']);
 
-            return array(CONTROLLER_STATUS_REDIRECT, 'wishlist.view');
+            return array(CONTROLLER_STATUS_REDIRECT, "wishlist.view");
         }
-    }
-
-    if ($mode == 'wishlist_delete') {
-
-        if (isset($_REQUEST['gift_cert_wishlist_id'])) {
-            fn_delete_cart_gift_certificate($_SESSION['wishlist'], $_REQUEST['gift_cert_wishlist_id']);
-
-        }
-
-        return array(CONTROLLER_STATUS_REDIRECT, 'wishlist.view');
     }
 }
 
@@ -98,8 +88,17 @@ if ($mode == 'update') {
             return array(CONTROLLER_STATUS_NO_PAGE);
         }
 
-        Tygh::$app['view']->assign('gift_cert_data', $gift_cert_data);
-        Tygh::$app['view']->assign('gift_cert_id', $_REQUEST['gift_cert_wishlist_id']);
-        Tygh::$app['view']->assign('type', 'W');
+        Registry::get('view')->assign('gift_cert_data', $gift_cert_data);
+        Registry::get('view')->assign('gift_cert_id', $_REQUEST['gift_cert_wishlist_id']);
+        Registry::get('view')->assign('type', 'W');
     }
+
+} elseif ($mode == 'wishlist_delete') {
+
+    if (isset($_REQUEST['gift_cert_wishlist_id'])) {
+        fn_delete_cart_gift_certificate($_SESSION['wishlist'], $_REQUEST['gift_cert_wishlist_id']);
+
+    }
+
+    return array(CONTROLLER_STATUS_REDIRECT, "wishlist.view");
 }

@@ -25,14 +25,14 @@ if ($mode == 'm_update') {
 
     if (!empty($selected_fields['extra']) && in_array('seo_name', $selected_fields['extra'])) {
 
-        $field_groups = Tygh::$app['view']->getTemplateVars('field_groups');
-        $filled_groups = Tygh::$app['view']->getTemplateVars('filled_groups');
+        $field_groups = Registry::get('view')->getTemplateVars('field_groups');
+        $filled_groups = Registry::get('view')->getTemplateVars('filled_groups');
 
         $field_groups['A']['seo_name'] = 'categories_data';
         $filled_groups['A']['seo_name'] = __('seo_name');
 
-        Tygh::$app['view']->assign('field_groups', $field_groups);
-        Tygh::$app['view']->assign('filled_groups', $filled_groups);
+        Registry::get('view')->assign('field_groups', $field_groups);
+        Registry::get('view')->assign('filled_groups', $filled_groups);
     }
 }
 

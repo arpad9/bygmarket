@@ -16,10 +16,15 @@ namespace Tygh\Backend\Database;
 
 class Pdo implements IBackend
 {
-    const PDO_MYSQL_ATTR_INIT_COMMAND = 1002;
-
-    private $conn;
-    private $last_result;
+    private $_conn;
+    private $_reconnects = 0;
+    private $_max_reconnects = 3;
+    private $_skip_error_codes = array (
+        1091, // column exists/does not exist during alter table
+        1176, // key does not exist during alter table
+        1050, // table already exist
+        1060  // column exists
+    );
 
     /**
      * Connects to database server
@@ -31,19 +36,20 @@ class Pdo implements IBackend
      */
     public function connect($user, $passwd, $host, $database)
     {
-        if (!$host || !$user) {
+        if (empty($host) || empty($user)) {
             return false;
         }
 
         @list($host, $port) = explode(':', $host);
 
+        $this->_reconnects = 0;
         try {
-            $this->conn = new \PDO("mysql:host=$host;dbname=$database", $user, $passwd);
+            $this->_conn = new \PDO("mysql:host=$host;dbname=$database", $user, $passwd);
         } catch (\PDOException $e) {
             return false;
         }
 
-        return !empty($this->conn);
+        return !empty($this->_conn);
     }
 
     /**
@@ -51,7 +57,7 @@ class Pdo implements IBackend
      */
     public function disconnect()
     {
-        return $this->conn = null;
+        return $this->_conn = null;
     }
 
     /**
@@ -61,7 +67,7 @@ class Pdo implements IBackend
      */
     public function changeDb($database)
     {
-        if ($this->conn->exec('USE ' . $database) !== false) {
+        if ($this->_conn->exec('USE ' . $database) !== false) {
             return true;
         }
 
@@ -75,11 +81,26 @@ class Pdo implements IBackend
      */
     public function query($query)
     {
-        $result = $this->conn->query($query);
-        $this->last_result = $result;
+        $result = $this->_conn->query($query);
 
-        // need to return true for insert/replace/update/delete query
-        if (!empty($result) && preg_match("/^(INSERT|REPLACE|UPDATE|DELETE)/", $result->queryString)) {
+        if (empty($result)) {
+            // Lost connection, try to reconnect
+            if (($this->errorCode() == 2013 || $this->errorCode() == 2006) && $this->_reconnects < $this->_max_reconnects) {
+                $this->disconnect();
+                $this->_connect(Registry::get('config.db_host'), Registry::get('config.db_user'), Registry::get('config.db_password'), Registry::get('config.db_name'));
+                $this->_reconnects++;
+                $result = $this->query($query);
+
+            // Assume that the table is broken
+            // Try to repair
+            } elseif (preg_match("/'(\S+)\.(MYI|MYD)/", $this->errorCode(), $matches)) {
+                $this->_conn->query("REPAIR TABLE $matches[1]");
+                $result = $this->query($query);
+            }
+        }
+
+        // need to return true for insert/replace query
+        if (!empty($result) && preg_match("/^(INSERT|REPLACE)/", $result->queryString)) {
             return true;
         }
 
@@ -117,13 +138,7 @@ class Pdo implements IBackend
      */
     public function affectedRows($result)
     {
-        if (is_object($result)) {
-            return $result->rowCount();
-        } elseif (is_object($this->last_result)) {
-            return $this->last_result->rowCount();
-        }
-
-        return 0;
+        return $result->rowCount();
     }
 
     /**
@@ -132,7 +147,7 @@ class Pdo implements IBackend
      */
     public function insertId()
     {
-        return $this->conn->lastInsertId();
+        return $this->_conn->lastInsertId();
     }
 
     /**
@@ -141,7 +156,7 @@ class Pdo implements IBackend
      */
     public function errorCode()
     {
-        $err = $this->conn->errorInfo();
+        $err = $this->_conn->errorInfo();
 
         return in_array($err[1], $this->_skip_error_codes) ? 0 : $err[1];
     }
@@ -152,7 +167,7 @@ class Pdo implements IBackend
      */
     public function error()
     {
-        $err = $this->conn->errorInfo();
+        $err = $this->_conn->errorInfo();
 
         return $err[2];
     }
@@ -164,25 +179,6 @@ class Pdo implements IBackend
      */
     public function escape($value)
     {
-        return substr($this->conn->quote($value), 1, -1);
+        return substr($this->_conn->quote($value), 1, -1);
     }
-
-    /**
-     * Executes Command after when connecting to MySQL server
-     * @param string $command Command to execute
-     */
-    public function initCommand($command)
-    {
-        if (!empty($command)) {
-            $this->query($command);
-            //$this->conn->setAttribute(PDO::MYSQL_ATTR_INIT_COMMAND, $command);
-            // FIXME: Workaround: Fatal error: Undefined class constant 'MYSQL_ATTR_INIT_COMMAND'
-            // https://bugs.php.net/bug.php?id=47224
-            // http://stackoverflow.com/questions/2424343/undefined-class-constant-mysql-attr-init-command-with-pdo
-            // You should have extra extension to make it work or use 1002 instead
-
-            $this->conn->setAttribute(self::PDO_MYSQL_ATTR_INIT_COMMAND, $command);
-        }
-    }
-
 }

@@ -13,24 +13,16 @@
  ****************************************************************************/
 
 // Global update handlers
-$schema = array(
-    'update_handlers' => array(
+return array(
+    'update_handlers' => array (
         'addons',
-        'settings_objects',
+        'settings',
         'bm_blocks',
         'bm_blocks_descriptions',
         'bm_blocks_content',
         'bm_block_statuses',
         'bm_snapping',
         'languages',
-        'language_values',
-        'promotions',
+        'language_values'
     )
 );
-
-if (fn_allowed_for('ULTIMATE')) {
-    // Very common block cache dependency
-    $schema['update_handlers'][] = 'ult_objects_sharing';
-}
-
-return $schema;

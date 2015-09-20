@@ -1,5 +1,6 @@
 {literal}
 <script type="text/javascript">
+//<![CDATA[
     function fn_check_element_type(elm, id, selectable_elements)
     {
         var $ = Tygh.$;
@@ -23,6 +24,7 @@
         var c_id = c.toString();
         $('#elm_add_variants_' + c_id).trigger('change');
     }
+//]]>
 </script>
 {/literal}
 
@@ -75,7 +77,7 @@
         <thead>
             <tr class="cm-first-sibling">
                 <th width="5%" class="left">{__("position_short")}</th>
-                <th>{__("description")}</th>
+                <th>{__("name")}</th>
                 <th>&nbsp;</th>
             </tr>
         </thead>

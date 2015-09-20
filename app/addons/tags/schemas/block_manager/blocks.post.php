@@ -34,6 +34,16 @@ $schema['tags'] = array (
                             'default_value' => 50
                         )
                     )
+                ),
+                'my_tags' => array (
+                    'params' => array (
+                        'auth' => array(
+                            'user_id' => '%USER_ID%',
+                        ),
+                        'sort_by' => 'tag',
+                        'sort_order' => 'asc',
+                        'see' => 'my'
+                    ),
                 )
             ),
         ),
@@ -41,6 +51,9 @@ $schema['tags'] = array (
     'templates' => array (
         'addons/tags/blocks/tag_cloud.tpl' => array (
             'fillings' => array ('tag_cloud')
+        ),
+        'addons/tags/blocks/user_tag_cloud.tpl' => array (
+            'fillings' => array ('my_tags')
         )
     ),
     'wrappers' => 'blocks/wrappers',

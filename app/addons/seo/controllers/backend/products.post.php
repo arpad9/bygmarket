@@ -22,14 +22,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 if ($mode == 'manage') {
 
-    $selected_fields = Tygh::$app['view']->getTemplateVars('selected_fields');
+    $selected_fields = Registry::get('view')->getTemplateVars('selected_fields');
 
     $selected_fields[] = array(
         'name' => '[extra][seo_name]',
         'text' => __('seo_name')
     );
 
-    Tygh::$app['view']->assign('selected_fields', $selected_fields);
+    Registry::get('view')->assign('selected_fields', $selected_fields);
 
 } elseif ($mode == 'm_update') {
 
@@ -37,13 +37,13 @@ if ($mode == 'manage') {
 
     if (!empty($selected_fields['extra']['seo_name'])) {
 
-        $field_groups = Tygh::$app['view']->getTemplateVars('field_groups');
-        $filled_groups = Tygh::$app['view']->getTemplateVars('filled_groups');
+        $field_groups = Registry::get('view')->getTemplateVars('field_groups');
+        $filled_groups = Registry::get('view')->getTemplateVars('filled_groups');
 
         $field_groups['A']['seo_name'] = 'products_data';
         $filled_groups['A']['seo_name'] = __('seo_name');
 
-        Tygh::$app['view']->assign('field_groups', $field_groups);
-        Tygh::$app['view']->assign('filled_groups', $filled_groups);
+        Registry::get('view')->assign('field_groups', $field_groups);
+        Registry::get('view')->assign('filled_groups', $filled_groups);
     }
 }

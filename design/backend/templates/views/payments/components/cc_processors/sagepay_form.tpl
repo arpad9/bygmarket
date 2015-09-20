@@ -1,4 +1,5 @@
-<p>{__("text_sagepay_notice")}</p>
+{assign var="url" value="`$config.http_location`"}
+<p>{__("text_sagepay_notice", ["[cart_url]" => $url])}</p>
 <hr>
 
 <div class="control-group">

@@ -59,6 +59,7 @@
 {if !"SMARTY_USERGROUPS_LOADED"|defined}
     {assign var="tmp" value="SMARTY_USERGROUPS_LOADED"|define:true}
     <script type="text/javascript">
+        //<![CDATA[
         {literal}
         function fn_switch_default_box(holder, prefix, default_id)
         {
@@ -94,6 +95,7 @@
 
         }
         {/literal}
+        //]]>
     </script>
 {/if}
 

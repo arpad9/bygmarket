@@ -17,7 +17,7 @@
                 <li>{btn type="list" text=__("edit") href="orders.details?order_id=`$order_id`"}</li>
                 <li>{btn type="list" text=__("remove") onclick="Tygh.$.cePicker('delete_js_item', '{$holder}', '{$order_id}', 'o'); return false;"}</li>
             {/capture}
-            {dropdown content=$smarty.capture.tools_list}
+            {dropdown content=$smarty.capture.tools_list class="dropleft"}
         </div>
     </td>
     {/if}

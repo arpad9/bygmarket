@@ -72,9 +72,9 @@
         {if !$hide_controls}
         <div class="hidden-tools">
             {capture name="tools_list"}
-                <li>{btn type="list" class="cm-confirm cm-post" text=__("delete") href="companies.payout_delete?payout_id=`$payout.payout_id`&redirect_url={$c_url|rawurlencode}"}</li>
+                <li>{btn type="list" class="cm-confirm" text=__("delete") href="companies.payout_delete?payout_id=`$payout.payout_id`&redirect_url={$c_url|rawurlencode}"}</li>
             {/capture}
-            {dropdown content=$smarty.capture.tools_list}
+            {dropdown content=$smarty.capture.tools_list class="dropleft"}
         </div>
         {/if}
     </td>

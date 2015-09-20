@@ -23,6 +23,6 @@ $schema['index']['modes']['delete_post'] = array (
     'permissions' => 'manage_discussions'
 );
 
-$schema['tools']['modes']['update_status']['param_permissions']['table']['discussion_posts'] = 'manage_discussions';
+$schema['tools']['modes']['update_status']['param_permissions']['table_names']['discussion_posts'] = 'manage_discussions';
 
 return $schema;

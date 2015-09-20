@@ -20,50 +20,42 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($mode == 'send_form') {
 
         $suffix = '';
-        if (fn_image_verification('form_builder', $_REQUEST) == false) {
+        if (fn_image_verification('use_for_form_builder', $_REQUEST) == false) {
             fn_save_post_data('form_values');
 
-            return array(CONTROLLER_STATUS_REDIRECT, 'pages.view?page_id=' . $_REQUEST['page_id']);
+            return array(CONTROLLER_STATUS_REDIRECT, "pages.view?page_id=$_REQUEST[page_id]");
         }
 
         if (fn_send_form($_REQUEST['page_id'], empty($_REQUEST['form_values']) ? array() : $_REQUEST['form_values'])) {
             $suffix = '&sent=Y';
         }
 
-        return array(CONTROLLER_STATUS_OK, 'pages.view?page_id=' . $_REQUEST['page_id'] . $suffix);
+        return array(CONTROLLER_STATUS_OK, "pages.view?page_id=$_REQUEST[page_id]" . $suffix);
     }
 
     return;
 }
 
 if ($mode == 'view' && !empty($_REQUEST['page_id'])) {
+    // if form is secure, redirect to https connection
 
-    if (!defined('AJAX_REQUEST')) {
-        $page_is_https = db_get_field(
-            "SELECT value FROM ?:form_options WHERE element_type = ?s AND page_id = ?i",
-            FORM_IS_SECURE, $_REQUEST['page_id']
-        );
-        // if form is secure, redirect to https connection
-        if (!defined('HTTPS') && $page_is_https == 'Y') {
-            return array(
-                CONTROLLER_STATUS_REDIRECT,
-                Registry::get('config.https_location') . '/' . Registry::get('config.current_url')
-            );
-
-        } elseif (defined('HTTPS') && Registry::get('settings.Security.keep_https') != 'Y' && $page_is_https != 'Y' && Registry::get('settings.Security.secure_storefront') != 'full') {
-            return array(
-                CONTROLLER_STATUS_REDIRECT,
-                Registry::get('config.http_location') . '/' . Registry::get('config.current_url')
-            );
+    $page_is_https = db_get_field("SELECT value FROM ?:form_options WHERE element_type = ?s AND page_id = ?i", FORM_IS_SECURE, $_REQUEST['page_id']);
+    if (!defined('HTTPS')) {
+        if ($page_is_https == 'Y') {
+            return array(CONTROLLER_STATUS_REDIRECT, Registry::get('config.https_location') . '/' . Registry::get('config.current_url'));
+        }
+    } elseif (Registry::get('settings.General.keep_https') != 'Y') {
+        if ($page_is_https != 'Y') {
+            return array(CONTROLLER_STATUS_REDIRECT, Registry::get('config.http_location') . '/' . Registry::get('config.current_url'));
         }
     }
 
     $restored_form_values = fn_restore_post_data('form_values');
     if (!empty($restored_form_values)) {
-        Tygh::$app['view']->assign('form_values', $restored_form_values);
+        Registry::get('view')->assign('form_values', $restored_form_values);
     }
 
 } elseif ($mode == 'sent' && !empty($_REQUEST['page_id'])) {
     $page = fn_get_page_data($_REQUEST['page_id'], CART_LANGUAGE);
-    Tygh::$app['view']->assign('page', $page);
+    Registry::get('view')->assign('page', $page);
 }

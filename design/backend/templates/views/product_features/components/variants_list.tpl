@@ -1,12 +1,12 @@
+{include file="common/pagination.tpl" div_id="content_tab_variants_`$id`" pagination_class=$hide_inputs_class}
     {if $feature_variants|is_array}
-        {include file="common/pagination.tpl" div_id="content_tab_variants_`$id`" pagination_class=$hide_inputs_class}
         {assign var="variants_ids" value=$feature_variants|array_keys}
     {/if}
     <input type="hidden" value="{if $variants_ids}{","|implode:$variants_ids}{/if}" name="feature_data[original_var_ids]">
     <table class="table table-middle" width="100%">
     <thead>
     <tr class="cm-first-sibling">
-        <th class="cm-extended-feature {if $feature_type != "ProductFeatures::EXTENDED"|enum}hidden{/if}">
+        <th class="cm-extended-feature {if $feature_type != "E"}hidden{/if}">
             <div name="plus_minus" id="on_st_{$id}" alt="{__("expand_collapse_list")}" title="{__("expand_collapse_list")}" class="hand hidden cm-combinations-features-{$id} exicon-expand"></div><div name="minus_plus" id="off_st_{$id}" alt="{__("expand_collapse_list")}" title="{__("expand_collapse_list")}" class="hand cm-combinations-features-{$id} exicon-collapse"></div>
         </th>
         <th width="5%">{__("position_short")}</th>
@@ -18,7 +18,7 @@
     {foreach from=$feature_variants item="var" name="fe_f"}
     {assign var="num" value=$smarty.foreach.fe_f.iteration}
     <tr>
-        <td width="2%" class="cm-extended-feature {if $feature_type != "ProductFeatures::EXTENDED"|enum}hidden{/if}">
+        <td width="2%" class="cm-extended-feature {if $feature_type != "E"}hidden{/if}">
             <span id="on_extra_feature_{$id}_{$num}" alt="{__("expand_collapse_list")}" title="{__("expand_collapse_list")}" class="hand hidden cm-combination-features-{$id}"><span class="exicon-expand"></span></span>
             <span id="off_extra_feature_{$id}_{$num}" alt="{__("expand_collapse_list")}" title="{__("expand_collapse_list")}" class="hand cm-combination-features-{$id}"><span class="exicon-collapse"></span></span>
         </td>
@@ -26,7 +26,7 @@
             <input type="hidden" name="feature_data[variants][{$num}][variant_id]" value="{$var.variant_id}">
             <input type="text" name="feature_data[variants][{$num}][position]" value="{$var.position}" size="4" class="input-micro input-hidden"/></td>
         <td>
-            <input type="text" name="feature_data[variants][{$num}][variant]" value="{$var.variant}" class="span6 input-hidden cm-feature-value {if $feature_type == "ProductFeatures::NUMBER_SELECTBOX"|enum}cm-value-decimal{/if}"></td>
+            <input type="text" name="feature_data[variants][{$num}][variant]" value="{$var.variant}" class="span6 input-hidden cm-feature-value {if $feature_type == "N"}cm-value-decimal{/if}"></td>
         <td>&nbsp;</td>
         <td class="right nowrap">
             <div class="hidden-tools">
@@ -34,7 +34,7 @@
             </div>
         </td>
     </tr>
-    <tr {if $feature_type != "ProductFeatures::EXTENDED"|enum}class="hidden"{/if} id="extra_feature_{$id}_{$num}">
+    <tr {if $feature_type != "E"}class="hidden"{/if} id="extra_feature_{$id}_{$num}">
         <td colspan="5">
             <div class="control-group">
                 <label class="control-label" for="elm_image_{$id}_{$num}">{__("image")}</label>
@@ -80,17 +80,16 @@
     </tbody>
 
     {math equation="x + 1" assign="num" x=$num|default:0}
-    {$var = array()}
     <tbody class="hover" id="box_add_variants_for_existing_{$id}">
     <tr>
-        <td class="cm-extended-feature {if $feature_type != "ProductFeatures::EXTENDED"|enum}hidden{/if}">
+        <td class="cm-extended-feature {if $feature_type != "E"}hidden{/if}">
             <span id="on_extra_feature_{$id}_{$num}" alt="{__("expand_collapse_list")}" title="{__("expand_collapse_list")}" class="hand hidden cm-combination-features-{$id}"><span class="exicon-expand"></span></span>
             <span id="off_extra_feature_{$id}_{$num}" alt="{__("expand_collapse_list")}" title="{__("expand_collapse_list")}" class="hand cm-combination-features-{$id}"><span class="exicon-collapse"></span></span>
         </td>
         <td>
             <input type="text" name="feature_data[variants][{$num}][position]" value="" size="4" class="input-micro" /></td>
         <td>
-            <input type="text" name="feature_data[variants][{$num}][variant]" value="" class="span6 cm-feature-value {if $feature_type == "ProductFeatures::NUMBER_SELECTBOX"|enum}cm-value-decimal{/if}" /></td>
+            <input type="text" name="feature_data[variants][{$num}][variant]" value="" class="span6 cm-feature-value {if $feature_type == "N"}cm-value-decimal{/if}" /></td>
         <td>&nbsp;</td>
         <td class="right">
             <div class="hidden-tools">
@@ -98,7 +97,7 @@
             </div>
         </td>
     </tr>
-    <tr {if $feature_type != "ProductFeatures::EXTENDED"|enum}class="hidden"{/if} id="extra_feature_{$id}_{$num}">
+    <tr {if $feature_type != "E"}class="hidden"{/if} id="extra_feature_{$id}_{$num}">
         <td colspan="5">
 
             <div class="control-group">
@@ -142,11 +141,10 @@
                 <textarea name="feature_data[variants][{$num}][meta_keywords]" id="elm_meta_keywords_{$id}_{$num}" cols="55" rows="2"></textarea>
                 </div>
             </div>
+            {assign var="empty_string" value="true"}
             {hook name="product_features:extended_feature"}{/hook}
         </td>
     </tr>
     </tbody>
     </table>
-{if $feature_variants|is_array}
-    {include file="common/pagination.tpl" div_id="content_tab_variants_`$id`"}
-{/if}
+{include file="common/pagination.tpl" div_id="content_tab_variants_`$id`"}

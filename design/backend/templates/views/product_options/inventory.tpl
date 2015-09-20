@@ -16,10 +16,7 @@
 </thead>
 {foreach from=$inventory item="i"}
 <tr valign="top">
-    <td class="center">
-        <input type="checkbox" name="combination_hashes[]" value="{$i.combination_hash}" class=" cm-item" />
-        <input type="hidden" name="inventory[{$i.combination_hash}][product_id]" value="{$product_id}">
-    </td>
+    <td class="center"><input type="checkbox" name="combination_hashes[]" value="{$i.combination_hash}" class=" cm-item" /></td>
     <td>
         {foreach from=$i.combination item="c" key="k"}
             <div class="control-group">
@@ -68,9 +65,9 @@
     <td class="nowrap">
         <div class="hidden-tools">
             {capture name="tools_list"}
-                <li>{btn type="list" class="cm-confirm cm-post" text=__("delete") href="product_options.delete_combination?combination_hash=`$i.combination_hash`&product_id=`$product_id`"}</li>
+                <li>{btn type="list" class="cm-confirm" text=__("delete") href="product_options.delete_combination?combination_hash=`$i.combination_hash`&product_id=`$product_id`"}</li>
             {/capture}
-            {dropdown content=$smarty.capture.tools_list}
+            {dropdown content=$smarty.capture.tools_list class="dropleft"}
         </div>
     </td>
 </tr>
@@ -153,7 +150,7 @@
 
 {capture name="buttons"}
     {capture name="tools_list"}
-        <li>{btn type="list" class="cm-post" text=__("rebuild_combinations") href="product_options.rebuild_combinations?product_id=`$product_id`"}</li>
+        <li>{btn type="list" text=__("rebuild_combinations") href="product_options.rebuild_combinations?product_id=`$product_id`"}</li>
         {if $inventory}
             <li class="divider"></li>
             <li>{btn type="delete_selected" dispatch="dispatch[product_options.m_delete_combinations]" form="product_options_form"}</li>

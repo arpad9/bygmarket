@@ -17,8 +17,6 @@ use Tygh\CompanySingleton;
 
 class Block extends CompanySingleton
 {
-    const TYPE_MAIN = 'main';
-
     /**
      * Gets all unique blocks
      *
@@ -81,7 +79,7 @@ class Block extends CompanySingleton
          */
         fn_set_hook('get_block_pre', $block_id, $snapping_id, $lang_code);
 
-        $block = db_get_row(
+        $block = db_get_row (
             "SELECT b.*, d.*, c.* FROM ?:bm_blocks as b "
             . "LEFT JOIN ?:bm_blocks_descriptions as d ON b.block_id = d.block_id "
             . "LEFT JOIN ?:bm_blocks_content as c ON b.block_id = c.block_id AND d.lang_code=c.lang_code "
@@ -96,7 +94,7 @@ class Block extends CompanySingleton
 
             $block = array_merge($block, $snapping_data);
 
-            if (!empty($block) && !empty($dynamic_object['object_type'])) {
+            if (!empty($dynamic_object['object_type'])) {
                 $object_ids = db_get_field (
                     "SELECT object_ids FROM ?:bm_block_statuses WHERE snapping_id=?i AND object_type=?s",
                     $snapping_id, $dynamic_object['object_type']
@@ -105,13 +103,6 @@ class Block extends CompanySingleton
                 $block['object_ids'] = $object_ids;
             }
         }
-
-        if (empty($block)) {
-            return array();
-        }
-
-        $block['object_id'] = !empty($dynamic_object['object_id']) ? $dynamic_object['object_id'] : $block['object_id'];
-        $block['object_type'] = !empty($dynamic_object['object_type']) ? $dynamic_object['object_type'] : $block['object_type'];
 
         if (!empty($block['properties'])) {
             $block['properties'] = @unserialize($block['properties']);
@@ -210,8 +201,6 @@ class Block extends CompanySingleton
             "?:bm_snapping.grid_id as grid_id",
             "?:bm_snapping.block_id as block_id",
             "IFNULL(dynamic_object_content.content, default_content.content) as content",
-            "IFNULL(dynamic_object_content.object_id, default_content.object_id) AS object_id",
-            "IFNULL(dynamic_object_content.object_type, default_content.object_type) AS object_type",
             "?:bm_block_statuses.object_ids as object_ids"
         );
         $_fields = array_merge($_fields, $fields);
@@ -267,12 +256,8 @@ class Block extends CompanySingleton
                     $blocks[$grid_id][$block_id]['items_array'] = array();
                 }
                 $blocks[$grid_id][$block_id]['items_count'] = count($blocks[$grid_id][$block_id]['items_array']);
-                if (!isset($blocks[$grid_id][$block_id]['object_id'], $blocks[$grid_id][$block_id]['object_type'])) {
-                    $blocks[$grid_id][$block_id]['object_id'] = !empty($dynamic_object['object_id'])
-                        ? $dynamic_object['object_id'] : 0;
-                    $blocks[$grid_id][$block_id]['object_type'] = !empty($dynamic_object['object_type'])
-                        ? $dynamic_object['object_type'] : '';
-                }
+                $blocks[$grid_id][$block_id]['object_id'] = !empty($dynamic_object['object_id']) ? $dynamic_object['object_id'] : 0;
+                $blocks[$grid_id][$block_id]['object_type'] = !empty($dynamic_object['object_type']) ? $dynamic_object['object_type'] : '';
             }
         }
 
@@ -328,13 +313,7 @@ class Block extends CompanySingleton
 
             // If this block type have no multilanguage content we must update it for all languages
             if (isset($block_data['type']) && !empty($block_data['content_data'])) {
-                if (!empty($block_data['apply_to_all_langs']) && $block_data['apply_to_all_langs'] == 'Y') {
-                    foreach (fn_get_translation_languages() as $block_data['content_data']['lang_code'] => $v) {
-                        $this->_updateContent($block_id, $block_data['type'], $block_data['content_data']);
-                    }
-                } else {
-                    $this->_updateContent($block_id, $block_data['type'], $block_data['content_data']);
-                }
+                $this->_updateContent($block_id, $block_data['type'], $block_data['content_data']);
             }
 
             /**
@@ -495,15 +474,13 @@ class Block extends CompanySingleton
     public function remove($block_id)
     {
         if (!empty($block_id)) {
-            $result = db_query('DELETE FROM ?:bm_blocks WHERE block_id = ?i', $block_id);
-            if ($result) {
-                $this->removeMissing();
+            db_query('DELETE FROM ?:bm_blocks WHERE block_id = ?i', $block_id);
+            $this->removeMissing();
 
-                return $result;
-            }
+            return true;
+        } else {
+            return false;
         }
-
-        return false;
     }
 
     /**
@@ -560,7 +537,7 @@ class Block extends CompanySingleton
 
             $snapping_id = db_replace_into('bm_snapping', $snapping_data);
 
-            if (!empty($snapping_id)) {
+            if (is_int($snapping_id)) {
                 $snapping_data['snapping_id'] = $snapping_id;
             }
 
@@ -776,12 +753,6 @@ class Block extends CompanySingleton
         }
 
         if (!empty($filling_params)) {
-            foreach ($filling_params as $param => $value) {
-                if (!empty($field_scheme['settings'][$param]) && !empty($field_scheme['settings'][$param]['unset_empty']) && empty($value)) {
-                    unset($filling_params[$param]);
-                }
-            }
-
             $params = fn_array_merge($params, $filling_params);
         }
 
@@ -1045,71 +1016,32 @@ class Block extends CompanySingleton
     }
 
     /**
-     * Sorts item ids if possible.
-     * Example: $item_ids = array(
-     *      165 => 10,
-     *      13 => 5,
-     *      77 => 40,
-     * )
-     * 
-     * Return: 13,165,77
-     *  
-     * 
-     * @param array $item_ids Items with positions
-     * @return string list of items
-     */
-    public function processItemIds($item_ids)
-    {
-        if (is_array($item_ids)) {
-            asort($item_ids);
-            $item_ids = implode(',', array_keys($item_ids));
-        }
-
-        return $item_ids;
-    }
-
-    /**
      * Copy blocks from one company to another
      * @param $array snapping IDs of the company blocks are copied to
      * @param int $company_id company ID to copy blocks to
      */
     public function copy($snapping_ids, $company_id)
     {
-        static $_unique_blocks = array();
-
-        $exim = Exim::instance($company_id);
         $block_matches = array();
 
         $blocks = db_get_hash_array("SELECT ?:bm_blocks.* FROM ?:bm_blocks LEFT JOIN ?:bm_snapping ON ?:bm_snapping.block_id = ?:bm_blocks.block_id WHERE ?:bm_snapping.snapping_id IN (?n)", 'block_id', array_keys($snapping_ids));
-
-
         foreach ($blocks as $block_id => $block) {
-            $descriptions = db_get_hash_array("SELECT * FROM ?:bm_blocks_descriptions WHERE block_id = ?i", 'lang_code', $block_id);
+            $block['company_id'] = $company_id;
+            unset($block['block_id']);
+            $new_block_id = db_query("INSERT INTO ?:bm_blocks ?e", $block);
+            $block_matches[$block_id] = $new_block_id;
 
-            // Get unique block key
-            $unique_key = $exim->getUniqueBlockKey($block['type'], $block['properties'], $descriptions[CART_LANGUAGE]['name']);
-            if (isset($_unique_blocks[$company_id][$unique_key])) {
-                $new_block_id = $_unique_blocks[$company_id][$unique_key];
-            } else {
-                $block['company_id'] = $company_id;
-                unset($block['block_id']);
-                $new_block_id = db_query("INSERT INTO ?:bm_blocks ?e", $block);
-
-                foreach ($descriptions as $description) {
-                    $description['block_id'] = $new_block_id;
-                    db_query("INSERT INTO ?:bm_blocks_descriptions ?e", $description);
-                }
-
-                $block_content = db_get_array("SELECT * FROM ?:bm_blocks_content WHERE block_id = ?i AND snapping_id = 0 AND object_id = 0 AND object_type = ''", $block_id);
-                foreach ($block_content as $content) {
-                    $content['block_id'] = $new_block_id;
-                    db_query("INSERT INTO ?:bm_blocks_content ?e", $content);
-                }
-
-                $_unique_blocks[$company_id][$unique_key] = $new_block_id;
+            $descriptions = db_get_array("SELECT * FROM ?:bm_blocks_descriptions WHERE block_id = ?i", $block_id);
+            foreach ($descriptions as $description) {
+                $description['block_id'] = $new_block_id;
+                db_query("INSERT INTO ?:bm_blocks_descriptions ?e", $description);
             }
 
-            $block_matches[$block_id] = $new_block_id;
+            $block_content = db_get_array("SELECT * FROM ?:bm_blocks_content WHERE block_id = ?i AND snapping_id = 0 AND object_id = 0 AND object_type = ''", $block_id);
+            foreach ($block_content as $content) {
+                $content['block_id'] = $new_block_id;
+                db_query("INSERT INTO ?:bm_blocks_content ?e", $content);
+            }
         }
 
         //update snappings

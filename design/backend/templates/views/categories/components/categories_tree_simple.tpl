@@ -54,7 +54,7 @@
             {if $except_id}
                 {assign var="_except_id" value="&except_id=`$except_id`"}
             {/if}
-            <span title="{__("expand_sublist_of_items")}" id="on_{$comb_id}" class="hand cm-combination-cat cm-uncheck {if (isset($path.$cat_id))}hidden{/if}" onclick="if (!$('#{$comb_id}').children().length) Tygh.$.ceAjax('request', '{"categories.picker?category_id=`$cur_cat.category_id`&random=`$random`&display=`$display`&checkbox_name=`$checkbox_name``$_except_id`"|fn_url nofilter}', {$ldelim}result_ids: '{$comb_id}'{$rdelim})"><span class="exicon-expand"> </span></span>
+            <span title="{__("expand_sublist_of_items")}" id="on_{$comb_id}" class="hand cm-combination-cat cm-uncheck {if (isset($path.$cat_id))}hidden{/if}" onclick="if (!$('#{$comb_id}').children().length) Tygh.$.ceAjax('request', '{"categories.picker?category_id=`$cur_cat.category_id`&random=`$random`&display=`$display`&checkbox_name=`$checkbox_name``$_except_id`"|fn_url:'A':'rel' nofilter}', {$ldelim}result_ids: '{$comb_id}'{$rdelim})"><span class="exicon-expand"> </span></span>
             {/if}
             <span title="{__("collapse_sublist_of_items")}" id="off_{$comb_id}" class="hand cm-combination-cat cm-uncheck {if !isset($path.$cat_id) && (!$expand_all || !$show_all)}hidden{/if}"><span class="exicon-collapse"></span></span>
         {/if}
@@ -77,9 +77,9 @@
             {assign var="title_id" value="c_company_`$cur_cat.company_id`"}
         {else}
             {if $display == "radio"}
-            <input type="radio" id="input_cat_{$cur_cat.category_id}" name="{$checkbox_name}" value="{$cur_cat.category_id}" class="cm-item" />
+            <input type="radio" name="{$checkbox_name}" value="{$cur_cat.category_id}" class="cm-item" />
             {else}
-            <input type="checkbox" id="input_cat_{$cur_cat.category_id}" name="{$checkbox_name}[{$cur_cat.category_id}]" value="{$cur_cat.category_id}" class="cm-item" />
+            <input type="checkbox" name="{$checkbox_name}[{$cur_cat.category_id}]" value="{$cur_cat.category_id}" class="cm-item" />
             {/if}
         {/if}
     </td>
@@ -88,7 +88,7 @@
     {else}
         {math equation="x+21" x=$shift assign="_shift"}
     {/if}
-        <td style="padding-left: {$_shift}px;">
+        <td class="nowrap" style="padding-left: {$_shift}px;">
             {if $cur_cat.has_children || $cur_cat.subcategories}
                 {if $show_all}
                 <span title="{__("expand_sublist_of_items")}" id="on_{$comb_id}" class="hand cm-combination-cat cm-uncheck {if isset($path.$cat_id) || $expand_all}hidden{/if}"><span class="exicon-expand"></span></span>
@@ -96,17 +96,12 @@
                 {if $except_id}
                     {assign var="_except_id" value="&except_id=`$except_id`"}
                 {/if}
-                <span title="{__("expand_sublist_of_items")}" id="on_{$comb_id}" class="hand cm-combination-cat cm-uncheck {if (isset($path.$cat_id))}hidden{/if}" onclick="if (!Tygh.$('#{$comb_id}').children().length) Tygh.$.ceAjax('request', '{"categories.picker?category_id=`$cur_cat.category_id`&random=`$random`&display=`$display`&checkbox_name=`$checkbox_name``$_except_id`"|fn_url nofilter}', {$ldelim}result_ids: '{$comb_id}'{$rdelim})"><span class="exicon-expand"></span></span>
+                <span title="{__("expand_sublist_of_items")}" id="on_{$comb_id}" class="hand cm-combination-cat cm-uncheck {if (isset($path.$cat_id))}hidden{/if}" onclick="if (!Tygh.$('#{$comb_id}').children().length) Tygh.$.ceAjax('request', '{"categories.picker?category_id=`$cur_cat.category_id`&random=`$random`&display=`$display`&checkbox_name=`$checkbox_name``$_except_id`"|fn_url:'A':'rel' nofilter}', {$ldelim}result_ids: '{$comb_id}'{$rdelim})"><span class="exicon-expand"></span></span>
                 {/if}
                 <span title="{__("collapse_sublist_of_items")}" id="off_{$comb_id}" class="hand cm-combination-cat cm-uncheck {if !isset($path.$cat_id) && (!$expand_all || !$show_all)}hidden{/if}"><span class="exicon-collapse"></span></span>
             {/if}
 
-            {if $cur_cat.company_categories}
-                <span id="{$title_id}">{$cur_cat.category}</span>
-            {else}
-                <label id="{$title_id}" class="inline-label" for="input_cat_{$cur_cat.category_id}">{$cur_cat.category}</label>
-            {/if}
-            {if $cur_cat.status == "N"}&nbsp;<span class="small-note">-&nbsp;[{__("disabled")}]</span>{/if}
+            <span id="{$title_id}">{$cur_cat.category}</span>{if $cur_cat.status == "N"}&nbsp;<span class="small-note">-&nbsp;[{__("disabled")}]</span>{/if}
         </td>
     {if !$runtime.company_id}
     <td class="right">

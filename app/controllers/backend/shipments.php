@@ -12,6 +12,7 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
+use Tygh\Mailer;
 use Tygh\Pdf;
 use Tygh\Registry;
 
@@ -21,11 +22,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $suffix = '.manage';
 
     if ($mode == 'add' && !empty($_REQUEST['shipment_data']) && !fn_allowed_for('ULTIMATE:FREE')) {
+        if (!empty($_REQUEST['shipment_data']['products']) && fn_check_shipped_products($_REQUEST['shipment_data']['products'])) {
 
-        $force_notification = fn_get_notification_rules($_REQUEST);
-        fn_update_shipment($_REQUEST['shipment_data'], 0, 0, false, $force_notification);
+            fn_update_shipment($_REQUEST['shipment_data'], 0);
+
+            $force_notification = fn_get_notification_rules($_REQUEST);
+            if (!empty($force_notification['C'])) {
+                $shipment = array(
+                    'shipment_id' => $shipment_id,
+                    'timestamp' => $shipment_data['timestamp'],
+                    'shipping' => db_get_field('SELECT shipping FROM ?:shipping_descriptions WHERE shipping_id = ?i AND lang_code = ?s', $shipment_data['shipping_id'], $order_info['lang_code']),
+                    'tracking_number' => $shipment_data['tracking_number'],
+                    'carrier' => $shipment_data['carrier'],
+                    'comments' => $shipment_data['comments'],
+                    'items' => $_REQUEST['shipment_data']['products'],
+                );
+
+                Mailer::sendMail(array(
+                    'to' => $order_info['email'],
+                    'from' => 'company_orders_department',
+                    'data' => array(
+                        'shipment' => $shipment,
+                        'order_info' => $order_info,
+                    ),
+                    'tpl' => 'shipments/shipment_products.tpl',
+                    'company_id' => $order_info['company_id'],
+                ), 'C', $order_info['lang_code']);
+
+            }
+
+            fn_set_notification('N', __('notice'), __('shipment_has_been_created'));
+
+        } else {
+            fn_set_notification('E', __('error'), __('products_for_shipment_not_selected'));
+        }
 
         $suffix = '.details?order_id=' . $_REQUEST['shipment_data']['order_id'];
+
     }
 
     if ($mode == 'packing_slip' && !empty($_REQUEST['shipment_ids'])) {
@@ -41,14 +74,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (!empty($_REQUEST['redirect_url'])) {
             return array(CONTROLLER_STATUS_REDIRECT, $_REQUEST['redirect_url']);
         }
-    }
-
-    if ($mode == 'delete' && !empty($_REQUEST['shipment_ids']) && is_array($_REQUEST['shipment_ids'])) {
-        $shipment_ids = implode(',', $_REQUEST['shipment_ids']);
-
-        fn_delete_shipments($shipment_ids);
-
-        return array(CONTROLLER_STATUS_OK, 'shipments.manage');
     }
 
     return array(CONTROLLER_STATUS_OK, 'orders' . $suffix);
@@ -90,23 +115,29 @@ if ($mode == 'details') {
             $shipment = array();
         }
 
-        Tygh::$app['view']->assign('shipment', $shipment);
+        Registry::get('view')->assign('shipment', $shipment);
     }
 
-    Tygh::$app['view']->assign('shippings', $shippings);
-    Tygh::$app['view']->assign('order_info', $order_info);
-    Tygh::$app['view']->assign('carriers', fn_get_carriers());
+    Registry::get('view')->assign('shippings', $shippings);
+    Registry::get('view')->assign('order_info', $order_info);
 
 } elseif ($mode == 'manage') {
     list($shipments, $search) = fn_get_shipments_info($params, Registry::get('settings.Appearance.admin_elements_per_page'));
 
-    Tygh::$app['view']->assign('shipments', $shipments);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('shipments', $shipments);
+    Registry::get('view')->assign('search', $search);
 
 } elseif ($mode == 'packing_slip' && !empty($_REQUEST['shipment_ids'])) {
 
     fn_print_shipment_packing_slips($_REQUEST['shipment_ids'], !empty($_REQUEST['format']) && $_REQUEST['format'] == 'pdf');
     exit;
+
+} elseif ($mode == 'delete' && !empty($_REQUEST['shipment_ids']) && is_array($_REQUEST['shipment_ids'])) {
+    $shipment_ids = implode(',', $_REQUEST['shipment_ids']);
+
+    fn_delete_shipments($shipment_ids);
+
+    return array(CONTROLLER_STATUS_OK, 'shipments.manage');
 }
 
 function fn_get_packing_info($shipment_id)
@@ -153,7 +184,7 @@ function fn_get_packing_info($shipment_id)
 
 function fn_print_shipment_packing_slips($shipment_ids, $pdf = false, $lang_code = CART_LANGUAGE)
 {
-    $view = Tygh::$app['view'];
+    $view = Registry::get('view');
 
     foreach ($shipment_ids as $shipment_id) {
         list($shipment, $order_info) = fn_get_packing_info($shipment_id);
@@ -165,7 +196,7 @@ function fn_print_shipment_packing_slips($shipment_ids, $pdf = false, $lang_code
         $view->assign('shipment', $shipment);
 
         if ($pdf == true) {
-            fn_disable_live_editor_mode();
+            fn_disable_translation_mode();
             $html[] = $view->displayMail('orders/print_packing_slip.tpl', false, 'A', $order_info['company_id'], $lang_code);
         } else {
             $view->displayMail('orders/print_packing_slip.tpl', true, 'A', $order_info['company_id'], $lang_code);

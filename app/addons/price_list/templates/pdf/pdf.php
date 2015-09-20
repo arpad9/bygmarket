@@ -18,7 +18,7 @@ use Tygh\Storage;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
-fn_define('ITEMS_PER_PAGE', 30);
+define('ITEMS_PER_PAGE', 30);
 define('GENERAL_FONT_FAMILY', 'freeserif');
 define('GENERAL_FONT_SIZE', 10);
 define('GENERAL_MARGIN_TOP', 10);
@@ -49,9 +49,9 @@ fn_price_list_timer(); // Start timer;
 
 $filename = fn_get_cache_path() . 'price_list/price_list_' . CART_LANGUAGE . '.pdf'; // Must be unique for each pdf mode.
 
-if (Storage::instance('assets')->isExist($filename)) {
+if (Storage::instance('statics')->isExist($filename)) {
 
-    Storage::instance('assets')->get($filename);
+    Storage::instance('statics')->get($filename);
     exit;
 
 } else {
@@ -296,7 +296,7 @@ if (Storage::instance('assets')->isExist($filename)) {
     $imp_filename = $temp_filename . '.pdf';
     fn_rename($temp_filename, $imp_filename);
     Pdf::batchRender($imp_filename, true);
-    Storage::instance('assets')->put($filename, array(
+    Storage::instance('statics')->put($filename, array(
         'file' => $imp_filename,
         'caching' => true
     ));

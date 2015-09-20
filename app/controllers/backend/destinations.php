@@ -43,16 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $suffix = ".manage";
     }
 
-    if ($mode == 'delete') {
-
-        if (!empty($_REQUEST['destination_id'])) {
-            fn_delete_destinations((array) $_REQUEST['destination_id']);
-        }
-
-        $suffix = ".manage";
-    }
-
-    return array(CONTROLLER_STATUS_OK, 'destinations' . $suffix);
+    return array(CONTROLLER_STATUS_OK, "destinations$suffix");
 }
 
 // ----------------------------- GET routines -------------------------------------------------
@@ -81,29 +72,31 @@ if ($mode == 'update') {
     $destination_data['addresses'] = db_get_hash_single_array("SELECT element_id, element FROM ?:destination_elements WHERE element_type = 'A' AND destination_id = ?i", array('element_id', 'element'), $_REQUEST['destination_id']);
     $destination_data['addresses'] = implode("\n", $destination_data['addresses']);
 
-    $all_countries = fn_get_simple_countries(true, CART_LANGUAGE);
-    $all_countries = array_diff_assoc($all_countries, $destination_data['countries']);
+    Registry::get('view')->assign('destination_data', $destination_data);
+    Registry::get('view')->assign('destination', $destination);
 
-    $all_states = fn_destination_get_states(CART_LANGUAGE);
-    $all_states = array_diff_assoc($all_states, $destination_data['states']);
-
-    Tygh::$app['view']->assign('destination_data', $destination_data);
-    Tygh::$app['view']->assign('destination', $destination);
-
-    Tygh::$app['view']->assign('states', $all_states);
-    Tygh::$app['view']->assign('countries', $all_countries);
+    Registry::get('view')->assign('states', fn_destination_get_states(CART_LANGUAGE));
+    Registry::get('view')->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
 
 // Add destination
 } elseif ($mode == 'add') {
 
-    Tygh::$app['view']->assign('states', fn_destination_get_states(CART_LANGUAGE));
-    Tygh::$app['view']->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
+    Registry::get('view')->assign('states', fn_destination_get_states(CART_LANGUAGE));
+    Registry::get('view')->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
 
 // Destinations list
 } elseif ($mode == 'manage') {
 
     $destinations = fn_get_destinations(DESCR_SL);
-    Tygh::$app['view']->assign('destinations', $destinations);
+    Registry::get('view')->assign('destinations', $destinations);
+
+} elseif ($mode == 'delete') {
+
+    if (!empty($_REQUEST['destination_id'])) {
+        fn_delete_destinations((array) $_REQUEST['destination_id']);
+    }
+
+    return array(CONTROLLER_STATUS_REDIRECT, "destinations.manage");
 }
 
 function fn_delete_destinations($destination_ids)

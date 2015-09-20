@@ -23,44 +23,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         fn_update_status($_REQUEST['status'], $_REQUEST['status_data'], $_REQUEST['type']);
     }
 
-    if ($mode == 'delete') {
-        if (!empty($_REQUEST['status'])) {
-
-            if (fn_delete_status($_REQUEST['status'], $_REQUEST['type'])) {
-                $count = db_get_field("SELECT COUNT(*) FROM ?:statuses");
-                if (empty($count)) {
-                    Tygh::$app['view']->display('views/statuses/manage.tpl');
-                }
-            }
-        }
-        exit;
-    }
-
-    return array(CONTROLLER_STATUS_OK, 'statuses.manage?type=' . $_REQUEST['type']);
+    return array(CONTROLLER_STATUS_OK, "statuses.manage?type=$_REQUEST[type]");
 }
 
 if ($mode == 'update') {
 
     $status_data = fn_get_status_data($_REQUEST['status'], $_REQUEST['type']);
 
-    Tygh::$app['view']->assign('status_data', $status_data);
-    Tygh::$app['view']->assign('type', $_REQUEST['type']);
-    Tygh::$app['view']->assign('status_params', fn_get_status_params_definition($_REQUEST['type']));
+    Registry::get('view')->assign('status_data', $status_data);
+    Registry::get('view')->assign('type', $_REQUEST['type']);
+    Registry::get('view')->assign('status_params', fn_get_status_params_definition($_REQUEST['type']));
+
+} elseif ($mode == 'delete') {
+    if (!empty($_REQUEST['status'])) {
+
+        if (fn_delete_status($_REQUEST['status'], $_REQUEST['type'])) {
+            $count = db_get_field("SELECT COUNT(*) FROM ?:statuses");
+            if (empty($count)) {
+                Registry::get('view')->display('views/statuses/manage.tpl');
+            }
+        }
+    }
+    exit;
 
 } elseif ($mode == 'manage') {
 
     $section_data = array();
     $statuses = fn_get_statuses($_REQUEST['type'], array(), false, false, DESCR_SL);
 
-    Tygh::$app['view']->assign('statuses', $statuses);
+    Registry::get('view')->assign('statuses', $statuses);
 
     $type = !empty($_REQUEST['type']) ? $_REQUEST['type'] : STATUSES_ORDER;
-    Tygh::$app['view']->assign('type', $type);
-    Tygh::$app['view']->assign('status_params', fn_get_status_params_definition($type));
+    Registry::get('view')->assign('type', $type);
+    Registry::get('view')->assign('status_params', fn_get_status_params_definition($type));
 
     // Orders only
     if ($type == STATUSES_ORDER) {
-        Tygh::$app['view']->assign('title', __('order_statuses'));
+        Registry::get('view')->assign('title', __('order_statuses'));
     }
 }
 

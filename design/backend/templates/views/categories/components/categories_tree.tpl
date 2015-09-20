@@ -8,7 +8,7 @@
             {assign var="header" value=""}
             <thead>
             <tr>
-                <th width="5%">{include file="common/check_items.tpl" check_statuses=''|fn_get_default_status_filters:true}</th>
+                <th width="5%">{include file="common/check_items.tpl" check_statuses=''|fn_get_default_statuses:true}</th>
                 <th width="8%">{__("position_short")}</th>
                 <th width="54%">
                     {if $show_all && !$smarty.request.b_id}
@@ -39,7 +39,7 @@
                             {if $show_all}
                                 <span alt="{__("expand_sublist_of_items")}" title="{__("expand_sublist_of_items")}" id="on_{$comb_id}" class="cm-combination {if $expand_all}hidden{/if}" /><span class="exicon-expand"> </span></span>
                                 {else}
-                                <span alt="{__("expand_sublist_of_items")}" title="{__("expand_sublist_of_items")}" id="on_{$comb_id}" class="exicon-collapse cm-combination" onclick="if (!Tygh.$('#{$comb_id}').children().get(0)) Tygh.$.ceAjax('request', '{"categories.manage?category_id=`$category.category_id`"|fn_url nofilter}', {$ldelim}result_ids: '{$comb_id}'{$rdelim})"><span class="exicon-expand"> </span></span>
+                                <span alt="{__("expand_sublist_of_items")}" title="{__("expand_sublist_of_items")}" id="on_{$comb_id}" class="exicon-collapse cm-combination" onclick="if (!Tygh.$('#{$comb_id}').children().get(0)) Tygh.$.ceAjax('request', '{"categories.manage?category_id=`$category.category_id`"|fn_url:'A':'rel' nofilter}', {$ldelim}result_ids: '{$comb_id}'{$rdelim})"><span class="exicon-expand"> </span></span>
                             {/if}
                             <span alt="{__("collapse_sublist_of_items")}" title="{__("collapse_sublist_of_items")}" id="off_{$comb_id}" class="cm-combination{if !$expand_all || !$show_all} hidden{/if}"><span class="exicon-collapse"></span></span>
                         {/if}
@@ -68,10 +68,10 @@
                     {if $show_all}
                         <span alt="{__("expand_sublist_of_items")}" title="{__("expand_sublist_of_items")}" id="on_{$comb_id}" class="cm-combination {if $expand_all}hidden{/if}"><span class="exicon-expand"></span> </span>
                         {else}
-                        <span alt="{__("expand_sublist_of_items")}" title="{__("expand_sublist_of_items")}" id="on_{$comb_id}" class="cm-combination" onclick="if (!Tygh.$('#{$comb_id}').children().get(0)) Tygh.$.ceAjax('request', '{"categories.manage?category_id=`$category.category_id`"|fn_url nofilter}', {$ldelim}result_ids: '{$comb_id}'{$rdelim})"> <span class="exicon-expand"></span></span>
+                        <span alt="{__("expand_sublist_of_items")}" title="{__("expand_sublist_of_items")}" id="on_{$comb_id}" class="cm-combination" onclick="if (!Tygh.$('#{$comb_id}').children().get(0)) Tygh.$.ceAjax('request', '{"categories.manage?category_id=`$category.category_id`"|fn_url:'A':'rel' nofilter}', {$ldelim}result_ids: '{$comb_id}'{$rdelim})"> <span class="exicon-expand"></span></span>
                     {/if}
                             <span alt="{__("collapse_sublist_of_items")}" title="{__("collapse_sublist_of_items")}" id="off_{$comb_id}" class="cm-combination{if !$expand_all || !$show_all} hidden{/if}"><span class="exicon-collapse"></span></span>
-                <span class="row-status">{$category.category}</span>
+                <a class="row-status" href="{"companies.update?company_id=`$category.company_id`"|fn_url}">{$category.category}</a>
             </span>
                     {/strip}
                 </td>
@@ -93,7 +93,7 @@
                     {if $show_all}
                     <span alt="{__("expand_sublist_of_items")}" title="{__("expand_sublist_of_items")}" id="on_cat_{$category.category_id}" class="cm-combination {if $expand_all}hidden{/if}" ><span class="exicon-expand"> </span></span>
                     {else}
-                    <span alt="{__("expand_sublist_of_items")}" title="{__("expand_sublist_of_items")}" id="on_cat_{$category.category_id}" class="cm-combination" onclick="if (!Tygh.$('#cat_{$category.category_id}').children().get(0)) Tygh.$.ceAjax('request', '{"categories.manage?category_id=`$category.category_id`"|fn_url nofilter}', {$ldelim}result_ids: 'cat_{$category.category_id}'{$rdelim})"><span class="exicon-expand"> </span></span>
+                    <span alt="{__("expand_sublist_of_items")}" title="{__("expand_sublist_of_items")}" id="on_cat_{$category.category_id}" class="cm-combination" onclick="if (!Tygh.$('#cat_{$category.category_id}').children().get(0)) Tygh.$.ceAjax('request', '{"categories.manage?category_id=`$category.category_id`"|fn_url:'A':'rel' nofilter}', {$ldelim}result_ids: 'cat_{$category.category_id}'{$rdelim})"><span class="exicon-expand"> </span></span>
                 {/if}
                 <span alt="{__("collapse_sublist_of_items")}" title="{__("collapse_sublist_of_items")}" id="off_cat_{$category.category_id}" class="cm-combination{if !$expand_all || !$show_all} hidden{/if}" ><span class="exicon-collapse"> </span></span>
             {/if}
@@ -108,17 +108,15 @@
                 <div class="hidden-tools">
                     {capture name="tools_items"}
                         <li>{btn type="list" text=__("add_product") href="products.add?category_id=`$category.category_id`"}</li>
-                        {if !$hide_inputs}
                         <li class="divider"></li>
-                        {/if}
                         <li>{btn type="list" text=__("edit") href="categories.update?category_id=`$category.category_id`"}</li>
-                        <li>{btn type="list" class="cm-confirm cm-post" data=["data-ca-confirm-text" => "{__("category_deletion_side_effects")}"] text=__("delete") href="categories.delete?category_id=`$category.category_id`"}</li>
+                        <li>{btn type="list" class="cm-confirm" text=__("delete") href="categories.delete?category_id=`$category.category_id`"}</li>
                     {/capture}
                     {dropdown content=$smarty.capture.tools_items}
                 </div>
             </td>
             <td width="10%" class="nowrap right">
-            {include file="common/select_popup.tpl" popup_additional_class="dropleft" id=$category.category_id status=$category.status hidden=true object_id_name="category_id" table="categories" non_editable=$hide_inputs}
+            {include file="common/select_popup.tpl" popup_additional_class="dropleft" id=$category.category_id status=$category.status hidden=true object_id_name="category_id" table="categories"}
             </td>
         {/if}
     </tr>

@@ -16,8 +16,6 @@ use Tygh\Registry;
 use Tygh\Menu;
 use Tygh\BlockManager\Block;
 use Tygh\Navigation\LastView;
-use \Tygh\Languages\Languages;
-use Tygh\Tools\SecurityHelper;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -71,22 +69,8 @@ define('PAGE_TYPE_TEXT', 'T');
  */
 function fn_get_pages($params = array(), $items_per_page = 0, $lang_code = CART_LANGUAGE)
 {
-   /**
-     * Changes params for selecting pages
-     *
-     * @param array  $params         Pages search params
-     * @param int    $items_per_page Items per page
-     * @param string $lang_code      Two-letter language code (e.g. 'en', 'ru', etc.)
-     */
-    fn_set_hook('get_pages_pre', $params, $items_per_page, $lang_code);
-
-    $view_type = 'pages';
-    if (!empty($params['page_type']) && fn_is_exclusive_page_type($params['page_type'])) {
-        $view_type .= '_' . $params['page_type'];
-    }
-
     // Init filter
-    $params = LastView::instance()->update($view_type, $params);
+    $params = LastView::instance()->update('pages', $params);
 
     $default_params = array(
         'page_id' => 0,
@@ -96,7 +80,6 @@ function fn_get_pages($params = array(), $items_per_page = 0, $lang_code = CART_
         'pdescr' => '',
         'subpages' => '',
         'match' => '',
-        'page_type' => '',
         'items_per_page' => $items_per_page
     );
 
@@ -112,14 +95,8 @@ function fn_get_pages($params = array(), $items_per_page = 0, $lang_code = CART_
 
     $fields = array (
         '?:pages.*',
-
+        '?:page_descriptions.*'
     );
-
-    if (!empty($params['simple'])) {
-        $fields[] = '?:page_descriptions.page';
-    } else {
-        $fields[] = '?:page_descriptions.*';
-    }
 
     // Define sort fields
     $sortings = array (
@@ -182,6 +159,10 @@ function fn_get_pages($params = array(), $items_per_page = 0, $lang_code = CART_
 
     $condition .= fn_get_company_condition('?:pages.company_id');
 
+    if (!empty($params['page_type'])) {
+        $condition .= db_quote(" AND ?:pages.page_type = ?s", $params['page_type']);
+    }
+
     if (isset($params['parent_id']) && $params['parent_id'] !== '') {
         $p_ids = array();
         if ($params['subpages'] == 'Y') {
@@ -211,9 +192,7 @@ function fn_get_pages($params = array(), $items_per_page = 0, $lang_code = CART_
         $condition .= db_quote(" AND ?:pages.company_id = ?i", $params['company_id']);
     }
 
-    if (empty($params['full_search'])) {
-        $condition .= db_quote(" AND ?:pages.page_type IN (?a)", array_keys(fn_get_page_type_filter($params['page_type'])));
-    }
+    $condition .= db_quote(" AND ?:pages.page_type IN (?a)", array_keys(fn_get_page_object_by_type()));
 
     if (!empty($params['visible'])) {  // for pages tree: show visible branch only
         $page_ids = array();
@@ -294,7 +273,7 @@ function fn_get_pages($params = array(), $items_per_page = 0, $lang_code = CART_
 
     if (!empty($params['items_per_page'])) {
         $params['total_items'] = db_get_field("SELECT COUNT(DISTINCT(?:pages.page_id)) FROM ?:pages ?p WHERE ?p ?p ?p", $join, $condition, $group_by, $sorting);
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+        $limit = db_paginate($params['page'], $params['items_per_page']);
     }
 
     $pages = db_get_hash_array("SELECT " . implode(', ', $fields) ." FROM ?:pages ?p WHERE ?p ?p ?p ?p", 'page_id', $join, $condition, $group_by, $sorting, $limit);
@@ -336,7 +315,10 @@ function fn_get_pages($params = array(), $items_per_page = 0, $lang_code = CART_
         if (!empty($params['get_children_count'])) {
             $where_condition = !empty($params['except_id']) ? db_quote(' AND page_id != ?i', $params['except_id']) : '';
             if ($params['get_tree'] == 'plain') {
-                $_page_ids = fn_array_column($pages, 'page_id');
+                $_page_ids = array();
+                foreach ($pages as $_p) {
+                    $_page_ids[] = $_p['page_id'];
+                }
             } else {
                 $_page_ids = array_keys($pages);
             }
@@ -366,8 +348,6 @@ function fn_get_pages($params = array(), $items_per_page = 0, $lang_code = CART_
 
     fn_set_hook('post_get_pages', $pages, $params, $lang_code);
 
-    LastView::instance()->processResults($view_type, $pages, $params);
-
     return array($pages, $params);
 }
 
@@ -391,15 +371,7 @@ function fn_update_page($page_data, $page_id = 0, $lang_code = CART_LANGUAGE)
      */
     fn_set_hook('update_page_pre', $page_data, $page_id, $lang_code);
 
-    if (!empty($page_id) && !fn_check_company_id('pages', 'page_id', $page_id)) {
-        fn_company_access_denied_notification();
-
-        return false;
-    }
-
     if (!empty($page_data)) {
-        SecurityHelper::sanitizeObjectData('page', $page_data);
-
         if (!empty($page_data['avail_from_timestamp'])) {
             $page_data['avail_from_timestamp'] = fn_parse_date($page_data['avail_from_timestamp']);
         } else {
@@ -436,9 +408,6 @@ function fn_update_page($page_data, $page_id = 0, $lang_code = CART_LANGUAGE)
          */
         fn_set_hook('update_page_before', $page_data, $page_id, $lang_code);
 
-        $parent_id = isset($page_data['parent_id']) ? $page_data['parent_id'] : null;
-        unset($page_data['parent_id']);
-
         if (empty($page_id)) {
             // page title required
             if (empty($page_data['page'])) {
@@ -452,7 +421,25 @@ function fn_update_page($page_data, $page_id = 0, $lang_code = CART_LANGUAGE)
             foreach (fn_get_translation_languages() as $page_data['lang_code'] => $v) {
                 db_query('INSERT INTO ?:page_descriptions ?e', $page_data);
             }
+
+            // now we need to update 'id_path' field, as we know $page_id
+            /* Generate id_path for page */
+            $parent_id = intval($page_data['parent_id']);
+            if ($parent_id == 0) {
+                $id_path = $page_id;
+            } else {
+                $id_path = db_get_row("SELECT id_path FROM ?:pages WHERE page_id = ?i", $parent_id);
+                $id_path = $id_path['id_path'] . '/' . $page_id;
+            }
+
+            db_query('UPDATE ?:pages SET ?u WHERE page_id = ?i', array('id_path' => $id_path), $page_id);
+
         } else {
+            if (!fn_check_company_id('pages', 'page_id', $page_id)) {
+                fn_company_access_denied_notification();
+
+                return false;
+            }
             $old_page_data = fn_get_page_data($page_id, $lang_code);
             $create = false;
             // page title is not updated
@@ -463,13 +450,11 @@ function fn_update_page($page_data, $page_id = 0, $lang_code = CART_LANGUAGE)
             // update existing page
             db_query('UPDATE ?:pages SET ?u WHERE page_id = ?i', $page_data, $page_id);
             db_query('UPDATE ?:page_descriptions SET ?u WHERE page_id = ?i AND lang_code = ?s', $page_data, $page_id, $lang_code);
-        }
 
-        $page_data['parent_id'] = $parent_id;
-
-        // regenerate id_path for child pages
-        if (isset($page_data['parent_id'])) {
-            fn_change_page_parent($page_id, intval($page_data['parent_id']));
+            // regenerate id_path for child pages
+            if (isset($page_data['parent_id'])) {
+                fn_change_page_parent($page_id, $page_data['parent_id']);
+            }
         }
     }
 
@@ -511,46 +496,19 @@ function fn_change_page_company($page_id, $new_company_id)
 function fn_change_page_parent($page_id, $new_parent_id)
 {
     if (!empty($page_id)) {
-        /**
-         * Adds additional actions before page parent updating
-         *
-         * @param int $page_id Page identifier
-         * @param int $new_parent_id Identifier of new page parent
-         */
-        fn_set_hook('update_page_parent_pre', $page_id, $new_parent_id);
 
-        $paths = db_get_hash_array("SELECT page_id, parent_id, id_path FROM ?:pages WHERE page_id IN (?n)", 'page_id', array($new_parent_id, $page_id));
+        //$page_data['localization'] = empty($page_data['localization']) ? '' : fn_implode_localizations($page_data['localization']);
 
-        // new page, generate path
-        if (empty($paths[$page_id]['id_path'])) {
-            if (empty($new_parent_id)) {
-                $id_path = $page_id;
-            } else {
-                $id_path = $paths[$new_parent_id]['id_path'] . '/' . $page_id;
-            }
+        $new_parent_path = db_get_field("SELECT id_path FROM ?:pages WHERE page_id = ?i", $new_parent_id);
+        $current_path = db_get_field("SELECT id_path FROM ?:pages WHERE page_id = ?i", $page_id);
 
-            db_query("UPDATE ?:pages SET id_path = ?s WHERE page_id = ?i", $id_path, $page_id);
+        if (!empty($new_parent_path) && !empty($current_path)) {
+            db_query("UPDATE ?:pages SET parent_id = ?i, id_path = ?s WHERE page_id = ?i", $new_parent_id, "$new_parent_path/$page_id", $page_id);
+            db_query("UPDATE ?:pages SET id_path = CONCAT(?s, SUBSTRING(id_path, ?i)) WHERE id_path LIKE ?l", "$new_parent_path/$page_id/", (strlen($current_path."/") + 1), "$current_path/%");
 
-            $paths[$page_id]['id_path'] = $id_path;
-        }
-
-        if ($paths[$page_id]['parent_id'] != $new_parent_id) {
-
-            if (!empty($paths[$new_parent_id]['id_path'])) {
-                db_query("UPDATE ?:pages SET parent_id = ?i, id_path = ?s WHERE page_id = ?i", $new_parent_id, $paths[$new_parent_id]['id_path'] . "/$page_id", $page_id);
-                db_query("UPDATE ?:pages SET id_path = CONCAT(?s, SUBSTRING(id_path, ?i)) WHERE id_path LIKE ?l",  $paths[$new_parent_id]['id_path'] . "/$page_id/", strlen($paths[$page_id]['id_path'] . '/') + 1, $paths[$page_id]['id_path'] . '/%');
-            } else {
-                db_query("UPDATE ?:pages SET parent_id = ?i, id_path = ?i WHERE page_id = ?i", $new_parent_id, $page_id, $page_id);
-                db_query("UPDATE ?:pages SET id_path = CONCAT(?s, SUBSTRING(id_path, ?i)) WHERE id_path LIKE ?l", "$page_id/", strlen($paths[$page_id]['id_path'] . '/') + 1, $paths[$page_id]['id_path'] . '/%');
-            }
-
-            /**
-             * Adds additional actions after page parent updating
-             *
-             * @param int $page_id Page identifier
-             * @param int $new_parent_id Identifier of new page parent
-             */
-            fn_set_hook('update_page_parent_post', $page_id, $new_parent_id);
+        } elseif (empty($new_parent_path) && !empty($current_path)) {
+            db_query("UPDATE ?:pages SET parent_id = ?i, id_path = ?s WHERE page_id = ?i", $new_parent_id, $page_id, $page_id);
+            db_query("UPDATE ?:pages SET id_path = CONCAT(?s, SUBSTRING(id_path, ?i)) WHERE id_path LIKE ?l", "$page_id/", (strlen($current_path."/") + 1), "$current_path/%");
         }
 
         return true;
@@ -636,42 +594,6 @@ function fn_get_page_object_by_type($page_type = '')
     return empty($page_type) ? $types : $types[$page_type];
 }
 
-function fn_get_page_type_filter($page_type = '')
-{
-    $types = fn_get_page_object_by_type();
-
-    if (empty($page_type)) {
-        foreach ($types as $type => $data) {
-            if (!empty($data['exclusive'])) {
-                unset($types[$type]);
-            }
-        }
-
-        return $types;
-    } elseif (is_array($page_type)) {
-
-        $result = array();
-        foreach ($page_type as $_type) {
-            $result[$_type] = $types[$_type];
-        }
-
-        return $result;
-    } else {
-        return array($page_type => $types[$page_type]);
-    }
-}
-
-function fn_is_exclusive_page_type($page_type)
-{
-    if (!is_array($page_type)){
-        $type_data = fn_get_page_object_by_type($page_type);
-
-        return !empty($type_data['exclusive']);
-    }
-
-    return false;
-}
-
 /**
  * Gets list of pages and returns as plain list
  *
@@ -681,7 +603,7 @@ function fn_get_pages_plain_list($params = array())
 {
     $default_params = array(
         'get_tree' => 'plain',
-        'simple' => true
+        'get_parent_pages' => true
     );
 
     if (is_array($params)) {
@@ -739,7 +661,7 @@ function fn_dropdown_appearance_cut_second_third_levels(&$data, $childs_name, $p
 }
 
 /**
- * Function forms detailed-page URL for elements in the block with Dropdown appearance
+ * Fucntion forms detailed-page URL for elements in the block with Dropdown appearance
  *
  * @param array $object_data Current element of block
  * @param string $object_type Type of object
@@ -748,14 +670,6 @@ function fn_dropdown_appearance_cut_second_third_levels(&$data, $childs_name, $p
 function fn_form_dropdown_object_link($object_data, $object_type)
 {
     $result = '';
-
-    /**
-     * Actions before preparing the object links results
-     *
-     * @param array  $object_data Current element of block
-     * @param string $object_type Type of object
-     */
-    fn_set_hook('dropdown_object_link_pre', $object_data, $object_type);
 
     if ($object_type == 'categories') {
         $result = fn_url('categories.view?category_id=' . $object_data['category_id']);
@@ -769,14 +683,6 @@ function fn_form_dropdown_object_link($object_data, $object_type)
         $result = fn_url($object_data['href']);
     }
 
-    /**
-     * Actions after got link by object
-     *
-     * @param array  $object_data Current element of block
-     * @param string $object_type Type of object
-     */
-    fn_set_hook('dropdown_object_link_post', $object_data, $object_type, $result);
-
     return $result;
 }
 
@@ -789,6 +695,7 @@ function fn_form_dropdown_object_link($object_data, $object_type)
  */
 function fn_check_is_active_menu_item($object_data, $object_type)
 {
+    $active_ids = array();
     $id = null;
 
     if ($object_type == 'categories') {
@@ -812,7 +719,7 @@ function fn_check_is_active_menu_item($object_data, $object_type)
  * @param bool $preview Page data for preview (ignore cahce)
  * @return array|bool Page data on success, false otherwise
  */
-function fn_get_page_data($page_id, $lang_code = CART_LANGUAGE, $preview = false, $area = AREA)
+function fn_get_page_data($page_id, $lang_code = CART_LANGUAGE, $preview = false)
 {
     static $cache = array();
 
@@ -820,45 +727,33 @@ function fn_get_page_data($page_id, $lang_code = CART_LANGUAGE, $preview = false
         return false;
     }
 
-    fn_set_hook('get_page_data_pre', $page_id, $lang_code, $preview, $area);
-
     if (empty($cache[$page_id])) {
+        $condition = '';
 
-        $condition = fn_get_company_condition('?:pages.company_id');
+        $condition .= fn_get_company_condition('?:pages.company_id');
 
-        if ($area != 'A' && !$preview) {
+        if (AREA != 'A' && !$preview) {
             $condition .= " AND (" . fn_find_array_in_set($_SESSION['auth']['usergroup_ids'], '?:pages.usergroup_ids', true) . ")";
         }
 
-        $field_list = "?:pages.*, ?:page_descriptions.*";
-        $join = " INNER JOIN ?:page_descriptions ON ?:pages.page_id = ?:page_descriptions.page_id";
         $condition .= db_quote(" AND ?:pages.page_type IN (?a)", array_keys(fn_get_page_object_by_type()));
 
-        fn_set_hook('pre_get_page_data', $field_list, $join, $condition, $lang_code);
-
-        $page_data = db_get_row(
-            "SELECT $field_list FROM ?:pages ?p WHERE ?:pages.page_id = ?i AND ?:page_descriptions.lang_code = ?s ?p",
-            $join, $page_id, $lang_code, $condition
+        $cache[$page_id] = db_get_row(
+            "SELECT * FROM ?:pages "
+                . "INNER JOIN ?:page_descriptions ON ?:pages.page_id = ?:page_descriptions.page_id "
+            . "WHERE ?:pages.page_id = ?i AND ?:page_descriptions.lang_code = ?s ?p",
+            $page_id, $lang_code, $condition
         );
 
-        if (empty($page_data) ||
-            ($area != 'A' &&
-                (
-                    $page_data['status'] == 'D' ||
-                    $page_data['use_avail_period'] == 'Y' && ($page_data['avail_from_timestamp'] > TIME || $page_data['avail_till_timestamp'] < TIME)
-                )
-            ) && empty($preview)) {
+        if (empty($cache[$page_id]) || (AREA != 'A' && ($cache[$page_id]['status'] == 'D' || $cache[$page_id]['use_avail_period'] == 'Y' && ($cache[$page_id]['avail_from_timestamp'] > TIME || $cache[$page_id]['avail_till_timestamp'] < TIME))) && empty($preview)) {
             return false;
         }
-
-        fn_set_hook('get_page_data', $page_data, $lang_code, $preview, $area);
+        fn_set_hook('get_page_data', $cache[$page_id], $lang_code);
 
         // Generate meta description automatically
-        if (empty($page_data['meta_description']) && defined('AUTO_META_DESCRIPTION') && $area != 'A') {
-            $page_data['meta_description'] = fn_generate_meta_description($page_data['description']);
+        if (empty($cache[$page_id]['meta_description']) && defined('AUTO_META_DESCRIPTION') && AREA != 'A') {
+            $cache[$page_id]['meta_description'] = fn_generate_meta_description($cache[$page_id]['description']);
         }
-
-        $cache[$page_id] = $page_data;
     }
 
     return (!empty($cache[$page_id]) ? $cache[$page_id] : false);
@@ -893,7 +788,7 @@ function fn_get_file_description($path, $descr_key, $get_lang_var = false)
         $counter = 1;
 
         while (($s = fgets($fd, 4096)) && ($counter < 3)) {
-            preg_match('/' . $descr_key . ':([\.\w]+)/i', $s, $matches);
+            preg_match('/' . $descr_key . ':(\w+)/i', $s, $matches);
             if (!empty($matches[1])) {
                 $return = $get_lang_var ? $matches[1] : __($matches[1]);
                 break;
@@ -943,13 +838,21 @@ function fn_delete_page($page_id, $recurse = true)
 /** Block manager **/
 
 /**
- * @deprecated
+ * Returns currencies list from registry
  *
- * Returns only active languages list for block (as lang_code => array(name, lang_code, status, country_code)
+ * @return array Currencies list
+ */
+function fn_get_currencies()
+{
+    return Registry::get('currencies');
+}
+
+/**
+ * Returns only active languages list (as lang_code => array(name, lang_code, status, country_code)
  *
  * @param string $default_value Default value defined in Block scheme
  * @param array $block filled block data
- * @param array $block_scheme Scheme of current block
+ * @param arary $block_scheme Scheme of current block
  * @param bool $include_hidden if true get hidden languages too
  * @param array $params extra params
  *      area - get languages for specified area. Default: "C"
@@ -957,24 +860,16 @@ function fn_delete_page($page_id, $recurse = true)
  */
 function fn_get_languages($default_value = '', $block = array(), $block_scheme = array(), $include_hidden = false, $params = array())
 {
+    $language_condition = $include_hidden ? "WHERE status <> 'D'" : "WHERE status = 'A'";
+
     $area = isset($params['area']) ? $params['area'] : AREA;
-    $languages = Languages::getAvailable($area, $include_hidden);
+    if (fn_allowed_for('ULTIMATE:FREE') && $area == 'C') {
+        $language_condition .= db_quote(' AND lang_code = ?s', DEFAULT_LANGUAGE);
+    }
+
+    $languages = db_get_hash_array("SELECT lang_code, name, status, country_code FROM ?:languages ?p", 'lang_code', $language_condition);
 
     return $languages;
-}
-
-/**
- * @deprecated
- *
- * Returns active and hidden languages list (as lang_code => array(name, lang_code, status, country_code)
- *
- * @param  string $area        Area ('A' for admin or 'C' for customer)
- * @param bool $include_hidden if true get hidden languages too
- * @return array Languages list
- */
-function fn_get_avail_languages($area = AREA, $include_hidden = false)
-{
-    return Languages::getAvailable($area, $include_hidden);
 }
 
 /**
@@ -991,8 +886,6 @@ function fn_get_simple_currencies($only_avail = true)
 }
 
 /**
- * @deprecated
- *
  * Gets only active languages list (as lang_code => name)
  *
  * @param bool $include_hidden if true get hiddenlanguages too
@@ -1000,14 +893,16 @@ function fn_get_simple_currencies($only_avail = true)
  */
 function fn_get_simple_languages($include_hidden = false)
 {
-    return Languages::getSimpleLanguages($include_hidden);
+    $language_condition = $include_hidden ? "WHERE status <> 'D'" : "WHERE status = 'A'";
+
+    return db_get_hash_single_array("SELECT lang_code, name FROM ?:languages ?p", array('lang_code', 'name'), $language_condition);
 }
 
 /**
  * Gets name of menu
  *
  * @param int $menu_id Menu identifier
- * @param string $lang_code 2 letters language code
+ * @param string $lang_code 2 letters languge code
  * @return string Menu mane
  */
 function fn_get_menu_name($menu_id, $lang_code = DESCR_SL)
@@ -1108,12 +1003,6 @@ function fn_top_menu_form($top_menu, $level = 0, &$active = NULL)
                     $v['descr'] = fn_get_category_name($id);
                     $v['param'] = 'categories.view?category_id=' . $id;
                 }
-                //Should add this checking because the same pages can have different request parameters and the next checking
-                //with fn_top_menu_is_current_url function could return incorrect result.
-                //For example: categories.view?category_id=165 and categories.view?category_id=165&currency=EUR should have the same active elements.
-                if (fn_check_is_active_menu_item(array('category_id' => $id), 'categories')) {
-                    $top_menu[$k]['active'] = true;
-                }
             } elseif ($type == 'A') { // pages
                 $params = array(
                     'from_page_id' => $id,
@@ -1128,9 +1017,6 @@ function fn_top_menu_form($top_menu, $level = 0, &$active = NULL)
                     $page_data = fn_get_page_data($id);
                     $v['descr'] = $page_data['page'];
                     $v['param'] = !empty($page_data['link']) ? $page_data['link'] : ('pages.view?page_id=' . $id);
-                }
-                if (fn_check_is_active_menu_item(array('page_id' => $id), 'pages')) {
-                    $top_menu[$k]['active'] = true;
                 }
             } else { // for addons
                 fn_set_hook('top_menu_form', $v, $type, $id, $use_name);
@@ -1228,271 +1114,10 @@ function fn_top_menu_is_current_url($url, $active_for = '')
 
         $params = parse_url($url);
 
-        if (!isset($params['host']) || $params['host'] == $_SERVER['HTTP_HOST']) {
-            $current_params = parse_url($_SERVER['REQUEST_URI']);
-
-            if ((
-                (!isset($params['path']) && !isset($current_params['path']))
-                || $params['path'] == $current_params['path'])
-                && ((!isset($params['query']))
-                || strpos($current_params['query'], $params['query']) !== false)
-            ) {
-                $active = true;
-            }
+        if (isset($params['query']) && (!isset($params['host']) || $params['host'] == $_SERVER['HTTP_HOST'])) {
+            $active = $params['query'] == $_SERVER['QUERY_STRING'];
         }
     }
 
     return $active;
-}
-
-/**
- * Delete links
- *
- * @param array $link_ids Array links identifier
- */
-function fn_delete_sitemap_links($link_ids)
-{
-    fn_set_hook('sitemap_delete_links', $link_ids);
-
-    if (!empty($link_ids)) {
-        db_query("DELETE FROM ?:sitemap_links WHERE link_id IN (?n)", $link_ids);
-        db_query("DELETE FROM ?:common_descriptions WHERE object_holder = 'sitemap_links' AND object_id IN (?n)", $link_ids);
-    }
-}
-
-/**
- * Delete sections
- *
- * @param array $section_ids Array sections identifier
- */
-function fn_delete_sitemap_sections($section_ids)
-{
-    fn_set_hook('sitemap_delete_sections', $section_ids);
-
-    if (!empty($section_ids)) {
-        db_query("DELETE FROM ?:sitemap_sections WHERE section_id IN (?n)", $section_ids);
-        db_query("DELETE FROM ?:common_descriptions WHERE object_holder = 'sitemap_sections' AND object_id IN (?n)", $section_ids);
-
-        $links = db_get_fields("SELECT link_id FROM ?:sitemap_links WHERE section_id IN (?n)", $section_ids);
-        if (!empty($links)) {
-                db_query("DELETE FROM ?:sitemap_links WHERE section_id IN (?n)", $section_ids);
-                db_query("DELETE FROM ?:common_descriptions WHERE object_holder = 'sitemap_links' AND object_id IN (?n)", $links);
-        }
-    }
-}
-
-/**
- * Get sitemap sections
- *
- * @param int $section_id Section identifier
- * @return array $sections
- */
-function fn_get_sitemap_sections($params = array())
-{
-    $section_fields = array(
-        's.*',
-        'c.object as section'
-    );
-
-    $section_tables = array(
-        '?:sitemap_sections as s',
-    );
-
-    $section_left_join = array(
-        db_quote('?:common_descriptions as c ON c.object_id = s.section_id AND c.object_holder = ?s AND c.lang_code = ?s', 'sitemap_sections', DESCR_SL),
-    );
-
-    $section_condition = array();
-    if (!empty($params['section_id'])) {
-        $section_condition[] = db_quote('s.section_id = ?i', $params['section_id']);
-    }
-
-    if (Registry::get('runtime.company_id')) {
-        $section_condition[] = db_quote('s.company_id = ?i', Registry::get('runtime.company_id'));
-
-    } elseif (!empty($params['company_id'])) {
-        $section_condition[] = db_quote('s.company_id = ?i', $params['company_id']);
-    }
-
-    fn_set_hook('sitemap_get_sections', $section_fields, $section_tables, $section_left_join, $section_condition);
-
-    $condition = empty($section_condition) ? '' : ' WHERE ' . implode(' AND ', $section_condition);
-
-    $sections = db_get_hash_array('SELECT ' . implode(', ', $section_fields) . ' FROM ' . implode(', ', $section_tables) . ' LEFT JOIN ' . implode(', ', $section_left_join) . $condition . ' ORDER BY position, section', 'section_id');
-
-    return $sections;
-}
-
-/**
- * Get sitemap links
- *
- * @param int $section_id Section identifier
- * @return array $links
- */
-function fn_get_sitemap_links($section_id)
-{
-    $links_fields = array(
-        'link_id',
-        'link_href',
-        'section_id',
-        'status',
-        'position',
-        'link_type',
-        'description',
-        'object as link',
-    );
-
-    $links_tables = array(
-        '?:sitemap_links',
-    );
-
-    $links_left_join = array(
-        db_quote("?:common_descriptions ON ?:common_descriptions.object_id = ?:sitemap_links.link_id AND ?:common_descriptions.object_holder = 'sitemap_links' AND ?:common_descriptions.lang_code = ?s", DESCR_SL),
-    );
-
-    $links_condition = array(
-        db_quote('section_id = ?i', $section_id),
-    );
-
-    $company_condition = fn_get_company_condition('?:sitemap_links.company_id', false);
-    if (!empty($company_condition)) {
-        $links_condition[] = $company_condition;
-    }
-
-    fn_set_hook('sitemap_get_links', $links_fields, $links_tables, $links_left_join, $links_condition);
-
-    $links = db_get_array('SELECT ' . implode(', ', $links_fields) . ' FROM ' . implode(', ', $links_tables) . ' LEFT JOIN ' . implode(', ', $links_left_join) . ' WHERE ' . implode(' AND ', $links_condition) . ' ORDER BY position, link');
-
-    return $links;
-}
-
-/**
- * Create/Update sitemap section
- *
- * @param array $section_data Section update data
- * @param int $section_id Section identifier
- * @return int $section_id
- */
-function fn_update_sitemap($section_data, $section_id = 0)
-{
-    // Add sitemap sections
-    if (empty($section_id)) {
-        if (Registry::get('runtime.company_id') && !isset($section_data['company_id'])) {
-            $section_data['company_id'] = Registry::get('runtime.company_id');
-        }
-
-        $section_id = db_query("INSERT INTO ?:sitemap_sections ?e", $section_data);
-        if (!empty($section_id)) {
-
-            $_data = array();
-            foreach (fn_get_translation_languages() as $lang_code => $_lang_data) {
-                $_data[] = array(
-                    'object'        => $section_data['section'],
-                    'object_id'     => $section_id,
-                    'object_holder' => 'sitemap_sections',
-                    'lang_code'     => $lang_code
-                );
-            }
-            db_query("INSERT INTO ?:common_descriptions ?m", $_data);
-
-        } else {
-            return array(CONTROLLER_STATUS_NO_PAGE);
-        }
-    } else {
-        db_query("UPDATE ?:sitemap_sections SET ?u WHERE section_id = ?i", $section_data, $section_id);
-        db_query("UPDATE ?:common_descriptions SET object=?s WHERE object_id = ?i AND lang_code = ?s AND object_holder = 'sitemap_sections'", $section_data['section'], $section_id, DESCR_SL);
-    }
-
-    return $section_id;
-}
-
-/**
- * Create/Update sitemap links
- *
- * @param array $links_data Links update data
- * @param int $section_id Section identifier
- */
-function fn_update_sitemap_links($links_data, $section_id)
-{
-    $link_ids = array();
-    foreach ($links_data as $link_data) {
-        if (!empty($link_data['link'])) {
-
-            fn_set_hook('sitemap_update_object', $link_data);
-
-            if (empty($link_data['link_id'])) {
-
-                $link_data['section_id'] = $section_id;
-
-                $link_id = db_query("INSERT INTO ?:sitemap_links ?e", $link_data);
-                $link_ids[] = $link_id;
-
-                if (!empty($link_id)) {
-                    $_data = array();
-                    foreach (fn_get_translation_languages() as $lang_code => $_lang_data) {
-                        $_data[] = array(
-                            'object'        => $link_data['link'],
-                            'object_id'     => $link_id,
-                            'object_holder' => 'sitemap_links',
-                            'lang_code'     => $lang_code
-                        );
-                    }
-                    db_query("INSERT INTO ?:common_descriptions ?m", $_data);
-                }
-            } else {
-                $link_data['section_id'] = $section_id;
-                $link_ids[] = $link_data['link_id'];
-
-                db_query("UPDATE ?:sitemap_links SET ?u WHERE link_id = ?i", $link_data, $link_data['link_id']);
-                db_query("UPDATE ?:common_descriptions SET object=?s WHERE object_id = ?i AND lang_code = ?s AND object_holder = 'sitemap_links'", $link_data['link'], $link_data['link_id'], DESCR_SL);
-            }
-        }
-    }
-
-    $obsolete_ids = db_get_fields("SELECT link_id FROM ?:sitemap_links WHERE section_id = ?i AND link_id NOT IN (?n)", $section_id, $link_ids);
-
-    if (!empty($obsolete_ids)) {
-        fn_delete_sitemap_links($obsolete_ids);
-    }
-}
-
-/**
- * Gets relation of specified width to fluid. Example:
- * Schema: 16 columns
- * Parent grid: 10
- * Current: 5
- * Result: 8
- *
- * @param int $width_schema - Layout width (12/16)
- * @param int $parent_width - Width of the parent container/grid
- * @param int $grid_width - Width to be calculated
- * @return int - Relation of current width to the parent one
- */
-function fn_get_grid_fluid_width($width_schema, $parent_width, $grid_width)
-{
-    $relation = 0;
-    if (empty($parent_width)) {
-        $relation = $grid_width;
-    } else {
-        $relation = $width_schema * (($grid_width * 100 / $parent_width) / 100);
-    }
-
-    return round($relation);
-}
-
-
-/**
- * Checks whether page with given ID exists at database.
- *
- * @param int         $page_id              Page ID
- * @param string|null $additional_condition Optional checking condition
- *
- * @return bool
- */
-function fn_page_exists($page_id, $additional_condition = null)
-{
-    return (bool)db_get_field(
-        'SELECT COUNT(*) FROM ?:pages WHERE page_id = ?i ' . $additional_condition,
-        $page_id
-    );
 }

@@ -3,7 +3,7 @@
 
 <div class="tabs cm-j-tabs">
     <ul class="nav nav-tabs">
-        <li id="user_existing_blocks_{$grid_id}{$extra_id}" class="cm-js active"><a>{if $smarty.request.manage && $smarty.request.manage == "Y"}{__("manage_existing_block")}{else}{__("use_existing_block")}{/if}</a></li>
+        <li id="user_existing_blocks_{$grid_id}{$extra_id}" class="cm-js cm-active"><a>{if $smarty.request.manage && $smarty.request.manage == "Y"}{__("manage_existing_block")}{else}{__("use_existing_block")}{/if}</a></li>
         <li id="create_new_blocks_{$grid_id}{$extra_id}" class="cm-js"><a>{__("create_new_block")}</a></li>
     </ul>
 </div>

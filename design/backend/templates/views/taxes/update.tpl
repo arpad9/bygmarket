@@ -15,7 +15,6 @@
 
 <div id="content_general">
 <fieldset>
-    {hook name="taxes:general_content"}
     <div class="control-group">
         <label for="elm_tax" class="control-label cm-required">{__("name")}:</label>
         <div class="controls">
@@ -56,7 +55,6 @@
             <input type="checkbox" name="tax_data[price_includes_tax]" id="elm_price_includes_tax" value="Y" {if $tax.price_includes_tax == "Y"}checked="checked"{/if} />
         </div>
     </div>
-    {/hook}
 </fieldset>
 <!-- id="content_general" --></div>
 
@@ -87,18 +85,11 @@
 </table>
 <!-- id="content_tax_rates" --></div>
 
-{hook name="taxes:tabs_content"}
-{/hook}
-
 {capture name="buttons"}
     {include file="buttons/save_cancel.tpl" but_name="dispatch[taxes.update]" but_role="submit-link" but_target_form="tax_form" save=$id}
 {/capture}
 
 </form>
-
-{hook name="taxes:tabs_extra"}
-{/hook}
-
 {/capture}
 {include file="common/tabsbox.tpl" content=$smarty.capture.tabsbox track=true active_tab=$smarty.request.selected_section}
 

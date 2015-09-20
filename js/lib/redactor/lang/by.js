@@ -1,12 +1,11 @@
-(function ($) {
-$.Redactor.opts.langs['by'] = {
+var RELANG = {};
+RELANG['by'] = {
     html: 'Код',
     video: 'Відэа',
     image: 'Малюнак',
     table: 'Табліца',
     link: 'Спасылка',
     link_insert: 'Уставіць спасылку ...',
-    link_edit: 'Edit link',
     unlink: 'Выдаліць спасылку',
     formatting: 'Стылі',
     paragraph: 'Звычайны тэкст',
@@ -14,9 +13,6 @@ $.Redactor.opts.langs['by'] = {
     code: 'Код',
     header1: 'Загаловак 1',
     header2: 'Загаловак 2',
-    header3: 'Загаловак 3',
-    header4: 'Загаловак 4',
-    header5: 'Загаловак 5',
     bold: 'Паўтлусты',
     italic: 'Нахільны',
     fontcolor: 'Колер тэксту',
@@ -68,8 +64,5 @@ $.Redactor.opts.langs['by'] = {
     anchor: 'Anchor',
 	link_new_tab: 'Open link in new tab',
 	underline: 'Underline',
-	alignment: 'Alignment',
-	filename: 'Name (optional)',
-	edit: 'Edit'
+	alignment: 'Alignment'
 };
-})( jQuery );

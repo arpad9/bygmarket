@@ -14,8 +14,6 @@
 
 namespace Tygh;
 
-use Tygh\Exceptions\InputException;
-
 class Bootstrap
 {
     /**
@@ -29,7 +27,7 @@ class Bootstrap
         header('Last-Modified: ' . gmdate("D, d M Y H:i:s") . ' GMT');
 
         // Click-jacking protection
-        //header("X-Frame-Options: sameorigin");
+        header("X-Frame-Options: sameorigin");
 
         if ($is_https) {
             header('Cache-Control: private');
@@ -49,18 +47,16 @@ class Bootstrap
     public static function setConfigOptions($dir_root)
     {
         ini_set('magic_quotes_sybase', 0);
-        ini_set('pcre.backtrack_limit', '1000000'); // this value php versions < 5.3.7 10 times less, so set it as in newer versions.
-        ini_set('arg_separator.output', '&');
         ini_set('include_path', $dir_root . '/app/lib/pear/' . ini_get('include_path'));
+        ini_set('pcre.backtrack_limit', '1000000'); // this value php versions < 5.3.7 10 times less, so set it as in newer versions.
 
         $session_id = session_id();
         if (empty($session_id)) {
+            ini_set('session.use_only_cookies', 1);
             ini_set('session.use_trans_sid', 0);
         }
 
-        if (!defined('DEVELOPMENT') || DEVELOPMENT === false) {
-            ignore_user_abort(true);
-        }
+        ignore_user_abort(true);
     }
 
     /**
@@ -77,10 +73,6 @@ class Bootstrap
             define('HTTPS', true);
         } elseif (isset($server['HTTP_HOST']) && (strpos($server['HTTP_HOST'], ':443') !== false)) {
             define('HTTPS', true);
-        } elseif (isset($server['HTTP_X_FORWARDED_PROTO']) && $server['HTTP_X_FORWARDED_PROTO'] == 'https') {
-            define('HTTPS', true);
-        } elseif (isset($server['HTTP_X_HTTPS']) && ($server['HTTP_X_HTTPS'] == 'on' || $server['HTTP_X_HTTPS'] == '1')) {
-            define('HTTPS', true);
         }
     }
 
@@ -95,10 +87,6 @@ class Bootstrap
             $server['HTTP_HOST'] = 'localhost';
         }
 
-        if (empty($server['HTTP_USER_AGENT'])) {
-            $server['HTTP_USER_AGENT'] = '';
-        }
-
         if (isset($server['HTTP_X_REWRITE_URL'])) { // for isapi_rewrite
             $server['REQUEST_URI'] = $server['HTTP_X_REWRITE_URL'];
         }
@@ -106,11 +94,6 @@ class Bootstrap
         if (!empty($server['QUERY_STRING'])) {
             $server['QUERY_STRING'] = (defined('QUOTES_ENABLED')) ? stripslashes($server['QUERY_STRING']) : $server['QUERY_STRING'];
             $server['QUERY_STRING'] = str_replace(array('"', "'"), array('', ''), $server['QUERY_STRING']);
-        }
-
-        // resolve symbolic links
-        if (!empty($server['SCRIPT_FILENAME'])) {
-            $server['SCRIPT_FILENAME'] = realpath($server['SCRIPT_FILENAME']);
         }
 
         //PHP_AUTH_USER and PHP_AUTH_PW not available when using FastCGI (https://bugs.php.net/bug.php?id=35752)
@@ -125,53 +108,35 @@ class Bootstrap
             list($server['PHP_AUTH_USER'], $server['PHP_AUTH_PW']) = explode(':', $http_auth);
         }
 
-        if (self::isWindows()) {
-            foreach (array('PHP_SELF', 'SCRIPT_FILENAME', 'SCRIPT_NAME') as $var) {
-                if (isset($server[$var])) {
-                    $server[$var] = str_replace('\\', '/', $server[$var]);
-                }
-            }
-        }
-
         return $server;
     }
 
     /**
      * Inits console mode
      * @param  array  $get      GET superglobal array
-     * @param  array  $post     POST superglobal array
      * @param  array  $server   SERVER superglobal array
      * @param  string $dir_root root directory
      * @return array  list of filtered get and server arrays
      */
-    public static function initConsoleMode($get, $post, $server, $dir_root)
+    public static function initConsoleMode($get, $server, $dir_root)
     {
         if (empty($server['REQUEST_METHOD'])) { // if we do not have $_SERVER['REQUEST_METHOD'], assume that we're in console mode
             define('CONSOLE', true);
 
-            if (($get = self::parseCmdArgs($get, $server)) === false) {
-                throw new InputException('Invalid parameters list');
-            }
-
-            $method = 'GET';
-            // if --p flag is passed, run POST request
-            if (isset($get['p'])) {
-                $method = 'POST';
-                unset($get['p']);
-                $post = $get;
-                $get = array();
+            if (($get = self::_parseCmdArgs($get, $server)) === false) {
+                die('Invalid parameters list');
             }
 
             $server['SERVER_SOFTWARE'] = 'Tygh';
             $server['REMOTE_ADDR'] = '127.0.0.1';
-            $server['REQUEST_METHOD'] = $method;
+            $server['REQUEST_METHOD'] = 'GET';
             $server['HTTP_USER_AGENT'] = 'Console';
 
             chdir($dir_root);
             @set_time_limit(0); // the script, running in console mode has no time limits
         }
 
-        return array($get, $post, $server);
+        return array($get, $server);
     }
 
     /**
@@ -184,22 +149,19 @@ class Bootstrap
      */
     public static function initEnv($get, $post, $server, $dir_root)
     {
-        date_default_timezone_set('UTC'); // setting temporary timezone to avoid php warnings
+        $dir_root = realpath($dir_root);
 
         $server = self::fixServerVars($server);
 
-        self::disableZipCompression();
-        self::detectHTTPS($server);
         self::setConstants($server, $dir_root);
+
+        self::detectHTTPS($server);
         self::setConfigOptions($dir_root);
+        self::sendHeaders(defined('HTTPS'));
 
-        list($get, $post, $server) = self::initConsoleMode($get, $post, $server, $dir_root);
+        list($get, $server) = self::initConsoleMode($get, $server, $dir_root);
 
-        if (!defined('CONSOLE')) {
-            self::sendHeaders(defined('HTTPS'));
-        }
-
-        return array(self::processRequest($get, $post), $server, $get, $post);
+        return array(self::processRequest($get, $post), $server);
     }
 
     /**
@@ -219,9 +181,8 @@ class Bootstrap
             define('QUOTES_ENABLED', true);
         }
 
-        if (self::isWindows()) {
+        if (stristr(PHP_OS, 'WIN')) {
             define('IS_WINDOWS', true);
-            $dir_root = str_replace('\\', '/', $dir_root);
         }
 
         if (isset($server['HTTP_X_FORWARDED_HOST'])) {
@@ -230,17 +191,14 @@ class Bootstrap
             define('REAL_HOST', $server['HTTP_HOST']);
         }
 
-        if (!defined('JSON_UNESCAPED_UNICODE')) { // for php 5.3
-            define('JSON_UNESCAPED_UNICODE', 256);
-        }
-
         define('REAL_URL', (defined('HTTPS') ? 'https://' : 'http://') . REAL_HOST . (!empty($server['REQUEST_URI']) ? $server['REQUEST_URI'] : ''));
 
-        define('DIR_ROOT', $dir_root);
+        define('DIR_ROOT', str_replace('\\', '/', $dir_root)); // also fix windows slashes
 
         if (version_compare(PHP_VERSION, MIN_PHP_VERSION, '<')) {
             die('PHP version <b>' . MIN_PHP_VERSION . '</b> or greater is required. Your PHP is version <b>' . PHP_VERSION . '</b>, please ask your host to upgrade it.');
         }
+
     }
 
     /**
@@ -325,16 +283,7 @@ class Bootstrap
      */
     public static function getIniParam($param, $get_value = false)
     {
-        static $mapping = array(
-            'upload_max_filesize' => 'hhvm.server.upload.upload_max_file_size',
-            'post_max_size' => 'hhvm.server.max_post_size',
-        );
-
         $value = ini_get($param);
-
-        if (empty($value) && isset($mapping[$param])) {
-            $value = ini_get($mapping[$param]);
-        }
 
         if ($get_value == false) {
             $value = (intval($value) || !strcasecmp($value, 'on')) ? true : false;
@@ -369,54 +318,24 @@ class Bootstrap
     }
 
     /**
-     * Disables Zlib output buffer
-     */
-    public static function disableZipCompression()
-    {
-        $gz_handler = false;
-        foreach (ob_list_handlers() as $handler) {
-            if (strpos($handler, 'gzhandler') !== false) {
-                $gz_handler = true;
-                break;
-            }
-        }
-        // On some versions of PHP when zlib.output_compression is enabled,
-        // ob_end_clean trigger a notice when accepts zlib buffer, so
-        for ($level = ob_get_level(); $level > 0; --$level) {
-            @ob_end_clean() || @ob_clean();
-        }
-        // Delete headers added by zlib buffer
-        if ($gz_handler && !headers_sent() && !ob_list_handlers()) {
-            header_remove('Vary');
-            header_remove('Content-Encoding');
-        }
-    }
-
-    /**
      * Parses command-line parameters and put them to _GET array
      *
      * @return boolean true if parameters parsed correctly, false - otherwise
      */
-    private static function parseCmdArgs($get, $server)
+    private static function _parseCmdArgs($get, $server)
     {
         while ($code = next($server['argv'])) {
             if (preg_match('/^-{2}([a-zA-Z0-9_]*)=?(.*)$/', $code, $matches)) {
                 $get[$matches[1]] = $matches[2];
 
             } elseif (preg_match('/^-{1}([a-zA-Z0-9]*)$/', $code, $matches)) {
-                $get[$matches[1]] = next($server['argv']);
+                if (!$value = next($server['argv'])) {
+                    return false;
+                }
+                $get[$matches[1]] = $value;
             }
         }
 
         return $get;
-    }
-
-    /**
-     * Checks if PHP OS is Windows
-     * @return boolean true if it is Windows, false - otherwise
-     */
-    private static function isWindows()
-    {
-        return strtoupper(substr(PHP_OS, 0, 3)) == 'WIN';
     }
 }

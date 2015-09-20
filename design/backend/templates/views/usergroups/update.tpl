@@ -11,7 +11,6 @@
 
 {capture name="tabsbox"}
     <div id="content_general_{$id}">
-    {hook name="usergroups:general_content"}
         <div class="control-group">
             <label class="control-label cm-required" for="elm_usergroup_{$id}">{__("usergroup")}</label>
             <div class="controls">
@@ -33,14 +32,14 @@
                 {/if}
             </div>
         </div>
+
         {include file="common/select_status.tpl" input_name="usergroup_data[status]" id="usergroup_data_`$id`" obj=$usergroup hidden=true}
-    {/hook}
     </div>
     
     {if $usergroup.type == "A"}
         <div id="content_privilege_{$id}">
             <input type="hidden" name="usergroup_data[privileges]" value="" />
-            <table width="100%" class="table table-middle table-group">
+            <table width="100%" class="table table-group">
             <thead>
             <tr>
                 <th width="1%" class="table-group-checkbox">

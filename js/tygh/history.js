@@ -43,14 +43,8 @@
     };
 
     var historyState = {
-        storage: null,
-        first: '',
+        storage: {},
         put: function(hash, params) {
-            if (!this.storage) {
-                this.storage = {};
-                this.first = hash;
-            }
-
             this.storage[hash] = params;
         },
         get: function(hash) {
@@ -59,6 +53,27 @@
             }
 
             return {};
+        }
+    };
+
+    var iframeWrapper = {
+        id: "__jQuery_history",
+        init: function() {
+            var html = '<iframe id="'+ this.id +'" style="display:none" src="javascript:false;" />';
+            $("body").prepend(html);
+            return this;
+        },
+        _document: function() {
+            return $("#"+ this.id)[0].contentWindow.document;
+        },
+        put: function(hash) {
+            var doc = this._document();
+            doc.open();
+            doc.close();
+            locationWrapper.put(hash, doc);
+        },
+        get: function() {
+            return locationWrapper.get(this._document());
         }
     };
 
@@ -106,27 +121,88 @@
         _options: {}
     };
 
-    implementations.hashchangeEvent = {
-        _skip: false,
+    implementations.timer = {
+        _appState: undefined,
         _init: function() {
-            $(window).bind('hashchange', function() {
-                if (self._skip === true) {
-                    self._skip = false;
-                    return;
-                }
-                self.check();
-            });
+            var current_hash = locationWrapper.get();
+            self._appState = current_hash;
+            self.callback(current_hash, historyState.get(current_hash));
+            setInterval(self.check, 100);
         },
         check: function() {
-            var hash = locationWrapper.get() ? locationWrapper.get() : historyState.first;
+            var current_hash = locationWrapper.get();
+            if(current_hash != self._appState) {
+                self._appState = current_hash;
+                self.callback(current_hash, historyState.get(current_hash));
+            }
+        },
+        load: function(hash, params) {
+            if(hash != self._appState) {
+                historyState.put(hash, params);
+                locationWrapper.put(hash);
+                self._appState = hash;
+                self.callback(hash, historyState.get(hash));
+            }
+        },
+        reload: function(hash, params) {
+            if (!$.isEmptyObject(historyState.get(hash))) {
+                historyState.put(hash, params);
+            }
+        }
+    };
+
+    implementations.iframeTimer = {
+        _appState: undefined,
+        _init: function() {
+            var current_hash = locationWrapper.get();
+            self._appState = current_hash;
+            iframeWrapper.init().put(current_hash);
+            self.callback(current_hash, historyState.get(current_hash));
+            setInterval(self.check, 100);
+        },
+        check: function() {
+            var iframe_hash = iframeWrapper.get(),
+                location_hash = locationWrapper.get();
+
+            if (location_hash != iframe_hash) {
+                if (location_hash == self._appState) {    // user used Back or Forward button
+                    self._appState = iframe_hash;
+                    locationWrapper.put(iframe_hash);
+                    self.callback(iframe_hash, historyState.get(iframe_hash));
+                } else {                              // user loaded new bookmark
+                    self._appState = location_hash;
+                    iframeWrapper.put(location_hash);
+                    self.callback(location_hash, historyState.get(location_hash));
+                }
+            }
+        },
+        load: function(hash, params) {
+            if(hash != self._appState) {
+                historyState.put(hash, params);
+                locationWrapper.put(hash);
+                iframeWrapper.put(hash);
+                self._appState = hash;
+                self.callback(hash, historyState.get(hash));
+            }
+        },
+        reload: function(hash, params) {
+            if (!$.isEmptyObject(historyState.get(hash))) {
+                historyState.put(hash, params);
+            }
+        }
+    };
+
+    implementations.hashchangeEvent = {
+        _init: function() {
+            $(window).bind('hashchange', self.check);
+            self.check();
+        },
+        check: function() {
+            var hash = locationWrapper.get() ? locationWrapper.get() : '!/' + _.current_url;
             self.callback(hash, historyState.get(hash));
         },
         load: function(hash, params) {
-            var current_hash = locationWrapper.get() ? locationWrapper.get() : historyState.first;
             historyState.put(hash, params);
-            if (hash != current_hash) {
-                self._skip = true;
-            }
             locationWrapper.put(hash);
         },
         reload: function(hash, params) {
@@ -140,26 +216,28 @@
         },
         check: function(evt) {
             var state = evt.originalEvent.state;
-            self.callback(state ? '#!/' + document.location : '', state);
+            self.callback(state ? '#!/' + document.location: '', state);
         },
         load: function(hash, params) {
-            window.history.pushState(params, null, _.current_location + '/' + hash.replace(/^\!\//, ''));
+            window.history.pushState(params, null, hash.replace(/^\!\//, ''));
         },
         reload: function(hash, params) {
-            window.history.replaceState(params, null, _.current_location + '/' + hash.replace(/^\!\//, ''));
+            window.history.replaceState(params, null, hash.replace(/^\!\//, ''));
         }
     };
 
     var self = $.extend({}, implementations.base);
 
-    if (!_.embedded && "pushState" in window.history) {
+    if($.browser.msie && ($.browser.version < 8 || document.documentMode < 8)) {
+        self.type = 'iframeTimer';
+    } else if (!_.embedded && "pushState" in window.history) {
         self.type = 'HTML5';
     } else if("onhashchange" in window) {
         self.type = 'hashchangeEvent';
+    } else {
+        self.type = 'timer';
     }
 
-    if (self.type) {
-        $.extend(self, implementations[self.type]);
-        $.history = self;
-    }
+    $.extend(self, implementations[self.type]);
+    $.history = self;
 })(Tygh, Tygh.$);

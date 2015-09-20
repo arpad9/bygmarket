@@ -73,11 +73,11 @@ p,ul {$ldelim}
                 <td width="10%" align="center" bgcolor="#dddddd"><b>{__("amount")}</b></td>
             </tr>
             {foreach from=$order_info.products item="oi"}
-                {if (!empty($oi.extra.supplier_id) && $oi.extra.supplier_id == $supplier_id) || (fn_get_product_supplier_id($oi.product_id) == $supplier_id)}
+                {if $oi.extra.supplier_id == $supplier_id}
                     <tr>
                         <td bgcolor="#ffffff">{$oi.product_code|default:"-"}</td>
                         <td bgcolor="#ffffff">{$oi.product}
-                            {if $oi.product_options}<div style="padding-top: 1px; padding-bottom: 2px;">{include file="common/options_info.tpl" product_options=fn_get_selected_product_options_info($oi.product_options)}</div>{/if}</td>
+                            {if $oi.product_options}<div style="padding-top: 1px; padding-bottom: 2px;">{include file="common/options_info.tpl" product_options=$oi.product_options}</div>{/if}</td>
                         <td bgcolor="#ffffff" align="center">{$oi.amount}</td>
                     </tr>
                 {/if}

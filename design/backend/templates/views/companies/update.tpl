@@ -12,7 +12,7 @@
 {capture name="tabsbox"}
 {** /Item menu section **}
 
-<form class="form-horizontal form-edit {$form_class} {if !fn_check_view_permissions("companies.update", "POST")}cm-hide-inputs{/if} {if !$id}cm-ajax cm-comet cm-disable-check-changes{/if}" action="{""|fn_url}" method="post" id="company_update_form" enctype="multipart/form-data"> {* company update form *}
+<form class="form-horizontal form-edit {$form_class}" action="{""|fn_url}" method="post" id="company_update_form" enctype="multipart/form-data"> {* company update form *}
 {* class=""*}
 <input type="hidden" name="fake" value="1" />
 <input type="hidden" name="selected_section" id="selected_section" value="{$smarty.request.selected_section}" />
@@ -49,56 +49,47 @@
 {include file="common/subheader.tpl" title=__("information")}
 
 {hook name="companies:general_information"}
-
 <div class="control-group">
-    <label for="elm_company_name" class="control-label cm-required">{__("vendor_name")}:</label>
+    <label for="elm_company_name" class="control-label cm-required">{__("company")}:</label>
     <div class="controls">
         <input type="text" name="company_data[company]" id="elm_company_name" size="32" value="{$company_data.company}" class="input-large" />
     </div>
 </div>
 
 {if "ULTIMATE"|fn_allowed_for}
-{hook name="companies:storefronts"}
 <div class="control-group">
     <label for="elm_company_storefront" class="control-label cm-required">{__("storefront_url")}:</label>
     <div class="controls">
     {if $runtime.company_id}
-        http://{$company_data.storefront|unpuny}
+        http://{$company_data.storefront}
     {else}
-        <input type="text" name="company_data[storefront]" id="elm_company_storefront" size="32" value="{$company_data.storefront|unpuny}" class="input-large" placeholder="http://" />
+        <input type="text" name="company_data[storefront]" id="elm_company_storefront" size="32" value="{$company_data.storefront}" class="input-large" placeholder="http://" />
     {/if}
     </div>
 </div>
-
 <div class="control-group">
     <label class="control-label" for="elm_company_secure_storefront">{__("secure_storefront_url")}:</label>
     <div class="controls">
     {if $runtime.company_id}
-        https://{$company_data.secure_storefront|unpuny}
+        https://{$company_data.secure_storefront}
     {else}
-        <input type="text" name="company_data[secure_storefront]" id="elm_company_secure_storefront" size="32" value="{$company_data.secure_storefront|unpuny}" class="input-large" placeholder="https://" />
+        <input type="text" name="company_data[secure_storefront]" id="elm_company_secure_storefront" size="32" value="{$company_data.secure_storefront}" class="input-large" placeholder="https://" />
     {/if}
     </div>
 </div>
-{/hook}
 
-{hook name="companies:storefronts_design"}
+
 {if $id}
 {include file="common/subheader.tpl" title=__("design")}
 
 <div class="control-group">
     <label class="control-label">{__("store_theme")}:</label>
     <div class="controls">
-        <p>{$theme_info.title}: {$current_style.name}</p>
+        <p>{$theme_info.title} ({$theme_info.theme_name})</p>
         <a href="{"themes.manage?switch_company_id=`$id`"|fn_url}">{__("goto_theme_configuration")}</a>
     </div>
 </div>
-{else}
-    {* TODO: Make theme selector *}
-    <input type="hidden" value="responsive" name="company_data[theme_name]">
 {/if}
-{/hook}
-
 {/if}
 
 {if "MULTIVENDOR"|fn_allowed_for}
@@ -108,7 +99,7 @@
         <div class="control-group">
             <label class="control-label">{__("status")}:</label>
             <div class="controls">
-                <label class="radio"><input type="radio" checked="checked" />{if $company_data.status == "A"}{__("active")}{elseif $company_data.status == "P"}{__("pending")}{elseif $company_data.status == "N"}{__("new")}{elseif $company_data.status == "D"}{__("disabled")}{/if}</label>
+                <label class="radio"><input type="radio" checked="checked" />{if $company_data.status == "A"}{__("active")}{elseif $company_data.status == "P"}{__("pending")}{elseif $company_data.status == "D"}{__("disabled")}{/if}</label>
             </div>
         </div>
     {/if}
@@ -129,6 +120,7 @@
 {if !$id}
     {literal}
     <script type="text/javascript">
+    //<![CDATA[
     function fn_toggle_required_fields()
     {
         var $ = Tygh.$;
@@ -147,7 +139,7 @@
     {
         jelm = Tygh.$(elm);
         var close = true;
-        if (jelm.val() != 'all' && jelm.val() != '' && jelm.val() != 0) {
+        if (jelm.val() != 'all' && jelm.val() != '') {
             close = false;
         }
         
@@ -164,6 +156,7 @@
             Tygh.$('.cm-dependence-' + object).prop('readonly', false).off('click');
         }
     }
+    //]]>
     </script>
     {/literal}
 
@@ -176,6 +169,26 @@
                 </label>
             </div>
         </div>
+        {if $settings.General.use_email_as_login != 'Y'}
+        <div class="control-group" id="company_description_admin">
+            <label for="elm_company_vendor_username" class="control-label cm-required">{__("account_name")}:</label>
+            <div class="controls">
+                <input type="text" name="company_data[admin_username]" id="elm_company_vendor_username" size="32" value="{$company_data.admin_username}" class="input-large" />
+            </div>
+        </div>
+        <div class="control-group">
+            <label for="elm_company_vendor_firstname" class="control-label cm-required">{__("first_name")}:</label>
+            <div class="controls">
+                <input type="text" name="company_data[admin_firstname]" id="elm_company_vendor_firstname" size="32" value="{$company_data.admin_first_name}" class="input-large" />
+            </div>
+        </div>
+        <div class="control-group">
+            <label for="elm_company_vendor_lastname" class="control-label cm-required">{__("last_name")}:</label>
+            <div class="controls">
+                <input type="text" name="company_data[admin_lastname]" id="elm_company_vendor_lastname" size="32" value="{$company_data.admin_last_name}" class="input-large" />
+            </div>
+        </div>
+    {/if}
     {/if}
 {/if}
 {if !$runtime.company_id && "MULTIVENDOR"|fn_allowed_for}
@@ -193,6 +206,15 @@
 
 
 {if "MULTIVENDOR"|fn_allowed_for}
+{if $company_data.status == "N" && $settings.General.use_email_as_login != 'Y'}
+<div class="control-group">
+    <label class="control-label" for="elm_company_request_account_name">{__("request_account_name")}:</label>
+    <div class="controls">
+        <input type="text" name="company_data[request_account_name]" id="elm_company_request_account_name" size="32" value="{$company_data.request_account_name}" />
+    </div>
+</div>
+{/if}
+
 {hook name="companies:contact_information"}
 {if !$id}
     {include file="views/profiles/components/profile_fields.tpl" section="C" title=__("contact_information")}
@@ -325,7 +347,7 @@
 {if "MULTIVENDOR"|fn_allowed_for}
     {** Company logos section **}
     <div id="content_logos" class="hidden"> {* content logos *}
-    {include file="views/companies/components/logos_list.tpl" logos=$company_data.logos company_id=$id}
+    {include file="views/site_layout/components/logos_list.tpl" logos=$company_data.logos company_id=$id}
 
     </div> {* /content logos *}
     {** /Company logos section **}
@@ -333,7 +355,7 @@
     {** Company categories section **}
     <div id="content_categories" class="hidden"> {* content categories *}
         {hook name="companies:categories"}
-        {include file="pickers/categories/picker.tpl" multiple=true input_name="company_data[categories]" item_ids=$company_data.categories data_id="category_ids" no_item_text=__("text_all_categories_included") use_keys="N" but_meta="pull-right"}
+        {include file="pickers/categories/picker.tpl" multiple=true input_name="company_data[categories]" item_ids=$company_data.categories data_id="category_ids" no_item_text=__("text_all_items_included", ["[items]" => __("categories")]) use_keys="N" but_meta="pull-right"}
         {/hook}
     </div> {* /content categories *}
     {** /Company categories section **}
@@ -378,8 +400,7 @@
 {** Shipping methods section **}
 <div id="content_shipping_methods" class="hidden"> {* shipping_methods *}
     {hook name="companies:shipping_methods"}
-        {if $shippings}
-        <input type="hidden" name="company_data[shippings]" value="" />
+        {if $company_data.shippings}
         <table width="100%" class="table table-middle">
         <thead>
         <tr>
@@ -387,11 +408,14 @@
             <th class="center">{__("available_for_vendor")}</th>
         </tr>
         </thead>
+        {if $company_data.shippings}
+            {assign var="shippings_ids" value=","|explode:$company_data.shippings}
+        {/if}
         {foreach from=$shippings item="shipping" key="shipping_id"}
         <tr>
             <td><a href="{"shippings.update?shipping_id=`$shipping_id`"|fn_url}">{$shipping.shipping}{if $shipping.status == "D"} ({__("disabled")|lower}){/if}</a></td>
             <td class="center">
-                <input type="checkbox" {if !$id || $shipping_id|in_array:$company_data.shippings_ids} checked="checked"{/if} name="company_data[shippings][]" value="{$shipping_id}">
+                <input type="checkbox" {if !$id || $shipping_id|in_array:$shippings_ids} checked="checked"{/if} name="company_data[shippings][]" value="{$shipping_id}">
             </td>
         </tr>
         {/foreach}
@@ -438,14 +462,9 @@
 {** Form submit section **}
 {capture name="buttons"}   
     {if $id}
-        {capture name="tools_list"}
-            <li>{btn type="list" text=__("delete") class="cm-confirm cm-post" href="companies.delete?company_id=`$id`"}</li>
-        {/capture}
-        {dropdown content=$smarty.capture.tools_list}
-
         {include file="buttons/save_cancel.tpl" but_name="dispatch[companies.update]" but_target_form="company_update_form" save=$id}
     {else}
-        {include file="buttons/save_cancel.tpl" but_name="dispatch[companies.add]" but_target_form="company_update_form" but_meta="cm-comet"}
+        {include file="buttons/save_cancel.tpl" but_name="dispatch[companies.add]" but_target_form="company_update_form"}
     {/if}
 {/capture}
 {** /Form submit section **}

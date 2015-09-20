@@ -14,8 +14,6 @@
 
 namespace Tygh;
 
-use Tygh\Exceptions\DeveloperException;
-
 class Registry
 {
     private static $_storage = array();
@@ -27,21 +25,8 @@ class Registry
     private static $_cache_handlers_are_updated = false;
 
     private static $_cache = null;
-    private static $_locks = array();
-
     const LOCK_WAIT = 100000; // mircoseconds
     const LOCK_EXPIRY = 20; // seconds
-    const NOT_FOUND = '/#not found#/';
-
-    /**
-     * @var Application
-     */
-    protected static $application = array();
-
-    /**
-     * @var array Keys that should be fetched from Application container
-     */
-    protected static $legacy_keys = array('crypt' => true, 'view' => true, 'api' => true, 'ajax' => true, 'class_loader' => true);
 
     /**
      * Puts variable to registry
@@ -54,25 +39,34 @@ class Registry
      */
     public static function set($key, $value, $no_cache = false)
     {
-        if (isset(self::$legacy_keys[$key])) {
-            // Development::deprecated('Usage of Registry class for storing services is deprecated. Use Tygh::$app instead.');
-            self::$application[$key] = $value;
-            return true;
-        }
-
         if (strpos($key, '.') !== false) {
             list($_key) = explode('.', $key);
         } else {
             $_key = $key;
         }
 
-        $var = & self::_varByKey('create', $key);
+        if (isset(self::$_cached_keys[$_key]) && $no_cache == false) {
+            // if key should be cached - check if it was changed
+            while (!self::$_cache->acquireLock($_key, self::$_cached_keys[$_key]['cache_level'])) {
+                usleep(self::LOCK_WAIT);
+            }
+
+            // get data from cache
+            $val = self::_getCache($_key, self::$_cached_keys[$_key]['cache_level']);
+
+            // set to registry
+            self::set($_key, $val, true);
+        }
+
+        $var = & self::_getVarByKey($key, true);
         $var = $value;
 
         if ($no_cache == false && isset(self::$_cached_keys[$_key]) && self::$_cached_keys[$_key]['track'] == false) { // save cache immediatelly
             $_var = (strpos($key, '.') !== false) ? self::get($_key) : $value;
 
-            self::_saveCache($_key, $_var);
+            self::$_cache->set($_key, $_var, self::$_cached_keys[$_key]['condition'], self::$_cached_keys[$_key]['cache_level']);
+            self::_updateHandlers($_key, self::$_cached_keys[$_key]['condition'], self::$_cached_keys[$_key]['cache_level']);
+            self::$_cache->releaseLock($_key, self::$_cached_keys[$_key]['cache_level']);
             unset(self::$_cached_keys[$_key]);
         }
 
@@ -86,17 +80,9 @@ class Registry
      *
      * @return mixed key value
      */
-    public static function get($key)
+    static function & get($key)
     {
-        if (isset(self::$legacy_keys[$key])) {
-            // Development::deprecated('Usage of Registry class for storing services is deprecated. Use Tygh::$app instead.');
-
-            return self::$application[$key];
-        }
-
-        $val = self::_varByKey('get', $key);
-
-        return ($val !== self::NOT_FOUND) ? $val : null;
+        return self::_getVarByKey($key);
     }
 
     /**
@@ -110,16 +96,15 @@ class Registry
     public static function push()
     {
         $args = func_get_args();
-        $key = array_shift($args);
 
-        $data = self::get($key);
+        $data = & self::get(array_shift($args));
         if (!is_array($data)) {
             $data = array();
         }
 
         $data =	array_merge($data, $args);
 
-        return self::set($key, $data);
+        return true;
     }
 
     /**
@@ -131,78 +116,69 @@ class Registry
      */
     public static function del($key)
     {
-        if (self::_varByKey('delete', $key) === self::NOT_FOUND) {
-            return false;
+        if ($var = & self::_getVarByKey($key)) {
+            $var = NULL;
+
+            return true;
         }
 
-        return true;
+        return false;
     }
 
     /**
-     * Private: performs key action
+     * Private: gets value of complex key (key.name.part)
      *
-     * @param string $action key action (get, create, delete)
-     * @param string $key    key name
+     * @param string  $key    key name
+     * @param boolean $create if true, key will be created in registry
      *
      * @return mixed key value
      */
-    private static function & _varByKey($action, $key)
+    private static function & _getVarByKey($key, $create = false)
     {
-        if ($action == 'get' && isset(self::$_storage_cache[$key])) {
-            return self::$_storage_cache[$key];
-        }
+        $_storage_cache = self::$_storage_cache;
+        if (!isset($_storage_cache[$key])) {
+            $null = null;
+            if (strpos($key, '.') !== false) {
+                $parts = explode('.', $key);
+                $part = array_shift($parts);
+                if (empty(self::$_storage[$part])) {
+                    if ($create == true) {
+                        self::$_storage[$part] = array();
+                    } else {
+                        $_storage_cache[$key] = $null;
 
-        $not_found = self::NOT_FOUND;
+                        return $null;
+                    }
+                }
 
-        if (strpos($key, '.') !== false) {
-            $parts = explode('.', $key);
-            $length = sizeof($parts);
+                $piece = & self::$_storage[$part];
+                foreach ($parts as $part) {
+                    if (!is_array($piece)) {
+                        if ($create == true) {
+                            $piece = array();
+                        } else {
+                            $_storage_cache[$key] = $null;
+
+                            return $null;
+                        }
+                    }
+
+                    $piece = & $piece[$part];
+                }
+
+                $_storage_cache[$key] = $piece;
+
+                return $piece;
+            }
         } else {
-            $parts = (array)$key;
-            $length = 1;
+            return $_storage_cache[$key];
         }
 
-        $piece = & self::$_storage;
-
-        foreach ($parts as $i => $part) {
-            if ($action == 'create' && !isset($piece[$part])) {
-                $piece[$part] = array();
-            }
-
-            if (is_array($piece) && array_key_exists($part, $piece)) { // isset does not return true on null values
-                if ($action == 'delete' && (($i+1) == $length)) {
-                    unset($piece[$part]);
-                    unset(self::$_storage_cache[$key]);
-                    $not_found = true;
-
-                    return $not_found;
-                }
-
-                $piece = & $piece[$part];
-
-                continue;
-            }
-
-            return $not_found;
+        if (!isset(self::$_storage[$key]) && $create == true) {
+            self::$_storage[$key] = array();
         }
 
-        // If we creating new key, cleanup cached key children
-        if ($action == 'create') {
-            foreach (self::$_storage_cache as $k => $v) {
-                if (strpos($k, $key . '.') === 0) {
-                    unset(self::$_storage_cache[$k]);
-                }
-            }
-        }
-
-        // cache complex keys only
-        if ($length > 1) {
-            self::$_storage_cache[$key] = & $piece;
-
-            return self::$_storage_cache[$key];
-        }
-
-        return $piece;
+        return self::$_storage[$key];
     }
 
     /**
@@ -215,7 +191,7 @@ class Registry
      */
     public static function ifGet($key, $default)
     {
-        $var = self::get($key);
+        $var = self::_getVarByKey($key);
 
         return !empty($var) ? $var : $default;
     }
@@ -229,9 +205,9 @@ class Registry
      */
     public static function isExist($key)
     {
-        $var = self::_varByKey('get', $key);
+        $var = self::_getVarByKey($key);
 
-        return $var !== self::NOT_FOUND;
+        return $var !== NULL;
     }
 
     /**
@@ -251,7 +227,7 @@ class Registry
     /**
      * Registers variable in the cache
      *
-     * @param mixed $key         key name. Array with 2 values can be passed: first - key name, second - key alias
+     * @param string $key         key name
      * @param mixed  $condition   cache reset condition - array with table names of expiration time (int)
      * @param string $cache_level indicates the cache dependencies on controller, language, user group, etc
      * @param bool   $track       if set to true, cache data will be collection during script execution and saved when it finished
@@ -264,28 +240,20 @@ class Registry
             self::cacheInit();
         }
 
-        if (is_array($key)) {
-            list($tag, $alias) = $key;
-        } else {
-            $alias = $key;
-            $tag = '';
-        }
-
-        if (empty(self::$_cached_keys[$alias])) {
-            self::$_cached_keys[$alias] = array(
+        if (empty(self::$_cached_keys[$key])) {
+            self::$_cached_keys[$key] = array(
                 'condition' => $condition,
-                'cache_level' => $cache_level . (!empty($tag) ? $alias : ''),
+                'cache_level' => $cache_level,
                 'track' => $track,
-                'hash' => '',
-                'tag' => $tag
+                'hash' => ''
             );
 
-            if (!self::isExist($alias) && ($val = self::_getCache(!empty($tag) ? $tag : $alias, self::$_cached_keys[$alias]['cache_level'])) !== NULL) {
-                self::set($alias, $val, true);
+            if (!self::isExist($key) && ($val = self::_getCache($key, $cache_level)) !== NULL) {
+                self::set($key, $val, true);
 
                 // Get hash of original value for tracked data
                 if ($track == true) {
-                    self::$_cached_keys[$alias]['hash'] = md5(serialize($val));
+                    self::$_cached_keys[$key]['hash'] = md5(serialize($val));
                 }
 
                 return true;
@@ -323,19 +291,11 @@ class Registry
      */
     private static function _getCache($key, $cache_level = NULL)
     {
-        $time_start = microtime(true);
         $data = self::$_cache->get($key, $cache_level);
-        Debugger::set_cache_query($key . '::' . $cache_level, microtime(true) - $time_start);
 
         return (($data !== false) && (!empty($data[0]))) ? $data[0] : NULL;
     }
 
-    /**
-     * Assigns database tables to cache key for future cache update
-     * @param string $key         key name
-     * @param array  $condition   tables list
-     * @param string $cache_level cache level
-     */
     private static function _updateHandlers($key, $condition, $cache_level)
     {
         if ($cache_level != self::cacheLevel('time')) {
@@ -351,57 +311,20 @@ class Registry
     }
 
     /**
-     * Acquires key lock
-     * @param  string  $key         key name
-     * @param  string  $cache_level cache level
-     * @return boolean true on success, false on failure
-     */
-    private static function _acquireLock($key, $cache_level)
-    {
-        if (empty(self::$_locks[$key])) {
-            if (self::$_cache->acquireLock($key, $cache_level)) {
-                self::$_locks[$key] = true;
-            }
-        }
-
-        if (!empty(self::$_locks[$key])) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Saves data to cache
-     * @param string $key key name
-     * @param mixed  $val value
-     */
-    private static function _saveCache($key, $val)
-    {
-        if (empty(self::$_cached_keys[$key]['hash']) || self::$_cached_keys[$key]['hash'] != md5(serialize(self::$_storage[$key]))) {
-
-            $_key = !empty(self::$_cached_keys[$key]['tag']) ? self::$_cached_keys[$key]['tag'] : $key;
-
-            self::$_cache->set($_key, $val, self::$_cached_keys[$key]['condition'], self::$_cached_keys[$key]['cache_level']);
-            self::_updateHandlers($_key, self::$_cached_keys[$key]['condition'], self::$_cached_keys[$key]['cache_level']);
-        }
-    }
-
-    /**
      * Saves tracked cached data and clears expired cache
      *
      * @return boolean true if data saved, false if no caches defined
      */
     public static function save()
     {
-
         if (empty(self::$_cache)) {
             return false;
         }
 
         foreach (self::$_cached_keys as $key => $arg) {
-            if (isset(self::$_storage[$key]) && $arg['track'] == true) {
-                self::_saveCache($key, self::$_storage[$key]);
+            if (isset(self::$_storage[$key]) && $arg['track'] == true && $arg['hash'] != md5(serialize(self::$_storage[$key]))) {
+                self::$_cache->set($key, self::$_storage[$key], $arg['condition'], $arg['cache_level']);
+                self::_updateHandlers($key, $arg['condition'], $arg['cache_level']);
             }
         }
         self::$_cached_keys = array();
@@ -441,33 +364,19 @@ class Registry
         if (empty(self::$_cache)) {
             self::cacheInit();
         }
-        self::$_cache_handlers = array();
+
         return self::$_cache->cleanup();
-    }
-
-
-    public static function clearCachedKeyValues()
-    {
-        foreach (self::$_cached_keys as $key => $definition) {
-            self::del($key);
-        }
     }
 
     /**
      * Generates cache level value for key
      *
-     * @param string $id Cache level name
-     *
-     * @return string Cache level value
+     * @param $id cache level name
+     * @return string cache level value
      */
     public static function cacheLevel($id)
     {
-        if (!isset(self::$_cache_levels[$id])) {
-            $usergroups_condition = '';
-            if (!empty($_SESSION['auth']['usergroup_ids'])) {
-                $usergroups_condition = implode('_', $_SESSION['auth']['usergroup_ids']);
-            }
-
+        if (empty(self::$_cache_levels[$id])) {
             if ($id == 'time') {
                 $key = 'time';
             } elseif ($id == 'static') {
@@ -475,48 +384,25 @@ class Registry
             } elseif ($id == 'day') {
                 $key = date('z', TIME);
             } elseif ($id == 'locale') {
-                $key = (defined('CART_LOCALIZATION') ? (CART_LOCALIZATION . '_') : '')
-                    . CART_LANGUAGE . '_' . CART_SECONDARY_CURRENCY;
+                $key = (defined('CART_LOCALIZATION') ? (CART_LOCALIZATION . '_') : '') . CART_LANGUAGE . '_' . CART_SECONDARY_CURRENCY;
             } elseif ($id == 'dispatch') {
-                $key = AREA . '_' . $_SERVER['REQUEST_METHOD'] . '_' . str_replace('.', '_', $_REQUEST['dispatch'])
-                    . '_' . (defined('CART_LOCALIZATION') ? (CART_LOCALIZATION . '_') : '')
-                    . CART_LANGUAGE . '_' . CART_SECONDARY_CURRENCY;
+                $key = AREA . '_' . $_SERVER['REQUEST_METHOD'] . '_' . str_replace('.', '_', $_REQUEST['dispatch']) . '_' . (defined('CART_LOCALIZATION') ? (CART_LOCALIZATION . '_') : '') . CART_LANGUAGE . '_' . CART_SECONDARY_CURRENCY;
             } elseif ($id == 'user') {
-                $key = AREA . '_' . $_SERVER['REQUEST_METHOD'] . '_' . str_replace('.', '_', $_REQUEST['dispatch'])
-                    . '.' . $usergroups_condition
-                    . '.' . (defined('CART_LOCALIZATION') ? (CART_LOCALIZATION . '_') : '')
-                    . CART_LANGUAGE . '.' . CART_SECONDARY_CURRENCY;
+                $key =  AREA . '_' . $_SERVER['REQUEST_METHOD'] . '_' . str_replace('.', '_', $_REQUEST['dispatch']) . '.' . (!empty($_SESSION['auth']['usergroup_ids']) ? implode('_', $_SESSION['auth']['usergroup_ids']) : '') . '.' . (defined('CART_LOCALIZATION') ? (CART_LOCALIZATION . '_') : '') . CART_LANGUAGE . '.' . CART_SECONDARY_CURRENCY;
             } elseif ($id == 'locale_auth') {
-                $key = AREA . '_' . $_SERVER['REQUEST_METHOD'] . '_' . (!empty($_SESSION['auth']['user_id']) ? 1 : 0)
-                    . '.' . $usergroups_condition
-                    . (defined('CART_LOCALIZATION') ? (CART_LOCALIZATION . '_') : '')
-                    . CART_LANGUAGE . '.' . CART_SECONDARY_CURRENCY;
+                $key = AREA . '_' . $_SERVER['REQUEST_METHOD'] . '_' . (!empty($_SESSION['auth']['user_id']) ? 1 : 0) . '.' . (!empty($_SESSION['auth']['usergroup_ids']) ? implode('_', $_SESSION['auth']['usergroup_ids']) : '') . (defined('CART_LOCALIZATION') ? (CART_LOCALIZATION . '_') : '') . CART_LANGUAGE . '.' . CART_SECONDARY_CURRENCY;
             } elseif ($id == 'html_blocks') {
-                $promotion_condition = '';
-                if (!empty($_SESSION['auth']['user_id'])) {
-                    $active_promotions = db_get_fields(
-                        "SELECT promotion_id FROM ?:promotions"
-                        . " WHERE status = 'A' AND zone = 'catalog' AND users_conditions_hash LIKE ?l",
-                        "%," . $_SESSION['auth']['user_id'] . ",%"
-                    );
-                    if (!empty($active_promotions)) {
-                        $promotion_condition = $_SESSION['auth']['user_id'];
-                    }
-                }
-                $https_condition = defined('HTTPS') ? '__https' : '';
-                $host_condition = REAL_HOST;
-
-                $key = (defined('CART_LOCALIZATION') ? (CART_LOCALIZATION . '__') : '') . CART_LANGUAGE
-                    . '__' . self::cacheLevel('day') . '__'
-                    . $usergroups_condition
-                    . '__' . $promotion_condition . $https_condition . $host_condition;
+                $promotion_condition =  (!empty($_SESSION['auth']['user_id']) && db_get_field("SELECT count(*) FROM ?:promotions WHERE status = 'A' AND zone = 'catalog' AND users_conditions_hash LIKE ?l", "%," . $_SESSION['auth']['user_id'] . ",%") > 0)? $_SESSION['auth']['user_id'] : '';
+                $key = (defined('CART_LOCALIZATION') ? (CART_LOCALIZATION . '__') : '') . CART_LANGUAGE . '__' . self::cacheLevel('day') . '__' . (!empty($_SESSION['auth']['usergroup_ids'])? implode('_', $_SESSION['auth']['usergroup_ids']) : '') . '__' . $promotion_condition;
             }
 
-            if (!isset($key)) {
-                throw new DeveloperException('Registry: undefined cache level');
+            if (!empty($key)) {
+                self::$_cache_levels[$id] = $key;
             }
+        }
 
-            self::$_cache_levels[$id] = $key;
+        if (empty(self::$_cache_levels[$id])) {
+            die('Registry: undefined cache level');
         }
 
         return self::$_cache_levels[$id];
@@ -528,10 +414,5 @@ class Registry
     public static function clearCacheLevels()
     {
         self::$_cache_levels = array();
-    }
-
-    public static function setAppInstance(Application $application)
-    {
-        self::$application = $application;
     }
 }

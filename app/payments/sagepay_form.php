@@ -22,7 +22,8 @@ if (defined('PAYMENT_NOTIFICATION')) {
     $payment_id = db_get_field("SELECT payment_id FROM ?:orders WHERE order_id = ?i", $_REQUEST['order_id']);
     $processor_data = fn_get_payment_method_data($payment_id);
 
-    $result = decryptAes($_REQUEST['crypt'], $processor_data["processor_params"]["password"]);
+    $result = "&" . fn_sagepay_simplexor(base64_decode(str_replace(' ', '+', $_REQUEST['crypt'])), $processor_data["processor_params"]["password"]) . "&";
+
     preg_match("/Status=(.+)&/U", $result, $a);
 
     if (trim($a[1]) == "OK") {
@@ -60,7 +61,7 @@ if (defined('PAYMENT_NOTIFICATION')) {
         $post_address = "https://test.sagepay.com/Simulator/VSPFormGateway.asp";
     }
 
-    $post["VPSProtocol"] = "3.0";
+    $post["VPSProtocol"] = "2.23";
     $post["TxType"] = $processor_data["processor_params"]["transaction_type"];
     $post["Vendor"] = htmlspecialchars($processor_data["processor_params"]["vendor"]);
 
@@ -154,78 +155,29 @@ if (defined('PAYMENT_NOTIFICATION')) {
 
     $post_encrypted .= "Basket=" . $strings . $products_string;
 
-    $post["Crypt"] = encryptAes($post_encrypted, $processor_data["processor_params"]["password"]);
+    $post["Crypt"] = base64_encode(fn_sagepay_simplexor($post_encrypted, $processor_data["processor_params"]["password"]));
+    $post["Crypt"] = htmlspecialchars($post["Crypt"]);
+
     fn_create_payment_form($post_address, $post, 'SagePay server');
 }
 
 exit;
 
-function addPKCS5Padding($input)
+//
+// ---------------- Additional functions ------------
+//
+function fn_sagepay_simplexor($str, $key)
 {
-    $blockSize = 16;
-    $padd = "";
+    $list = array();
+    $result = '';
 
-    // Pad input to an even block size boundary.
-    $length = $blockSize - (strlen($input) % $blockSize);
-    for ($i = 1; $i <= $length; $i++) {
-        $padd .= chr($length);
+    for ($i = 0; $i < strlen($key); $i++) {
+        $list[$i] = ord(substr($key, $i, 1));
     }
 
-    return $input . $padd;
-}
-
-function encryptAes($string, $key)
-{
-    // AES encryption, CBC blocking with PKCS5 padding then HEX encoding.
-    // Add PKCS5 padding to the text to be encypted.
-    $string = addPKCS5Padding($string);
-
-    // Perform encryption with PHP's MCRYPT module.
-    $crypt = mcrypt_encrypt(MCRYPT_RIJNDAEL_128, $key, $string, MCRYPT_MODE_CBC, $key);
-
-    // Perform hex encoding and return.
-    return "@" . strtoupper(bin2hex($crypt));
-}
-
-function decryptAes($strIn, $password)
-{
-    // HEX decoding then AES decryption, CBC blocking with PKCS5 padding.
-    // Use initialization vector (IV) set from $str_encryption_password.
-    $strInitVector = $password;
-
-    // Remove the first char which is @ to flag this is AES encrypted and HEX decoding.
-    $hex = substr($strIn, 1);
-
-    // Throw exception if string is malformed
-    if (!preg_match('/^[0-9a-fA-F]+$/', $hex)) {
-        //invelid key
-        return false;
-    }
-    $strIn = pack('H*', $hex);
-
-    // Perform decryption with PHP's MCRYPT module.
-    $string = mcrypt_decrypt(MCRYPT_RIJNDAEL_128, $password, $strIn, MCRYPT_MODE_CBC, $strInitVector);
-    return removePKCS5Padding($string);
-}
-
-function removePKCS5Padding($input)
-{
-    $blockSize = 16;
-    $padChar = ord($input[strlen($input) - 1]);
-
-    /* Check for PadChar is less then Block size */
-    if ($padChar > $blockSize) {
-        return false;
-    }
-    /* Check by padding by character mask */
-    if (strspn($input, chr($padChar), strlen($input) - $padChar) != $padChar) {
-        return false;
+    for ($i = 0; $i < strlen($str); $i++) {
+        $result .= chr(ord(substr($str, $i, 1)) ^ ($list[$i % strlen($key)]));
     }
 
-    $unpadded = substr($input, 0, (-1) * $padChar);
-    /* Chech result for printable characters */
-    if (preg_match('/[[:^print:]]/', $unpadded)) {
-        return false;
-    }
-    return $unpadded;
+    return $result;
 }

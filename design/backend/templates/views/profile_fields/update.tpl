@@ -9,10 +9,12 @@
 
 {literal}
 <script type="text/javascript">
+//<![CDATA[
 function fn_check_field_type(value, tab_id)
 {
     Tygh.$('#' + tab_id).toggleBy(!(value == 'R' || value == 'S'));
 }
+//]]>
 </script>
 {/literal}
 
@@ -22,7 +24,6 @@ function fn_check_field_type(value, tab_id)
 
 {if "ULTIMATE"|fn_allowed_for && $runtime.company_id}
     {assign var="hide_inputs" value="cm-hide-inputs"}
-    {assign var="hide_multiple_buttons" value="hidden"}
 {/if}
 
 {capture name="mainbox"}
@@ -31,7 +32,7 @@ function fn_check_field_type(value, tab_id)
 
 <div class="cm-j-tabs cm-track tabs">
     <ul class="nav nav-tabs">
-        <li id="tab_new_profile{$id}" class="cm-js active"><a>{__("general")}</a></li>
+        <li id="tab_new_profile{$id}" class="cm-js cm-active"><a>{__("general")}</a></li>
         <li id="tab_variants{$id}" class="cm-js {if $block_fields || ($field.field_type != "R" && $field.field_type != "S")}hidden{/if}"><a>{__("variants")}</a></li>
     </ul>
 </div>
@@ -121,30 +122,30 @@ function fn_check_field_type(value, tab_id)
             </div>
         </div>
         {/foreach}
-        {hook name="profile_fields:profile_data"}
-        {/hook}
     <!--content_tab_new_profile{$id}--></div>
 
     <div class="{if $block_fields || ($field.field_type != "R" && $field.field_type != "S")}hidden{/if}" id="content_tab_variants{$id}">
         <table class="table table-middle">
-        <tr id="field_values_{$id}" class="no-border td-no-bg">
+        <tr id="field_values_{$id}">
             <td colspan="{$_colspan}">
                 <table width="1" class="table">
-                    <thead>
-                        <tr class="cm-first-sibling">
-                            <th style="width: 8%">{__("position_short")}</th>
-                            <th style="width: 68%">{__("description")}</th>
-                            <th>&nbsp;</th>
-                        </tr>
-                    </thead>
+                <tr class="cm-first-sibling">
+                    <th>&nbsp;</th>
+                    <th>{__("position_short")}</th>
+                    <th>{__("description")}</th>
+                    <th>&nbsp;</th>
+                </tr>
                 {if $field}
                     {foreach name="values" from=$field.values key="value_id" item="value"}
                     <tr class="cm-first-sibling">
-                        <td>
-                            <input class="input-micro" size="3" type="text" name="field_data[values][{$value_id}][position]" value="{$smarty.foreach.values.iteration}" />
+                        <td class="center">
+                            <input type="checkbox" name="value_ids[]" value="{$value_id}" class="checkbox cm-item" />
                         </td>
                         <td>
-                            <input class="span7" type="text" name="field_data[values][{$value_id}][description]" value="{$value}" />
+                            <input class="input-text-short" size="3" type="text" name="field_data[values][{$value_id}][position]" value="{$smarty.foreach.values.iteration}" />
+                        </td>
+                        <td>
+                            <input class="input-text" type="text" name="field_data[values][{$value_id}][description]" value="{$value}" />
                         </td>
                         <td>
                             {include file="buttons/multiple_buttons.tpl" only_delete="Y"}
@@ -152,9 +153,10 @@ function fn_check_field_type(value, tab_id)
                     </tr>
                     {/foreach}
                 {/if}
-                <tr id="box_elm_values_{$id}" {if $hide_multiple_buttons}class="{$hide_multiple_buttons}"{/if}>
-                    <td><input class="input-micro" size="3" type="text" name="field_data[add_values][0][position]" /></td>
-                    <td><input class="span7" type="text" name="field_data[add_values][0][description]" /></td>
+                <tr id="box_elm_values_{$id}">
+                    <td>&nbsp;</td>
+                    <td><input class="input-text-short" size="3" type="text" name="field_data[add_values][0][position]" /></td>
+                    <td><input class="input-text" type="text" name="field_data[add_values][0][description]" /></td>
                     <td>{include file="buttons/multiple_buttons.tpl" item_id="elm_values_`$id`" tag_level=2}</td>
                 </tr>
                 </table>

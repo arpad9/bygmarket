@@ -15,7 +15,6 @@
 use Tygh\Registry;
 use Tygh\Settings;
 use Tygh\Storage;
-use Tygh\Cdn;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -25,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (!empty($_REQUEST['storage_data'])) {
             if (Registry::get('runtime.storage.storage') != $_REQUEST['storage_data']['storage']) {
 
-                $test = Storage::instance('assets', $_REQUEST['storage_data'])->testSettings($_REQUEST['storage_data']);
+                $test = Storage::instance('statics', $_REQUEST['storage_data'])->testSettings($_REQUEST['storage_data']);
                 $themes = array();
                 if ($test === true) {
 
@@ -41,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
 
                     $storage = Registry::get('config.storage');
-                    unset($storage['assets']); // Do not transfer auto-generated data
+                    unset($storage['statics']); // Do not transfer auto-generated data
                     $total += sizeof($storage);
 
                     fn_set_progress('parts', $total);
@@ -51,9 +50,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $from = Storage::instance($type, Registry::get('runtime.storage'));
                         $to = Storage::instance($type, $_REQUEST['storage_data']);
 
-                        $to->putList($from->getList(''), $from->getAbsolutePath(''), array(
-                            'overwrite' => true
-                        ));
+                        $to->putList($from->getList(''), $from->getAbsolutePath(''));
+                    }
+
+                    // transfer frontend themes media
+                    foreach ($themes as $c_id => $themes_list) {
+                        foreach ($themes_list as $theme) {
+
+                            Registry::set('config.storage.theme_media.prefix', array('fn_get_theme_path', '[relative]/' . $theme .  '/media', 'C', $c_id));
+
+                            $from = Storage::instance('theme_media', Registry::get('runtime.storage'));
+                            $to = Storage::instance('theme_media', $_REQUEST['storage_data']);
+                            $to->putList($from->getList(''), $from->getAbsolutePath(''));
+                        }
                     }
 
                     Settings::instance()->updateValue('storage', serialize($_REQUEST['storage_data']));
@@ -67,25 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
 
-        return array(CONTROLLER_STATUS_OK, 'storage.manage');
-    }
-
-    if ($mode == 'update_cdn') {
-
-        // update
-        if (Cdn::instance()->getOption('host')) {
-            $distribution_data = Cdn::instance()->updateDistribution(Registry::get('config.http_host'), $_REQUEST['cdn_data']);
-        } else {
-            $distribution_data = Cdn::instance()->createDistribution(Registry::get('config.http_host'), $_REQUEST['cdn_data']);
-        }
-
-        if ($distribution_data !== false) {
-            Cdn::instance()->save(fn_array_merge($_REQUEST['cdn_data'], $distribution_data));
-        } else {
-            fn_save_post_data('cdn_data');
-        }
-
-        return array(CONTROLLER_STATUS_OK, 'storage.cdn');
+        return array(CONTROLLER_STATUS_OK, "tools.storage");
     }
 
     return;
@@ -98,9 +89,8 @@ if ($mode == 'manage') {
         $storage_data = Registry::get('runtime.storage');
     }
 
-    Tygh::$app['view']->assign('current_storage', Registry::get('runtime.storage.storage'));
-    Tygh::$app['view']->assign('storage_data', $storage_data);
-    Tygh::$app['view']->assign('amazon_data', array(
+    Registry::get('view')->assign('storage_data', $storage_data);
+    Registry::get('view')->assign('amazon_data', array(
         'regions' => fn_get_amazon_regions()
     ));
 
@@ -125,29 +115,6 @@ if ($mode == 'manage') {
     }
 
     return array(CONTROLLER_STATUS_REDIRECT);
-
-} elseif ($mode == 'cdn') {
-
-    $stored_cdn_data = fn_restore_post_data('cdn_data');
-
-    if (Cdn::instance()->getOption('is_active') === false && Cdn::instance()->isActive()) {
-
-        Cdn::instance()->save(array(
-            'is_active' => true
-        ));
-
-        fn_set_notification('N', __('notice'), __('text_cdn_setup'));
-    }
-
-    if (Cdn::instance()->getHost()) {
-        Tygh::$app['view']->assign('cdn_test_url', 'http://' . Cdn::instance()->getHost() . '/js/tygh/core.js');
-    }
-
-    if (!empty($stored_cdn_data)) {
-        Tygh::$app['view']->assign('cdn_data', $stored_cdn_data);
-    } else {
-        Tygh::$app['view']->assign('cdn_data', Cdn::instance()->getOptions());
-    }
 
 }
 

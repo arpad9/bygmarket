@@ -14,14 +14,11 @@
 
 use Tygh\Registry;
 use Tygh\Settings;
-use Tygh\Languages\Languages;
-use Tygh\Navigation\LastView;
 use Tygh\Addons\SchemesManager;
 use Tygh\BlockManager\Exim;
 use Tygh\BlockManager\Layout;
 use Tygh\BlockManager\Location;
 use Tygh\BlockManager\ProductTabs;
-use Tygh\Themes\Themes;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -126,23 +123,6 @@ function fn_uninstall_addon($addon_name, $show_message = true)
             )));
         }
 
-        //Clean Registry
-        Registry::del('addons.' . $addon_name);
-        $hooks = Registry::get('hooks');
-        Registry::del('hooks');
-
-        if (!empty($hooks)) {
-            foreach ($hooks as $hook_name => $hooks_data) {
-                foreach ($hooks_data as $key => $hook_data) {
-                    if ($hook_data['addon'] === $addon_name) {
-                         unset($hooks[$hook_name][$key]);
-                    }
-                }
-            }
-        }
-
-        Registry::set('hooks', $hooks);
-
         // Clean cache
         fn_clear_cache();
 
@@ -188,7 +168,7 @@ function fn_disable_addon($addon_name, $caller_addon_name, $show_notification = 
 function fn_install_addon($addon, $show_notification = true, $install_demo = false)
 {
     $status = db_get_field("SELECT status FROM ?:addons WHERE addon = ?s", $addon);
-    // Return true if addon is installed
+    // Return true if addon is instaleld
     if (!empty($status)) {
         return true;
     }
@@ -207,14 +187,13 @@ function fn_install_addon($addon, $show_notification = true, $install_demo = fal
 
     if ($addon_scheme != false) {
         // Register custom classes
-        Tygh::$app['class_loader']->add('', Registry::get('config.dir.addons') . $addon);
+        Registry::get('class_loader')->add('', Registry::get('config.dir.addons') . $addon);
 
-        if ($addon_scheme->isPromo()) {
-
-            $texts = fn_get_addon_permissions_text();
-            fn_set_notification('E', __('error'), $texts['text']);
-
-            return false;
+        if (fn_allowed_for('ULTIMATE:FREE')) {
+            if ($addon_scheme->isPromo()) {
+                fn_set_notification('E', __('error'), __('cannot_install_addon'));
+                fn_redirect("addons.manage");
+            }
         }
 
         $_data = array (
@@ -222,18 +201,12 @@ function fn_install_addon($addon, $show_notification = true, $install_demo = fal
             'priority' =>  $addon_scheme->getPriority(),
             'dependencies' => implode(',', $addon_scheme->getDependencies()),
             'conflicts' => implode(',', $addon_scheme->getConflicts()),
-            'requirements' => $addon_scheme->getRequirements(),
             'version' => $addon_scheme->getVersion(),
             'separate' => ($addon_scheme->getSettingsLayout() == 'separate') ? 1 : 0,
             'has_icon' => $addon_scheme->hasIcon(),
             'unmanaged' => $addon_scheme->getUnmanaged(),
             'status' => 'D' // addon is disabled by default when installing
         );
-
-        // Check system requirements (needed versions, installed extensions, etc.)
-        if (!$addon_scheme->checkRequirements($_data['requirements'])) {
-            return false;
-        }
 
         $dependencies = SchemesManager::getInstallDependencies($_data['addon']);
         if (!empty($dependencies)) {
@@ -249,6 +222,9 @@ function fn_install_addon($addon, $show_notification = true, $install_demo = fal
 
             return false;
         }
+
+        // Add optional language variables
+        $addon_scheme->installLanguageValues();
 
         // Add add-on to registry
         Registry::set('addons.' . $addon, array(
@@ -276,43 +252,12 @@ function fn_install_addon($addon, $show_notification = true, $install_demo = fal
                 'lang_code' => $translation['lang_code'],
                 'addon' =>  $addon_scheme->getId(),
                 'name' => $translation['value'],
-                'description' => isset($translation['description']) ? $translation['description'] : ''
+                'description' => $translation['description']
             ));
-        }
-
-        foreach ($addon_scheme->getLanguages() as $lang_code => $_v) {
-            $lang_code = strtolower($lang_code);
-            $path = $addon_scheme->getPoPath($lang_code);
-            if (!empty($path)) {
-                Languages::installLanguagePack($path, array(
-                    'reinstall' => true,
-                    'validate_lang_code' => $lang_code
-                ));
-            }
         }
 
         // Install templates
         fn_install_addon_templates($addon_scheme->getId());
-
-        // Put this addon settings to the registry
-        $settings = Settings::instance()->getValues($addon_scheme->getId(), Settings::ADDON_SECTION, false);
-        if (!empty($settings)) {
-            Registry::set('settings.' . $addon, $settings);
-            $addon_data = Registry::get('addons.' . $addon);
-            Registry::set('addons.' . $addon, fn_array_merge($addon_data, $settings));
-        }
-
-        // Add optional language variables
-        $language_variables = $addon_scheme->getLanguageValues(false);
-        if (!empty($language_variables)) {
-            db_query('REPLACE INTO ?:language_values ?m', $language_variables);
-        }
-
-        // Get only original values
-        $language_variables = $addon_scheme->getLanguageValues(true);
-        if (!empty($language_variables)) {
-            db_query('REPLACE INTO ?:original_values ?m', $language_variables);
-        }
 
         if (fn_allowed_for('ULTIMATE')) {
             foreach (fn_get_all_companies_ids() as $company) {
@@ -320,6 +265,14 @@ function fn_install_addon($addon, $show_notification = true, $install_demo = fal
             }
         } else {
             ProductTabs::instance()->createAddonTabs($addon_scheme->getId(), $addon_scheme->getTabOrder());
+        }
+
+        // Put this addon settings to the registry
+        $settings = Settings::instance()->getValues($addon_scheme->getId(), Settings::ADDON_SECTION, false);
+        if (!empty($settings)) {
+            Registry::set('settings.' . $addon, $settings);
+            $addon_data = Registry::get('addons.' . $addon);
+            Registry::set('addons.' . $addon, fn_array_merge($addon_data, $settings));
         }
 
         // Execute custom functions
@@ -363,11 +316,6 @@ function fn_install_addon($addon, $show_notification = true, $install_demo = fal
 
         if ($install_demo) {
             $addon_scheme->processQueries('demo', Registry::get('config.dir.addons') . $addon);
-            if ($addon_scheme->callCustomFunctions('demo') == false) {
-                fn_uninstall_addon($addon, false);
-
-                return false;
-            }
         }
 
         return true;
@@ -385,66 +333,44 @@ function fn_install_addon($addon, $show_notification = true, $install_demo = fal
  */
 function fn_install_addon_templates($addon_name)
 {
+    $repo_dir = fn_get_theme_path('[repo]/basic/');
 
-    $installed_themes = fn_get_installed_themes();
-    $design_dir = fn_get_theme_path('[themes]/', 'C');
-    foreach ($installed_themes as $theme_name) {
-        $manifest = Themes::factory($theme_name)->getRepoManifest();
+    if (fn_allowed_for('ULTIMATE')) {
+        foreach (fn_get_all_companies_ids() as $company) {
+            $installed_themes = fn_get_installed_themes($company);
+            $design_dir = fn_get_theme_path('[themes]/', 'C', $company);
+            foreach ($installed_themes as $theme_name) {
+                if (is_dir($repo_dir . 'templates/addons/' . $addon_name)) {
+                    fn_copy($repo_dir . 'templates/addons/' . $addon_name, $design_dir . $theme_name . '/templates/addons/' . $addon_name);
+                }
+                if (is_dir($repo_dir . 'css/addons/' . $addon_name)) {
+                    fn_copy($repo_dir . 'css/addons/' . $addon_name, $design_dir . $theme_name . '/css/addons/' . $addon_name);
+                }
+                if (is_dir($repo_dir . 'media/images/addons/' . $addon_name)) {
+                    fn_copy($repo_dir . 'media/images/addons/' . $addon_name, $design_dir . $theme_name . '/media/images/addons/' . $addon_name);
+                }
 
-        if (empty($manifest)) {
-            $manifest = Themes::factory($theme_name)->getManifest();
-        }
-
-        if (isset($manifest['parent_theme'])) {
-            if (empty($manifest['parent_theme'])) {
-                $parent_path = fn_get_theme_path('[repo]/' . $theme_name . '/');
-            } else {
-                $parent_path = fn_get_theme_path('[repo]/' . $manifest['parent_theme'] . '/');
             }
-        } else {
-            $parent_path = fn_get_theme_path('[repo]/' . Registry::get('config.base_theme') . '/');
+
         }
+    } else {
+        $installed_themes = fn_get_installed_themes();
+        $design_dir = fn_get_theme_path('[themes]/', 'C');
+        foreach ($installed_themes as $theme_name) {
+            if (is_dir($repo_dir . 'templates/addons/' . $addon_name)) {
+                fn_copy($repo_dir . 'templates/addons/' . $addon_name, $design_dir . $theme_name . '/templates/addons/' . $addon_name);
+            }
+            if (is_dir($repo_dir . 'css/addons/' . $addon_name)) {
+                fn_copy($repo_dir . 'css/addons/' . $addon_name, $design_dir . $theme_name . '/css/addons/' . $addon_name);
+            }
+            if (is_dir($repo_dir . 'media/images/addons/' . $addon_name)) {
+                fn_copy($repo_dir . 'media/images/addons/' . $addon_name, $design_dir . $theme_name . '/media/images/addons/' . $addon_name);
+            }
 
-        $repo_path = array(
-            fn_get_theme_path('[repo]/basic' . '/'),
-            $parent_path,
-            fn_get_theme_path('[repo]/' . $theme_name . '/')
-        );
-
-        foreach ($repo_path as $path) {
-            fn_copy_addon_templates_from_repo($path, $design_dir, $addon_name, $theme_name);
         }
     }
 
     return true;
-}
-
-/**
- * Copies files from base repository to store folder
- *
- * @param string $repo_dir Path to the repository
- * @param string $design_dir Path to store design folder
- * @param string $addon_name Name of installing add-on
- * @param string $theme_name Using theme name
- */
-function fn_copy_addon_templates_from_repo($repo_dir, $design_dir, $addon_name, $theme_name)
-{
-    $paths = array(
-        'templates/addons/' . $addon_name,
-        'css/addons/' . $addon_name,
-        'media/images/addons/' . $addon_name,
-
-        // Copy Mail directory
-        'mail/templates/addons/' . $addon_name,
-        'mail/media/images/addons/' . $addon_name,
-        'mail/css/addons/' . $addon_name,
-    );
-
-    foreach ($paths as $path) {
-        if (is_dir($repo_dir . $path)) {
-            fn_copy($repo_dir . $path, $design_dir . $theme_name . '/' . $path);
-        }
-    }
 }
 
 /**
@@ -455,27 +381,39 @@ function fn_copy_addon_templates_from_repo($repo_dir, $design_dir, $addon_name, 
  */
 function fn_uninstall_addon_templates($addon)
 {
-    if (fn_is_development()) {
+    if (defined('DEVELOPMENT')) {
         return false;
+    }
+
+    if (fn_allowed_for('ULTIMATE')) {
+        foreach (fn_get_all_companies_ids() as $company) {
+            $installed_themes = fn_get_installed_themes($company);
+            $design_dir = fn_get_theme_path('[themes]/', 'C', $company);
+            foreach ($installed_themes as $theme_name) {
+                if (is_dir($design_dir . $theme_name . '/templates/addons/' . $addon)) {
+                    fn_rm($design_dir . $theme_name . '/templates/addons/' . $addon);
+                }
+                if (is_dir($design_dir . $theme_name . '/css/addons/' . $addon)) {
+                    fn_rm($design_dir . $theme_name . '/css/addons/' . $addon);
+                }
+                if (is_dir($design_dir . $theme_name . '/media/images/addons/' . $addon)) {
+                    fn_rm($design_dir . $theme_name . '/media/images/addons/' . $addon);
+                }
+            }
+        }
     }
 
     $installed_themes = fn_get_installed_themes();
     $design_dir = fn_get_theme_path('[themes]/', 'C');
-
     foreach ($installed_themes as $theme_name) {
-        $paths = array(
-            $design_dir . $theme_name . '/templates/addons/' . $addon,
-            $design_dir . $theme_name . '/css/addons/' . $addon,
-            $design_dir . $theme_name . '/media/images/addons/' . $addon,
-            $design_dir . $theme_name . '/mail/templates/addons/' . $addon,
-            $design_dir . $theme_name . '/mail/media/images/addons/' . $addon,
-            $design_dir . $theme_name . '/mail/css/addons/' . $addon,
-        );
-
-        foreach ($paths as $path) {
-            if (is_dir($path)) {
-                fn_rm($path);
-            }
+        if (is_dir($design_dir . $theme_name . '/templates/addons/' . $addon)) {
+            fn_rm($design_dir . $theme_name . '/templates/addons/' . $addon);
+        }
+        if (is_dir($design_dir . $theme_name . '/css/addons/' . $addon)) {
+            fn_rm($design_dir . $theme_name . '/css/addons/' . $addon);
+        }
+        if (is_dir($design_dir . $theme_name . '/media/images/addons/' . $addon)) {
+            fn_rm($design_dir . $theme_name . '/media/images/addons/' . $addon);
         }
     }
 
@@ -488,7 +426,7 @@ function fn_uninstall_addon_templates($addon)
 * @param XmlScheme $addon_scheme Data from addon.xml file
 * @return bool True in success, false otherwise
 */
-function fn_update_addon_settings($addon_scheme, $execute_functions = true)
+function fn_update_addon_settings($addon_scheme)
 {
     $tabs = $addon_scheme->getSections();
 
@@ -517,34 +455,25 @@ function fn_update_addon_settings($addon_scheme, $execute_functions = true)
             // Import translations for tab
             if (!empty($section_tab_id)) {
                 fn_update_addon_settings_descriptions($section_tab_id, Settings::SECTION_DESCRIPTION, $tab['translations']);
-                fn_update_addon_settings_originals($addon_scheme->getId(), $tab['id'], 'section', $tab['original']);
-
                 $settings = $addon_scheme->getSettings($tab['id']);
 
                 foreach ($settings as $k => $setting) {
                     if (!empty($setting['id'])) {
-
-                        if (!empty($setting['parent_id'])) {
-                            $setting['parent_id'] = Settings::instance()->getId($setting['parent_id'], $addon_scheme->getId());
-                        }
-
                         $setting_id = Settings::instance()->update(array(
                             'name' =>           $setting['id'],
-                            'section_id' =>     $addon_section_id,
-                            'section_tab_id' => $section_tab_id,
-                            'type' =>           $setting['type'],
+                                'section_id' =>     $addon_section_id,
+                                'section_tab_id' => $section_tab_id,
+                                'type' =>           $setting['type'],
                             'position' =>       isset($setting['position']) ? $setting['position'] : $k * 10,
                             'edition_type' =>   $setting['edition_type'],
                             'is_global' =>      'N',
-                            'handler' =>        $setting['handler'],
-                            'parent_id' =>      intval($setting['parent_id'])
+                            'handler' =>        $setting['handler']
                         ));
 
                         if (!empty($setting_id)) {
-                            Settings::instance()->updateValueById($setting_id, $setting['default_value'], null, $execute_functions);
+                            Settings::instance()->updateValueById($setting_id, $setting['default_value']);
 
                             fn_update_addon_settings_descriptions($setting_id, Settings::SETTING_DESCRIPTION, $setting['translations']);
-                            fn_update_addon_settings_originals($addon_scheme->getId(), $setting['id'], 'option', $setting['original']);
 
                             if (isset($setting['variants'])) {
                                 foreach ($setting['variants'] as $variant_k => $variant) {
@@ -556,7 +485,6 @@ function fn_update_addon_settings($addon_scheme, $execute_functions = true)
 
                                     if (!empty($variant_id)) {
                                         fn_update_addon_settings_descriptions($variant_id, Settings::VARIANT_DESCRIPTION, $variant['translations']);
-                                        fn_update_addon_settings_originals($addon_scheme->getId(), $setting['id'] . '::' . $variant['id'], 'variant', $variant['original']);
                                     }
                                 }
                             }
@@ -604,43 +532,6 @@ function fn_update_addon_settings_descriptions($object_id, $object_type, $transl
 }
 
 /**
- * Updates settings original values
- *
- * @param string $addon_id Addon ID (discussions, gift_certificates, etc)
- * @param string $name Text settings ID (use_search_on_page, gift_certificate_code, etc)
- * @param string $type Setting type. Enum: section, option, variant
- * @param string $value Setting description
- * @return bool True if updated
- */
-function fn_update_addon_settings_originals($addon_id, $name, $type, $value)
-{
-    switch (strtolower($type)) {
-        case 'section':
-            $context = 'SettingsSections::' . $addon_id . '::' . $name;
-            break;
-
-        case 'option':
-            $context = 'SettingsOptions::' . $addon_id . '::' . $name;
-            break;
-
-        case 'variant':
-            // Variant name must include option name (option_name::variant_name)
-            $context = 'SettingsVariants::' . $addon_id . '::' . $name;
-            break;
-
-        default:
-            $context = '';
-            break;
-    }
-
-    if (empty($context)) {
-        return false;
-    }
-
-    return db_query('REPLACE INTO ?:original_values (msgctxt, msgid) VALUES (?s, ?s)', $context, $value);
-}
-
-/**
  * Checks if addon has correct shaphot
  *
  * @param string $addon Addon name (ID)
@@ -650,7 +541,6 @@ function fn_check_addon_snapshot($addon)
 {
     static $addons_snapshots = array();
     static $mode = '';
-    $status = true;
 
     if (empty($addons_snapshots)) {
         $addons_snapshots = fn_get_storage_data('addons_snapshots');
@@ -660,40 +550,8 @@ function fn_check_addon_snapshot($addon)
     }
 
     if ($mode == strrev('eerf') && in_array(md5($addon), $addons_snapshots)) {
-        $status = false;
+        return false;
     }
-
-    fn_set_hook('addon_snapshot', $addon, $status);
-
-    return $status;
-}
-
-/**
- * Cleans up addons with incorrect snaphost
- *
- * @return bool Always true
- */
-function fn_clean_up_addons()
-{
-    $_addons = db_get_hash_single_array("SELECT addon, status FROM ?:addons", array('addon', 'status'));
-    $skipped_snapshots = fn_get_storage_data('skipped_snapshots');
-    $skipped_snapshots = !empty($skipped_snapshots) ? explode(',', $skipped_snapshots) : array();
-
-    foreach ($_addons as $addon => $status) {
-        $snaphost = md5(str_rot13($addon));
-        if (!fn_check_addon_snapshot($addon)) {
-            if ($status == 'A') {
-                fn_update_addon_status($addon, 'D');
-                $skipped_snapshots[] = $snaphost;
-            }
-        } elseif (in_array($snaphost, $skipped_snapshots)) {
-            fn_update_addon_status($addon, 'A');
-            $skipped_snapshots = array_diff($skipped_snapshots, array($snaphost));
-        }
-    }
-
-    $skipped_snapshots = array_unique($skipped_snapshots);
-    fn_set_storage_data('skipped_snapshots', implode(',', $skipped_snapshots));
 
     return true;
 }
@@ -703,7 +561,7 @@ function fn_clean_up_addons()
  * @param string $addon Addon to update status for
  * @param string $status Status to change to
  * @param bool $show_notification Display notification if set to true
- * @param bool $on_install If status was changed right after install process
+ * @param bool $on_install If status was changed on after ionstall process
  * @return bool|string True on success, old status ID if status was not changed
  */
 function fn_update_addon_status($addon, $status, $show_notification = true, $on_install = false)
@@ -751,27 +609,25 @@ function fn_update_addon_status($addon, $status, $show_notification = true, $on_
 
                 if (!empty($conflicts)) {
                     $conflicts = explode(',', $conflicts);
-                    $conflicted_addons = db_get_fields("SELECT addon FROM ?:addons WHERE addon IN (?a) AND status = 'A'", $conflicts);
-                    if (!empty($conflicted_addons)) {
-                        $lang_var = 'text_addon_confclicts_on_install';
 
-                        if (!$on_install) {
-                            foreach ($conflicts as $conflict) {
-                                fn_disable_addon($conflict, $scheme->getName(), $show_notification);
-                            }
+                    $lang_var = 'text_addon_confclicts_on_install';
 
-                            $lang_var = 'text_addon_confclicts';
+                    if (!$on_install) {
+                        foreach ($conflicts as $conflict) {
+                            fn_disable_addon($conflict, $scheme->getName(), $show_notification);
                         }
 
-                        fn_set_notification('W', __('warning'), __($lang_var, array(
-                            '[addons]' => implode(', ', SchemesManager::getNames($conflicts)),
-                            '[addon_name]' => $scheme->getName()
-                        )));
+                        $lang_var = 'text_addon_confclicts';
+                    }
 
-                        // On install we cannot enable addon with conflicts automaticly
-                        if ($on_install) {
-                            return $old_status;
-                        }
+                    fn_set_notification('W', __('warning'), __($lang_var, array(
+                        '[addons]' => implode(', ', SchemesManager::getNames($conflicts)),
+                        '[addon_name]' => $scheme->getName()
+                    )));
+
+                    // On install we cannot enable addon with conflicts automaticly
+                    if ($on_install) {
+                        return $old_status;
                     }
                 }
             }
@@ -790,32 +646,13 @@ function fn_update_addon_status($addon, $status, $show_notification = true, $on_
 
             // Enable/disable tabs for addon
             ProductTabs::instance()->updateAddonTabStatus($addon, $new_status);
-
-            Registry::set('addons.' . $addon . '.status', $status);
-
         } else {
             return $old_status;
         }
-
     }
 
     // Clean cache
     fn_clear_cache();
-
-    if ($status == 'A') {
-        foreach (fn_get_installed_themes() as $theme_name) {
-
-            $theme = Themes::factory($theme_name);
-            $theme_manifest = $theme->getManifest();
-
-            // Precompile addon LESS files if the theme has been converted to CSS
-            if (!empty($theme_manifest['converted_to_css']) && !$theme->convertAddonToCss($addon)) {
-                fn_update_addon_status($addon, 'D', $show_notification, $on_install);
-
-                return $old_status;
-            }
-        }
-    }
 
     return true;
 }
@@ -828,207 +665,4 @@ function fn_update_addon_status($addon, $status, $show_notification = true, $on_
 function fn_get_addon_version($addon)
 {
     return db_get_field("SELECT version FROM ?:addons where addon=?s", $addon);
-}
-
-/**
- * Gets addons list
- *
- * @param array $params search params
- * @param int $items_per_page items per page for pagination
- * @param string $lang_code language code
- * @return array addons list and filtered search params
- */
-function fn_get_addons($params, $items_per_page = 0, $lang_code = CART_LANGUAGE)
-{
-    $params = LastView::instance()->update('addons', $params);
-
-    $default_params = array(
-        'type' => 'any',
-    );
-
-    $params = array_merge($default_params, $params);
-
-    $addons = array();
-    $sections =  Settings::instance()->getAddons();
-    $all_addons = fn_get_dir_contents(Registry::get('config.dir.addons'), true, false);
-    $installed_addons = db_get_hash_array(
-        'SELECT a.addon, a.status, b.name as name, b.description as description, a.separate, a.unmanaged, a.has_icon '
-        . 'FROM ?:addons as a LEFT JOIN ?:addon_descriptions as b ON b.addon = a.addon AND b.lang_code = ?s'
-        . 'ORDER BY b.name ASC',
-        'addon', $lang_code
-    );
-
-    foreach ($installed_addons as $key => $addon) {
-        $installed_addons[$key]['has_sections'] = Settings::instance()->sectionExists($sections, $addon['addon']);
-        $installed_addons[$key]['has_options'] = ($installed_addons[$key]['has_sections']) ? Settings::instance()->optionsExists($addon['addon'], 'ADDON') : false;
-
-        // Check add-on snaphot
-        if (!fn_check_addon_snapshot($key)) {
-            $installed_addons[$key]['status'] = 'D';
-            $installed_addons[$key]['snapshot_correct'] = false;
-        } else {
-            $installed_addons[$key]['snapshot_correct'] = true;
-        }
-    }
-
-    foreach ($all_addons as $addon) {
-        $addon_scheme = SchemesManager::getScheme($addon);
-
-        if (in_array($params['type'], array('any', 'installed', 'active', 'disabled'))) {
-
-            $search_status = $params['type'] == 'active' ? 'A' : ($params['type'] == 'disabled' ? 'D' : '');
-
-            if (!empty($installed_addons[$addon])) {
-                // exclude unmanaged addons from the list
-                if ($installed_addons[$addon]['unmanaged'] == true) {
-                    continue;
-                }
-
-                if (!empty($search_status) && $installed_addons[$addon]['status'] != $search_status) {
-                    continue;
-                }
-
-                $addons[$addon] = $installed_addons[$addon];
-                $addons[$addon]['delete_url'] = '';
-                $addons[$addon]['url'] = fn_url("addons.update?addon=$addon&return_url=" . urlencode(Registry::get('config.current_url')));
-                if (!Registry::get('runtime.company_id')) {
-                    $addons[$addon]['delete_url'] = fn_url("addons.uninstall?addon=$addon&redirect_url=" . urlencode(Registry::get('config.current_url')));
-                }
-
-                if ($addon_scheme != false && !$addon_scheme->getUnmanaged()) {
-                    $addons[$addon]['originals'] = $addon_scheme->getOriginals();
-                }
-
-                fn_update_lang_objects('installed_addon', $addons[$addon]);
-
-                if (is_file(Registry::get('config.dir.addons') . $addon . '/func.php')) {
-                    require_once(Registry::get('config.dir.addons') . $addon . '/func.php');
-
-                    if (is_file(Registry::get('config.dir.addons') . $addon . '/config.php')) {
-                        require_once(Registry::get('config.dir.addons') . $addon . '/config.php');
-                    }
-
-                    // Generate custom description
-                    $func = 'fn_addon_dynamic_description_' . $addon;
-                    if (function_exists($func)) {
-                        $addons[$addon]['description'] = $func($addons[$addon]['description']);
-                    }
-
-                    //Generate custom url
-                    $url_func = 'fn_addon_dynamic_url_' . $addon;
-                    if (function_exists($url_func)) {
-                        list($addons[$addon]['url'], $addons[$addon]['delete_url']) = $url_func($addons[$addon]['url'], $addons[$addon]['delete_url']);
-                    }
-                }
-            }
-        }
-
-        if (empty($installed_addons[$addon]) && empty($params['for_company']) && (in_array($params['type'], array('any', 'not_installed')))) {
-            if ($addon_scheme != false && !$addon_scheme->getUnmanaged()) {
-                $addons[$addon] = array(
-                    'status' => 'N', // Because it's not installed
-                    'name' => $addon_scheme->getName(),
-                    'snapshot_correct' => fn_check_addon_snapshot($addon),
-                    'description' => $addon_scheme->getDescription(),
-                    'has_icon' => $addon_scheme->hasIcon(),
-                );
-            }
-        }
-    }
-
-    if (!empty($params['q'])) {
-        foreach ($addons as $addon => $addon_data) {
-            if (!preg_match('/' . preg_quote($params['q'], '/') . '/ui', $addon_data['name'], $m)) {
-                unset($addons[$addon]);
-            }
-        }
-    }
-
-    $addons = fn_sort_array_by_key($addons, 'name', SORT_ASC);
-
-    return array($addons, $params);
-}
-
-/**
- * Move addon pack from temporarily folder to specified place and install it if possible
- *
- * @param string $from Source path
- * @param string $to Destination path
- * @return bool true if installed, false otherwise
- */
-function fn_addons_move_and_install($from, $to)
-{
-    if (defined('AJAX_REQUEST')) {
-        Tygh::$app['ajax']->assign('non_ajax_notifications', true);
-    }
-
-    $struct = fn_get_dir_contents($from, false, true, '', '', true);
-    $addon_name = '';
-
-    foreach ($struct as $file) {
-        if (preg_match('/app.+?addons[^a-zA-Z0-9_]+([a-zA-Z0-9_-]+).+?addon.xml$/i', $file, $matches)) {
-            if (!empty($matches[1])) {
-                $addon_name = $matches[1];
-                break;
-            }
-        }
-    }
-
-    $relative_addon_path = str_replace(Registry::get('config.dir.root') . '/', '', Registry::get('config.dir.addons'));
-
-    if (!file_exists($from . $relative_addon_path . $addon_name . '/addon.xml')) {
-        fn_set_notification('E', __('error'), __('broken_addon_pack'));
-
-        return false;
-    }
-
-    fn_copy($from, $to);
-
-    fn_install_addon($addon_name);
-
-    fn_rm($from);
-
-    return true;
-}
-
-function fn_get_addon_permissions_text()
-{
-    $messages = array(
-        'title' => __('text_full_mode_required'),
-        'text' => __('text_forbidden_functionality')
-    );
-
-    fn_set_hook('addon_permissions_text', $messages);
-
-    return $messages;
-}
-
-/**
- * Load addon
- *
- * @param string $addon_name addon name
- * @return boolean true if addon loaded, false otherwise
- */
-function fn_load_addon($addon_name)
-{
-    static $cache = array(); // FIXME: duplicate with fn_set_hook
-
-    if (!isset($cache[$addon_name])) {
-
-        if (is_file(Registry::get('config.dir.addons') . $addon_name . '/init.php')) {
-            include_once(Registry::get('config.dir.addons') . $addon_name . '/init.php');
-        }
-        if (file_exists(Registry::get('config.dir.addons') . $addon_name . '/func.php')) {
-            include_once(Registry::get('config.dir.addons') . $addon_name . '/func.php');
-        }
-        if (file_exists(Registry::get('config.dir.addons') . $addon_name . '/config.php')) {
-            include_once(Registry::get('config.dir.addons') . $addon_name . '/config.php');
-        }
-
-        Tygh::$app['class_loader']->add('', Registry::get('config.dir.addons') . $addon_name);
-
-        $cache[$addon_name] = true;
-    }
-
-    return $cache[$addon_name];
 }

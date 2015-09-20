@@ -121,7 +121,7 @@ class writeexcel_worksheet extends writeexcel_biffwriter {
         $this->_firstsheet        = &$firstsheet;
         $this->_url_format        = &$url_format;
         $this->_parser            = &$parser;
-        $this->_tempdir           = fn_get_cache_path(false) . 'xls/';
+        $this->_tempdir           = Registry::get('config.dir.cache_misc') . 'xls/';
 
         $this->_ext_sheets        = array();
         $this->_using_tmpfile     = 1;
@@ -2789,7 +2789,7 @@ function insert_bitmap() {
                                      // object
         $dyT         = $y1;          // Distance from top of cell
 
-        $colR        = $col_end;     // Col containing lower right corner of
+        $colR        = $col_end;     // Col containing lower right corner of 
                                      // object
         $dxR         = $x2;          // Distance from right of cell
 

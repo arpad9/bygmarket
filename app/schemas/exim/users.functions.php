@@ -14,85 +14,65 @@
 
 use Tygh\Registry;
 
-function fn_import_set_default_value(&$import_data)
-{
-    foreach ($import_data as $key => $data) {
-        $import_data[$key]['user_type'] = !empty($import_data[$key]['user_type']) ? $import_data[$key]['user_type'] : 'C';
+if (fn_allowed_for('ULTIMATE')) {
+    function fn_exim_get_company_name($store_name)
+    {
+        return fn_get_company_name($store_name);
     }
 
-    return true;
-}
+    function fn_import_set_user_company_id(&$import_data, &$pattern)
+    {
+        $pattern['key'][] = 'company_id';
+        $skip_record_notification = false;
 
-function fn_import_set_user_company_id(&$import_data)
-{
-    foreach ($import_data as $key => $data) {
-        if ((empty($import_data[$key]['user_type']) || $import_data[$key]['user_type'] != 'A') && !Registry::get('runtime.simple_ultimate')) {
-            if (!Registry::get('runtime.company_id')) {
-                $import_data[$key]['company_id'] = (!empty($import_data[$key]['company_id'])) ? fn_get_company_id_by_name($import_data[$key]['company_id']) : 0;
+        foreach ($import_data as $key => $data) {
+            $import_data[$key]['user_type'] = !empty($import_data[$key]['user_type']) ? $import_data[$key]['user_type'] : 'C';
+            if (!empty($import_data[$key]['user_type']) && $import_data[$key]['user_type'] != 'A' || empty($import_data[$key]['user_type'])) {
+                $import_data[$key]['company_id'] = Registry::ifGet('runtime.company_id', fn_get_company_id_by_name($import_data[$key]['company_id']));
             } else {
-                $import_data[$key]['company_id'] = Registry::get('runtime.company_id');
+                $import_data[$key]['company_id'] = 0;
             }
-        } else {
-            $user = fn_exim_get_user_info($import_data[$key]['email']);
-
-            if (!empty($user)) {
-                $import_data[$key]['company_id'] = (int) $user['company_id'];
-            } else {
-                if (!Registry::get('runtime.company_id')) {
-                    $import_data[$key]['company_id'] = (!empty($import_data[$key]['company_id'])) ? fn_get_company_id_by_name($import_data[$key]['company_id']) : 0;
-                } else {
-                    $import_data[$key]['company_id'] = Registry::get('runtime.company_id');
-                }
+            if ('company_id' == array_search(false, $import_data[$key], true)) {
+                unset($import_data[$key]);
+                $skip_record_notification = true;
             }
+        }
+        if ($skip_record_notification) {
+            fn_set_notification('W', __('warning'), __('text_skip_customer_record_notification'));
         }
     }
 
-    return true;
-}
-
-function fn_set_allowed_company_ids(&$conditions)
-{
-    if (Registry::get('runtime.company_id') && !Registry::get('runtime.simple_ultimate')) {
-        $company_customers_ids = implode(',', db_get_fields("SELECT user_id FROM ?:orders WHERE company_id = ?i", Registry::get('runtime.company_id')));
-        if (Registry::get('settings.Stores.share_users') == 'Y' && !empty($company_customers_ids)) {
-            $conditions[] = "(users.company_id = " . Registry::get('runtime.company_id') . " OR users.user_id IN ($company_customers_ids))";
-        } else {
-            $conditions[] = "users.company_id = " . Registry::get('runtime.company_id');
+    function fn_set_allowed_company_ids(&$pattern, &$export_fields, &$options, &$conditions, &$joins, &$table_fields, &$processes)
+    {
+        if (Registry::get('runtime.company_id')) {
+            $company_customers_ids = implode(',', db_get_fields("SELECT user_id FROM ?:orders WHERE company_id = ?i", Registry::get('runtime.company_id')));
+            if (Registry::get('settings.Stores.share_users') == 'Y' && !empty($company_customers_ids)) {
+                $conditions[] = "(users.company_id = " . Registry::get('runtime.company_id') . " OR users.user_id IN ($company_customers_ids))";
+            } else {
+                $conditions[] = "users.company_id = " . Registry::get('runtime.company_id');
+            }
+            $conditions[] = 'users.user_type = "C"';
         }
     }
-}
 
-function fn_import_check_user_company_id(&$primary_object_id, &$object, &$processed_data, &$skip_record)
-{
-    if (!empty($primary_object_id)) {
-        if (Registry::get('runtime.company_id') && !Registry::get('runtime.simple_ultimate')) {
-            if (isset($primary_object_id['company_id']) && $primary_object_id['company_id'] != Registry::get('runtime.company_id')) {
+    function fn_import_check_user_company_id(&$primary_object_id, &$object, &$pattern, &$options, &$processed_data, &$processing_groups, &$skip_record)
+    {
+        if (!empty($primary_object_id) && ((Registry::get('runtime.company_id') && $primary_object_id['company_id'] != Registry::get('runtime.company_id')) || (!Registry::get('runtime.company_id') && $primary_object_id['company_id'] != $object['company_id']))) {
+            if (Registry::get('settings.Stores.share_users') == 'Y') {
                 $processed_data['S']++;
                 $skip_record = true;
+            } elseif (Registry::get('settings.Stores.share_users') == 'N') {
+                unset($primary_object_id);
             }
-        } else {
-            unset($object['company_id']);
         }
-    } else {
-        if (!Registry::get('runtime.company_id')) {
-            if (!in_array($object['user_type'], array('A'))) {
-                $object['company_id'] = isset($object['company_id']) ? $object['company_id'] : 0;
+        if (Registry::get('runtime.company_id') && !$skip_record) {
+            if (fn_check_user_type_admin_area($object)) {
+                fn_set_notification('W', __('warning'), __('ult_cant_import_admins'));
+                $skip_record = true;
+                $processed_data['S']++;
             }
-        } else {
-            $object['company_id'] = Registry::get('runtime.company_id');
         }
     }
-}
-
-function fn_exim_get_user_info($email)
-{
-    if (!empty($email)) {
-        $user = db_get_row("SELECT company_id, is_root FROM ?:users WHERE email = ?s", $email);
-    } else {
-        $user = false;
-    }
-
-    return $user;
 }
 
 function fn_exim_process_password($user_data, $skip_record)
@@ -118,7 +98,7 @@ function fn_exim_get_extra_fields($user_id, $lang_code = CART_LANGUAGE)
 
     $_user = db_get_hash_single_array("SELECT d.description, f.value FROM ?:profile_fields_data as f LEFT JOIN ?:profile_field_descriptions as d ON d.object_id = f.field_id AND d.object_type = 'F' AND d.lang_code = ?s WHERE f.object_id = ?i AND f.object_type = 'U'", array('description', 'value'), $lang_code, $user_id);
 
-    $_profile = db_get_hash_multi_array("SELECT p.profile_id, d.description, f.value, c.section, c.field_id FROM ?:profile_fields_data as f LEFT JOIN ?:profile_field_descriptions as d ON d.object_id = f.field_id AND d.object_type = 'F' AND d.lang_code = ?s LEFT JOIN ?:user_profiles as p ON f.object_id = p.profile_id AND f.object_type = 'P' LEFT JOIN ?:profile_fields as c ON f.field_id = c.field_id WHERE p.user_id = ?i", array('field_id', 'section'), $lang_code, $user_id);
+    $_profile = db_get_hash_single_array("SELECT d.description, f.value FROM ?:profile_fields_data as f LEFT JOIN ?:profile_field_descriptions as d ON d.object_id = f.field_id AND d.object_type = 'F' AND d.lang_code = ?s LEFT JOIN ?:user_profiles as p ON f.object_id = p.profile_id AND f.object_type = 'P' WHERE p.user_id = ?i", array('description', 'value'), $lang_code, $user_id);
 
     if (!empty($_user)) {
         $fields['user'] = $_user;
@@ -140,51 +120,18 @@ function fn_exim_set_extra_fields($data, $user_id)
 
     if (is_array($data) && !empty($data)) {
         foreach ($data as $type => $_data) {
-            foreach ($_data as $field => $fields_data) {
-                if ($type == 'user') {
-                    $field_id = db_get_field("SELECT object_id FROM ?:profile_field_descriptions WHERE description = ?s AND object_type = 'F' LIMIT 1", $field);
-                    if (!empty($field_id)) {
-                        $update = array(
-                            'object_id' => $user_id,
-                            'object_type' => 'U',
-                            'field_id' => $field_id,
-                            'value' => $fields_data
-                        );
+            foreach ($_data as $field => $value) {
+                // Check if field is exist
+                $field_id = db_get_field("SELECT object_id FROM ?:profile_field_descriptions WHERE description = ?s AND object_type = 'F' LIMIT 1", $field);
+                if (!empty($field_id)) {
+                    $update = array(
+                        'object_id' => (($type == 'user') ? $user_id : (db_get_field("SELECT profile_id FROM ?:user_profiles WHERE user_id = ?i LIMIT 1", $user_id))),
+                        'object_type' => (($type == 'user') ? 'U' : 'P'),
+                        'field_id' => $field_id,
+                        'value' => $value
+                    );
 
-                        db_query('REPLACE INTO ?:profile_fields_data ?e', $update);
-                    }
-                } elseif ($type == 'profile') {
-                    if (is_array($fields_data)) {
-                        foreach ($fields_data as $section => $field_data) {
-                            $field_id = db_get_field("SELECT object_id FROM ?:profile_field_descriptions RIGHT JOIN ?:profile_fields ON ?:profile_field_descriptions.object_id = ?:profile_fields.field_id AND section = ?s WHERE description = ?s AND object_type = 'F' LIMIT 1", $field_data['section'], $field_data['description']);
-
-                            if (!empty($field_id)) {
-                                $update = array(
-                                    'object_id' => $field_data['profile_id'],
-                                    'object_type' => 'P',
-                                    'field_id' => $field_id,
-                                    'value' => $field_data['value']
-                                );
-
-                                db_query('REPLACE INTO ?:profile_fields_data ?e', $update);
-                            }
-                        }
-                    } else {
-                        //For the backward compatibility, when the foolowing line was used for prifile fields: {"profile":{"test":"2"}}
-                        $field_ids = db_get_fields("SELECT object_id FROM ?:profile_field_descriptions WHERE description = ?s AND object_type = 'F'", $field);
-                        if (!empty($field_ids)) {
-                            foreach ($field_ids as $field_id) {
-                                $update = array(
-                                    'object_id' => (db_get_field("SELECT profile_id FROM ?:user_profiles WHERE user_id = ?i LIMIT 1", $user_id)),
-                                    'object_type' => 'P',
-                                    'field_id' => $field_id,
-                                    'value' => $fields_data
-                                );
-
-                                db_query('REPLACE INTO ?:profile_fields_data ?e', $update);
-                            }
-                        }
-                    }
+                    db_query('REPLACE INTO ?:profile_fields_data ?e', $update);
                 }
             }
         }
@@ -193,17 +140,6 @@ function fn_exim_set_extra_fields($data, $user_id)
     }
 
     return false;
-}
-
-function fn_import_check_user_type(&$object, &$processed_data, &$skip_record)
-{
-    if (isset($object['email'])) {
-        $is_root = db_get_field("SELECT is_root FROM ?:users WHERE email = ?s", $object['email']);
-        if (!empty($is_root) && $is_root == 'Y') {
-            $processed_data['S']++;
-            $skip_record = true;
-        }
-    }
 }
 
 if (!fn_allowed_for('ULTIMATE:FREE')) {

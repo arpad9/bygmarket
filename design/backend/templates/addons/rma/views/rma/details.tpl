@@ -32,11 +32,12 @@
         {if $return_info.items[$smarty.const.RETURN_PRODUCT_ACCEPTED]}
         <div class="clearfix">
             <div class="buttons-container pull-right">
-            {hook name="rma:return_tools"}
             {if $return_info.status == $smarty.const.RMA_DEFAULT_STATUS}
                 {include file="buttons/button.tpl" but_text=__("decline_products") but_name="dispatch[rma.decline_products]" but_role="button_main" but_meta="cm-process-items"}
+                <a data-ca-dispatch="dispatch[rma.create_gift_certificate]" class="btn cm-process-items cm-submit cm-confirm" data-ca-target-form="return_info_form">{__("create_gift_certificate")}</a>
+            {else}
+                {include file="buttons/button.tpl" but_text=__("create_gift_certificate") but_name="dispatch[rma.create_gift_certificate]" but_role="button_main" but_meta="cm-process-items cm-confirm"}
             {/if}
-            {/hook}
             </div>
         </div>
 
@@ -234,6 +235,16 @@
     </div>
 </div>
 {/if}
+{* FIXME CORE SUPPLIERS
+{if $order_info.have_suppliers == "Y"}
+<div class="control-group notify-department">
+    <label for="notify_supplier">{if "MULTIVENDOR"|fn_allowed_for}{__("notify_vendor")}{else}{__("notify_supplier")}{/if}</label>
+    <div class="controls">
+        <label class="checkbox"><input type="checkbox" name="change_return_status[notify_supplier]" id="notify_supplier" value="Y" /></label>
+    </div>
+</div>
+{/if}
+*}
 </fieldset>
 
 <div class="control-group">
@@ -242,9 +253,6 @@
     </div>
 </div>
 </div>
-
-{hook name="rma:tabs_content"}{/hook}
-
 {/capture}
 {include file="common/tabsbox.tpl" content=$smarty.capture.tabsbox}
 
@@ -258,12 +266,8 @@
     {include file="common/view_tools.tpl" url="rma.details?return_id="}
     {capture name="tools_list"}
         <li>{btn type="list" text=__("print_slip") href="rma.print_slip?return_id=`$return_info.return_id`" class="cm-new-window"}</li>
-        <li>{btn type="list" text=__("delete_this_return") class="cm-confirm cm-post" href="rma.delete?return_id=`$return_info.return_id`"}</li>
-        <li class="divider"></li>
+        <li>{btn type="list" text=__("delete_this_return") class="cm-confirm" href="rma.delete?return_id=`$return_info.return_id`"}</li>
     {/capture}
-        <li>{btn type="list" text=__("rma_reasons") href="rma.properties?property_type=R"}</li>
-        <li>{btn type="list" text=__("rma_actions") href="rma.properties?property_type=A"}</li>
-        <li>{btn type="list" text=__("rma_request_statuses") href="statuses.manage?type=R"}</li>
     {dropdown content=$smarty.capture.tools_list}
 
     {hook name="rma:details_tools"}

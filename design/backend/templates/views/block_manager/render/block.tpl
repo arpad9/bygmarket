@@ -16,9 +16,9 @@
                 <span class="confirm-message hidden">{__("bm_confirm", ["[action]" => $action, "[location_name]" => $location.name])}</span>
             {/capture}
         {/if}
-        <div class="{$default_class|default:"block"} {if $status != "A"}block-off{/if} {if $parent_grid.content_align == 'RIGHT'}pull-right{elseif $parent_grid.content_align == 'LEFT'}pull-left{/if}{if $external_render} bm-external-render{/if}" id="snapping_{$block_data.snapping_id}{if $external_render}{$block_data.block_id}_{$external_id}{/if}" {if $status != "A"}data-ca-status="disabled"{else}data-ca-status="active"{/if} data-block-id="{$block_data.block_id}">
+        <div class="{$default_class|default:"block"} {if $status != "A"}block-off{/if} {if $parent_grid.content_align == 'RIGHT'}pull-right{elseif $parent_grid.content_align == 'LEFT'}pull-left{/if}{if $external_render} bm-external-render{/if}" id="snapping_{$block_data.snapping_id}{if $external_render}{$block_data.block_id}_{$external_id}{/if}" {if $status != "A"}data-ca-status="disabled"{else}data-ca-status="active"{/if}>
             <div class="block-header" title="{$block_data.name}">
-                <div class="block-header-icon {if $block_data.type}bmicon-{$block_data.type|replace:"_":"-"}{/if}" {if $parent_grid.width == 1}hidden{/if}></div>
+                <div class="block-header-icon bmicon-{$block_data.type|replace:"_":"-"}" {if $parent_grid.width == 1}hidden{/if}></div>
                 <h4 class="block-header-title {if $show_for_location && $block_data.location != $show_for_location}fixed-block{/if} {if $parent_grid.width == 1}hidden{/if}">
                     {$block_data.name}
                 </h4>

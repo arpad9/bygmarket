@@ -10,8 +10,8 @@
 
             <container position="HEADER" width="16" />
 
-            <container position="CONTENT" width="16" user_class="content-grid">
-                <grid width="16" offset="0" user_class="breadcrumbs-grid" omega="1" alpha="1" wrapper="" content_align="FULL_WIDTH" html_element="div" clear="1">
+            <container position="CONTENT" width="16">
+                <grid width="16" offset="0" user_class="" omega="1" alpha="1" wrapper="" content_align="FULL_WIDTH" html_element="div" clear="1">
                     <blocks>
                         <block>
                             <type><![CDATA[breadcrumbs]]></type>
@@ -32,7 +32,7 @@
                         </block>
                     </blocks>
                 </grid>
-                <grid width="8" offset="0" user_class="main-content-grid" omega="0" alpha="1" wrapper="" content_align="FULL_WIDTH" html_element="div" clear="0">
+                <grid width="8" offset="0" user_class="" omega="0" alpha="1" wrapper="" content_align="FULL_WIDTH" html_element="div" clear="0">
                     <blocks>
                         <block>
                             <type><![CDATA[main]]></type>
@@ -51,7 +51,7 @@
                         </block>
                     </blocks>
                 </grid>
-                <grid width="8" offset="0" user_class="certificates-verify-grid" omega="1" alpha="0" wrapper="" content_align="RIGHT" html_element="div" clear="0">
+                <grid width="8" offset="0" user_class="" omega="1" alpha="0" wrapper="" content_align="RIGHT" html_element="div" clear="0">
                     <blocks>
                         <block>
                             <type><![CDATA[gift_certificates_verify]]></type>
@@ -61,11 +61,11 @@
                             <lang_code><![CDATA[en]]></lang_code>
                             <name><![CDATA[Gift certificate verification]]></name>
                             <object_id><![CDATA[0]]></object_id>
-                            <object_type><![CDATA[]]></object_type>
-                            <content><![CDATA[]]></content>
-                            <object_ids><![CDATA[]]></object_ids>
-                            <wrapper><![CDATA[]]></wrapper>
-                            <user_class><![CDATA[]]></user_class>
+                            <object_type />
+                            <content />
+                            <object_ids />
+                            <wrapper />
+                            <user_class />
                             <order><![CDATA[0]]></order>
                             <status><![CDATA[A]]></status>
                             <translations>

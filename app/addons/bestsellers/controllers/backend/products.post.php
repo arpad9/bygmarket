@@ -22,22 +22,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 if ($mode == 'manage') {
 
-    $selected_fields = Tygh::$app['view']->getTemplateVars('selected_fields');
+    $selected_fields = Registry::get('view')->getTemplateVars('selected_fields');
 
     $selected_fields[] = array(
         'name' => '[data][sales_amount]',
         'text' => __('sales_amount')
     );
 
-    Tygh::$app['view']->assign('selected_fields', $selected_fields);
+    Registry::get('view')->assign('selected_fields', $selected_fields);
 
 } elseif ($mode == 'm_update') {
 
     $selected_fields = $_SESSION['selected_fields'];
 
-    $field_groups = Tygh::$app['view']->getTemplateVars('field_groups');
-    $filled_groups = Tygh::$app['view']->getTemplateVars('filled_groups');
-    $field_names = Tygh::$app['view']->getTemplateVars('field_names');
+    $field_groups = Registry::get('view')->getTemplateVars('field_groups');
+    $filled_groups = Registry::get('view')->getTemplateVars('filled_groups');
+    $field_names = Registry::get('view')->getTemplateVars('field_names');
 
     if (!empty($selected_fields['data']['sales_amount'])) {
         $field_groups['B']['sales_amount'] = 'products_data';
@@ -48,7 +48,7 @@ if ($mode == 'manage') {
         unset($field_names['sales_amount']);
     }
 
-    Tygh::$app['view']->assign('field_groups', $field_groups);
-    Tygh::$app['view']->assign('filled_groups', $filled_groups);
-    Tygh::$app['view']->assign('field_names', $field_names);
+    Registry::get('view')->assign('field_groups', $field_groups);
+    Registry::get('view')->assign('filled_groups', $filled_groups);
+    Registry::get('view')->assign('field_names', $field_names);
 }

@@ -4,7 +4,7 @@
 {capture name="billing_address"}
     {if $user_data.b_firstname || $user_data.b_lastname || $user_data.b_address || $user_data.b_address_2 || $user_data.b_city || $user_data.b_country_descr || $user_data.b_state_descr || $user_data.b_zipcode || $profile_fields.B}
 
-        <h4>{__("billing_address")}</h4>
+        {include file="common/subheader.tpl" title=__("billing_address")}
 
         {if $profile_fields.B}
             {if $user_data.b_firstname || $user_data.b_lastname}
@@ -32,7 +32,7 @@
 {capture name="shipping_address"}
     {if $user_data.s_firstname || $user_data.s_lastname || $user_data.s_address || $user_data.s_address_2 || $user_data.s_city || $user_data.s_country_descr || $user_data.s_state_descr || $user_data.s_zipcode || $profile_fields.S}
 
-        <h4>{__("shipping_address")}</h4>
+        {include file="common/subheader.tpl" title=__("shipping_address")}
 
         {if $profile_fields.S}
             {if $user_data.s_firstname || $user_data.s_lastname}

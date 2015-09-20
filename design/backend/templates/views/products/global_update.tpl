@@ -38,7 +38,7 @@
 
 {include file="common/subheader.tpl" title=__("products")}
 
-{include file="pickers/products/picker.tpl" type="links" input_name="update_data[product_ids]" no_item_text=__("text_all_products_included")}
+{include file="pickers/products/picker.tpl" type="links" input_name="update_data[product_ids]" no_item_text=__("text_all_items_included", ["[items]" => __("products")])}
 </form>
 
 {capture name="buttons"}

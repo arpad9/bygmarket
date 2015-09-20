@@ -1,7 +1,7 @@
 <div class="control-group">
     <label for="dateofbirth" class="control-label cm-required">{__("date_of_birth")}:</label>
     <div class="controls">
-        {include file="common/calendar.tpl" date_id="date_of_birth" date_name="payment_info[date_of_birth]" date_val=$cart.payment_info.date_of_birth|default:$user_data.birthday}
+        {include file="common/calendar.tpl" date_id="date_of_birth" date_name="payment_info[date_of_birth]" date_val=$cart.payment_info.date_of_birth|default:$user_data.birthday start_year="1902" end_year="0"}
     </div>
 </div>
 <div class="control-group">
@@ -11,7 +11,7 @@
     </div>
 </div>
 <div class="control-group">
-    <label for="phone_number" class="control-label cm-required cm-regexp" data-ca-regexp="{literal}^([0-9]{3}[ ]{1}[0-9]{3}[ ]{1}[0-9]{4})${/literal}" data-ca-message="{__("error_validator_phone_number")}">{__("phone")}:</label>
+    <label for="phone_number" class="control-label cm-required cm-regexp">{__("phone")}:</label>
     <div class="controls">
         <input id="phone_number" size="35" type="text" name="payment_info[phone]" value="{$cart.payment_info.phone|default:$user_data.b_phone|default:$user_data.phone}" class="cm-autocomplete-off" />
     </div>
@@ -53,3 +53,18 @@
     -autocomplete-off" />
     </div>
 </div>
+
+<script type="text/javascript">
+//<![CDATA[
+(function(_, $) {
+    $(document).ready(function() {
+        $.ceFormValidator('setRegexp', {
+            phone_number: {
+                regexp: {literal}"^([0-9]{3}[ ]{1}[0-9]{3}[ ]{1}[0-9]{4})$"{/literal},
+                message: "{__("error_validator_phone_number")|escape:javascript}"
+            }
+        });
+    });
+}(Tygh, Tygh.$));
+//]]>
+</script>

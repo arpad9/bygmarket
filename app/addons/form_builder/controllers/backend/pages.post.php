@@ -36,11 +36,11 @@ if ($mode == 'add' || $mode == 'update') {
         // [/Page sections]
     }
 
-    Tygh::$app['view']->assign('selectable_elements', implode('', fn_form_builder_selectable_elements()));
+    Registry::get('view')->assign('selectable_elements', implode('', fn_form_builder_selectable_elements()));
 }
 
 if ($mode == 'update') {
     list($elements, $form) = fn_get_form_elements($_REQUEST['page_id'], false, DESCR_SL);
-    Tygh::$app['view']->assign('form', $form);
-    Tygh::$app['view']->assign('elements', $elements);
+    Registry::get('view')->assign('form', $form);
+    Registry::get('view')->assign('elements', $elements);
 }

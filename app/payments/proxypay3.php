@@ -17,32 +17,31 @@ if (!defined('BOOTSTRAP')) { die('Access denied'); }
 $totals_100 = array('EUR', 'USD', 'GBP', 'CHF', 'NLG', 'DEM', 'FRF', 'ATS');
 
 if (defined('PAYMENT_NOTIFICATION')) {
-    $order_id = (strpos($_REQUEST['order_id'], '_')) ? substr($_REQUEST['order_id'], 0, strpos($_REQUEST['order_id'], '_')) : $_REQUEST['order_id'];
     if ($mode == 'notify') {
         if ($action == 'ok') {
-            $__status = db_get_field("SELECT status FROM ?:orders WHERE order_id = ?i", $order_id);
+            $__status = db_get_field("SELECT status FROM ?:orders WHERE order_id = ?i", $_REQUEST['order_id']);
             $pp_response = array();
             $pp_response['order_status'] = $__status;
-            $pp_response['reason_text'] = __('order_id') . '-' . $order_id;
+            $pp_response['reason_text'] = __('order_id') . '-' . $_REQUEST['order_id'];
 
-            if (fn_check_payment_script('proxypay3.php', $order_id)) {
-                fn_finish_payment($order_id, $pp_response, false);
+            if (fn_check_payment_script('proxypay3.php', $_REQUEST['order_id'])) {
+                fn_finish_payment($_REQUEST['order_id'], $pp_response, false);
             }
 
-            fn_order_placement_routines('route', $order_id);
+            fn_order_placement_routines('route', $_REQUEST['order_id']);
 
         } elseif ($action == 'nok') {
-            if (empty($order_id)) {
+            if (empty($_REQUEST['order_id'])) {
                 fn_set_notification('E', __('error'), __('connection_error'));
                 fn_order_placement_routines('checkout_redirect');
             } else {
                 $pp_response = array(
                     'order_status' => 'D',
-                    'reason_text' => __('payments.proxypay3.declined_reason_text'),
+                    'reason_text' => 'Error in data validation',
                 );
 
-                fn_finish_payment($order_id, $pp_response, false);
-                fn_order_placement_routines('route', $order_id);
+                fn_finish_payment($_REQUEST['order_id'], $pp_response, false);
+                fn_order_placement_routines('route', $_REQUEST['order_id']);
             }
         }
     }
@@ -56,18 +55,32 @@ if (defined('PAYMENT_NOTIFICATION')) {
         $total_cost = $order_info['total'] * 100;
     }
 
-    $order_id = $order_id . '_' . fn_date_format(time(), '%H:%M:%S');
-    $post_data = array(
-        'APACScommand' => 'NewPayment',
-        'merchantID' => $processor_data['processor_params']['merchantid'],
-        'amount' => $total_cost,
-        'merchantRef' => $order_id,
-        'merchantDesc' => $processor_data['processor_params']['details'],
-        'currency' => $processor_data['processor_params']['currency'],
-        'lang' => $lang,
-        'CustomerEmail' => $order_info['email'],        
-    );
+echo <<<EOT
+<form method="POST" action="https://{$processor_data['processor_params']['url']}" name="process">
+<input type="hidden" name="APACScommand" value="NewPayment">
+<input type="hidden" name="merchantID" value="{$processor_data['processor_params']['merchantid']}">
+<input type="hidden" name="amount" value="{$total_cost}">
+<input type="hidden" name="merchantRef" value="{$order_id}">
+<input type="hidden" name="merchantDesc" value="{$processor_data['processor_params']['details']}">
+<input type="hidden" name="currency" value="{$processor_data['processor_params']['currency']}">
+<input type="hidden" name="lang" value="{$lang}">
+<input type="hidden" name="CustomerEmail" value="{$order_info['email']}">
+EOT;
 
-    fn_create_payment_form('https://' . $processor_data['processor_params']['url'], $post_data, 'Eurobank');
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'Eurobank server'
+));
+echo <<<EOT
+    </form>
+    <br>
+    <div align="center">{$msg}</div>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
 }
 exit;

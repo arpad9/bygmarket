@@ -1,5 +1,5 @@
 {assign var="callback_url" value="payment_notification.result?payment=paybox"|fn_url:'C':'http'}
-<p>{__("text_paybox_notice", ["[callback_url]" => $callback_url, "[paybox_dir]" => "`$config.dir.payments`paybox_files"])}</p>
+<p>{__("text_paybox_notice", ["[callback_url]" => $callback_url])}</p>
 <hr>
 
 <div class="control-group">

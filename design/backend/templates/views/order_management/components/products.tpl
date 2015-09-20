@@ -42,7 +42,7 @@
             {__("free")}
             {else}
             <input type="hidden" name="cart_products[{$key}][stored_price]" value="N" />
-            <input class="inline" type="checkbox" name="cart_products[{$key}][stored_price]" value="Y" {if $cp.stored_price == "Y"}checked="checked"{/if} onchange="Tygh.$('#db_price_{$key},#manual_price_{$key}').toggle();"/>
+            <input class="inline" type="checkbox" name="cart_products[{$key}][stored_price]" value="Y" {if !$cp.stored_price == "Y"}checked="checked"{/if} onchange="Tygh.$('#db_price_{$key},#manual_price_{$key}').toggle();"/>
         {/if}
     </td>
     <td class="left">
@@ -52,9 +52,9 @@
         {else}
             {assign var="original_price" value=$cp.original_price}
         {/if}
-        <span class="{if $cp.stored_price == "Y"}hidden{/if}" id="db_price_{$key}">{include file="common/price.tpl" value=$original_price}</span>
-        <div class="{if $cp.stored_price != "Y"}hidden{/if}" id="manual_price_{$key}">
-            {include file="common/price.tpl" value=$cp.base_price view="input" input_name="cart_products[`$key`][price]" class="input-hidden input-mini" product_id=$cp.product_id}
+        <span {if $cp.stored_price == "Y"}hidden{/if}" id="db_price_{$key}">{include file="common/price.tpl" value=$original_price}</span>
+        <div class="{if $cp.stored_price != "Y"}hidden{/if}" id="manual_price_{$key}" style="display: none">
+            {include file="common/price.tpl" value=$cp.base_price view="input" input_name="cart_products[`$key`][price]" class="input-hidden input-mini" }
         </div>
     {/if}
     </td>
@@ -65,7 +65,7 @@
     {else}
         {if $cart.order_id}
         <input type="hidden" name="cart_products[{$key}][stored_discount]" value="Y" />
-        <input type="text" class="input-hidden input-mini cm-numeric" size="5" name="cart_products[{$key}][discount]" value="{$cp.discount}" data-a-sign="{$currencies.$primary_currency.symbol|strip_tags nofilter}" data-a-dec="," data-a-sep="." />
+        <input type="text" class="input-hidden input-mini cm-numeric" size="5" name="cart_products[{$key}][discount]" value="{$cp.discount}" data-a-sign="{$currencies.$primary_currency.symbol nofilter}" data-a-dec="," data-a-sep="." />
         {else}
         {include file="common/price.tpl" value=$cp.discount}
         {/if}
@@ -83,7 +83,7 @@
     </td>
     <td class="nowrap">
         <div class="hidden-tools">
-            <a class="cm-confirm cm-post icon-trash" href="{"order_management.delete?cart_ids[]=`$key`"|fn_url}" title="{__("delete")}"></a>
+            <a class="cm-confirm icon-trash" href="{"order_management.delete?cart_id=`$key`"|fn_url}" title="{__("delete")}"></a>
         </div>
     </td>
 </tr>

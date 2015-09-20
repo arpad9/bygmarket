@@ -14,6 +14,8 @@
 
 namespace Tygh\Backend\Storage;
 
+use Tygh\Registry;
+
 abstract class ABackend
 {
     /**
@@ -23,6 +25,7 @@ abstract class ABackend
 
     public $options = array();
     public $type = '';
+    public $saas_uid = null;
 
     private $_file_suffix_length = 6;
 
@@ -45,6 +48,10 @@ abstract class ABackend
      */
     protected function prefix($file = '')
     {
+        if (is_null($this->saas_uid)) {
+            $this->saas_uid = Registry::get('config.saas_uid');
+        }
+
         $prefix = '';
 
         if ($prefix_opt = $this->getOption('prefix')) {
@@ -54,6 +61,10 @@ abstract class ABackend
             } else {
                 $prefix .= $this->getOption('prefix') . '/';
             }
+        }
+
+        if (strlen($this->saas_uid)) {
+            $prefix .= $this->saas_uid . '/';
         }
 
         return $prefix . $file;
@@ -219,10 +230,9 @@ abstract class ABackend
      *
      * @param  array   $list   files list (relative path)
      * @param  string  $prefix absolute path prefix
-     * @param  array   $params additional parameters list
      * @return boolean true on success, false if at least one put was failed
      */
-    public function putList($list, $prefix, $params = array())
+    public function putList($list, $prefix)
     {
         if (!empty($list)) {
             fn_set_progress('step_scale', sizeof($list));
@@ -230,13 +240,17 @@ abstract class ABackend
                 fn_set_progress('echo', '.');
 
                 if (strpos($prefix, '://') !== false) {
-                    $params['contents'] = fn_get_contents($prefix . $item);
+                    $put_status = $this->put($item, array(
+                        'contents' => fn_get_contents($prefix . $item)
+                    ));
                 } else {
-                    $params['file'] = $prefix . $item;
-                    $params['keep_origins'] = true;
+                    $put_status = $this->put($item, array(
+                        'file' => $prefix . $item,
+                        'keep_origins' => true
+                    ));
                 }
 
-                if (!$this->put($item, $params)) {
+                if ($put_status == false) {
                     return false;
                 }
             }

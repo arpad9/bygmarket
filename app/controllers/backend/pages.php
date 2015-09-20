@@ -13,7 +13,6 @@
 ****************************************************************************/
 
 use Tygh\Registry;
-use Tygh\Navigation\LastView;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -23,7 +22,7 @@ if (!empty($_REQUEST['page_id'])) {
     $page_id = $_REQUEST['page_id'];
 } else {
     $page_id = 0;
-    Tygh::$app['view']->assign('show_all', true);
+    Registry::get('view')->assign('show_all', true);
 }
 
 if (!empty($_REQUEST['page_data']['page_id']) && $page_id == 0) {
@@ -42,9 +41,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     //
     if ($mode == 'update') {
 
-        // Updating page record
-        $page_id = fn_update_page($_REQUEST['page_data'], $_REQUEST['page_id'], DESCR_SL);
+        $allow_save = true;
 
+        if (fn_allowed_for('ULTIMATE')) {
+            if (!empty($_REQUEST['page_id'])) {
+                $allow_save = fn_check_company_id('pages', 'page_id', $_REQUEST['page_id']);
+            }
+        }
+
+        if ($allow_save) {
+            // Updating page record
+            $page_id = fn_update_page($_REQUEST['page_data'], $_REQUEST['page_id'], DESCR_SL);
+        }
+        
         if (isset($_REQUEST['redirect_url'])) {
             $_REQUEST['redirect_url'] .= (!empty($_REQUEST['come_from']) ? '&page_type=' . $_REQUEST['come_from'] :  '&get_tree=multi_level');
         }
@@ -87,7 +96,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Processing clonning of multiple page elements
     //
     if ($mode == 'm_clone') {
-
         $p_ids = array();
         if (!empty($_REQUEST['page_ids'])) {
             foreach ($_REQUEST['page_ids'] as $v) {
@@ -99,11 +107,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             fn_set_notification('N', __('notice'), __('text_pages_cloned'));
         }
         $suffix = ".manage?item_ids=" . implode(',', $p_ids);
-
-        if (!empty($_REQUEST['page_type'])) {
-            $suffix .= '&page_type=' . $_REQUEST['page_type'];
-        }
-
         unset($_REQUEST['redirect_url'], $_REQUEST['page']); // force redirection
     }
 
@@ -122,45 +125,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     //
-    // Delete page
-    //
-    if ($mode == 'delete') {
-        $suffix = '.manage';
-
-        if (!empty($page_id)) {
-
-            $suffix .= '?get_tree=multi_level';
-            if (!empty($_REQUEST['come_from'])) {
-                $suffix .= '&page_type=' . $_REQUEST['come_from'];
-            }
-
-            fn_delete_page($page_id);
-            fn_set_notification('N', __('notice'), __('text_page_has_been_deleted'));
-        }
-    }
-
-    //
-    // Clone page
-    //
-    if ($mode == 'clone') {
-
-        $suffix = '.manage';
-
-        if (!empty($_REQUEST['page_id'])) {
-            $pdata = fn_clone_page($_REQUEST['page_id']);
-
-            fn_set_notification('N', __('notice'), __('page_cloned', array(
-                '[page]' => $pdata['orig_name']
-            )));
-
-            $suffix = '.update?page_id=' . $pdata['page_id'];
-            if (!empty($_REQUEST['come_from'])) {
-                $suffix .= '&come_from=' . $_REQUEST['come_from'];
-            }
-        }
-    }
-
-    //
     // This mode is using to send search data via POST method
     //
     if ($mode == 'search_pages') {
@@ -171,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $suffix = '.manage';
     }
 
-    return array(CONTROLLER_STATUS_OK, 'pages' . $suffix);
+    return array(CONTROLLER_STATUS_OK, "pages$suffix");
 }
 /* /POST data processing */
 
@@ -227,6 +191,8 @@ if ($mode == 'update' || $mode == 'add') {
         }
     }
 
+    list($pages_tree, $params) = fn_get_pages(array('get_tree' => 'plain'));
+
     if (Registry::get('runtime.company_id') && isset($page_data['company_id']) && $page_data['company_id'] != Registry::get('runtime.company_id')) {
         $var = Registry::get('navigation.dynamic.actions');
         $vars = array('delete_this_page', 'add_page', 'add_link');
@@ -238,43 +204,54 @@ if ($mode == 'update' || $mode == 'add') {
         Registry::set('navigation.dynamic.actions', $var);
     }
 
-    if (!empty($page_id)) {
-
-        $params = array(
-            'get_tree' => 'multi_level',
-            'active_page_id' => $page_id,
-            'page_type' => fn_is_exclusive_page_type($page_type) ? $page_type : '',
-            'simple' => true,
-        );
-
-        $pages_count = db_get_field("SELECT COUNT(*) FROM ?:pages WHERE ?:pages.page_type IN (?a)", array_keys(fn_get_page_object_by_type()));
-        if ($pages_count > PAGE_THRESHOLD) {
-            $params['current_page_id'] = $page_id;
-            $params['visible'] = true;
-        }
-
-        list($pages_tree, ) = fn_get_pages($params);
-        Tygh::$app['view']->assign('pages_tree', $pages_tree);
+    $params = array();
+    if (!empty($page_data['company_id'])) {
+        $params['company_id'] = $page_data['company_id'];
+    } elseif (Registry::get('runtime.company_id')) {
+        $params['company_id'] = Registry::get('runtime.company_id');
     }
 
-    Tygh::$app['view']->assign('come_from', !empty($_REQUEST['come_from']) ? $_REQUEST['come_from'] : '');
-    Tygh::$app['view']->assign('page_type', $page_data['page_type']);
-    Tygh::$app['view']->assign('page_data', $page_data);
-    Tygh::$app['view']->assign('page_type_data', fn_get_page_object_by_type($page_data['page_type']));
-    Tygh::$app['view']->assign('page_types', fn_get_page_type_filter($page_type));
-    Tygh::$app['view']->assign('is_exclusive_page_type', fn_is_exclusive_page_type($page_type));
+    Registry::get('view')->assign('come_from', !empty($_REQUEST['come_from']) ? $_REQUEST['come_from'] : '');
+    Registry::get('view')->assign('all_pages_list', $pages_tree);
+    Registry::get('view')->assign('page_type', $page_data['page_type']);
+    Registry::get('view')->assign('page_data', $page_data);
+    Registry::get('view')->assign('page_type_data', fn_get_page_object_by_type($page_data['page_type']));
 
-    if (fn_show_picker('pages', PAGE_THRESHOLD) == false) {
-        $params = array(
-            'page_type' => fn_is_exclusive_page_type($page_type) ? $page_type : ''
-        );
-        if (!empty($page_data['company_id'])) {
-            $params['company_id'] = $page_data['company_id'];
-        } elseif (Registry::get('runtime.company_id')) {
-            $params['company_id'] = Registry::get('runtime.company_id');
+    $parent_pages = fn_get_pages_plain_list($params);
+
+    if (count($parent_pages) < PAGE_THRESHOLD) {
+        Registry::get('view')->assign('parent_pages', $parent_pages);
+    }
+//
+// Delete page
+//
+} elseif ($mode == 'delete') {
+    $suffix = '';
+
+    if (!empty($page_id)) {
+        if (!empty($_REQUEST['come_from'])) {
+            $suffix = '?page_type=' . $_REQUEST['come_from'];
+        } else {
+            $suffix = '?get_tree=multi_level';
         }
+        fn_delete_page($page_id);
+        fn_set_notification('N', __('notice'), __('text_page_has_been_deleted'));
+    }
 
-        Tygh::$app['view']->assign('parent_pages', fn_get_pages_plain_list($params));
+    return array(CONTROLLER_STATUS_REDIRECT, "pages.manage$suffix");
+
+//
+// Clone page
+//
+} elseif ($mode == 'clone') {
+    if (!empty($_REQUEST['page_id'])) {
+        $pdata = fn_clone_page($_REQUEST['page_id']);
+
+        fn_set_notification('N', __('notice'), __('page_cloned', array(
+            '[page]' => $pdata['orig_name']
+        )));
+
+        return array(CONTROLLER_STATUS_REDIRECT, "pages.update?page_id=$pdata[page_id]");
     }
 //
 // 'Management' page
@@ -282,21 +259,14 @@ if ($mode == 'update' || $mode == 'add') {
 } elseif ($mode == 'manage' || $mode == 'picker') {
 
     $params = $_REQUEST;
-
-    // This needs to allow exclusive pages have their own views
-    if (!empty($params['view_id'])) {
-        $data = LastView::instance()->getViewParams($params['view_id']);
-        $params = fn_array_merge($params, $data);
-    }
-
     if ($mode == 'picker') {
         $params['skip_view'] = 'Y';
+        $params['get_parent_pages'] = true;
     }
 
-    $page_type = !empty($params['page_type']) ? $params['page_type'] : '';
     $items_per_page = 0;
     if (!empty($params['get_tree'])) { // manage page, show tree
-        $condition = db_quote(" AND ?:pages.page_type IN (?a)", array_keys(fn_get_page_type_filter($page_type)));
+        $condition = db_quote(" AND ?:pages.page_type IN (?a)", array_keys(fn_get_page_object_by_type()));
         $total = db_get_field("SELECT COUNT(*) FROM ?:pages WHERE 1 ?p", $condition);
         if ($total > PAGE_THRESHOLD) {
             $params['get_children_count'] = true;
@@ -304,57 +274,58 @@ if ($mode == 'update' || $mode == 'add') {
             $params['parent_id'] = !empty($params['parent_id']) ? $params['parent_id'] : 0;
 
             if (defined('AJAX_REQUEST')) {
-                Tygh::$app['view']->assign('parent_id', $params['parent_id']);
-                Tygh::$app['view']->assign('hide_header', true);
+                Registry::get('view')->assign('parent_id', $params['parent_id']);
+                Registry::get('view')->assign('hide_header', true);
             }
 
-            Tygh::$app['view']->assign('hide_show_all', true);
+            Registry::get('view')->assign('hide_show_all', true);
         }
         if ($total < PAGE_SHOW_ALL) {
-            Tygh::$app['view']->assign('expand_all', true);
+            Registry::get('view')->assign('expand_all', true);
         }
     } else { // search page
         $items_per_page = Registry::get('settings.Appearance.admin_pages_per_page');
     }
 
     $params['add_root'] = !empty($_REQUEST['root']) ? $_REQUEST['root'] : '';
-    $params['simple'] = true;
 
     list($pages, $params) = fn_get_pages($params, $items_per_page);
 
-    Tygh::$app['view']->assign('pages_tree', $pages);
-    Tygh::$app['view']->assign('search', $params);
-
-
-    if (empty($params['full_search'])) {
-        Tygh::$app['view']->assign('page_types', fn_get_page_type_filter($page_type));
-    } else {
-        Tygh::$app['view']->assign('page_types', fn_get_page_object_by_type());
-    }
-
-    Tygh::$app['view']->assign('is_exclusive_page_type', fn_is_exclusive_page_type($page_type));
+    Registry::get('view')->assign('pages_tree', $pages);
+    Registry::get('view')->assign('search', $params);
+    Registry::get('view')->assign('page_types', fn_get_page_object_by_type());
 
     if (!empty($_REQUEST['except_id'])) {
-        Tygh::$app['view']->assign('except_id', $_REQUEST['except_id']);
-    }
-
-    if (fn_show_picker('pages', PAGE_THRESHOLD) == false) {
-        $params = array(
-            'page_type' => fn_is_exclusive_page_type($page_type) ? $page_type : ''
-        );
-        Tygh::$app['view']->assign('parent_pages', fn_get_pages_plain_list($params));
+        Registry::get('view')->assign('except_id', $_REQUEST['except_id']);
     }
 
     if ($mode == 'picker') {
         if (!empty($_REQUEST['combination_suffix'])) {
-            Tygh::$app['view']->assign('combination_suffix', $_REQUEST['combination_suffix']);
+            Registry::get('view')->assign('combination_suffix', $_REQUEST['combination_suffix']);
         }
-        Tygh::$app['view']->display('pickers/pages/picker_contents.tpl');
+        Registry::get('view')->display('pickers/pages/picker_contents.tpl');
         exit;
     }
+} elseif ($mode == 'get_parent_pages') {
+    $page_data = array();
+    if (isset($_REQUEST['page_id'])) {
+        Registry::get('view')->assign('page_id', $_REQUEST['page_id']);
+        $page_data = fn_get_page_data($_REQUEST['page_id'], DESCR_SL);
+    } else {
+        Registry::get('view')->assign('show_all', true);
+    }
+
+    if (!empty($_REQUEST['parent_id'])) {
+        $page_data['parent_id'] = $_REQUEST['parent_id'];
+    }
+
+    Registry::get('view')->assign('page_data', $page_data);
+    Registry::get('view')->assign('parent_pages', fn_get_pages_plain_list());
+    Registry::get('view')->display('views/pages/components/parent_page_selector.tpl');
+    exit;
 }
 
-Tygh::$app['view']->assign('usergroups', fn_get_usergroups(array('type' => 'C', 'status' => array('A', 'H')), DESCR_SL));
+Registry::get('view')->assign('usergroups', fn_get_usergroups('C', DESCR_SL));
 /* /Preparing page data for templates and performing simple actions*/
 
 /** /Body **/

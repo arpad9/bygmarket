@@ -33,5 +33,5 @@ if ($mode == 'initiate_discussion' && !empty($_REQUEST['order_id'])) {
         db_query("REPLACE INTO ?:discussion ?e", $_data);
     }
 
-    return array(CONTROLLER_STATUS_REDIRECT, 'orders.details?selected_section=discussion&order_id=' . $_REQUEST['order_id']);
+    return array(CONTROLLER_STATUS_REDIRECT, "orders.details?order_id=$_REQUEST[order_id]&selected_section=discussion");
 }

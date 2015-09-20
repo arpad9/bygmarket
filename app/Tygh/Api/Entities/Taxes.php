@@ -16,14 +16,13 @@ namespace Tygh\Api\Entities;
 
 use Tygh\Api\AEntity;
 use Tygh\Api\Response;
-use Tygh\Registry;
 
 class Taxes extends AEntity
 {
 
     public function index($id = 0, $params = array())
     {
-        $lang_code = $this->safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
+        $lang_code = $this->_safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
 
         if (!empty($id)) {
             $data = fn_get_tax($id, $lang_code);
@@ -35,24 +34,8 @@ class Taxes extends AEntity
             }
 
         } else {
-            $items_per_page = $this->safeGet($params, 'items_per_page', Registry::get('settings.Appearance.admin_elements_per_page'));
-            $page = $this->safeGet($params, 'page', 1);
-
             $data = fn_get_taxes($lang_code);
             $data = array_values($data);
-
-            if ($items_per_page) {
-                $data = array_slice($data, ($page - 1) * $items_per_page, $items_per_page);
-            }
-
-            $data = array(
-                'taxes' => $data,
-                'params' => array(
-                    'items_per_page' => $items_per_page,
-                    'page' => $page,
-                    'total_items' => count($data),
-                ),
-            );
             $status = Response::STATUS_OK;
         }
 
@@ -70,9 +53,7 @@ class Taxes extends AEntity
         $valid_params = true;
 
         if (empty($params['tax'])) {
-            $data['message'] = __('api_required_field', array(
-                '[field]' => 'tax'
-            ));
+            $data['message'] = __('api_taxes_need_tax');
             $valid_params = false;
         }
 
@@ -98,7 +79,7 @@ class Taxes extends AEntity
         $status = Response::STATUS_BAD_REQUEST;
         $data = array();
 
-        $lang_code = $this->safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
+        $lang_code = $this->_safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
         $tax_id = fn_update_tax($params, $id, $lang_code);
 
         if ($tax_id) {
@@ -117,10 +98,11 @@ class Taxes extends AEntity
     public function delete($id)
     {
         $data = array();
-        $status = Response::STATUS_NOT_FOUND;
+        $status = Response::STATUS_BAD_REQUEST;
 
         if (fn_delete_tax($id)) {
-            $status = Response::STATUS_NO_CONTENT;
+            $status = Response::STATUS_OK;
+            $data['message'] = 'Ok';
         }
 
         return array(
@@ -129,7 +111,7 @@ class Taxes extends AEntity
         );
     }
 
-    public function privileges()
+    public function priveleges()
     {
         return array(
             'create' => 'manage_taxes',

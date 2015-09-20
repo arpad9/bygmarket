@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
 
-        return array(CONTROLLER_STATUS_OK, 'profiles.manage' . (isset($_REQUEST['user_type']) ? '?user_type=' . $_REQUEST['user_type'] : '' ));
+        return array(CONTROLLER_STATUS_OK, "profiles.manage" . (isset($_REQUEST['user_type']) ? "?user_type=" . $_REQUEST['user_type'] : '' ));
     }
 
     if ($mode == 'export_range') {
@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             unset($_REQUEST['redirect_url']);
 
-            return array(CONTROLLER_STATUS_REDIRECT, 'exim.export?section=users&pattern_id=' . $_SESSION['export_ranges']['users']['pattern_id']);
+            return array(CONTROLLER_STATUS_REDIRECT, "exim.export?section=users&pattern_id=" . $_SESSION['export_ranges']['users']['pattern_id']);
         }
     }
 
@@ -55,6 +55,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Create/Update user
     //
     if ($mode == 'update' || $mode == 'add') {
+
+        fn_trusted_vars('user_data');
+
+        $_auth = NULL;
+
         $profile_id = !empty($_REQUEST['profile_id']) ? $_REQUEST['profile_id'] : 0;
         $_uid = !empty($profile_id) ? db_get_field("SELECT user_id FROM ?:user_profiles WHERE profile_id = ?i", $profile_id) : $auth['user_id'];
         $user_id = empty($_REQUEST['user_id']) ? (($mode == 'add') ? '' : $_uid) : $_REQUEST['user_id'];
@@ -66,22 +71,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         // Restricted admin cannot change its user type
-        if (fn_is_restricted_admin($_REQUEST) && $user_id == $auth['user_id'] || ($user_id == $auth['user_id'] && $auth['area'] == 'A')) {
+        if (fn_is_restricted_admin($_REQUEST) && $user_id == $auth['user_id']) {
             $_REQUEST['user_type'] = '';
             $_REQUEST['user_data']['user_type'] = $auth['user_type'];
         }
 
-        /**
-         * Only admin can set the api key.
-         */
         if (empty($_REQUEST['user_api_status']) || $_REQUEST['user_api_status'] == 'N') {
             $_REQUEST['user_data']['api_key'] = '';
         }
 
-        fn_restore_processed_user_password($_REQUEST['user_data'], $_POST['user_data']);
-
-        $send_password = $user_id != $auth['user_id'];
-        $res = fn_update_user($user_id, $_REQUEST['user_data'], $auth, !empty($_REQUEST['ship_to_another']), !empty($_REQUEST['notify_customer']), $send_password);
+        $res = fn_update_user($user_id, $_REQUEST['user_data'], $_auth, !empty($_REQUEST['ship_to_another']), !empty($_REQUEST['notify_customer']));
 
         if ($res) {
             list($user_id, $profile_id) = $res;
@@ -110,60 +109,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $redirect_params['return_url'] = urlencode($_REQUEST['return_url']);
         }
 
-        return array(CONTROLLER_STATUS_OK, 'profiles' . (!empty($user_id) ? '.update' : '.add') . '?' . http_build_query($redirect_params));
+        return array(CONTROLLER_STATUS_OK, "profiles." . (!empty($user_id) ? "update" : "add") . "?" . http_build_query($redirect_params));
     }
 
-    if ($mode == 'delete') {
-
-        $user_type = fn_get_request_user_type($_REQUEST);
-        fn_delete_user($_REQUEST['user_id']);
-
-        return array(CONTROLLER_STATUS_REDIRECT, 'profiles.manage?user_type=' . $user_type);
-
-    }
-
-    if ($mode == 'delete_profile') {
-
-        if (fn_is_restricted_admin($_REQUEST)) {
-            return array(CONTROLLER_STATUS_DENIED);
-        }
-
-        $user_id = empty($_REQUEST['user_id']) ? $auth['user_id'] : $_REQUEST['user_id'];
-
-        fn_delete_user_profile($user_id, $_REQUEST['profile_id']);
-
-        return array(CONTROLLER_STATUS_OK, 'profiles.update?user_id=' . $user_id);
-
-    }
-
-    if ($mode == 'update_status') {
-
-        $condition = fn_get_company_condition('?:users.company_id');
-        $user_data = db_get_row("SELECT * FROM ?:users WHERE user_id = ?i $condition", $_REQUEST['id']);
-        if (!empty($user_data)) {
-            $result = db_query("UPDATE ?:users SET status = ?s WHERE user_id = ?i", $_REQUEST['status'], $_REQUEST['id']);
-            if ($result && $_REQUEST['id'] != 1) {
-                fn_set_notification('N', __('notice'), __('status_changed'));
-                $force_notification = fn_get_notification_rules($_REQUEST);
-                if (!empty($force_notification['C']) && $_REQUEST['status'] == 'A' && $user_data['status'] == 'D') {
-                    Mailer::sendMail(array(
-                        'to' => $user_data['email'],
-                        'from' => 'company_users_department',
-                        'data' => array(
-                            'user_data' => $user_data,
-                        ),
-                        'tpl' => 'profiles/profile_activated.tpl',
-                        'company_id' => $user_data['company_id'],
-                    ), fn_check_user_type_admin_area($user_data['user_type']) ? 'A' : 'C', $user_data['lang_code']);
-                }
-            } else {
-                fn_set_notification('E', __('error'), __('error_status_not_changed'));
-                Tygh::$app['ajax']->assign('return_status', $user_data['status']);
-            }
-        }
-
-        exit;
-    }
 }
 
 if ($mode == 'manage') {
@@ -188,11 +136,11 @@ if ($mode == 'manage') {
 
     list($users, $search) = fn_get_users($_REQUEST, $auth, Registry::get('settings.Appearance.admin_elements_per_page'));
 
-    Tygh::$app['view']->assign('users', $users);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('users', $users);
+    Registry::get('view')->assign('search', $search);
 
     if (!empty($search['user_type'])) {
-        Tygh::$app['view']->assign('user_type_description', fn_get_user_type_description($search['user_type']));
+        Registry::get('view')->assign('user_type_description', fn_get_user_type_description($search['user_type']));
     }
 
     $user_types = fn_get_user_types();
@@ -203,12 +151,12 @@ if ($mode == 'manage') {
         unset($user_types['V']);
     }
 
-    Tygh::$app['view']->assign('user_types', $user_types);
-    Tygh::$app['view']->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
-    Tygh::$app['view']->assign('states', fn_get_all_states());
-    Tygh::$app['view']->assign('usergroups', fn_get_usergroups(array('status' => array('A', 'H')), DESCR_SL));
+    Registry::get('view')->assign('user_types', $user_types);
+    Registry::get('view')->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
+    Registry::get('view')->assign('states', fn_get_all_states());
+    Registry::get('view')->assign('usergroups', fn_get_usergroups('F', DESCR_SL));
 
-} elseif ($mode == 'act_as_user' || $mode == 'view_product_as_user') {
+} elseif ($mode == 'act_as_user') {
 
     if (fn_is_restricted_admin($_REQUEST) == true) {
         return array(CONTROLLER_STATUS_DENIED);
@@ -217,7 +165,7 @@ if ($mode == 'manage') {
     $condition = '';
     $_suffix = '';
 
-    if (fn_allowed_for('MULTIVENDOR') && $mode == 'act_as_user') {
+    if (fn_allowed_for('MULTIVENDOR')) {
         $condition = fn_get_company_condition('?:users.company_id');
     }
 
@@ -232,7 +180,7 @@ if ($mode == 'manage') {
 
         if (fn_allowed_for('MULTIVENDOR')) {
             if ($user_data['user_type'] == 'V') {
-                $area = ($area == 'A') ? 'V' : $area;
+                $area = 'V';
             }
         }
 
@@ -241,21 +189,15 @@ if ($mode == 'manage') {
             'last_status' => empty($_SESSION['last_status']) ? '' : $_SESSION['last_status'],
         );
 
-        if (Registry::get('settings.General.store_mode') == 'Y') {
-            $sess_data['store_access_key'] = Registry::get('settings.General.store_access_key');
-        }
-
         $areas = array(
             'A' => 'admin',
             'V' => 'vendor',
             'C' => 'customer',
         );
 
-        fn_init_user_session_data($sess_data, $_REQUEST['user_id'], true);
+        fn_init_user_session_data($sess_data, $_REQUEST['user_id']);
 
         $old_sess_id = Session::getId();
-
-        $redirect_url = !empty($_REQUEST['redirect_url']) ? $_REQUEST['redirect_url'] : '';
 
         if ($area != 'C') {
             Session::setName($areas[$area]);
@@ -270,30 +212,26 @@ if ($mode == 'manage') {
             fn_set_storage_data('session_' . $key . '_data', serialize($sess_data));
 
             if (fn_allowed_for('ULTIMATE')) {
-                $company_id_in_url = fn_get_company_id_from_uri($redirect_url);
-
-                if (Registry::get('runtime.company_id') || !empty($user_data['company_id']) || Registry::get('runtime.simple_ultimate') || !empty($company_id_in_url)) {
+                if (Registry::get('runtime.company_id') || !empty($user_data['company_id']) || Registry::get('runtime.simple_ultimate')) {
 
                     // Redirect to the personal frontend
                     $company_id = !empty($user_data['company_id']) ? $user_data['company_id'] : Registry::get('runtime.company_id');
                     if (!$company_id && Registry::get('runtime.simple_ultimate')) {
                         $company_id = fn_get_default_company_id();
-                    } elseif (!$company_id) {
-                        $company_id = $company_id_in_url;
                     }
-                    $url = $area == 'C' ? fn_link_attach($redirect_url, 'skey=' . $key . '&company_id=' . $company_id) : $redirect_url;
+                    $url = $area == 'C' ? '?skey=' . $key . '&company_id=' . $company_id : '';
 
                     return array(CONTROLLER_STATUS_REDIRECT, fn_url($url, $area), true);
                 }
             } else {
-                $url = fn_link_attach($redirect_url, 'skey=' . $key);
+                $url = '?skey=' . $key;
 
                 return array(CONTROLLER_STATUS_REDIRECT, fn_url($url, $area), true);
             }
 
         }
 
-        return array(CONTROLLER_STATUS_REDIRECT, fn_url($redirect_url, $area));
+        return array(CONTROLLER_STATUS_REDIRECT, fn_url('', $area));
     }
 
 } elseif ($mode == 'picker') {
@@ -302,16 +240,49 @@ if ($mode == 'manage') {
     $params['skip_view'] = 'Y';
 
     list($users, $search) = fn_get_users($params, $auth, Registry::get('settings.Appearance.admin_elements_per_page'));
-    Tygh::$app['view']->assign('users', $users);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('users', $users);
+    Registry::get('view')->assign('search', $search);
 
-    Tygh::$app['view']->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
-    Tygh::$app['view']->assign('states', fn_get_all_states());
-    Tygh::$app['view']->assign('usergroups', fn_get_usergroups(array('status' => array('A', 'H')), CART_LANGUAGE));
+    Registry::get('view')->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
+    Registry::get('view')->assign('states', fn_get_all_states());
+    Registry::get('view')->assign('usergroups', fn_get_usergroups('F', CART_LANGUAGE));
 
-    Tygh::$app['view']->display('pickers/users/picker_contents.tpl');
+    Registry::get('view')->display('pickers/users/picker_contents.tpl');
     exit;
 
+} elseif ($mode == 'delete') {
+
+    fn_delete_user($_REQUEST['user_id']);
+
+    return array(CONTROLLER_STATUS_REDIRECT);
+
+} elseif ($mode == 'update_status') {
+
+    $condition = fn_get_company_condition('?:users.company_id');
+    $user_data = db_get_row("SELECT * FROM ?:users WHERE user_id = ?i $condition", $_REQUEST['id']);
+    if (!empty($user_data)) {
+        $result = db_query("UPDATE ?:users SET status = ?s WHERE user_id = ?i", $_REQUEST['status'], $_REQUEST['id']);
+        if ($result && $_REQUEST['id'] != 1) {
+            fn_set_notification('N', __('notice'), __('status_changed'));
+            $force_notification = fn_get_notification_rules($_REQUEST);
+            if (!empty($force_notification['C']) && $_REQUEST['status'] == 'A' && $user_data['status'] == 'D') {
+                Mailer::sendMail(array(
+                    'to' => $user_data['email'],
+                    'from' => 'company_users_department',
+                    'data' => array(
+                        'user_data' => $user_data,
+                    ),
+                    'tpl' => 'profiles/profile_activated.tpl',
+                    'company_id' => $user_data['company_id'],
+                ), fn_check_user_type_admin_area($user_data['user_type']) ? 'A' : 'C', $user_data['lang_code']);
+            }
+        } else {
+            fn_set_notification('E', __('error'), __('error_status_not_changed'));
+            Registry::get('ajax')->assign('return_status', $user_data['status']);
+        }
+    }
+
+    exit;
 } elseif ($mode == 'password_reminder') {
 
     $cron_password = Registry::get('settings.Security.cron_password');
@@ -335,7 +306,7 @@ if ($mode == 'manage') {
                     'data' => array(
                         'days' => round((TIME - $_user_data['password_change_timestamp']) / SECONDS_IN_DAY),
                         'user_data' => $_user_data,
-                        'link' => fn_url('auth.password_change', $_user_data['user_type'], (Registry::get('settings.Security.secure_admin') == "Y") ? 'https' : 'http')
+                        'link' => fn_url('auth.password_change', $_user_data['user_type'], (Registry::get('settings.General.secure_admin') == "Y") ? 'https' : 'http')
                     ),
                     'tpl' => 'profiles/reminder.tpl',
                     'company_id' => $_user_data['company_id'],
@@ -357,11 +328,11 @@ if ($mode == 'manage') {
 
         $params = array();
         if (!empty($_REQUEST['user_id'])) {
-            $params['user_id'] = $_REQUEST['user_id'];
+            $params[] = "user_id=" . $_REQUEST['user_id'];
         }
-        $params['user_type'] = $user_type;
+        $params[] = "user_type=" . $user_type;
 
-        return array(CONTROLLER_STATUS_REDIRECT, 'profiles.' . $mode . '?' . http_build_query($params));
+        return array(CONTROLLER_STATUS_REDIRECT, "profiles." . $mode . "?" . implode("&", $params));
     }
 
     if ($mode == 'add') {
@@ -427,7 +398,7 @@ if ($mode == 'manage') {
 
     if (!empty($_REQUEST['user_id']) && !empty($_REQUEST['user_type'])) {
         if ($_REQUEST['user_id'] == $auth['user_id'] && defined('RESTRICTED_ADMIN') && !in_array($_REQUEST['user_type'], array('A', ''))) {
-            return array(CONTROLLER_STATUS_REDIRECT, 'profiles.update?user_id=' . $_REQUEST['user_id']);
+            return array(CONTROLLER_STATUS_REDIRECT, "profiles.update?user_id=" . $_REQUEST['user_id']);
         }
     }
 
@@ -461,12 +432,7 @@ if ($mode == 'manage') {
     $user_data['user_type'] = empty($user_data['user_type']) ? 'C' : $user_data['user_type'];
     $user_type = (!empty($_REQUEST['user_type'])) ? ($_REQUEST['user_type']) : $user_data['user_type'];
 
-    $usergroups = fn_get_usergroups(
-        fn_check_user_type_admin_area($user_type)
-            ? array('status' => array('A', 'H'))
-            : array('type' => 'C', 'status' => array('A', 'H')),
-        CART_LANGUAGE
-    );
+    $usergroups = fn_get_usergroups((fn_check_user_type_admin_area($user_type) ? 'F' : 'C'), CART_LANGUAGE);
 
     $auth['is_root'] = isset($auth['is_root']) ? $auth['is_root'] : '';
 
@@ -501,39 +467,41 @@ if ($mode == 'manage') {
     }
 
     if (empty($user_data['api_key'])) {
-        Tygh::$app['view']->assign('new_api_key', Api::generateKey());
+        Registry::get('view')->assign('new_api_key', Api::generateKey());
     }
 
-    /**
-     * Only admin can set the api key.
-     */
-    if (fn_check_user_type_admin_area($user_data) && !empty($user_data['user_id']) && ($auth['user_type'] == 'A' || $user_data['api_key'])) {
+    if (fn_check_user_type_admin_area($user_data) && !empty($user_data['user_id'])) {
         $navigation['api'] = array (
             'title' => __('api_access'),
             'js' => true
         );
-
-        Tygh::$app['view']->assign('show_api_tab', true);
-
-        if ($auth['user_type'] != 'A') {
-            Tygh::$app['view']->assign('hide_api_checkbox', true);
-        }
     }
 
     Registry::set('navigation.tabs', $navigation);
 
-    Tygh::$app['view']->assign('usergroups', $usergroups);
-    Tygh::$app['view']->assign('hide_inputs', !fn_check_editable_permissions($auth, $user_data));
+    Registry::get('view')->assign('usergroups', $usergroups);
 
     $profile_fields = fn_get_profile_fields($user_type);
-    Tygh::$app['view']->assign('user_type', $user_type);
-    Tygh::$app['view']->assign('profile_fields', $profile_fields);
-    Tygh::$app['view']->assign('user_data', $user_data);
-    Tygh::$app['view']->assign('ship_to_another', fn_check_shipping_billing($user_data, $profile_fields));
+    Registry::get('view')->assign('user_type', $user_type);
+    Registry::get('view')->assign('profile_fields', $profile_fields);
+    Registry::get('view')->assign('user_data', $user_data);
+    Registry::get('view')->assign('ship_to_another', fn_check_shipping_billing($user_data, $profile_fields));
     if (Registry::get('settings.General.user_multiple_profiles') == 'Y' && !empty($user_id)) {
-        Tygh::$app['view']->assign('user_profiles', fn_get_user_profiles($user_id));
+        Registry::get('view')->assign('user_profiles', fn_get_user_profiles($user_id));
     }
 
-    Tygh::$app['view']->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
-    Tygh::$app['view']->assign('states', fn_get_all_states());
+    Registry::get('view')->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
+    Registry::get('view')->assign('states', fn_get_all_states());
+
+} elseif ($mode == 'delete_profile') {
+
+    if (fn_is_restricted_admin($_REQUEST)) {
+        return array(CONTROLLER_STATUS_DENIED);
+    }
+
+    $user_id = empty($_REQUEST['user_id']) ? $auth['user_id'] : $_REQUEST['user_id'];
+
+    fn_delete_user_profile($user_id, $_REQUEST['profile_id']);
+
+    return array(CONTROLLER_STATUS_OK, "profiles.update?user_id=" . $user_id);
 }

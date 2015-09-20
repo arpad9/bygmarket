@@ -18,8 +18,6 @@ use Tygh\Settings;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
-define('ORDERS_COUNT', 3);
-
 $skip_errors = Registry::get('runtime.database.skip_errors');
 Registry::set('runtime.database.skip_errors', true);
 
@@ -28,10 +26,10 @@ $fdata = fn_get_feedback_data($mode);
 Registry::set('runtime.database.skip_errors', $skip_errors);
 
 if ($mode == 'prepare') {
-    Tygh::$app['view']->assign("fdata", $fdata);
+    Registry::get('view')->assign("fdata", $fdata);
 
 } elseif ($mode == 'send') {
-    $res = Http::post(Registry::get('config.resources.feedback_api'), array('fdata' => $fdata), array(
+    $res = Http::post("http://www.cs-cart.com/index.php?dispatch=feedback", array('fdata' => $fdata), array(
         'headers' => array(
             'Expect: '
         )
@@ -47,25 +45,8 @@ if ($mode == 'prepare') {
     return array(CONTROLLER_STATUS_REDIRECT, $redirect_url);
 }
 
-function fn_is_store_live()
-{
-    $time = time() - 60*60*24*30;
-    $orders_count = count(db_get_fields("SELECT order_id FROM ?:orders WHERE timestamp >= ?i GROUP BY ip_address", $time));
-
-    return ($orders_count > ORDERS_COUNT) ? 'Y' : 'N';
-}
-
 function fn_get_feedback_data($mode)
 {
-    $company_orders = db_get_hash_single_array("SELECT company_id, COUNT(order_id) as orders_count FROM ?:orders GROUP BY company_id", array('company_id', 'orders_count'));
-    arsort($company_orders);
-    $main_company_id = key($company_orders);
-
-    $company_condition = '';
-    if (fn_allowed_for('ULTIMATE')) {
-        $company_condition = db_quote(" AND company_id = ?i", $main_company_id);
-    }
-
     $fdata = array();
     $fdata['tracks']['version'] = PRODUCT_VERSION;
     $fdata['tracks']['type'] = PRODUCT_EDITION;
@@ -73,18 +54,10 @@ function fn_get_feedback_data($mode)
     $fdata['tracks']['build'] = PRODUCT_BUILD;
     $fdata['tracks']['domain'] = Registry::get('config.http_host');
     $fdata['tracks']['url'] = 'http://'.Registry::get('config.http_host').Registry::get('config.http_path');
-    $fdata['tracks']['mode'] = fn_get_storage_data('store_mode');
-    $fdata['tracks']['live'] = fn_is_store_live();
 
     // Sales reports usage
     $fdata['general']['sales_reports'] = db_get_field("SELECT COUNT(*) FROM ?:sales_reports");
     $fdata['general']['sales_tables'] = db_get_field("SELECT COUNT(*) FROM ?:sales_reports_tables");
-
-    $fdata['general']['layouts'] = db_get_field("SELECT COUNT(*) FROM ?:bm_layouts WHERE 1 $company_condition");
-    $fdata['general']['locations'] = db_get_field("SELECT COUNT(*) FROM ?:bm_locations WHERE layout_id IN (SELECT layout_id FROM ?:bm_layouts WHERE is_default = 1 $company_condition)");
-    $fdata['general']['current_theme'] = db_get_field("SELECT theme_name FROM ?:bm_layouts WHERE is_default = 1 $company_condition");
-    $fdata['general']['current_style'] = db_get_field("SELECT style_id FROM ?:bm_layouts WHERE is_default = 1 $company_condition");
-    $fdata['general']['pages'] = db_get_field("SELECT COUNT(*) FROM ?:pages");
 
     if (!fn_allowed_for('ULTIMATE:FREE')) {
         /**
@@ -183,12 +156,6 @@ function fn_get_feedback_data($mode)
 
     if (is_array($fdata['addons'])) {
         foreach ($fdata['addons'] as $k => $data) {
-            if ($data['addon'] == 'suppliers') {
-                $fdata['general']['suppliers'] = db_get_field("SELECT COUNT(*) FROM ?:suppliers");
-            }
-            if ($data['addon'] == 'newsletters') {
-                $fdata['general']['subscribers'] = db_get_field("SELECT COUNT(*) FROM ?:subscribers");
-            }
             if (!in_array($data['addon'], $allowed_addons)) {
                 continue;
             }

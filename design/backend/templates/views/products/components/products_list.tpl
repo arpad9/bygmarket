@@ -10,8 +10,7 @@
     {hook name="product_list:table_head"}
     {if $hide_amount}
     <th class="center" width="1%">
-        {if $show_radio}&nbsp;{else}{include file="common/check_items.tpl"}{/if}
-    </th>
+        {include file="common/check_items.tpl"}</th>
     {/if}
     <th width="80%">{__("product_name")}</th>
     {if $show_price}
@@ -28,7 +27,7 @@
 <tr id="picker_product_row_{$product.product_id}">
     {hook name="product_list:table_content"}
     {if $hide_amount}
-    <td class="center" width="1%"><input type="{if $show_radio}radio{else}checkbox{/if}" name="{$checkbox_name}[]" value="{$product.product_id}" class="cm-item mrg-check" id="checkbox_id_{$product.product_id}" /></td>
+    <td class="center" width="1%"><input type="checkbox" name="{$checkbox_name}[]" value="{$product.product_id}" class="cm-item mrg-check" id="checkbox_id_{$product.product_id}" /></td>
     {/if}
     <td>
         <input type="hidden" id="product_{$product.product_id}" value="{$product.product}" />
@@ -37,10 +36,7 @@
         {else}
             <span>{$product.product nofilter}</span>
         {/if}
-
-        {if !$hide_options}
-            {include file="views/products/components/select_product_options.tpl" id=$product.product_id product_options=$product.product_options name="product_data" show_aoc=$show_aoc additional_class=$additional_class}
-        {/if}
+        {include file="views/products/components/select_product_options.tpl" id=$product.product_id product_options=$product.product_options name="product_data" show_aoc=$show_aoc additional_class=$additional_class}
     </td>
     {if $show_price}
     <td class="cm-picker-product-options right">{if !$product.price|floatval && $product.zero_price_action == "A"}<input class="input-medium" id="product_price_{$product.product_id}" type="text" size="3" name="product_data[{$product.product_id}][price]" value="" />{else}{include file="common/price.tpl" value=$product.price}{/if}</td>
@@ -70,6 +66,7 @@
 
 
 <script type="text/javascript">
+//<![CDATA[
 (function(_, $) {
 
     function _switchAOC(id, disable)
@@ -126,6 +123,7 @@
         });
     });
 }(Tygh, Tygh.$));
+//]]>
 </script>
 
 {include file="common/pagination.tpl"}

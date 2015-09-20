@@ -32,7 +32,7 @@ function smarty_modifier_truncate($string, $length = 80, $etc = '...',
     if ($length == 0)
         return '';
 
-    if (Registry::get('runtime.customization_mode.live_editor') && preg_match('/(\[lang name\=[\w-]+?( [pre\-ajx]*)?\])(.*?)(\[\/lang\])/is', $string, $matches)) {
+    if (Registry::get('runtime.customization_mode.translation') && preg_match('/(\[lang name\=[\w-]+?( [pre\-ajx]*)?\])(.*?)(\[\/lang\])/is', $string, $matches)) {
         list(, $pre, , $string, $post) = $matches;
     } else {
         $pre = $post = '';

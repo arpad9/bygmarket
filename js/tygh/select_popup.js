@@ -11,12 +11,8 @@
 
 function fn_check_object_status(obj, status, color)
 {
-    if (Tygh.$(obj).hasClass('cm-promo-popup')) {
-        return false;
-    }
-
-    if (Tygh.$(obj).hasClass('active')) {
-        Tygh.$(obj).removeClass('cm-ajax').removeClass('cm-post');
+    if (Tygh.$(obj).hasClass('cm-active')) {
+        Tygh.$(obj).removeClass('cm-ajax');
         return false;
     }
 
@@ -34,18 +30,28 @@ function fn_update_object_status(obj, status, color)
     if ($(obj).prop('href')) {
         $(obj).prop('href', fn_query_remove($(obj).prop('href'), ['notify_user', 'notify_department']));
 
-        $('input[name^=__notify_]:checked', upd_elm).each(function(e) {
-            var name = $(this).attr('name').substr(2);
-            $(obj).prop('href', $(obj).prop('href') + '&' + name + '=Y');
-        });
+        if ($('input[name=__notify_user]:checked', upd_elm).length) {
+            $(obj).prop('href', $(obj).prop('href') + '&notify_user=Y');
+        }
+        if ($('input[name=__notify_department]:checked', upd_elm).length) {
+            $(obj).prop('href', $(obj).prop('href') + '&notify_department=Y');
+        }
+        if ($('input[name=__notify_vendor]:checked', upd_elm).length) {
+            $(obj).prop('href', $(obj).prop('href') + '&notify_vendor=Y');
+        }
+        /* FIXME CORE SUPPLIERS
+        /*
+        if ($('input[name=__notify_supplier]:checked', upd_elm).length) {
+            $(obj).prop('href', $(obj).prop('href') + '&notify_supplier=Y');
+        }
+        */
 
-        $('li a:not(:has([type=checkbox]))', upd_elm).addClass('cm-ajax').addClass('cm-post');
-
+        $('li a', upd_elm).addClass('cm-ajax');
     } else if ($(obj).data('caResultId')) {
         $('input[id="' + $(obj).data('caResultId') + '"]').val(status.toUpperCase());
     }
 
-    var p_active = $('li a.active', upd_elm);
+    var p_active = $('li a.cm-active', upd_elm);
     if (p_active.length) {
         var p_status = p_active.prop('class').match(/status-link-([^\s]+)/i);
 
@@ -63,10 +69,10 @@ function fn_update_object_status(obj, status, color)
 
     }
 
-    $('li a', upd_elm).removeClass('active');
+    $('li a', upd_elm).removeClass('cm-active');
     $('li', upd_elm).removeClass('disabled');
 
-    $('.status-link-' + status, upd_elm).addClass('active');
+    $('.status-link-' + status, upd_elm).addClass('cm-active');
     $('.status-link-' + status, upd_elm).parents('li:first').addClass('disabled');
     button_elm.html($('.status-link-' + status, upd_elm).text() + ' <span class="caret"></span>');
 }

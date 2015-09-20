@@ -12,8 +12,6 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-use Tygh\Registry;
-
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
 if (defined('PAYMENT_NOTIFICATION')) {
@@ -89,6 +87,10 @@ if (defined('PAYMENT_NOTIFICATION')) {
         "en" => "en_EN"
     );
 
+$post = array();
+
+$post['return'] = fn_url("payment_notification.result?payment=ideal_basic&order_id=$order_id", AREA, 'current');
+$post['cancel'] = fn_url("payment_notification.cancel?payment=ideal_basic&order_id=$order_id", AREA, 'current');
 
 $validUntil = date("Y-m-d\TH:i:s", time() + 3600 + date('Z'));
 $validUntil = $validUntil . ".000Z";
@@ -109,6 +111,7 @@ $_order_id = ($order_info['repaid']) ? ($order_id .'_'. $order_info['repaid']) :
 
 concatString = merchantKey + merchantID + subID + amount + purchaseID + paymentType + validUntil + itemNumber1 + itemDescription1 + itemQuantity1
 + itemPrice1 (+ itemNumber2 + itemDescription2 + itemQuantity2 + itemPrice2 + itemNumber3 + item...)*/
+
 $pre_sha = '';
 $total = 0;
 // Products
@@ -127,31 +130,8 @@ if (!empty($order_info['gift_certificates'])) {
         $total = $total + $v['amount'] * 100;
     }
 }
-// Discounts
-$discount = $order_info['subtotal_discount'];
-if ($discount > 0) {
-    $pre_sha = $pre_sha . strtolower(__('discount')) . __('discount') . '1' . ($discount * 100 * -1);
-}
-
-if (!empty($order_info['use_gift_certificates'])) {
-    foreach ($order_info['use_gift_certificates'] as $gc_code => $gc_data) {
-        $pre_sha .= $gc_data['gift_cert_id'] . $gc_code . '1' . ($gc_data['amount'] * 100 * -1);
-    }
-}
-
-// Taxes
-if (!empty($order_info['taxes']) && Registry::get('settings.General.tax_calculation') != 'unit_price') {
-    foreach ($order_info['taxes'] as $tax_id => $tax_data) {
-        if ($tax_data['price_includes_tax'] == 'N') {
-            $pre_sha .= $tax_id . __('tax') . '1' . ($tax_data['tax_subtotal'] * 100);
-        }
-    }
-}
-
-// Shipping
-$shipping=$order_info['shipping_cost'];
-if ($shipping > 0) {
-    $pre_sha = $pre_sha . "SH" . "Shipping" . "1" . ($shipping * 100);
+if ($total < $order_total) {
+    $pre_sha = $pre_sha . "SH" . "Shipping" . "1" . ($order_total - $total);
 }
 
 $shastring = "$pp_secret"."$pp_merch"."0"."$order_total"."$_order_id"."ideal"."$validUntil".$pre_sha;
@@ -167,104 +147,83 @@ $shastring = str_replace("&quot;", "\"", $shastring);
 $shasign = sha1($shastring);
 
 $counter = 1;
+$com = 0; // FIXME 24.11.2009 Variable is not used.
 
-$return_url = fn_url("payment_notification.result?payment=ideal_basic&order_id=$order_id", AREA, 'current');
-$cancel_url = fn_url("payment_notification.cancel?payment=ideal_basic&order_id=$order_id", AREA, 'current');
-$post_data = array(
-    'merchantID' => $pp_merch,
-    'subID' => '0',
-    'amount' => $order_total,
-    'purchaseID' => $_order_id,
-    'language' => $pp_lang,
-    'currency' => 'EUR',
-    'description' => 'iDEAL Basic purchase',
-    'hash' => $shasign,
-    'paymentType' => 'ideal',
-    'validUntil' => $validUntil,
-    'urlCancel' => $cancel_url,
-    'urlSuccess' => $return_url,
-    'urlError' => $return_url
-);
+echo <<<EOT
+    <form method="post" action="{$pp_test}" name="process">
+        <input type="hidden" NAME="merchantID" value="{$pp_merch}">
+        <input type="hidden" NAME="subID" value="0">
+        <input type="hidden" NAME="amount" VALUE="{$order_total}" >
+        <input type="hidden" NAME="purchaseID" VALUE="{$_order_id}">
+        <input type="hidden" NAME="language" VALUE="{$pp_lang}">
+        <input type="hidden" NAME="currency" VALUE="EUR">
+        <input type="hidden" NAME="description" VALUE="iDEAL Basic purchase">
+        <INPUT type="hidden" NAME="hash" VALUE="{$shasign}">
+        <input type="hidden" NAME="paymentType" VALUE="ideal">
+        <input type="hidden" NAME="validUntil" VALUE="$validUntil">
 
+EOT;
 // Products
 if (!empty($order_info['products'])) {
     foreach ($order_info['products'] as $k => $v) {
+        $am = fn_format_price($v['subtotal'] - fn_external_discounts($v)) * 100;
         $pr = fn_format_price(($v['subtotal'] - fn_external_discounts($v))/$v['amount']) * 100;
         $_name = str_replace('"', "", str_replace("'", "", $v['product']));
+echo <<<EOT
+        <INPUT type="hidden" NAME="itemNumber$counter" VALUE="{$v['product_id']}">
+        <INPUT type="hidden" NAME="itemDescription$counter" VALUE="{$_name}">
+        <INPUT type="hidden" NAME="itemQuantity$counter" VALUE="{$v['amount']}">
+        <INPUT type="hidden" NAME="itemPrice$counter" VALUE="{$pr}">
 
-        $post_data['itemNumber' . $counter] = $v['product_id'];
-        $post_data['itemDescription' . $counter] = $_name;
-        $post_data['itemQuantity' . $counter] = $v['amount'];
-        $post_data['itemPrice' . $counter] = $pr;
+EOT;
+        $com = $com + $am;
         $counter++;
     }
 }
 // Gift Cartificates
 if (!empty($order_info['gift_certificates'])) {
     foreach ($order_info['gift_certificates'] as $k => $v) {
-        $pr = (!empty($v['extra']['exclude_from_calculate'])) ? 0 : ($v['amount'] * 100);
+        $am = (!empty($v['extra']['exclude_from_calculate'])) ? 0 : ($v['amount'] * 100);
+echo <<<EOT
+        <INPUT type="hidden" NAME="itemNumber$counter" VALUE="{$v['gift_cert_id']}">
+        <INPUT type="hidden" NAME="itemDescription$counter" VALUE="{$v['gift_cert_code']}">
+        <INPUT type="hidden" NAME="itemQuantity$counter" VALUE="1">
+        <INPUT type="hidden" NAME="itemPrice$counter" VALUE="{$am}">
 
-        $post_data['itemNumber' . $counter] = $v['gift_cert_id'];
-        $post_data['itemDescription' . $counter] = $v['gift_cert_code'];
-        $post_data['itemQuantity' . $counter] = 1;
-        $post_data['itemPrice' . $counter] = $pr;
+EOT;
+        $com = $com + $am;
         $counter++;
     }
 }
-
-// Discount
-$discount=$order_info['subtotal_discount'];
-if ($discount > 0) {
-    $discounts = $order_info['subtotal_discount'] * 100 * (-1);
-    $msg = __('discount');
-
-    $post_data['itemNumber' . $counter] = $msg;
-    $post_data['itemDescription' . $counter] = $msg;
-    $post_data['itemQuantity' . $counter] = 1;
-    $post_data['itemPrice' . $counter] = $discounts;    
-    $counter++;
-}
-
-if (!empty($order_info['use_gift_certificates'])) {
-    foreach ($order_info['use_gift_certificates'] as $gc_code => $gc_data) {
-        $amount = fn_format_price($gc_data['amount']) * 100 * (-1);
-
-        $post_data['itemNumber' . $counter] = $gc_data['gift_cert_id'];
-        $post_data['itemDescription' . $counter] = $gc_code;
-        $post_data['itemQuantity' . $counter] = 1;
-        $post_data['itemPrice' . $counter] = $amount;
-        $counter++;
-    }
-}
-
-// Taxes
-if (!empty($order_info['taxes']) && Registry::get('settings.General.tax_calculation') != 'unit_price') {
-    $msg = __('tax');
-    foreach ($order_info['taxes'] as $tax_id => $tax_data) {
-        if ($tax_data['price_includes_tax'] == 'N') {
-            $amount = fn_format_price($tax_data['tax_subtotal']) * 100;
-
-            $post_data['itemNumber' . $counter] = $tax_id;
-            $post_data['itemDescription' . $counter] = $msg;
-            $post_data['itemQuantity' . $counter] = 1;
-            $post_data['itemPrice' . $counter] = $amount;    
-            $counter++;
-        }
-    }
-}
-
 // Shipping
-$shipping=$order_info['shipping_cost'];
-if ($shipping > 0) {
-    $ship = $order_info['shipping_cost'] * 100;
+if ($total < $order_total) {
+    $ship = $order_total - $total;
+echo <<<EOT
+        <INPUT type="hidden" NAME="itemNumber$counter" VALUE="SH">
+        <INPUT type="hidden" NAME="itemDescription$counter" VALUE="Shipping">
+        <INPUT type="hidden" NAME="itemQuantity$counter" VALUE="1">
+        <INPUT type="hidden" NAME="itemPrice$counter" VALUE="{$ship}">
 
-    $post_data['itemNumber' . $counter] = 'SH';
-    $post_data['itemDescription' . $counter] = 'Shipping';
-    $post_data['itemQuantity' . $counter] = 1;
-    $post_data['itemPrice' . $counter] = $ship;    
+EOT;
 }
 
-fn_create_payment_form($pp_test, $post_data, 'iDeal', false);
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'iDEAL server'
+));
 
+echo <<<EOT
+        <input type="hidden" NAME="urlCancel" VALUE="{$post['cancel']}">
+        <input type="hidden" NAME="urlSuccess" VALUE="{$post['return']}">
+        <input type="hidden" NAME="urlError" VALUE="{$post['return']}">
+    </form>
+    <div align=center>{$msg}</div>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+    </body>
+    </html>
+EOT;
 exit;
 }

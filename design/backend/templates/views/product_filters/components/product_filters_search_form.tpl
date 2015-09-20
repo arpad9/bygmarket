@@ -8,9 +8,12 @@
 
 <form action="{""|fn_url}" name="product_filters_search_form" method="get" class="{$form_meta}">
 {if $put_request_vars}
-    {array_to_fields data=$smarty.request skip=["callback"]}
+    {foreach from=$smarty.request key="k" item="v"}
+        {if $v && $k != "callback"}
+            <input type="hidden" name="{$k}" value="{$v}" />
+        {/if}
+    {/foreach}
 {/if}
-
 {capture name="simple_search"}
 {$extra nofilter}
 <div class="sidebar-field">
@@ -22,23 +25,24 @@
             {else}
                 {assign var="s_cid" value="0"}
             {/if}
-            {include file="pickers/categories/picker.tpl" data_id="location_category" input_name="category_ids" item_ids=$s_cid hide_link=true hide_delete_button=true default_name=__("all_categories") extra=""}
+            {include file="pickers/categories/picker.tpl" data_id="location_category" input_name="category_ids" item_ids=$s_cid hide_link=true hide_delete_button=true show_root=true default_name=__("all_categories") extra=""}
         {else}
             {include file="common/select_category.tpl" name="category_ids" id=$search.category_ids}
         {/if}
         </div>
 </div>
 <div class="sidebar-field">
-    <label for="elm_feature_name">{__("feature")}:</label>
-    <div class="break">
-        <input type="text" name="feature_name" id="elm_feature_name" value="{$search.feature_name}" size="30" class="search-input-text" />
-    </div>
+    <td class="nowrap search-field">
+        <label for="elm_feature_name">{__("feature")}:</label>
+        <div class="break">
+            <input type="text" name="feature_name" id="elm_feature_name" value="{$search.feature_name}" size="30" class="search-input-text" />
+        </div>
 </div>
 <div class="sidebar-field">
-    <label for="elm_filter_name">{__("filter")}:</label>
-    <div class="break">
-        <input type="text" name="filter_name" id="elm_filter_name" value="{$search.filter_name}" size="30" class="search-input-text" />
-    </div>
+        <label for="elm_filter_name">{__("filter")}:</label>
+        <div class="break">
+            <input type="text" name="filter_name" id="elm_filter_name" value="{$search.filter_name}" size="30" class="search-input-text" />
+        </div>
 </div>
 {/capture}
 

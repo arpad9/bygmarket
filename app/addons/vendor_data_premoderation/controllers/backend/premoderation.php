@@ -98,6 +98,6 @@ if ($mode == 'products_approval' && !Registry::get('runtime.company_id')) {
 
     list($products, $search) = fn_get_products($params, Registry::get('settings.Appearance.admin_products_per_page'), DESCR_SL);
 
-    Tygh::$app['view']->assign('products', $products);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('products', $products);
+    Registry::get('view')->assign('search', $search);
 }

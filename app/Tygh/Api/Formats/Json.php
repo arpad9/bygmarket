@@ -21,7 +21,7 @@ use Tygh\Api\IFormat;
  */
 class Json implements IFormat
 {
-    protected $mime_types = array(
+    private $mime_types = array(
         'application/json',
         'application/javascript'
     );
@@ -39,12 +39,12 @@ class Json implements IFormat
     public function decode($data)
     {
         $result = json_decode($data, true);
-        $error = $this->get_json_error(json_last_error());
+        $error = $this->_get_json_error(json_last_error());
 
         return array($result, $error);
     }
 
-    protected function get_json_error($error_code)
+    private function _get_json_error($error_code)
     {
         $errors = array(
             JSON_ERROR_NONE           => '',

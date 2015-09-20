@@ -12,7 +12,7 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-$schema = array(
+$scheme = array(
     'conditions' => array (
         'price' => array (
             'operators' => array ('eq', 'neq', 'lte', 'gte', 'lt', 'gt'),
@@ -105,77 +105,69 @@ $schema = array(
 );
 
 if (!fn_allowed_for('ULTIMATE:FREE')) {
-    $schema['conditions']['price']['zones'][] = 'cart';
-    $schema['conditions']['categories']['zones'][] = 'cart';
-    $schema['conditions']['products']['zones'][] = 'cart';
-    $schema['conditions']['users']['zones'][] = 'cart';
-    $schema['conditions']['feature']['zones'][] = 'cart';
+    $scheme['conditions']['price']['zones'][] = 'cart';
+    $scheme['conditions']['categories']['zones'][] = 'cart';
+    $scheme['conditions']['products']['zones'][] = 'cart';
+    $scheme['conditions']['users']['zones'][] = 'cart';
+    $scheme['conditions']['feature']['zones'][] = 'cart';
 
-    $schema['conditions']['usergroup'] = array(
+    $scheme['conditions']['usergroup'] = array(
         'operators' => array ('eq', 'neq'),
         'type' => 'select',
         'variants_function' => array('fn_get_simple_usergroups', 'C', true),
         'field' => '@auth.usergroup_ids',
         'zones' => array('catalog', 'cart')
     );
-    $schema['conditions']['country'] = array(
+    $scheme['conditions']['country'] = array(
         'operators' => array ('eq', 'neq'),
         'type' => 'select',
         'variants_function' => array('fn_get_simple_countries', true),
         'field' => '@cart.user_data.s_country',
         'zones' => array('cart')
     );
-    $schema['conditions']['state'] = array(
+    $scheme['conditions']['state'] = array(
         'operators' => array ('eq', 'neq', 'in', 'nin'),
         'type' => 'input',
         'field' => '@cart.user_data.s_state',
         'zones' => array('cart')
     );
-    $schema['conditions']['zip_postal_code'] = array(
+    $scheme['conditions']['zip_postal_code'] = array(
         'operators' => array ('eq', 'neq', 'cont', 'ncont', 'in', 'nin'),
         'type' => 'input',
         'field' => '@cart.user_data.s_zipcode',
         'zones' => array('cart')
     );
-    $schema['conditions']['subtotal'] = array(
+    $scheme['conditions']['subtotal'] = array(
         'operators' => array ('eq', 'neq', 'lte', 'gte', 'lt', 'gt', 'in', 'nin'),
         'type' => 'input',
-        'field_function' => array('fn_get_cart_subtotal_with_discount', '@cart'),
+        'field' => 'subtotal',
         'zones' => array('cart')
     );
-    $schema['conditions']['products_number'] = array(
+    $scheme['conditions']['products_number'] = array(
         'operators' => array ('eq', 'neq', 'lte', 'gte', 'lt', 'gt', 'in', 'nin'),
         'type' => 'input',
         'field_function' => array('fn_get_products_amount', '@cart', '@cart_products', 'C'),
         'zones' => array('cart')
     );
-    $schema['conditions']['total_weight'] = array(
+    $scheme['conditions']['total_weight'] = array(
         'operators' => array ('eq', 'neq', 'lte', 'gte', 'lt', 'gt', 'in', 'nin'),
         'type' => 'input',
         'field_function' => array('fn_get_products_weight', '@cart', '@cart_products', 'C'),
         'zones' => array('cart')
     );
-    $schema['conditions']['payment'] = array(
+    $scheme['conditions']['payment'] = array(
         'operators' => array ('eq', 'neq'),
         'type' => 'select',
         'variants_function' => array ('fn_get_simple_payment_methods', false),
         'field' => 'payment_id',
         'zones' => array('cart')
     );
-    $schema['conditions']['shipping'] = array(
-        'operators' => array ('eq', 'neq'),
-        'type' => 'select',
-        'variants_function' => array ('fn_get_shippings', true),
-        'field_function' => array('fn_promotion_shippings', '#this', '@cart'),
-        'zones' => array('cart')
-    );
-    $schema['conditions']['coupon_code'] = array(
+    $scheme['conditions']['coupon_code'] = array(
         'operators' => array ('eq', 'in'),
         // 'cont' - 'contains' was removed as ambiguous, but you can uncomment it back
         //'operators' => array ('eq', 'cont', 'in'),
         'type' => 'input',
         'field_function' => array('fn_promotion_validate_coupon', '#this', '@cart', '#id'),
-        'after_conditions_check_function' => 'fn_promotion_check_coupon_code_once_per_customer',
         'zones' => array('cart'),
         'applicability' => array( // applicable for "positive" groups only
             'group' => array(
@@ -183,18 +175,18 @@ if (!fn_allowed_for('ULTIMATE:FREE')) {
             ),
         ),
     );
-    $schema['conditions']['number_of_usages'] = array(
+    $scheme['conditions']['number_of_usages'] = array(
         'operators' => array ('lte', 'lt'),
         'type' => 'input',
         'field_function' => array('fn_promotion_get_dynamic', '#id', '#this', 'number_of_usages', '@cart'),
         'zones' => array('cart')
     );
-    $schema['conditions']['once_per_customer'] = array(
+    $scheme['conditions']['once_per_customer'] = array(
         'type' => 'statement',
         'field_function' => array('fn_promotion_get_dynamic', '#id', '#this', 'once_per_customer', '@cart', '@auth'),
         'zones' => array('cart')
     );
-    $schema['conditions']['auto_coupons'] = array(
+    $scheme['conditions']['auto_coupons'] = array(
         'type' => 'list',
         'field_function' => array('fn_promotion_validate_coupon', '#this', '@cart', '#id'),
         'zones' => array('cart'),
@@ -205,12 +197,12 @@ if (!fn_allowed_for('ULTIMATE:FREE')) {
         ),
     );
 
-    $schema['bonuses']['order_discount'] = array(
+    $scheme['bonuses']['order_discount'] = array(
         'function' => array('fn_promotion_apply_cart_rule', '#this', '@cart', '@auth', '@cart_products'),
         'discount_bonuses' => array('to_percentage', 'by_percentage', 'to_fixed', 'by_fixed'),
         'zones' => array('cart'),
     );
-    $schema['bonuses']['discount_on_products'] = array(
+    $scheme['bonuses']['discount_on_products'] = array(
         'type' => 'picker',
         'picker_props' => array (
             'picker' => 'pickers/products/picker.tpl',
@@ -222,7 +214,7 @@ if (!fn_allowed_for('ULTIMATE:FREE')) {
         'discount_bonuses' => array('to_percentage', 'by_percentage', 'to_fixed', 'by_fixed'),
         'zones' => array('cart'),
     );
-    $schema['bonuses']['discount_on_categories'] = array(
+    $scheme['bonuses']['discount_on_categories'] = array(
         'type' => 'picker',
         'picker_props' => array (
             'picker' => 'pickers/categories/picker.tpl',
@@ -236,25 +228,25 @@ if (!fn_allowed_for('ULTIMATE:FREE')) {
         'discount_bonuses' => array('to_percentage', 'by_percentage', 'to_fixed', 'by_fixed'),
         'zones' => array('cart'),
     );
-    $schema['bonuses']['give_usergroup'] = array(
+    $scheme['bonuses']['give_usergroup'] = array(
         'type' => 'select',
         'variants_function' => array('fn_get_simple_usergroups', 'C'),
         'function' => array('fn_promotion_apply_cart_rule', '#this', '@cart', '@auth', '@cart_products'),
         'zones' => array('cart'),
     );
-    $schema['bonuses']['give_coupon'] = array(
+    $scheme['bonuses']['give_coupon'] = array(
         'type' => 'select',
         'function' => array('fn_promotion_apply_cart_rule', '#this', '@cart', '@auth', '@cart_products'),
         'variants_function' => array('fn_get_promotions', array('zone' => 'cart', 'auto_coupons' => true, 'simple' => true)),
         'zones' => array('cart'),
     );
-    $schema['bonuses']['free_shipping'] = array(
+    $scheme['bonuses']['free_shipping'] = array(
         'type' => 'select',
         'function' => array('fn_promotion_apply_cart_rule', '#this', '@cart', '@auth', '@cart_products'),
         'variants_function' => array('fn_get_shippings', true),
         'zones' => array('cart'),
     );
-    $schema['bonuses']['free_products'] = array(
+    $scheme['bonuses']['free_products'] = array(
         'type' => 'picker',
         'picker_props' => array (
             'picker' => 'pickers/products/picker.tpl',
@@ -268,4 +260,4 @@ if (!fn_allowed_for('ULTIMATE:FREE')) {
     );
 }
 
-return $schema;
+return $scheme;

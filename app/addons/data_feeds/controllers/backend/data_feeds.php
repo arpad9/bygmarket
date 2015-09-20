@@ -44,26 +44,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $suffix = ".manage";
     }
 
-    return array(CONTROLLER_STATUS_REDIRECT, 'data_feeds' . $suffix);
+    return array(CONTROLLER_STATUS_REDIRECT, "data_feeds$suffix");
 }
 
 if ($mode == 'manage') {
     $datafeeds = fn_data_feeds_get_data(array(), DESCR_SL);
-    Tygh::$app['view']->assign('datafeeds', $datafeeds);
-    Tygh::$app['view']->assign('cron_password', Registry::get('cron_password'));
+    Registry::get('view')->assign('datafeeds', $datafeeds);
+    Registry::get('view')->assign('cron_password', Registry::get('cron_password'));
 
 } elseif ($mode == 'add') {
     $pattern = fn_get_schema('exim', 'products');
-    Tygh::$app['view']->assign('pattern', $pattern);
+    Registry::get('view')->assign('pattern', $pattern);
 
     // Export languages
     foreach (fn_get_translation_languages() as $lang_code => $lang_data) {
         $datafeed_langs[$lang_code] = $lang_data['name'];
     }
-    Tygh::$app['view']->assign('datafeed_langs', $datafeed_langs);
+    Registry::get('view')->assign('datafeed_langs', $datafeed_langs);
 
-    Tygh::$app['view']->assign('export_fields', $pattern['export_fields']);
-    Tygh::$app['view']->assign('feature_fields', fn_data_feeds_get_features_fields());
+    Registry::get('view')->assign('export_fields', $pattern['export_fields']);
+    Registry::get('view')->assign('feature_fields', fn_data_feeds_get_features_fields());
 
     // [Page sections]
     Registry::set('navigation.tabs', array (
@@ -88,23 +88,23 @@ if ($mode == 'manage') {
 
     $datafeed_data = fn_data_feeds_get_data($params, DESCR_SL);
 
-    Tygh::$app['view']->assign('datafeed_data', $datafeed_data);
+    Registry::get('view')->assign('datafeed_data', $datafeed_data);
 
     // Export languages
     foreach (fn_get_translation_languages() as $lang_code => $lang_data) {
         $datafeed_langs[$lang_code] = $lang_data['name'];
     }
-    Tygh::$app['view']->assign('datafeed_langs', $datafeed_langs);
+    Registry::get('view')->assign('datafeed_langs', $datafeed_langs);
 
     $pattern = fn_get_schema('exim', 'products');
-    Tygh::$app['view']->assign('pattern', $pattern);
+    Registry::get('view')->assign('pattern', $pattern);
 
     if (empty($datafeed_data['datafeed_id'])) {
         return array(CONTROLLER_STATUS_NO_PAGE);
     }
 
-    Tygh::$app['view']->assign('export_fields', $pattern['export_fields']);
-    Tygh::$app['view']->assign('feature_fields', fn_data_feeds_get_features_fields());
+    Registry::get('view')->assign('export_fields', $pattern['export_fields']);
+    Registry::get('view')->assign('feature_fields', fn_data_feeds_get_features_fields());
 
     // [Page sections]
     Registry::set('navigation.tabs', array (
@@ -128,7 +128,7 @@ if ($mode == 'manage') {
     $params['single'] = true;
 
     $datafeed_data = fn_data_feeds_get_data($params, DESCR_SL);
-    $filename = fn_get_files_dir_path() . $datafeed_data['file_name'];
+    $filename = Registry::get('config.dir.exim') . $datafeed_data['file_name'];
 
     if (file_exists($filename)) {
         fn_get_file($filename);
@@ -139,8 +139,6 @@ if ($mode == 'manage') {
 
 function fn_data_feeds_update_feed($feed_data, $feed_id = 0, $lang_code = CART_LANGUAGE)
 {
-    $feed_data['file_name'] = fn_basename($feed_data['file_name']);
-
     if (!empty($feed_data['fields'])) {
         $_fields = array();
 

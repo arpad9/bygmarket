@@ -22,7 +22,7 @@
         {elseif $element.element_type == $smarty.const.FORM_MULTIPLE_SB || $element.element_type == $smarty.const.FORM_MULTIPLE_CB}
             {foreach from=$value item=v name="fe"}{$element.variants.$v.description}{if !$smarty.foreach.fe.last},&nbsp;{/if}{/foreach}
         {elseif $element.element_type == $smarty.const.FORM_TEXTAREA}
-            {$value|nl2br nofilter}
+            {$value|nl2br}
         {elseif $element.element_type == $smarty.const.FORM_DATE}
             {$value|date_format:$settings.Appearance.date_format}
         {elseif $element.element_type == $smarty.const.FORM_COUNTRIES}

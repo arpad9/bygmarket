@@ -12,7 +12,6 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-use Tygh\Enum\ProductFeatures;
 use Tygh\Registry;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
@@ -26,8 +25,10 @@ function fn_get_google_sitemap_company_condition($field)
     return '';
 }
 
-function fn_google_sitemap_generate_link($object, $value, $languages, $extra = array())
+function fn_google_sitemap_generate_link($object, $value, $languages)
 {
+    $http_location = Registry::get('config.http_location');
+
     switch ($object) {
         case 'product':
             $link = 'products.view?product_id=' . $value;
@@ -55,14 +56,14 @@ function fn_google_sitemap_generate_link($object, $value, $languages, $extra = a
 
     $links = array();
     if (count($languages) == 1) {
-        $links[] = fn_url($link, 'C', fn_get_storefront_protocol(), CART_LANGUAGE);
+        $links[] = fn_url($link, 'C', 'http', CART_LANGUAGE);
     } else {
         foreach ($languages as $lang_code => $lang) {
-            $links[] = fn_url($link . '&sl=' . $lang_code, 'C', fn_get_storefront_protocol(), $lang_code);
+            $links[] = fn_url($link . '&sl=' . $lang_code, 'C', 'http', $lang_code);
         }
     }
 
-    fn_set_hook('sitemap_link', $link, $object, $value, $languages, $links);
+    fn_set_hook('sitemap_link', $link);
 
     return $links;
 }
@@ -71,7 +72,7 @@ function fn_google_sitemap_print_item_info($links, $lmod, $frequency, $priority)
 {
     $item = '';
     foreach ($links as $link) {
-        $link = fn_html_escape($link);
+        $link = htmlentities($link);
 $item .= <<<ITEM
     <url>
         <loc>$link</loc>
@@ -113,9 +114,12 @@ function fn_google_sitemap_get_priority()
 
 function fn_google_sitemap_clear_url_info()
 {
-    $storefront_url = fn_get_storefront_url(fn_get_storefront_protocol());
+    $storefront_url = Registry::get('config.http_location');
+
     if (fn_allowed_for('ULTIMATE')) {
-        if (Registry::get('runtime.company_id') || Registry::get('runtime.simple_ultimate')) {
+        if (Registry::get('runtime.company_id')) {
+            $company = Registry::get('runtime.company_data');
+            $storefront_url = 'http://' . $company['storefront'];
         } else {
             $storefront_url = '';
         }
@@ -124,26 +128,31 @@ function fn_google_sitemap_clear_url_info()
     if (!empty($storefront_url)) {
         $sitemap_available_in_customer = __('sitemap_available_in_customer', array(
             '[http_location]' => $storefront_url,
-            '[sitemap_url]' => fn_url('xmlsitemap.view', 'C', fn_get_storefront_protocol()),
+            '[sitemap_url]' => fn_url('xmlsitemap.view', 'C', 'http'),
         ));
-
-        return __('google_sitemap.text_regenerate', array(
-            '[http_location]' => $storefront_url,
-            '[regenerate_url]' =>  fn_url('xmlsitemap.generate'),
-            '[sitemap_available_in_customer]' => $sitemap_available_in_customer
-        ));
-
     } else {
-        return __('google_sitemap.text_select_storefront');
+        $sitemap_available_in_customer = '';
     }
+
+    return __('sitemap_clear_cache_info', array(
+        '[http_location]' => $storefront_url,
+        '[clear_cache_url]' =>  fn_url('addons.manage?cc'),
+        '[sitemap_available_in_customer]' => $sitemap_available_in_customer
+    ));
 }
 
 function fn_google_sitemap_get_content($map_page = 0)
 {
-    $sitemap_settings = Registry::get('addons.google_sitemap');
-    $location = fn_get_storefront_url(fn_get_storefront_protocol());
+    $cache_path = fn_get_cache_path(false) . 'google_sitemap/';
+    define('ITEMS_PER_PAGE', 500);
+    define('MAX_URLS_IN_MAP', 50000); // 50 000 is the maximum for one sitemap file
+    define('MAX_SIZE_IN_KBYTES', 10000); // 10240 KB || 10 Mb is the maximum for one sitemap file
 
+    $sitemap_settings = Registry::get('addons.google_sitemap');
+    $location = Registry::get('config.http_location');
     $lmod = date("Y-m-d", TIME);
+
+    header("Content-Type: text/xml;charset=utf-8");
 
     // HEAD SECTION
 
@@ -173,146 +182,113 @@ HEAD;
 
     // END HEAD SECTION
 
-    $parts = 0;
-    if ($sitemap_settings['include_categories'] == "Y") {
-        $parts++;
-        $get_categories = true;
-    }
-    if ($sitemap_settings['include_products'] == "Y") {
-        $parts++;
-        $get_products = true;
-    }
-    if ($sitemap_settings['include_pages'] == "Y") {
-        $parts++;
-        $get_pages = true;
-    }
-    if ($sitemap_settings['include_extended'] == "Y") {
-        $parts++;
-        $get_features = true;
-    }
-    if (fn_allowed_for('MULTIVENDOR') && $sitemap_settings['include_companies'] == 'Y') {
-        $parts++;
-        $get_companies = true;
-    }
-
-    fn_set_progress('parts', $parts);
-
     // SITEMAP CONTENT
     $link_counter = 1;
     $file_counter = 1;
 
-    $sitemap_path = fn_get_files_dir_path(false) . 'google_sitemap/';
-    fn_rm($sitemap_path);
-    fn_mkdir($sitemap_path);
+    fn_mkdir($cache_path);
+    $file = fopen($cache_path . 'sitemap' . $file_counter . '.xml', "wb");
 
-    $file = fopen($sitemap_path . 'sitemap' . $file_counter . '.xml', "wb");
     fwrite($file, $simple_head . $index_map_url);
 
     $languages = db_get_hash_single_array("SELECT lang_code, name FROM ?:languages WHERE status = 'A'", array('lang_code', 'name'));
 
-    if (!empty($get_categories)) {
+    if ($sitemap_settings['include_categories'] == "Y") {
         $categories = db_get_fields("SELECT category_id FROM ?:categories WHERE FIND_IN_SET(?i, usergroup_ids) AND status = 'A' ?p", USERGROUP_ALL, fn_get_google_sitemap_company_condition('?:categories.company_id'));
-
-        fn_set_progress('step_scale', count($categories));
 
         //Add the all active categories
         foreach ($categories as $category) {
             $links = fn_google_sitemap_generate_link('category', $category, $languages);
             $item = fn_google_sitemap_print_item_info($links, $lmod, $sitemap_settings['categories_change'], $sitemap_settings['categories_priority']);
 
-            fn_google_sitemap_check_counter($file, $link_counter, $file_counter, $links, $simple_head, $simple_foot, 'categories');
+            fn_google_sitemap_check_counter($file, $link_counter, $file_counter, $links, $simple_head, $simple_foot);
 
             fwrite($file, $item);
         }
-
     }
 
-    if (!empty($get_products)) {
+    if ($sitemap_settings['include_products'] == "Y") {
+        $page = 1;
         $total = ITEMS_PER_PAGE;
-        $i = 0;
 
         $params = $_REQUEST;
+        $params['page'] = $page;
         $params['custom_extend'] = array('categories');
         $params['sort_by'] = 'null';
-        $params['only_short_fields'] = true; // NEEDED ONLY FOR NOT TO LOAD UNNECESSARY FIELDS FROM DB
-        $params['area'] = 'C';
-
-        $original_auth = $_SESSION['auth'];
-        $_SESSION['auth'] = fn_fill_auth(array(), array(), false, 'C');
-
-        fn_set_progress('step_scale', db_get_field("SELECT COUNT(*) FROM ?:products WHERE status = 'A'"));
-
-        while ($params['pid'] = db_get_fields("SELECT product_id FROM ?:products WHERE status = 'A' ORDER BY product_id ASC LIMIT $i, $total")) {
-            $i += $total;
-
-            list($products) = fn_get_products($params, ITEMS_PER_PAGE);
+        $params['only_short_fields'] = true;
+        while (ITEMS_PER_PAGE * ($params['page'] - 1) <= $total) {
+            list($products, $search) = fn_get_products($params, ITEMS_PER_PAGE);
+            $total = $search['total_items'];
+            $params['page']++;
 
             foreach ($products as $product) {
                 $links = fn_google_sitemap_generate_link('product', $product['product_id'], $languages);
                 $item = fn_google_sitemap_print_item_info($links, $lmod, $sitemap_settings['products_change'], $sitemap_settings['products_priority']);
 
-                fn_google_sitemap_check_counter($file, $link_counter, $file_counter, $links, $simple_head, $simple_foot, 'products');
+                fn_google_sitemap_check_counter($file, $link_counter, $file_counter, $links, $simple_head, $simple_foot);
 
                 fwrite($file, $item);
             }
         }
         unset($products);
-
-        $_SESSION['auth'] = $original_auth;
     }
 
-    if (!empty($get_pages)) {
-
-        $page_types = fn_get_page_object_by_type();
-        unset($page_types[PAGE_TYPE_LINK]);
-
-        list($pages) = fn_get_pages(array(
-            'simple' => true,
-            'status' => 'A',
-            'page_type' => array_keys($page_types)
-        ));
-        fn_set_progress('step_scale', count($pages));
+    if ($sitemap_settings['include_pages'] == "Y") {
+        $pages = db_get_fields("SELECT page_id FROM ?:pages WHERE status = 'A' AND page_type != 'L' ?p", fn_get_google_sitemap_company_condition('?:pages.company_id'));
 
         //Add the all active pages
         foreach ($pages as $page) {
-            $links = fn_google_sitemap_generate_link('page', $page['page_id'], $languages, $page);
+            $links = fn_google_sitemap_generate_link('page', $page, $languages);
             $item = fn_google_sitemap_print_item_info($links, $lmod, $sitemap_settings['pages_change'], $sitemap_settings['pages_priority']);
 
-            fn_google_sitemap_check_counter($file, $link_counter, $file_counter, $links, $simple_head, $simple_foot, 'pages');
+            fn_google_sitemap_check_counter($file, $link_counter, $file_counter, $links, $simple_head, $simple_foot);
 
             fwrite($file, $item);
         }
     }
 
-    if (!empty($get_features)) {
+    if ($sitemap_settings['include_extended'] == "Y") {
         $vars = db_get_fields(
             "SELECT ?:product_feature_variants.variant_id FROM ?:product_feature_variants " .
             "LEFT JOIN ?:product_features ON (?:product_feature_variants.feature_id = ?:product_features.feature_id) " .
-            "WHERE ?:product_features.feature_type = ?s AND ?:product_features.status = 'A'"
-        , ProductFeatures::EXTENDED);
-        fn_set_progress('step_scale', count($vars));
+            "WHERE ?:product_features.feature_type = 'E' AND ?:product_features.status = 'A'"
+        );
 
         //Add the all active extended features
         foreach ($vars as $var) {
             $links = fn_google_sitemap_generate_link('extended', $var, $languages);
             $item = fn_google_sitemap_print_item_info($links, $lmod, $sitemap_settings['extended_change'], $sitemap_settings['extended_priority']);
 
-            fn_google_sitemap_check_counter($file, $link_counter, $file_counter, $links, $simple_head, $simple_foot, 'features');
+            fn_google_sitemap_check_counter($file, $link_counter, $file_counter, $links, $simple_head, $simple_foot);
 
             fwrite($file, $item);
         }
     }
 
-    if (!empty($get_companies)) {
+    if (Registry::isExist("addons.news_and_emails") && $sitemap_settings['include_news'] == 'Y') {
+        $news = db_get_fields("SELECT news_id FROM ?:news WHERE status = 'A' ?p", fn_get_google_sitemap_company_condition('?:news.company_id'));
+
+        if (!empty($news)) {
+            foreach ($news as $news_id) {
+                $links = fn_google_sitemap_generate_link('news', $news_id, $languages);
+                $item = fn_google_sitemap_print_item_info($links, $lmod, $sitemap_settings['news_change'], $sitemap_settings['news_priority']);
+
+                fn_google_sitemap_check_counter($file, $link_counter, $file_counter, $links, $simple_head, $simple_foot);
+
+                fwrite($file, $item);
+            }
+        }
+    }
+
+    if (fn_allowed_for('MULTIVENDOR') && $sitemap_settings['include_companies'] == 'Y') {
         $companies = db_get_fields("SELECT company_id FROM ?:companies WHERE status = 'A' ?p", fn_get_google_sitemap_company_condition('?:companies.company_id'));
-        fn_set_progress('step_scale', count($companies));
 
         if (!empty($companies)) {
             foreach ($companies as $company_id) {
                 $links = fn_google_sitemap_generate_link('companies', $company_id, $languages);
                 $item = fn_google_sitemap_print_item_info($links, $lmod, $sitemap_settings['companies_change'], $sitemap_settings['companies_priority']);
 
-                fn_google_sitemap_check_counter($file, $link_counter, $file_counter, $links, $simple_head, $simple_foot, 'companies');
+                fn_google_sitemap_check_counter($file, $link_counter, $file_counter, $links, $simple_head, $simple_foot);
 
                 fwrite($file, $item);
             }
@@ -325,7 +301,7 @@ HEAD;
     fclose($file);
 
     if ($file_counter == 1) {
-        fn_rename($sitemap_path . 'sitemap' . $file_counter . '.xml', $sitemap_path . 'sitemap.xml');
+        fn_rename($cache_path . 'sitemap' . $file_counter . '.xml', $cache_path . 'sitemap.xml');
     } else {
         // Make a map index file
 
@@ -335,7 +311,7 @@ HEAD;
             if ($seo_enabled) {
                 $name = $location . '/sitemap' . $i . '.xml';
             } else {
-                $name = fn_url('xmlsitemap.view?page=' . $i, 'C', fn_get_storefront_protocol());
+                $name = fn_url('xmlsitemap.view?page=' . $i, 'C', 'http');
             }
 
             $name = htmlentities($name);
@@ -357,27 +333,43 @@ $maps
 </sitemapindex>
 HEAD;
 
-        $file = fopen($sitemap_path . 'sitemap.xml', "wb");
+        $file = fopen($cache_path . 'sitemap.xml', "wb");
         fwrite($file, $index_map);
         fclose($file);
     }
-    fn_set_notification('N', __('notice'), __('google_sitemap.map_generated'));
+
+    $filename = $cache_path . 'sitemap.xml';
+
+    if (!empty($map_page)) {
+        $name = $cache_path . 'sitemap' . $map_page . '.xml';
+        if (file_exists($name)) {
+            $filename = $name;
+        }
+    }
+
+    readfile($filename);
+
     exit();
 }
 
-function fn_google_sitemap_check_counter(&$file, &$link_counter, &$file_counter, $links, $header, $footer, $type)
+function fn_google_sitemap_check_counter(&$file, &$link_counter, &$file_counter, $links, $header, $footer)
 {
     $stat = fstat($file);
     if ((count($links) + $link_counter) > MAX_URLS_IN_MAP || $stat['size'] >= MAX_SIZE_IN_KBYTES * 1024) {
         fwrite($file, $footer);
         fclose($file);
         $file_counter++;
-        $filename = fn_get_files_dir_path() . 'google_sitemap/sitemap' . $file_counter . '.xml';
+        $filename = fn_get_cache_path(false) . 'google_sitemap/sitemap' . $file_counter . '.xml';
         $file = fopen($filename, "wb");
         $link_counter = count($links);
         fwrite($file, $header);
     } else {
         $link_counter += count($links);
-        fn_set_progress('echo', __($type));
     }
+}
+
+function fn_google_sitemap_get_rewrite_rules(&$rewrite_rules, &$prefix, &$extension, &$current_path)
+{
+    $rewrite_rules['!^' . $current_path . '\/sitemap([0-9]*)\.xml$!'] = '$customer_index?dispatch=xmlsitemap.view&page=$matches[1]';
+    $rewrite_rules['!^' . $current_path . $prefix . '\/sitemap([0-9]*)\.xml$!'] = '$customer_index?dispatch=xmlsitemap.view&page=$matches[2]';
 }

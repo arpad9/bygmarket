@@ -35,7 +35,7 @@ if ($mode == 'update') {
                 'js' => true
             ));
 
-            Tygh::$app['view']->assign('discussion', $discussion);
+            Registry::get('view')->assign('discussion', $discussion);
         }
     }
 }

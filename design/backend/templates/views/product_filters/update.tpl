@@ -20,7 +20,10 @@
 
 <div class="tabs cm-j-tabs">
     <ul class="nav nav-tabs">
-        <li id="tab_details_{$id}" class="cm-js active"><a>{__("general")}</a></li>
+        <li id="tab_details_{$id}" class="cm-js cm-active"><a>{__("general")}</a></li>
+        {if ($filter.feature_type && "ODN"|strpos:$filter.feature_type !== false) || ($filter.field_type && $filter_fields[$filter.field_type].is_range == true) || !$id}
+            <li id="tab_variants_{$id}" class="cm-js {if !$id}hidden{/if}"><a>{__("ranges")}</a></li>
+        {/if}
         <li id="tab_categories_{$id}" class="cm-js"><a>{__("categories")}</a></li>
     </ul>
 </div>
@@ -50,6 +53,14 @@
         </div>
 
         <div class="control-group">
+            <label class="control-label" for="elm_filter_show_on_home_page_{$id}">{__("show_on_home_page")}</label>
+            <div class="controls">
+            <input type="hidden" name="filter_data[show_on_home_page]" value="N" />
+            <input type="checkbox" id="elm_filter_show_on_home_page_{$id}" name="filter_data[show_on_home_page]" {if $filter.show_on_home_page == "Y" || !$filter}checked="checked"{/if} value="Y"/>
+            </div>
+        </div>
+
+        <div class="control-group">
             <label class="control-label" for="elm_filter_filter_by_{$id}">{__("filter_by")}</label>
             <div class="controls">
             {if !$id}
@@ -58,10 +69,10 @@
                 {if $filter_features}
                     <optgroup label="{__("features")}">
                     {foreach from=$filter_features item=feature}
-                        <option value="{if $feature.feature_type == "ProductFeatures::NUMBER_FIELD"|enum || $feature.feature_type == "ProductFeatures::NUMBER_SELECTBOX"|enum}R{elseif $feature.feature_type == "ProductFeatures::DATE"|enum}D{else}F{/if}F-{$feature.feature_id}">{$feature.description}</option>
+                        <option value="{if "ON"|strpos:$feature.feature_type !== false}R{elseif $feature.feature_type == "D"}D{else}F{/if}F-{$feature.feature_id}">{$feature.description}</option>
                     {if $feature.subfeatures}
                     {foreach from=$feature.subfeatures item=subfeature}
-                        <option value="{if $feature.feature_type == "ProductFeatures::NUMBER_FIELD"|enum || $feature.feature_type == "ProductFeatures::NUMBER_SELECTBOX"|enum}R{elseif $feature.feature_type == "ProductFeatures::DATE"|enum}D{else}F{/if}F-{$subfeature.feature_id}">{$subfeature.description}</option>
+                        <option value="{if "ON"|strpos:$feature.feature_type !== false}R{elseif $feature.feature_type == "D"}D{else}F{/if}F-{$subfeature.feature_id}">{$subfeature.description}</option>
                     {/foreach}
                     {/if}
                     {/foreach}
@@ -103,17 +114,85 @@
             </div>
         </div>
 
-        <div class="control-group {if !($filter.feature_id || $filter_fields[$filter.field_type].is_range || $filter.feature == 'Vendor')} hidden{/if}" id="display_count_{$id}_container">
+        <div class="control-group {if !($filter.feature_id || $filter_fields[$filter.field_type].is_range)} hidden{/if}" id="display_count_{$id}_container">
             <label class="control-label" for="elm_filter_display_count_{$id}">{__("display_variants_count")}</label>
             <div class="controls">
             <input type="text" id="elm_filter_display_count_{$id}" name="filter_data[display_count]" value="{$filter.display_count|default:"10"}" />
             </div>
         </div>
+
+        <div class="control-group {if !($filter.feature_id || $filter_fields[$filter.field_type].is_range)} hidden{/if}" id="display_more_count_{$id}_container">
+            <label class="control-label" for="elm_filter_display_more_count_{$id}">{__("display_more_variants_count")}</label>
+            <div class="controls">
+            <input type="text" id="elm_filter_display_more_count_{$id}" name="filter_data[display_more_count]" value="{$filter.display_more_count|default:"20"}" />
+            </div>
+        </div>
+        
     </fieldset>
     </div>
 
+    <div class="hidden" id="content_tab_variants_{$id}">
+        <table class="table table-middle">
+        <thead>
+        <tr>
+            <th>{__("position_short")}</th>
+            <th>{__("name")}</th>
+            <th>{__("range_from")}&nbsp;-&nbsp;{__("range_to")}</th>
+            <th>&nbsp;</th>
+        </tr>
+        </thead>
+        {if $filter.ranges}
+        {foreach from=$filter.ranges item="range" name="fe_f"}
+        {assign var="num" value=$smarty.foreach.fe_f.iteration}
+        <tr  name="sub"} id="range_item_{$id}_{$range.range_id}">
+            <td>
+                <input type="hidden" name="filter_data[ranges][{$num}][range_id]" value="{$range.range_id}" />
+                <input type="text" name="filter_data[ranges][{$num}][position]" size="3" value="{$range.position}"  />
+            </td>
+            <td><input type="text" name="filter_data[ranges][{$num}][range_name]" value="{$range.range_name}" /></td>
+            <td class="nowrap">
+                {if $features[$filter.feature_id].prefix}{$features[$filter.feature_id].prefix}&nbsp;{/if}
+                {if $filter.feature_type !== "D"}
+                    <input type="text" name="filter_data[ranges][{$num}][from]" size="3" value="{$range.from}" class="cm-value-decimal" />&nbsp;-&nbsp;<input type="text" name="filter_data[ranges][{$num}][to]" size="3" value="{$range.to}" class="cm-value-decimal" />
+                {else}
+                    {include file="common/calendar.tpl" date_id="date_1_`$id`_`$range.range_id`" date_name="filter_data[dates_ranges][`$num`][from]" date_val=$range.from|default:$smarty.const.TIME start_year=$settings.Company.company_start_year}&nbsp;-&nbsp;
+                    {include file="common/calendar.tpl" date_id="date_2_`$id`_`$range.range_id`" date_name="filter_data[dates_ranges][`$num`][to]" date_val=$range.to|default:$smarty.const.TIME start_year=$settings.Company.company_start_year}
+                {/if}
+                {if $features[$filter.feature_id].suffix}&nbsp;{$features[$filter.feature_id].suffix}{/if}</td>
+            <td class="right">
+                {include file="buttons/multiple_buttons.tpl" item_id="range_item_`$id`_`$range.range_id`" tag_level="1" only_delete="Y"}
+            </td>
+        </tr>
+        {/foreach}
+        {/if}
+        
+        {math equation="x + 1" assign="num" x=$num|default:0}
+        <tr id="box_add_to_range_{$id}">
+            <td class="nowrap">
+                <input type="text" name="filter_data[ranges][{$num}][position]" size="3" value="0" />
+            </td>
+            <td><input type="text" name="filter_data[ranges][{$num}][range_name]" /></td>
+            <td class="nowrap">
+                {if !$id || $filter.feature_type != "D"}
+                <div id="inputs_ranges{$id}" {if $filter.feature_type == "D"}class="hidden"{/if}>
+                    <input type="text" name="filter_data[ranges][{$num}][from]" value="" class="input-text-medium cm-value-decimal" />&nbsp;-&nbsp;<input type="text" name="filter_data[ranges][{$num}][to]" value="" class="cm-value-decimal" />
+                </div>
+                {/if}
+                {if !$id || $filter.feature_type == "D"}
+                <div id="dates_ranges{$id}" {if !$id || $filter.feature_type != "D"}class="hidden"{/if}>
+                    {include file="common/calendar.tpl" date_id="date_3_`$id`" date_name="filter_data[dates_ranges][`$num`][from]" date_val=$smarty.const.TIME start_year=$settings.Company.company_start_year}&nbsp;-&nbsp;
+                    {include file="common/calendar.tpl" date_id="date_4_`$id`" date_name="filter_data[dates_ranges][`$num`][to]" date_val=$smarty.const.TIME start_year=$settings.Company.company_start_year}
+                </div>
+                {/if}
+            </td>
+            <td>
+                {include file="buttons/multiple_buttons.tpl" item_id="add_to_range_`$id`" tag_level="1"}</td>
+        </tr>
+        </table>
+    </div>
+
     <div class="hidden" id="content_tab_categories_{$id}">
-        {include file="pickers/categories/picker.tpl" company_ids=$picker_selected_companies multiple=true input_name="filter_data[categories_path]" item_ids=$filter.categories_path data_id="category_ids_`$id`" no_item_text=__("text_all_categories_included") use_keys="N" owner_company_id=$filter.company_id but_meta="pull-right"}
+        {include file="pickers/categories/picker.tpl" company_ids=$picker_selected_companies multiple=true input_name="filter_data[categories_path]" item_ids=$filter.categories_path data_id="category_ids_`$id`" no_item_text=__("text_all_items_included", ["[items]" => __("categories")]) use_keys="N" owner_company_id=$filter.company_id but_meta="pull-right"}
     </div>
 </div>
 
@@ -129,6 +208,8 @@
 
 {if !$id}
 <script type="text/javascript">
+//<![CDATA[
     fn_check_product_filter_type(Tygh.$('#elm_filter_filter_by_{$id}').val(), 'tab_variants_{$id}', '{$id}');
+//]]>
 </script>
 {/if}

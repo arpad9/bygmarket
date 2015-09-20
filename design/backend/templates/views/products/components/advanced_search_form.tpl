@@ -1,101 +1,111 @@
 {split data=$filter_features size="3" assign="splitted_filter" preverse_keys=true}
-
 <table cellpadding="8">
-{foreach from=$splitted_filter item="filters_row" name="filters_row"}
 <thead>
-    <tr>
-    {foreach from=$filters_row item="filter"}
-        {if $filter && $filter.field_type != "P"}
-        <td><strong>{$filter.filter|default:$filter.description}</strong></td>
-        {/if}
-    {/foreach}
-    </tr>
+<tr>
+{foreach from=$splitted_filter item="filters_row" name="filters_row"}
+{foreach from=$filters_row item="filter"}
+    {if $filter && $filter.field_type != "P"}
+    <td><strong>{$filter.filter|default:$filter.description}</strong></td>
+    {/if}
+{/foreach}
+</tr>
 </thead>
 <tr valign="top"{if ($splitted_filter|sizeof > 1) && $smarty.foreach.filters_row.first} class="delim"{/if}>
 {foreach from=$filters_row item="filter"}
-
     {if $filter && $filter.field_type != "P"}
-        {$id = $filter.filter_id|default:$filter.feature_id}
         <td width="33%">
-            {if $filter.feature_type == "ProductFeatures::TEXT_SELECTBOX"|enum
-                || $filter.feature_type == "ProductFeatures::EXTENDED"|enum
-                || $filter.feature_type == "ProductFeatures::MULTIPLE_CHECKBOX"|enum
-                || $filter.feature_type == "ProductFeatures::NUMBER_SELECTBOX"|enum && !$id}
-                <div class="object-selector">
-                    <select id="{$prefix}variants_{$id}"
-                            class="cm-object-selector"
-                            multiple
-                            name="{$data_name}[{$id}][]"
-                            data-ca-placeholder={__("search")}
-                            data-ca-enable-images="true"
-                            data-ca-image-width="30"
-                            data-ca-image-height="30"
-                            data-ca-enable-search="true"
-                            data-ca-page-size="10"
-                            {if $filter.feature_id}
-                            {if $filter.use_variant_picker}
-                            data-ca-load-via-ajax="true"
-                            {/if}
-                            data-ca-data-url="{"product_features.get_variants_list?feature_id=`$filter.feature_id`"|fn_url nofilter}"
-                            {/if}
-                            data-ca-close-on-select="false">
-                        {foreach from=$filter.variants key="variant_id" item="variant"}
-                            <option value="{$variant_id}"{if $variant_id|in_array:$search.$data_name[$id]} selected="selected"{/if}>{$filter.prefix}{$variant.variant}{$filter.suffix}</option>
+            {if $filter.feature_type == "S" || $filter.feature_type == "E" || $filter.feature_type == "M" || $filter.feature_type == "N" && !$filter.filter_id}
+                <div class="scroll-y">
+                    {assign var="filter_ranges" value=$filter.ranges|default:$filter.variants}
+                    {foreach from=$filter_ranges key="range_id" item="range"}
+                        <label for="variants_{$range_id}" class="checkbox"><input type="checkbox" name="{if $filter.feature_type == "M"}multiple_{/if}variants[]" id="{$prefix}variants_{$range_id}" value="{if $filter.feature_type == "M"}{$range_id}{else}[V{$range_id}]{/if}" {if "[V`$range_id`]"|in_array:$search.variants || $range_id|in_array:$search.multiple_variants}checked="checked"{/if} />{$filter.prefix}{$range.variant}{$filter.suffix}</label>
+                    {/foreach}
+                </div>
+            {elseif $filter.feature_type == "O" || $filter.feature_type == "N" && $filter.filter_id || $filter.feature_type == "D" || $filter.condition_type == "D" || $filter.condition_type == "F"}
+                {if !$filter.slider}<div class="scroll-y">{/if}
+                    {if $filter.condition_type}
+                        {assign var="el_id" value="field_`$filter.filter_id`"}
+                    {else}
+                        {assign var="el_id" value="feature_`$filter.feature_id`"}
+                    {/if}
+
+                    <label for="{$prefix}no_ranges_{$el_id}" class="radio"><input type="radio" name="variants[{$el_id}]" id="{$prefix}no_ranges_{$el_id}" value="" checked="checked" />{__("none")}</label>
+                    {assign var="filter_ranges" value=$filter.ranges|default:$filter.variants}
+                    {assign var="_type" value=$filter.field_type|default:"R"}
+                    {if !$filter.slider}
+                        {foreach from=$filter_ranges key="range_id" item="range"}
+                            {assign var="range_name" value=$range.range_name|default:$range.variant}
+                            <label for="{$prefix}ranges_{$el_id}{$range_id}" class="radio"><input type="radio" name="variants[{$el_id}]" id="{$prefix}ranges_{$el_id}{$range_id}" value="{$_type}{$range_id}" {if $search.variants.$el_id == "`$_type``$range_id`"}checked="checked"{/if} />{$range_name|fn_text_placeholders}</label>
                         {/foreach}
-                    </select>
-                </div>
-            {elseif $filter.feature_type == "ProductFeatures::NUMBER_FIELD"|enum
-                || $filter.feature_type == "ProductFeatures::NUMBER_SELECTBOX"|enum && $id
-                || $filter.feature_type == "ProductFeatures::DATE"|enum
-                || $filter.condition_type == "D"}
-                <div>
-                    <label class="radio"><input class="cm-switch-availability cm-switch-inverse" type="radio" name="range_selected[{$id}]" id="sw_{$prefix}select_custom_{$id}_suffix_N" value="" checked="checked" />{__("none")}
-                    </label>
-                </div>
+                    {/if}
+                {if !$filter.slider}</div>{/if}
 
-                {$disable = true}
-                <label class="radio"><input class="cm-switch-availability" type="radio" name="range_selected[{$id}]" id="sw_{$prefix}select_custom_{$id}_suffix_Y" value="1" {if $search.range_selected[$id]}{$disable = false}checked="checked"{/if}  />{__("your_range")}</label>
+                {if $filter.condition_type != "F"}
+                <label for="{$prefix}select_custom_{$el_id}" class="radio"><input type="radio" name="variants[{$el_id}]" id="{$prefix}select_custom_{$el_id}" value="O" {if $search.variants[$el_id] == "O"}checked="checked"{/if}  />{__("your_range")}</label>
 
-                <div id="{$prefix}select_custom_{$id}">
-                    {if $filter.feature_type == "ProductFeatures::DATE"|enum}
-                        {if $disable}
-                            {$date_extra = "disabled=\"disabled\""}
+                    {if $filter.feature_type == "D"}
+                        {if $search.custom_range[$filter.feature_id].from || $search.custom_range[$filter.feature_id].to}
+                            {assign var="date_extra" value=""}
                         {else}
-                            {$date_extra = ""}
+                            {assign var="date_extra" value="disabled=\"disabled\""}
+                        {/if}
+                        {include file="common/calendar.tpl" date_id="`$prefix`range_`$el_id`_from" date_name="custom_range[`$filter.feature_id`][from]" date_val=$search.custom_range[$filter.feature_id].from extra=$date_extra start_year=$settings.Company.company_start_year}
+                        {include file="common/calendar.tpl" date_id="`$prefix`range_`$el_id`_to" date_name="custom_range[`$filter.feature_id`][to]" date_val=$search.custom_range[$filter.feature_id].to extra=$date_extra start_year=$settings.Company.company_start_year}
+                        <input type="hidden" name="custom_range[{$filter.feature_id}][type]" value="D" />
+                    {else}
+                        {if !$filter.slider}
+                            {assign var="from_value" value=$search.custom_range[$filter.feature_id].from|default:$search.field_range[$filter.field_type].from}
+                            {assign var="to_value" value=$search.custom_range[$filter.feature_id].to|default:$search.field_range[$filter.field_type].to}
+                        {else}
+                            {assign var="from_value" value=$search.field_range[$filter.field_type].from|default:$filter.range_values.min}
+                            {assign var="to_value" value=$search.field_range[$filter.field_type].to|default:$filter.range_values.max}
                         {/if}
 
-                        {include file="common/calendar.tpl" date_id="`$prefix`range_`$id`_from" date_name="`$data_name`[`$id`][0]" date_val=$search.$data_name[$id].0 extra=$date_extra start_year=$settings.Company.company_start_year}
-
-                        {include file="common/calendar.tpl" date_id="`$prefix`range_`$id`_to" date_name="`$data_name`[`$id`][1]" date_val=$search.$data_name[$id].1 extra=$date_extra start_year=$settings.Company.company_start_year}
-
-                    {else}
-
-                        {$from_value = $search.$data_name[$id].0}
-                        {$to_value = $search.$data_name[$id].1}
-
-                        {strip}
-                        <input type="text" name="{$data_name}[{$id}][0]" id="{$prefix}range_{$id}_from" size="3" class="input-mini" value="{$from_value}" {if $disable}disabled="disabled"{/if} />
-                        -
-                        <input type="text" name="{$data_name}[{$id}][1]" id="{$prefix}range_{$id}_to" size="3" class="input-mini" value="{$to_value}" {if $disable}disabled="disabled"{/if} />
-                        {/strip}
+                        <input type="text" name="{if $filter.field_type}field_range[{$filter.field_type}]{else}custom_range[{$filter.feature_id}]{/if}[from]" id="{$prefix}range_{$el_id}_from" size="3" class="input-mini" value="{$from_value}" {if $search.variants[$el_id] != "O"}disabled="disabled"{/if} /> - <input type="text" name="{if $filter.field_type}field_range[{$filter.field_type}]{else}custom_range[{$filter.feature_id}]{/if}[to]" size="3" class="input-mini" value="{$to_value}" id="{$prefix}range_{$el_id}_to" {if $search.variants[$el_id] != "O"}disabled="disabled"{/if} />
                     {/if}
-                </div>
-
-            {elseif $filter.feature_type == "ProductFeatures::SINGLE_CHECKBOX"|enum || $filter.condition_type == "C"}
-                    <label for="{$prefix}ranges_{$id}_none" class="radio">
-                    <input type="radio" name="{$data_name}[{$id}][]" id="{$prefix}ranges_{$id}_none" value="" {if !$search.$data_name[$id].0}checked="checked"{/if} />
+                {/if}
+                <script type="text/javascript">
+                //<![CDATA[
+                Tygh.$(document).ready(function() {ldelim}
+                    var $ = Tygh.$;
+                    $("input[type=radio][name='variants[{$el_id}]']").change(function() {ldelim}
+                        var el_id = '{$el_id}';
+                        $('#{$prefix}range_' + el_id + '_from').prop('disabled', this.value !== 'O');
+                        $('#{$prefix}range_' + el_id + '_to').prop('disabled', this.value !== 'O');
+                        {if $filter.feature_type == "D"}
+                        $('#{$prefix}range_' + el_id + '_from_but').prop('disabled', this.value !== 'O');
+                        $('#{$prefix}range_' + el_id + '_to_but').prop('disabled', this.value !== 'O');
+                        {/if}
+                    {rdelim});
+                {rdelim});
+                //]]>
+                </script>
+            {elseif $filter.feature_type == "C" || $filter.condition_type == "C"}
+                {if $filter.condition_type}
+                    {assign var="el_id" value=$filter.field_type}
+                {else}
+                    {assign var="el_id" value=$filter.feature_id}
+                {/if}
+                    <label for="{$prefix}ranges_{$el_id}_none" class="radio">
+                    <input type="radio" name="ch_filters[{$el_id}]" id="{$prefix}ranges_{$el_id}_none" value="" {if !$search.ch_filters[$el_id]}checked="checked"{/if} />
                     {__("none")}</label>
 
-                    <label for="{$prefix}ranges_{$id}_yes" class="radio">
-                    <input type="radio" name="{$data_name}[{$id}][]" id="{$prefix}ranges_{$id}_yes" value="Y" {if $search.$data_name[$id].0 == "Y"}checked="checked"{/if} />
+                    <label for="{$prefix}ranges_{$el_id}_yes" class="radio">
+                    <input type="radio" name="ch_filters[{$el_id}]" id="{$prefix}ranges_{$el_id}_yes" value="Y" {if $search.ch_filters[$el_id] == "Y"}checked="checked"{/if} />
                     {__("yes")}</label>
 
-                    <label for="{$prefix}ranges_{$id}_no" class="radio">
-                    <input type="radio" name="{$data_name}[{$id}][]" id="{$prefix}ranges_{$id}_no" value="N" {if $search.$data_name[$id].0 == "N"}checked="checked"{/if} />
+                    <label for="{$prefix}ranges_{$el_id}_no" class="radio">
+                    <input type="radio" name="ch_filters[{$el_id}]" id="{$prefix}ranges_{$el_id}_no" value="N" {if $search.ch_filters[$el_id] == "N"}checked="checked"{/if} />
                     {__("no")}</label>
 
-            {elseif $filter.feature_type == "ProductFeatures::TEXT_FIELD"|enum}
-                {$filter.prefix}<input type="text" name="{$data_name}[{$id}][]" class="input-mini" value="{$search.$data_name[$id].0}" />{$filter.suffix}
+                {if !$filter.condition_type}
+                    <label for="{$prefix}ranges_{$el_id}_any" class="radio">
+                    <input type="radio" name="ch_filters[{$el_id}]" id="{$prefix}ranges_{$el_id}_any" value="A" {if $search.ch_filters[$el_id] == "A"}checked="checked"{/if} />
+                    {__("any")}</label>
+                {/if}
+
+            {elseif $filter.feature_type == "T"}
+                {$filter.prefix}<input type="text" name="tx_features[{$filter.feature_id}]" class="input-mini" value="{$search.tx_features[$filter.feature_id]}" />{$filter.suffix}
             {/if}
         </td>
     {/if}

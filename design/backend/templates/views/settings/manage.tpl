@@ -14,11 +14,17 @@
     <input type="hidden" id="selected_section" name="selected_section" value="{$selected_section}" />
 
     {capture name="tabsbox"}
+
+        {assign var="has_fieldset" value="false"}
         {foreach from=$options item=subsection key="ukey"}
             <div id="content_{$ukey}" {if $subsections.$section.type == "SEPARATE_TAB"}class="cm-hide-save-button"{/if}>
                 {foreach from=$subsection item=item name="section"}
-                    {include file="common/settings_fields.tpl" item=$item section=$section_id html_id="field_`$section`_`$item.name`_`$item.object_id`" html_name="update[`$item.object_id`]" index=$smarty.foreach.section.iteration total=$smarty.foreach.section.total}
+                    {include file="common/settings_fields.tpl" item=$item section=$section_id html_id="field_`$section`_`$item.name`_`$item.object_id`" html_name="update[`$item.object_id`]" index=$smarty.foreach.section.iteration}
+                    {if $item.type == "H"}
+                        {assign var="has_fieldset" value="true"}
+                    {/if}
                 {/foreach}
+                {if $has_fieldset}</fieldset>{/if}
             </div>
         {/foreach}
 
@@ -32,5 +38,5 @@
     </form>
 {/capture}
 
-{include file="common/mainbox.tpl" title="{__("settings")}: `$settings_title`" buttons=$smarty.capture.buttons content=$smarty.capture.mainbox sidebar_position="left"}
+{include file="common/mainbox.tpl" title="{__("settings")}: `$settings_title`" buttons=$smarty.capture.buttons content=$smarty.capture.mainbox}
 

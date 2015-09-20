@@ -7,7 +7,7 @@
 	padding: 6px 25px 10px 11px;
 	background: #fafafa;
 	.summary {
-		margin-bottom: 10px;
+		width: 923px;
 		input, textarea {
 			width: 909px;
 			background: #fafafa;
@@ -16,14 +16,12 @@
 		}
 		input[type="text"] {
 			margin-bottom: 4px;
-			width: 100%;
-			max-width: none !important;
 			font-weight: bold;
 			border-bottom-color: #e1e1e1;
 		}
 		textarea {
-			width: 100%;
-			max-width: none;
+			max-width: 909px;
+			min-width: 909px;
 			height: 66px;
 			min-height: 66px;
 		}
@@ -54,9 +52,6 @@
 			margin-right: 10px;
             float: left;
 		}
-        .post-date {
-            margin: 0;
-        }
 	}
 	&:hover {
 		.input-hidden {
@@ -80,18 +75,13 @@
 	}
 }
 
-input.input-time {
-    margin: 0px;
-    width: 35px;
-}
-
 /* Rate stars */
 .controls .rating {
     margin-top: 8px;
     float: left;
 }
 .rating {
-    margin-top: 5px;
+    margin-top: 2px;
     float:right;
 }
 .rating label {

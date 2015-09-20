@@ -23,14 +23,12 @@ class FileResource extends \Smarty_Internal_Resource_File
      */
     public function populate(\Smarty_Template_Source $source, \Smarty_Internal_Template $_template=null)
     {
-        if ($_template !== null) {
-            $overridden_resource = fn_addon_template_overrides($source->resource, $_template);
+        $overridden_resource = fn_addon_template_overrides($source->resource, $_template);
 
-            if ($overridden_resource != $source->resource) {
-                $source->unique_resource = str_replace($source->resource, $overridden_resource, $source->unique_resource);
-                $source->name = $overridden_resource;
-                $source->resource = $overridden_resource;
-            }
+        if ($overridden_resource != $source->resource) {
+            $source->unique_resource = str_replace($source->resource, $overridden_resource, $source->unique_resource);
+            $source->name = $overridden_resource;
+            $source->resource = $overridden_resource;
         }
 
         return parent::populate($source, $_template);

@@ -11,7 +11,7 @@
     <ul class="nav nav-tabs">
     {foreach from=$navigation.tabs item=tab key=key name=tabs}
         {if (!$tabs_section || $tabs_section == $tab.section) && ($tab.hidden || !$key|in_array:$empty_tab_ids)}
-        <li id="{$key}{$id_suffix}" class="{if $tab.hidden == "Y"}hidden {/if}{if $tab.js}cm-js{elseif $tab.ajax}cm-js cm-ajax{/if}{if $key == $active_tab} active{/if}{if $active_tab_extra && ($key == $active_tab)} extra-tab{/if}">
+        <li id="{$key}{$id_suffix}" class="{if $tab.hidden == "Y"}hidden {/if}{if $tab.js}cm-js{elseif $tab.ajax}cm-js cm-ajax{/if}{if $key == $active_tab} cm-active active{/if}{if $active_tab_extra && ($key == $active_tab)} extra-tab{/if}">
             {if $key == $active_tab}{$active_tab_extra nofilter}{/if}
             <a {if $tab.href}href="{$tab.href|fn_url}"{/if}>{$tab.title}</a>
         </li>

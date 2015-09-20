@@ -1,12 +1,11 @@
-(function ($) {
-$.Redactor.opts.langs['fi'] = {
+var RELANG = {};
+RELANG['fi'] = {
 	html: 'HTML',
-	video: 'Lisää video',
-	image: 'Lisää kuva',
+	video: 'Video',
+	image: 'Kuva',
 	table: 'Taulukko',
 	link: 'Linkki',
-	link_insert: 'Lisää linkki',
-	link_edit: 'Muokkaa linkkiä',
+	link_insert: 'Lisää linkki...',
 	unlink: 'Poista linkki',
 	formatting: 'Tyylit',
 	paragraph: 'Normaaliteksti',
@@ -16,7 +15,6 @@ $.Redactor.opts.langs['fi'] = {
 	header2: 'Otsikko 2',
 	header3: 'Otsikko 3',
 	header4: 'Otsikko 4',
-	header5: 'Otsikko 5',
 	bold:  'Lihavointi',
 	italic: 'Kursivointi',
 	fontcolor: 'Tekstin väri',
@@ -25,6 +23,9 @@ $.Redactor.opts.langs['fi'] = {
 	orderedlist: 'Numeroitu luettelo',
 	outdent: 'Vähennä sisennystä',
 	indent: 'Lisää sisennystä',
+	redo: 'Tee uudelleen',
+	undo: 'Kumoa',
+	cut: 'Leikkaa',
 	cancel: 'Peru',
 	insert: 'Lisää',
 	save: 'Tallenna',
@@ -51,7 +52,7 @@ $.Redactor.opts.langs['fi'] = {
 	mailto: 'Sähköposti',
 	web: 'URL-osoite',
 	video_html_code: 'Videon upotuskoodi',
-	file: 'Lisää tiedosto',
+	file: 'Tiedosto',
 	upload: 'Lähetä',
 	download: 'Lataa',
 	choose: 'Valitse',
@@ -61,13 +62,11 @@ $.Redactor.opts.langs['fi'] = {
 	align_center: 'Keskitä',
 	align_right: 'Tasaa oikealle',
 	align_justify: 'Tasaa molemmat reunat',
-	horizontalrule: 'Lisää vaakaviiva',
+	horizontalrule: 'Vaakaviiva',
+	fullscreen: 'Koko näyttö',
 	deleted: 'Poistettu',
 	anchor: 'Ankkuri',
-	link_new_tab: 'Avaa linkki uudessa välilehdessä',
-	underline: 'Alleviivaa',
-	alignment: 'Tasaus',
-	filename: 'Nimi (valinnainen)',
-	edit: 'Edit'
+	link_new_tab: 'Open link in new tab',
+	underline: 'Underline',
+	alignment: 'Alignment'
 };
-})( jQuery );

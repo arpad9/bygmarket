@@ -19,8 +19,22 @@ use Tygh\Registry;
  */
 function fn_settings_actions_addons_discussion_home_page_testimonials(&$new_value, $old_value)
 {
-    if (function_exists('fn_create_empty_thread')) {
-        fn_create_empty_thread($new_value);
+    $discussion = array(
+        'type' => $new_value,
+        'object_type' => 'E',
+        'object_id' => 0,
+    );
+
+    if (fn_allowed_for('ULTIMATE')) {
+        if (!Registry::get('runtime.company_id')) {
+            $discussion['for_all_companies'] = 1;
+        } else {
+            $discussion['company_id'] = Registry::get('runtime.company_id');
+        }
+    }
+
+    if (function_exists('fn_update_discussion')) {
+        fn_update_discussion($discussion);
     }
 
     return true;

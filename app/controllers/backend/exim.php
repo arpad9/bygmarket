@@ -15,13 +15,12 @@
 use Tygh\Bootstrap;
 use Tygh\Registry;
 use Tygh\Storage;
-use Tygh\Tools\Url;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
 // Set line endings autodetection
 ini_set('auto_detect_line_endings', true);
-set_time_limit(0);
+set_time_limit(3600);
 fn_define('DB_LIMIT_SELECT_ROW', 30);
 
 if (empty($_SESSION['export_ranges'])) {
@@ -39,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         db_query("UPDATE ?:exim_layouts SET active = 'N' WHERE pattern_id = ?s", $layout_data['pattern_id']);
         db_query("UPDATE ?:exim_layouts SET active = 'Y' WHERE layout_id = ?i", $layout_data['layout_id']);
 
-        return array(CONTROLLER_STATUS_OK, 'exim.export?section=' . $_REQUEST['section'] . '&pattern_id=' . $layout_data['pattern_id']);
+        return array(CONTROLLER_STATUS_OK, "exim.export?section=$_REQUEST[section]&pattern_id=$layout_data[pattern_id]");
     }
 
     //
@@ -55,11 +54,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 unset($layout_data['layout_id']);
                 if (!empty($layout_data['name'])) {
                     $layout_data['active'] = 'Y';
-                    $layout_data['options'] = serialize($_REQUEST['export_options']);
                     db_query("UPDATE ?:exim_layouts SET active = 'N' WHERE pattern_id = ?s", $layout_data['pattern_id']);
                     db_query("INSERT INTO ?:exim_layouts ?e", $layout_data);
 
-                    return array(CONTROLLER_STATUS_OK, 'exim.export?section=' . $_REQUEST['section'] . '&pattern_id=' . $layout_data['pattern_id']);
+                    return array(CONTROLLER_STATUS_OK, "exim.export?section=$_REQUEST[section]&pattern_id=$layout_data[pattern_id]");
                 }
             } else {
                 if (!empty($layout_data['layout_id'])) {
@@ -69,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
 
-        return array(CONTROLLER_STATUS_OK, 'exim.export?section=' . $_REQUEST['section'] . '&pattern_id=' . $layout_data['pattern_id']);
+        return array(CONTROLLER_STATUS_OK, "exim.export?section=$_REQUEST[section]&pattern_id=$layout_data[pattern_id]");
     }
 
     //
@@ -78,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($mode == 'delete_layout') {
         db_query("DELETE FROM ?:exim_layouts WHERE layout_id = ?i", $layout_data['layout_id']);
 
-        return array(CONTROLLER_STATUS_OK, 'exim.export?section=' . $_REQUEST['section'] . '&pattern_id=' . $layout_data['pattern_id']);
+        return array(CONTROLLER_STATUS_OK, "exim.export?section=$_REQUEST[section]&pattern_id=$layout_data[pattern_id]");
     }
 
     //
@@ -116,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 if (defined('AJAX_REQUEST') && !empty($url)) {
-                    Tygh::$app['ajax']->assign('force_redirection', $url);
+                    Registry::get('ajax')->assign('force_redirection', $url);
 
                     exit;
                 }
@@ -126,8 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 return array(CONTROLLER_STATUS_OK, $url);
 
             } else {
-                $delete_range_url = fn_url("exim.delete_range?section=$pattern[section]&pattern_id=$pattern[pattern_id]");
-                fn_set_notification('E', __('error'), __('error_exim_no_data_exported_new', array("[url]" => $delete_range_url)));
+                fn_set_notification('E', __('error'), __('error_exim_no_data_exported'));
             }
         } else {
             fn_set_notification('E', __('error'), __('error_exim_fields_not_selected'));
@@ -157,21 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             fn_set_notification('E', __('error'), __('error_exim_no_file_uploaded'));
         }
 
-        return array(CONTROLLER_STATUS_OK, 'exim.import?section=' . $_REQUEST['section'] . '&pattern_id=' . $_REQUEST['pattern_id']);
-    }
-
-    if ($mode == 'delete_file' && !empty($_REQUEST['filename'])) {
-        $file = fn_basename($_REQUEST['filename']);
-        fn_rm(fn_get_files_dir_path() . $file);
-
-        return array(CONTROLLER_STATUS_REDIRECT);
-
-    }
-
-    if ($mode == 'delete_range') {
-        unset($_SESSION['export_ranges'][$_REQUEST['section']]);
-
-        return array(CONTROLLER_STATUS_REDIRECT, 'exim.export?section=' . $_REQUEST['section'] . '&pattern_id=' . $_REQUEST['pattern_id']);
+        return array(CONTROLLER_STATUS_OK, "exim.import?section=$_REQUEST[section]&pattern_id=$_REQUEST[pattern_id]");
     }
 
     exit;
@@ -202,8 +185,8 @@ if ($mode == 'export') {
     if (!empty($_SESSION['export_ranges'][$_REQUEST['section']])) {
         $key = key($_SESSION['export_ranges'][$_REQUEST['section']]['data']);
         if (!empty($key)) {
-            Tygh::$app['view']->assign('export_range', count($_SESSION['export_ranges'][$patterns[$pattern_id]['section']]['data'][$key]));
-            Tygh::$app['view']->assign('active_tab', $_SESSION['export_ranges'][$_REQUEST['section']]['pattern_id']);
+            Registry::get('view')->assign('export_range', count($_SESSION['export_ranges'][$patterns[$pattern_id]['section']]['data'][$key]));
+            Registry::get('view')->assign('active_tab', $_SESSION['export_ranges'][$_REQUEST['section']]['pattern_id']);
         }
     }
 
@@ -213,25 +196,16 @@ if ($mode == 'export') {
     // Extract columns information
     foreach ($layouts as $k => $v) {
         $layouts[$k]['cols'] = explode(',', $v['cols']);
-        $layouts[$k]['options'] = unserialize($v['options']);
-
-        if ($v['active'] == 'Y' && !empty($v['options'])) {
-            foreach ($layouts[$k]['options'] as $option => $value) {
-                if (isset($patterns[$pattern_id]['options'][$option])) {
-                    $patterns[$pattern_id]['options'][$option]['default_value'] = $value;
-                }
-            }
-        }
     }
 
     // Get export files
-    $export_files = fn_get_dir_contents(fn_get_files_dir_path(), false, true);
+    $export_files = fn_get_dir_contents(Registry::get('config.dir.exim'), false, true);
     $result = array();
 
     foreach ($export_files as $file) {
         $result[] = array (
             'name' => $file,
-            'size' => filesize(fn_get_files_dir_path() . $file),
+            'size' => filesize(Registry::get('config.dir.exim') . $file),
         );
     }
 
@@ -243,13 +217,12 @@ if ($mode == 'export') {
     Registry::set('navigation.dynamic.sections', $sections);
     Registry::set('navigation.dynamic.active_section', $_REQUEST['section']);
 
-    Tygh::$app['view']->assign('export_files', $result);
-    Tygh::$app['view']->assign('files_rel_dir', fn_get_rel_dir(fn_get_files_dir_path()));
+    Registry::get('view')->assign('export_files', $result);
 
-    Tygh::$app['view']->assign('pattern', $patterns[$pattern_id]);
-    Tygh::$app['view']->assign('layouts', $layouts);
+    Registry::get('view')->assign('pattern', $patterns[$pattern_id]);
+    Registry::get('view')->assign('layouts', $layouts);
 
-    Tygh::$app['view']->assign('export_langs', $export_langs);
+    Registry::get('view')->assign('export_langs', $export_langs);
 
 } elseif ($mode == 'import') {
 
@@ -277,19 +250,30 @@ if ($mode == 'export') {
     Registry::set('navigation.dynamic.active_section', $_REQUEST['section']);
 
     unset($patterns[$pattern_id]['options']['lang_code']);
-    Tygh::$app['view']->assign('pattern', $patterns[$pattern_id]);
-    Tygh::$app['view']->assign('sections', $sections);
+    Registry::get('view')->assign('pattern', $patterns[$pattern_id]);
+    Registry::get('view')->assign('sections', $sections);
 
 } elseif ($mode == 'get_file' && !empty($_REQUEST['filename'])) {
     $file = fn_basename($_REQUEST['filename']);
 
     if (!empty($_REQUEST['to_screen'])) {
         header("Content-type: text/plain");
-        readfile(fn_get_files_dir_path() . $file);
+        readfile(Registry::get('config.dir.exim') . $file);
         exit;
     } else {
-        fn_get_file(fn_get_files_dir_path() . $file);
+        fn_get_file(Registry::get('config.dir.exim') . $file);
     }
+
+} elseif ($mode == 'delete_file' && !empty($_REQUEST['filename'])) {
+    $file = fn_basename($_REQUEST['filename']);
+    fn_rm(Registry::get('config.dir.exim') . $file);
+
+    return array(CONTROLLER_STATUS_REDIRECT);
+
+} elseif ($mode == 'delete_range') {
+    unset($_SESSION['export_ranges'][$_REQUEST['section']]);
+
+    return array(CONTROLLER_STATUS_REDIRECT, "exim.export?section=$_REQUEST[section]&pattern_id=$_REQUEST[pattern_id]");
 
 } elseif ($mode == 'select_range') {
     $_SESSION['export_ranges'][$_REQUEST['section']] = array (
@@ -313,15 +297,13 @@ if ($mode == 'export') {
 
 function fn_import($pattern, $import_data, $options)
 {
-    if (empty($pattern) || empty($import_data)) {
-        return false;
-    }
-
     $processed_data = array (
         'E' => 0, // existent
         'N' => 0, // new
         'S' => 0, // skipped
     );
+
+    fn_define('NEW_FEATURE_GROUP_ID', 'OG');
 
     $alt_keys = array();
     $primary_fields = array();
@@ -330,7 +312,6 @@ function fn_import($pattern, $import_data, $options)
     $add_fields = array();
     $primary_object_ids = array();
     $required_fields = array();
-    $alt_fields = array();
 
     if (!empty($pattern['pre_processing'])) {
         $data_pre_processing = array(
@@ -367,10 +348,6 @@ function fn_import($pattern, $import_data, $options)
         // Get alt keys for primary table
         if (!empty($data['alt_key'])) {
             $alt_keys[$field] = $_db_field;
-        }
-
-        if (!empty($data['alt_field'])) {
-            $alt_fields[$_db_field] = $data['alt_field'];
         }
 
         if (!empty($data['required']) && $data['required'] = true) {
@@ -412,8 +389,7 @@ function fn_import($pattern, $import_data, $options)
 
     fn_set_progress('parts', sizeof($import_data));
 
-    $data = reset($import_data);
-    $multi_lang = array_keys($data);
+    $multi_lang = array_keys($import_data[0]);
     $main_lang = reset($multi_lang);
 
     foreach ($import_data as $k => $v) {
@@ -421,10 +397,8 @@ function fn_import($pattern, $import_data, $options)
         //If the required field is empty skip this record
         foreach ($required_fields as $field) {
             if (empty($v[$main_lang][$field]) && $v[$main_lang][$field] !== 0) {
-                if (empty($alt_fields[$field]) || empty($v[$main_lang][$alt_fields[$field]])) {
-                    $processed_data['S']++;
-                    continue 2;
-                }
+                $processed_data['S']++;
+                continue 2;
             }
         }
 
@@ -438,12 +412,7 @@ function fn_import($pattern, $import_data, $options)
             if (!isset($v[$main_lang][$real_field])) {
                 continue;
             }
-            if (!empty($v[$main_lang][$real_field])) {
-                $_alt_keys[$real_field] = $v[$main_lang][$real_field];
-            } elseif (!empty($alt_fields[$real_field])) {
-                $_alt_keys[$alt_fields[$real_field]] = $v[$main_lang][$alt_fields[$real_field]];
-            }
-
+            $_alt_keys[$real_field] = $v[$main_lang][$real_field];
         }
 
         foreach ($primary_fields as $import_field => $real_field) {
@@ -469,13 +438,7 @@ function fn_import($pattern, $import_data, $options)
         if ($skip_get_primary_object_id) {
             $primary_object_id = array();
         } else {
-            $where = array();
-            foreach ($_alt_keys as $field => $value) {
-                $where[] = db_quote("?p = ?s", $field, $value);
-            }
-            $where = implode(' AND ', $where);
-
-            $primary_object_id = db_get_row('SELECT ' . implode(', ', $pattern['key']) . ' FROM ?:' . $pattern['table'] . ' WHERE ?p', $where);
+            $primary_object_id = db_get_row('SELECT ' . implode(', ', $pattern['key']) . ' FROM ?:' . $pattern['table'] . ' WHERE ?w', $_alt_keys);
         }
 
         $primary_object_ids[] = $primary_object_id;
@@ -490,7 +453,6 @@ function fn_import($pattern, $import_data, $options)
                 'processed_data' => &$processed_data,
                 'processing_groups' => &$processing_groups,
                 'skip_record' => &$skip_record,
-                'data' =>&$v,
             );
 
             fn_exim_processing('import', $pattern['import_process_data'], $options, $data_import_process_data);
@@ -514,7 +476,7 @@ function fn_import($pattern, $import_data, $options)
                         if (!isset($v[$main_lang][$_v])) {
                             continue;
                         }
-                        $_a[] = $_d . ' = ' . $v[$main_lang][$_v];
+                        $_a[] = $_d . ' = ' . $v[$_v];
                     }
                     fn_set_progress('echo', __('object_does_not_exist') . ' (' . implode(', ', $_a) . ')...', false);
 
@@ -537,9 +499,6 @@ function fn_import($pattern, $import_data, $options)
                 $processed_data['E']++;
             }
 
-            /*foreach ($pattern['key'] as $field) {
-                unset($v[$main_lang][$field]);
-            }*/
             if ($object_exists == true) {
                 fn_set_progress('echo', __('updating') . ' ' . $pattern['name'] . ' <b>' . implode(',', $primary_object_id) . '</b>. ', false);
                 db_query('UPDATE ?:' . $pattern['table'] . ' SET ?u WHERE ?w', $v[$main_lang], $primary_object_id);
@@ -581,81 +540,6 @@ function fn_import($pattern, $import_data, $options)
             continue;
         }
 
-
-
-        if (!(isset($pattern['import_skip_db_processing']) && $pattern['import_skip_db_processing'])) {
-            // Update referenced tables
-            fn_set_progress('echo', __('updating_links') . '... ', false);
-
-            foreach ($table_groups as $table => $tdata) {
-                if (isset($tdata['import_skip_db_processing']) && $tdata['import_skip_db_processing']) {
-                    continue;
-                }
-
-                foreach ($v as $value_data) {
-                    $_data = array();
-
-                    // First, build condition
-                    $where_insert = array();
-
-                    // If alternative key is defined, use it
-                    if (!empty($tdata['alt_key'])) {
-
-                        foreach ($tdata['alt_key'] as $akey) {
-                            if (strval($akey) == '#key') {
-                                $where_insert = fn_array_merge($where_insert, $primary_object_id);
-                            } elseif (strpos($akey, '@') !== false) {
-                                $_opt = str_replace('@', '', $akey);
-                                $where_insert[$akey] = $options[$_opt];
-                            } else {
-                                $where_insert[$akey] = $value_data[$akey];
-                            }
-                        }
-                    // Otherwise - link by reference fields
-                    } else {
-                        $vars = array('key' => $primary_object_id);
-                        if (!empty($value_data['lang_code'])) {
-                            $vars['lang_code'] = $value_data['lang_code'];
-                        }
-                        $where_insert = fn_exim_get_values($tdata['reference_fields'], array(), $options, $vars, $value_data, '');
-                    }
-
-                    // Now, build update fields array
-                    if (!empty($tdata['fields'])) {
-                        foreach ($tdata['fields'] as $import_field => $set) {
-                            if (!isset($value_data[$import_field])) {
-                                continue;
-                            }
-                            $_data[$import_field] = $value_data[$import_field];
-                        }
-                    }
-
-                    // Check if object exists
-                    $is_exists = db_get_field("SELECT COUNT(*) FROM ?:$table WHERE ?w", $where_insert);
-                    if ($is_exists == true && !empty($_data)) {
-                        db_query("UPDATE ?:$table SET ?u WHERE ?w", $_data, $where_insert);
-                    } elseif (empty($is_exists)) { // if reference does not exist, we should insert it anyway to avoid inconsistency
-                        $_data = fn_array_merge($_data, $where_insert);
-
-                        if (substr($table, -13) == '_descriptions' && isset($_data['lang_code'])) {
-                            // add description for all cart languages when adding object data
-                            foreach (fn_get_translation_languages() as $_data['lang_code'] => $lang_v) {
-                                db_query("REPLACE INTO ?:$table ?e", $_data);
-                            }
-
-                        } else {
-                            db_query("INSERT INTO ?:$table ?e", $_data);
-                        }
-                    }
-
-                    //
-                    if (empty($_data['lang_code'])) {
-                        break;
-                    }
-                }
-            }
-        }
-
         if (!empty($processing_groups)) {
 
             foreach ($processing_groups as $group) {
@@ -670,17 +554,11 @@ function fn_import($pattern, $import_data, $options)
                         if ($av == '#key') {
                             $args[$ak] = (sizeof($primary_object_id) >= 1) ? reset($primary_object_id) : $primary_object_id;
 
-                        } elseif ($av == '#keys') {
-                            $args[$ak] = is_array($primary_object_id) ? $primary_object_id : (array) $primary_object_id;
-
+                        } elseif ($av == '@lang_code') {
+                            //$args[$ak][$key] = $value['lang_code'];
+                            continue;
                         } elseif ($av == '#new') {
                             $args[$ak] = !$object_exists;
-
-                        } elseif ($av == '#lang_code') {
-                            $args[$ak] = $lang_code;
-
-                        } elseif ($av == '#row') {
-                            $args[$ak] = $value;
 
                         } elseif ($av == '#this') {
                             // If we do not have this field in the import data, do not apply the function
@@ -725,7 +603,6 @@ function fn_import($pattern, $import_data, $options)
 
                         } elseif ($av == '#counter') {
                             $args[$ak] = &$processed_data;
-
                         } elseif (strpos($av, '%') !== false) {
                             $_ref = str_replace('%', '', $av);
                             $arg_multilang = !empty($pattern['export_fields'][$_ref]['multilang']);
@@ -733,22 +610,16 @@ function fn_import($pattern, $import_data, $options)
 
                             if ($arg_multilang) {
                                 $args[$ak][$lang_code] = isset($value[$_ref]) ? $value[$_ref] : '';
-                            } elseif ($lang_code == $main_lang) {
+                            } else {
                                 $args[$ak] = isset($value[$_ref]) ? $value[$_ref] : '';
                             }
 
                             $_refs[$lang_code][] = $_ref;
-
                         } elseif (strpos($av, '@') !== false) {
                             $_opt = str_replace('@', '', $av);
                             $args[$ak] = $options[$_opt];
-
                         } else {
                             $args[$ak] = $av;
-                        }
-
-                        if (empty($group['multilang'])) {
-                            break;
                         }
                     }
 
@@ -763,6 +634,91 @@ function fn_import($pattern, $import_data, $options)
                 if ($group['return_result'] == true) {
                     foreach (array_keys($v) as $lang) {
                         $v[$lang][$group['this_field']] = $result;
+                    }
+                } else {
+                    // Remove processed fields from table groups
+                    if (!empty($group['table'])) {
+                        unset($table_groups[$group['table']]['fields'][$group['this_field']]);
+
+                        if (!empty($_refs[$main_lang])) {
+                            foreach ($_refs[$main_lang] as $_ref) {
+                                unset($table_groups[$group['table']]['fields'][$_ref]);
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+
+        if (!(isset($pattern['import_skip_db_processing']) && $pattern['import_skip_db_processing'])) {
+            // Update referenced tables
+            fn_set_progress('echo', __('updating_links') . '... ', false);
+
+            foreach ($table_groups as $table => $tdata) {
+                if (isset($tdata['import_skip_db_processing']) && $tdata['import_skip_db_processing']) {
+                    break;
+                }
+
+                foreach ($v as $value_data) {
+                    $_data = array();
+
+                    // First, build condition
+                    $where_insert = array();
+
+                    // If alternative key is defined, use it
+                    if (!empty($tdata['alt_key'])) {
+
+                        foreach ($tdata['alt_key'] as $akey) {
+                            if (strval($akey) == '#key') {
+                                $where_insert = fn_array_merge($where_insert, $primary_object_id);
+                            } elseif (strpos($akey, '@') !== false) {
+                                $_opt = str_replace('@', '', $akey);
+                                $where_insert[$akey] = $options[$_opt];
+                            } else {
+                                $where_insert[$akey] = $value_data[$akey];
+                            }
+                        }
+                    // Otherwise - link by reference fields
+                    } else {
+                        $vars = array('key' => $primary_object_id);
+                        if (!empty($value_data['lang_code'])) {
+                            $vars['lang_code'] = $value_data['lang_code'];
+                        }
+                        $where_insert = fn_exim_get_values($tdata['reference_fields'], array(), $options, $vars, array(), '');
+                    }
+
+                    // Now, build update fields array
+                    if (!empty($tdata['fields'])) {
+                        foreach ($tdata['fields'] as $import_field => $set) {
+                            if (!isset($value_data[$import_field])) {
+                                continue;
+                            }
+                            $_data[$import_field] = $value_data[$import_field];
+                        }
+                    }
+
+                    // Check if object exists
+                    $is_exists = db_get_field("SELECT COUNT(*) FROM ?:$table WHERE ?w", $where_insert);
+                    if ($is_exists == true && !empty($_data)) {
+                        db_query("UPDATE ?:$table SET ?u WHERE ?w", $_data, $where_insert);
+                    } elseif (empty($is_exists)) { // if reference does not exist, we should insert it anyway to avoid inconsistency
+                        $_data = fn_array_merge($_data, $where_insert);
+
+                        if (substr($table, -13) == '_descriptions' && isset($_data['lang_code'])) {
+                            // add description for all cart languages when adding object data
+                            foreach (fn_get_translation_languages() as $_data['lang_code'] => $lang_v) {
+                                db_query("REPLACE INTO ?:$table ?e", $_data);
+                            }
+
+                        } else {
+                            db_query("INSERT INTO ?:$table ?e", $_data);
+                        }
+                    }
+
+                    //
+                    if (empty($_data['lang_code'])) {
+                        break;
                     }
                 }
             }
@@ -840,11 +796,7 @@ function fn_export($pattern, $export_fields, $options)
         }
     }
 
-    $primary_key = array();
-    $_primary_key = $pattern['key'];
-    foreach ($_primary_key as $key) {
-        $primary_key[$key] = $key;
-    }
+    $primary_key = $pattern['key'];
     array_walk($primary_key, 'fn_attach_value_helper', $pattern['table'].'.');
 
     $table_fields = $primary_key;
@@ -883,14 +835,8 @@ function fn_export($pattern, $export_fields, $options)
     fn_set_progress('parts', $total);
     fn_set_progress('step_scale', 1);
 
-    $sorting = '';
-
-    if (!empty($pattern['order_by'])) {
-        $sorting = ' ORDER BY ' . $pattern['order_by'];
-    }
-
     // Build main query
-    $query = "SELECT " . implode(', ', $table_fields) . " FROM ?:" . $pattern['table'] . " as " . $pattern['table'] .' '. implode(' ', $joins) . (!empty($conditions) ? ' WHERE ' . implode(' AND ', $conditions) : '') . $sorting;
+    $query = "SELECT " . implode(', ', $table_fields) . " FROM ?:" . $pattern['table'] . " as " . $pattern['table'] .' '. implode(' ', $joins) . (!empty($conditions) ? ' WHERE ' . implode(' AND ', $conditions) : '');
 
     $step = fn_floor_to_step(DB_LIMIT_SELECT_ROW,  $count_langs); // define number of rows to get from database
     $iterator = 0; // start retrieving from
@@ -985,7 +931,7 @@ function fn_export($pattern, $export_fields, $options)
     if (!empty($pattern['post_processing'])) {
         fn_set_progress('echo', __('processing'), false);
 
-        if ($data_exported && file_exists(fn_get_files_dir_path() . $options['filename'])) {
+        if (file_exists(Registry::get('config.dir.exim') . $options['filename'])) {
 
             $data_exported = fn_exim_processing('export', $pattern['post_processing'], $options);
         }
@@ -1164,36 +1110,30 @@ function fn_put_csv(&$data, &$options, $enclosure)
         $delimiter = ';';
     }
 
-    fn_mkdir(fn_get_files_dir_path());
+    fn_mkdir(Registry::get('config.dir.exim'));
 
     foreach ($data as $k => $v) {
         foreach ($v as $name => $value) {
             $data[$k][$name] = $enclosure . str_replace(array("\r","\n","\t",$enclosure), array('','','',$enclosure.$enclosure), $value) . $enclosure;
         }
-        // If a line in a csv file ends with 3 or more double quotes (i.e. """), the mime content type is often
-        // determined incorrectly, e.g. by using finfo_file or mime_content_type php functions.
-        // To get round it, add an extra space to lines like this:
-        if (substr($data[$k][$name], -3) == '"""') {
-            $data[$k][$name] .= ' ';
-        }
     }
 
     if ($output_started == false || isset($options['force_header'])) {
-        Tygh::$app['view']->assign('fields', array_keys($data[0]));
+        Registry::get('view')->assign('fields', array_keys($data[0]));
     } else {
-        Tygh::$app['view']->clearAssign('fields');
+        Registry::get('view')->clearAssign('fields');
     }
 
-    Tygh::$app['view']->assign('export_data', $data);
-    Tygh::$app['view']->assign('delimiter', $delimiter);
-    Tygh::$app['view']->assign('eol', $eol);
+    Registry::get('view')->assign('export_data', $data);
+    Registry::get('view')->assign('delimiter', $delimiter);
+    Registry::get('view')->assign('eol', $eol);
 
-    $csv = Tygh::$app['view']->fetch('views/exim/components/export_csv.tpl');
-    $fd = fopen(fn_get_files_dir_path() . $options['filename'], ($output_started && !isset($options['force_header'])) ? 'ab' : 'wb');
+    $csv = Registry::get('view')->fetch('views/exim/components/export_csv.tpl');
+    $fd = fopen(Registry::get('config.dir.exim') . $options['filename'], ($output_started && !isset($options['force_header'])) ? 'ab' : 'wb');
     if ($fd) {
         fwrite($fd, $csv, strlen($csv));
         fclose($fd);
-        @chmod(fn_get_files_dir_path() . $options['filename'], DEFAULT_FILE_PERMISSIONS);
+        @chmod(Registry::get('config.dir.exim') . $options['filename'], DEFAULT_FILE_PERMISSIONS);
     }
 
     if ($output_started == false) {
@@ -1215,6 +1155,7 @@ function fn_attach_value_helper(&$value, $key, $attachment)
     return true;
 }
 
+
 // -------------- ExIm utility functions ---------------------
 
 /**
@@ -1225,14 +1166,9 @@ function fn_attach_value_helper(&$value, $key, $attachment)
  * @param string $backup_path path to export image
  * @return string path to the exported image
  */
-function fn_export_image($image_id, $object, $backup_path = '', $include_alt = true)
+function fn_export_image($image_id, $object, $backup_path = '')
 {
-    if (empty($backup_path)) {
-        $backup_path = 'exim/backup/images/' . $object . '/';
-    }
-
-    $backup_path = rtrim(fn_normalize_path($backup_path), '/');
-    $images_path = fn_get_files_dir_path() . $backup_path;
+    $images_path = !empty($backup_path) ? $backup_path : Registry::get('config.dir.exim') . 'backup/images/' . $object . '/';
 
     // if backup dir does not exist then try to create it
     fn_mkdir($images_path);
@@ -1242,22 +1178,20 @@ function fn_export_image($image_id, $object, $backup_path = '', $include_alt = t
         return '';
     }
 
-    if ($include_alt) {
-        $alt_data = db_get_hash_single_array("SELECT lang_code, description FROM ?:common_descriptions WHERE ?:common_descriptions.object_id = ?i AND ?:common_descriptions.object_holder = 'images'", array('lang_code', 'description'), $image_id);
-        $alt_text = '#{';
-        if (!empty($alt_data)) {
-            foreach ($alt_data as $lang_code => $text) {
-                $alt_text .= '[' . $lang_code . ']:' . $text . ';';
-            }
+    $alt_data = db_get_hash_single_array("SELECT lang_code, description FROM ?:common_descriptions WHERE ?:common_descriptions.object_id = ?i AND ?:common_descriptions.object_holder = 'images'", array('lang_code', 'description'), $image_id);
+    $alt_text = '{';
+    if (!empty($alt_data)) {
+        foreach ($alt_data as $lang_code => $text) {
+            $alt_text .= '[' . $lang_code . ']:' . $text . ';';
         }
-        $alt_text .= '}';
     }
+    $alt_text .= '}';
 
-    $path = $images_path . '/' . fn_basename($image_data['image_path']);
+    $path = rtrim($images_path, '/') . '/' . fn_basename($image_data['image_path']);
 
     Storage::instance('images')->export($object . '/' . floor($image_id / MAX_FILES_IN_DIR) . '/' . $image_data['image_path'], $path);
 
-    return ($backup_path . '/' . fn_basename($image_data['image_path'])) . (!empty($alt_data) && $include_alt ? $alt_text : '');
+    return $path . (!empty($alt_data) ? '#' . $alt_text : '');
 }
 
 /**
@@ -1277,97 +1211,67 @@ function fn_import_images($prefix, $image_file, $detailed_file, $position, $type
     static $updated_products = array();
 
     if (!empty($object_id)) {
-        // Process multilang requests
-        if (!is_array($object_id)) {
-            $object_id = array($object_id);
+        if (empty($updated_products[$object_id]) && !empty($_REQUEST['import_options']['remove_images']) && $_REQUEST['import_options']['remove_images'] == 'Y') {
+            $updated_products[$object_id] = true;
+
+            fn_delete_image_pairs($object_id, $object, 'A');
         }
 
-        foreach ($object_id as $_id) {
-            if (empty($updated_products[$_id]) && !empty($_REQUEST['import_options']['remove_images']) && $_REQUEST['import_options']['remove_images'] == 'Y') {
-                $updated_products[$_id] = true;
+        $_REQUEST["server_import_image_icon"] = '';
+        $_REQUEST["type_import_image_icon"] = '';
 
-                fn_delete_image_pairs($_id, $object, 'A');
-            }
-
-            $_REQUEST["server_import_image_icon"] = '';
-            $_REQUEST["type_import_image_icon"] = '';
-
-            // Get image alternative text if exists
-            if (!empty($image_file) && strpos($image_file, '#') !== false) {
-                list ($image_file, $image_alt) = explode('#', $image_file);
-            }
-
-            if (!empty($detailed_file) && strpos($detailed_file, '#') !== false) {
-                list ($detailed_file, $detailed_alt) = explode('#', $detailed_file);
-            }
-
-            if (!empty($image_alt)) {
-                preg_match_all('/\[([A-Za-z]+?)\]:(.*?);/', $image_alt, $matches);
-                if (!empty($matches[1]) && !empty($matches[2])) {
-                    $image_alt = array_combine(array_values($matches[1]), array_values($matches[2]));
-                }
-            }
-
-            if (!empty($detailed_alt)) {
-                preg_match_all('/\[([A-Za-z]+?)\]:(.*?);/', $detailed_alt, $matches);
-                if (!empty($matches[1]) && !empty($matches[2])) {
-                    $detailed_alt = array_combine(array_values($matches[1]), array_values($matches[2]));
-                }
-            }
-            $type_image_detailed = (strpos($detailed_file, '://') === false) ? 'server' : 'url';
-            $type_image_icon = (strpos($image_file, '://') === false) ? 'server' : 'url';
-
-            $_REQUEST["type_import_image_icon"] = array($type_image_icon);
-            $_REQUEST["type_import_image_detailed"] = array($type_image_detailed);
-
-            $image_file = fn_find_file($prefix, $image_file);
-
-            if ($image_file !== false) {
-                if ($type_image_icon == 'url') {
-                    $_REQUEST["file_import_image_icon"] = array($image_file);
-
-                } elseif (strpos($image_file, Registry::get('config.dir.root')) === 0) {
-                    $_REQUEST["file_import_image_icon"] = array(str_ireplace(fn_get_files_dir_path(), '', $image_file));
-
-                } else {
-                    fn_set_notification('E', __('error'), __('error_images_need_located_root_dir'));
-                    $_REQUEST["file_import_image_detailed"] = array();
-                }
-            } else {
-                $_REQUEST["file_import_image_icon"] = array();
-            }
-
-            $detailed_file = fn_find_file($prefix, $detailed_file);
-
-            if ($detailed_file !== false) {
-                if ($type_image_detailed == 'url') {
-                    $_REQUEST["file_import_image_detailed"] = array($detailed_file);
-
-                } elseif (strpos($detailed_file, Registry::get('config.dir.root')) === 0) {
-                    $_REQUEST["file_import_image_detailed"] = array(str_ireplace(fn_get_files_dir_path(), '', $detailed_file));
-
-                } else {
-                    fn_set_notification('E',  __('error'), __('error_images_need_located_root_dir'));
-                    $_REQUEST["file_import_image_detailed"] = array();
-                }
-
-            } else {
-                $_REQUEST["file_import_image_detailed"] = array();
-            }
-
-            $_REQUEST['import_image_data'] = array(
-                array(
-                    'type' => $type,
-                    'image_alt' => empty($image_alt) ? '' : $image_alt,
-                    'detailed_alt' => empty($detailed_alt) ? '' : $detailed_alt,
-                    'position' => empty($position) ? 0 : $position,
-                )
-            );
-
-            $result = fn_attach_image_pairs('import', $object, $_id);
+        // Get image alternative text if exists
+        if (!empty($image_file) && strpos($image_file, '#') !== false) {
+            list ($image_file, $image_alt) = explode('#', $image_file);
         }
 
-        return $result;
+        if (!empty($detailed_file) && strpos($detailed_file, '#') !== false) {
+            list ($detailed_file, $detailed_alt) = explode('#', $detailed_file);
+        }
+
+        if (!empty($image_alt)) {
+            preg_match_all('/\[([A-Za-z]+?)\]:(.*?);/', $image_alt, $matches);
+            if (!empty($matches[1]) && !empty($matches[2])) {
+                $image_alt = array_combine(array_values($matches[1]), array_values($matches[2]));
+            }
+        }
+
+        if (!empty($detailed_alt)) {
+            preg_match_all('/\[([A-Za-z]+?)\]:(.*?);/', $detailed_alt, $matches);
+            if (!empty($matches[1]) && !empty($matches[2])) {
+                $detailed_alt = array_combine(array_values($matches[1]), array_values($matches[2]));
+            }
+        }
+
+        $type_image_detailed = (strpos($detailed_file, '://') === false) ? 'server' : 'url';
+        $type_image_icon = (strpos($image_file, '://') === false) ? 'server' : 'url';
+
+        $_REQUEST["type_import_image_icon"] = array($type_image_icon);
+        $_REQUEST["type_import_image_detailed"] = array($type_image_detailed);
+
+        if ($type_image_icon == 'url' || ($image_file = fn_find_file($prefix, $image_file)) !== false) {
+            $_REQUEST["file_import_image_icon"] = array (str_ireplace(Registry::get('config.dir.root'), '', $image_file));
+        } else {
+            $_REQUEST["file_import_image_icon"] = array ();
+        }
+
+        if ($type_image_detailed == 'url' || ($detailed_file = fn_find_file($prefix, $detailed_file)) !== false) {
+            $_REQUEST["file_import_image_detailed"] = array (str_ireplace(Registry::get('config.dir.root'), '', $detailed_file));
+
+        } else {
+            $_REQUEST["file_import_image_detailed"] = array ();
+        }
+
+        $_REQUEST['import_image_data'] = array(
+            array(
+                'type' => $type,
+                'image_alt' => empty($image_alt) ? '' : $image_alt,
+                'detailed_alt' => empty($detailed_alt) ? '' : $detailed_alt,
+                'position' => empty($position) ? 0 : $position,
+            )
+        );
+
+        return fn_attach_image_pairs('import', $object, $object_id);
     }
 
     return false;
@@ -1379,7 +1283,7 @@ function fn_import_images($prefix, $image_file, $detailed_file, $position, $type
 
 function fn_timestamp_to_date($timestamp)
 {
-    return !empty($timestamp) ? date('d M Y H:i:s', intval($timestamp)) : '';
+    return date('d M Y H:i:s', intval($timestamp));
 }
 
 //
@@ -1400,34 +1304,9 @@ function fn_date_to_timestamp($date)
 function fn_exim_get_image_url($product_id, $object_type, $pair_type, $get_icon, $get_detailed, $lang_code)
 {
     $image_pair = fn_get_image_pairs($product_id, $object_type, $pair_type, true, true, $lang_code);
+    $image_data = fn_image_to_display($image_pair, Registry::get('settings.Thumbnails.product_details_thumbnail_width'), Registry::get('settings.Thumbnails.product_details_thumbnail_height'));
 
-    $image_data = fn_image_to_display($image_pair,
-        Registry::get('settings.Thumbnails.product_details_thumbnail_width'),
-        Registry::get('settings.Thumbnails.product_details_thumbnail_height')
-    );
-
-    if (!empty($image_data['image_path'])) {
-        $url = new Url($image_data['image_path']);
-        $url->setProtocol(fn_get_storefront_protocol());
-
-        return $url->build($url->getIsEncoded());
-    }
-
-    return '';
-}
-
-//
-// Get absolute url to the detailed image
-// Parameters:
-// @image_id - Id of image
-// @object_type - type of image object
-
-function fn_exim_get_detailed_image_url($product_id, $object_type, $pair_type, $lang_code)
-{
-    $image_pair = fn_get_image_pairs($product_id, $object_type, $pair_type, false, true, $lang_code);
-    $protocol = fn_get_storefront_protocol();
-
-    return !empty($image_pair['detailed'][$protocol . '_image_path']) ? $image_pair['detailed'][$protocol . '_image_path'] : '';
+    return !empty($image_data) ? $image_data['image_path'] : '';
 }
 
 //
@@ -1523,7 +1402,7 @@ function fn_get_patterns($section, $get_for)
         $pattern_id = str_replace('.php', '', $schema_file);
         $pattern = fn_get_pattern_definition($pattern_id, $get_for);
 
-        if (empty($pattern) || !fn_check_pattern_permissions($pattern, $get_for, $_SESSION['auth']['user_id'])) {
+        if (empty($pattern)) {
             continue;
         }
 
@@ -1586,27 +1465,6 @@ function fn_sort_patterns($a, $b)
 }
 
 /**
- * Checks if admin has rights to use this pattern
- *
- * @param array $pattern Pattern structure
- * @param enum $get_for import|export
- * @param int $user_id User ID
- * @return bool true if user has privilege to use this pattern, false otherwise
- */
-function fn_check_pattern_permissions($pattern, $get_for, $user_id)
-{
-    $has_permissions = true;
-
-    if (isset($pattern['permissions']) && !empty($pattern['permissions'][$get_for])) {
-        $privilege = $pattern['permissions'][$get_for];
-
-        $has_permissions = fn_check_user_access($user_id, $privilege);
-    }
-
-    return $has_permissions;
-}
-
-/**
  * Gets product url
  *
  * @param $product_id
@@ -1627,7 +1485,7 @@ function fn_exim_get_product_url($product_id, $lang_code = '')
         $company_url = '';
     }
 
-    $url = fn_url('products.view?product_id=' . $product_id . $company_url, 'C', fn_get_storefront_protocol(), $lang_code);
+    $url = fn_url('products.view?product_id=' . $product_id . $company_url, 'C', 'http', $lang_code);
 
     fn_set_hook('exim_get_product_url', $url, $product_id, $options, $lang_code);
 
@@ -1676,7 +1534,7 @@ function fn_exim_processing($type_processing, $processing, $options, $vars = arr
         }
 
         $args = fn_exim_get_values($data['args'], array(), $options, array(), $vars, '');
-        $result = call_user_func_array($data['function'], $args) && $result;
+        $result = $result && call_user_func_array($data['function'], $args);
     }
 
     return $result;
@@ -1778,10 +1636,12 @@ function fn_export_build_conditions($pattern, $options)
             }
         }
 
-        if (!empty($pattern['condition']['use_company_condition'])) {
-            $company_condition = fn_get_company_condition($pattern['table'] . '.company_id', false);
-            if (!empty($company_condition)) {
-                $_cond[] = $company_condition;
+        if (fn_allowed_for('ULTIMATE')) {
+            if (!empty($pattern['condition']['use_company_condition'])) {
+                $company_condition = fn_get_company_condition($pattern['table'] . '.company_id', false);
+                if (!empty($company_condition)) {
+                    $_cond[] = $company_condition;
+                }
             }
         }
 
@@ -1835,7 +1695,7 @@ function fn_exim_get_values($values, $pattern, $options, $vars = array(), $data 
                 }
 
             } elseif ($value === '#key') {
-                $val[$field] = (sizeof($vars['key']) == 1) ? reset($vars['key']) : (isset($vars['key'][$field]) ? $vars['key'][$field] : $vars['key']);
+                $val[$field] = (sizeof($vars['key']) == 1) ? reset($vars['key']) : $vars['key'];
 
             } elseif ($operator === '&') {
                 $val[$field] = $pattern['table'] . '.' . substr($value, 1);
@@ -1852,9 +1712,6 @@ function fn_exim_get_values($values, $pattern, $options, $vars = array(), $data 
 
             } elseif ($value === '#row') {
                 $val[$field] = $data;
-
-            } elseif ($operator === '#') {
-                $val[$field] = substr($value, 1);
 
             } elseif ($operator === '$') {
                 $opt = str_replace('$', '', $value);
@@ -1938,7 +1795,6 @@ function fn_import_build_groups($type_group, $export_fields)
                     'this_field' => $db_field,
                     'args' => $args,
                     'table' => !empty($data['table']) ? $data['table'] : '',
-                    'multilang' => !empty($data['multilang']) ? true : false,
                     'return_result' => !empty($data['return_result']) ? $data['return_result'] : false,
                 );
             }
@@ -1955,12 +1811,8 @@ function fn_import_prepare_groups(&$data, $groups, $options, $skip_record = fals
             if (!isset($data[$group['this_field']])) {
                 continue;
             }
-            $vars = array(
-                'lang_code' => !empty($data['lang_code']) ? $data['lang_code'] : '',
-                'field' => $group['this_field']
-            );
 
-            $params = fn_exim_get_values($group['args'], array(), $options, $vars, $data, '');
+            $params = fn_exim_get_values($group['args'], array(), $options, array('field' => $group['this_field']), $data, '');
             $params[] = & $skip_record;
 
             $data[$group['this_field']] = call_user_func_array($group['function'], $params);
@@ -2076,65 +1928,26 @@ function fn_find_file($prefix, $file)
 {
     $file = Bootstrap::stripSlashes($file);
 
+    // Absolute path
+    if (is_file($file)) {
+        return realpath($file);
+    }
+
+    // Path is relative to prefix
+    if (is_file($prefix . '/' . $file)) {
+        return realpath($prefix . '/' . $file);
+    }
+
     // Url
     if (strpos($file, '://') !== false) {
-        return $file;
-    }
-
-    $prefix = fn_normalize_path(rtrim($prefix, '/'));
-    $file = fn_normalize_path($file);
-    $files_path = fn_get_files_dir_path();
-
-    // Absolute path
-    if (is_file($file) && strpos($file, $files_path) === 0) {
-        return $file;
-    }
-
-    // Path is relative to files directory
-    if (is_file($files_path . $file)) {
-        return $files_path . $file;
-    }
-
-    // Path is relative to prefix inside files directory
-    if (is_file($files_path . $prefix . '/' . $file)) {
-        return $files_path . $prefix . '/' . $file;
-    }
-
-    // Prefix is absolute path
-    if (strpos($prefix, $files_path) === 0 && is_file($prefix . '/' . $file)) {
-        return $prefix . '/' . $file;
-    }
-
-    return false;
-}
-
-/**
- * Import company
- *
- * @param string $object_type Type of object ('currencies', 'pages', etc)
- * @param integer $object_id Product ID
- * @param string $company_name Company name
- * @return integer $company_id Company identifier.
- */
-
-function fn_exim_set_company($object_type, $object_key, $object_id, $company_name)
-{
-    if (empty($company_name) || empty($object_id) || empty($object_type)) {
-        return false;
-    }
-
-    if (Registry::get('runtime.company_id')) {
-        $company_id = Registry::get('runtime.company_id');
-    } else {
-        $company_id = fn_get_company_id_by_name($company_name);
-
-        if (!$company_id) {
-            $company_data = array('company' => $company_name, 'email' => '');
-            $company_id = fn_update_company($company_data, 0);
+        $content = fn_get_contents($file);
+        if (!empty($content)) {
+            $fname = fn_create_temp_file();
+            if (fn_put_contents($fname, $content)) {
+                return $fname;
+            }
         }
     }
 
-    db_query("UPDATE ?:$object_type SET company_id = ?s WHERE $object_key = ?i", $company_id, $object_id);
-
-    return $company_id;
+    return false;
 }

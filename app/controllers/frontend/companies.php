@@ -21,14 +21,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     if ($mode == 'apply_for_vendor') {
 
-        if (Registry::get('settings.Vendors.apply_for_vendor') != 'Y') {
+        if (Registry::get('settings.Suppliers.apply_for_vendor') != 'Y') {
             return array(CONTROLLER_STATUS_NO_PAGE);
         }
 
-        if (fn_image_verification('apply_for_vendor_account', $_REQUEST) == false) {
+        if (fn_image_verification('use_for_apply_for_vendor_account', $_REQUEST) == false) {
             fn_save_post_data('user_data', 'company_data');
 
-            return array(CONTROLLER_STATUS_REDIRECT, 'companies.apply_for_vendor');
+            return array(CONTROLLER_STATUS_REDIRECT, "companies.apply_for_vendor");
         }
 
         $data = $_REQUEST['company_data'];
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 fn_save_post_data('user_data', 'company_data');
                 fn_set_notification('E', __('error'), __('error_user_exists'));
 
-                return array(CONTROLLER_STATUS_REDIRECT, 'companies.apply_for_vendor');
+                return array(CONTROLLER_STATUS_REDIRECT, "companies.apply_for_vendor");
             }
         }
 
@@ -61,11 +61,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             fn_save_post_data('user_data', 'company_data');
             fn_set_notification('E', __('error'), __('text_error_adding_request'));
 
-            return array(CONTROLLER_STATUS_REDIRECT, 'companies.apply_for_vendor');
+            return array(CONTROLLER_STATUS_REDIRECT, "companies.apply_for_vendor");
         }
 
-        $msg = Tygh::$app['view']->fetch('views/companies/components/apply_for_vendor.tpl');
-        fn_set_notification('I', __('information'), $msg);
+        fn_set_notification('N', __('information'), __('text_successful_request'));
 
         // Notify user department on the new vendor application
         Mailer::sendMail(array(
@@ -82,6 +81,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         unset($_SESSION['apply_for_vendor']['return_url']);
 
         return array(CONTROLLER_STATUS_REDIRECT, $return_url);
+    }
+
+    if (fn_allowed_for('ULTIMATE')) {
+        if ($mode == 'enter_store') {
+            if (!empty($_REQUEST['selected_location'])) {
+                $last_char = substr($_REQUEST['selected_location'], -1) == '/' ? '' : '/';
+                fn_redirect($_REQUEST['selected_location'] . $last_char . '?entry_page=true', true, true);
+            }
+        }
     }
 }
 
@@ -104,9 +112,9 @@ if (fn_allowed_for('ULTIMATE')) {
 
         $_SESSION['entry_page'] = true;
 
-        Tygh::$app['view']->assign('countries', $countries);
-        Tygh::$app['view']->assign('country_descriptions', $country_descriptions);
-        Tygh::$app['view']->display('views/companies/components/entry_page.tpl');
+        Registry::get('view')->assign('countries', $countries);
+        Registry::get('view')->assign('country_descriptions', $country_descriptions);
+        Registry::get('view')->display('views/companies/components/entry_page.tpl');
 
         exit;
     }
@@ -137,11 +145,7 @@ if ($mode == 'view') {
         )
     ));
 
-    $params = array(
-        'company_id' => $_REQUEST['company_id'],
-    );
-
-    Tygh::$app['view']->assign('company_data', $company_data);
+    Registry::get('view')->assign('company_data', $company_data);
 
 } elseif ($mode == 'catalog') {
 
@@ -151,118 +155,39 @@ if ($mode == 'view') {
     $params['status'] = 'A';
     $params['get_description'] = 'Y';
 
-    $vendors_per_page = Registry::get('settings.Vendors.vendors_per_page');
+    $vendors_per_page = Registry::get('settings.Suppliers.vendors_per_page');
     list($companies, $search) = fn_get_companies($params, $auth, $vendors_per_page);
 
     foreach ($companies as &$company) {
         $company['logos'] = fn_get_logos($company['company_id']);
     }
 
-    Tygh::$app['view']->assign('companies', $companies);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('companies', $companies);
+    Registry::get('view')->assign('search', $search);
 
 } elseif ($mode == 'apply_for_vendor') {
 
-    if (Registry::get('settings.Vendors.apply_for_vendor') != 'Y') {
+    if (Registry::get('settings.Suppliers.apply_for_vendor') != 'Y') {
         return array(CONTROLLER_STATUS_NO_PAGE);
     }
 
     $restored_company_data = fn_restore_post_data('company_data');
     if ($restored_company_data) {
-        Tygh::$app['view']->assign('company_data', $restored_company_data);
+        Registry::get('view')->assign('company_data', $restored_company_data);
     }
 
     $restored_user_data = fn_restore_post_data('user_data');
     if ($restored_user_data) {
-        Tygh::$app['view']->assign('user_data', $restored_user_data);
+        Registry::get('view')->assign('user_data', $restored_user_data);
     }
 
     $profile_fields = fn_get_profile_fields('A', array(), CART_LANGUAGE, array('get_custom' => true, 'get_profile_required' => true));
 
-    Tygh::$app['view']->assign('profile_fields', $profile_fields);
-    Tygh::$app['view']->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
-    Tygh::$app['view']->assign('states', fn_get_all_states());
+    Registry::get('view')->assign('profile_fields', $profile_fields);
+    Registry::get('view')->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
+    Registry::get('view')->assign('states', fn_get_all_states());
 
     fn_add_breadcrumb(__('apply_for_vendor_account'));
 
     $_SESSION['apply_for_vendor']['return_url'] = !empty($_REQUEST['return_previous_url']) ? $_REQUEST['return_previous_url'] : fn_url('');
-
-} elseif ($mode == 'products') {
-    $company_data = !empty($_REQUEST['company_id']) ? fn_get_company_data($_REQUEST['company_id']) : array();
-
-    if (empty($company_data)) {
-        return array(CONTROLLER_STATUS_NO_PAGE);
-    }
-
-    $company_id = $company_data['company_id'];
-
-    fn_add_breadcrumb(__('all_vendors'), 'companies.catalog');
-
-    $params = $_REQUEST;
-
-    $params['company_id'] = $company_id;
-    $params['extend'] = array('description');
-
-    if (!empty($_REQUEST['category_id'])) {
-        fn_add_breadcrumb($company_data['company'], 'companies.products?company_id=' . $company_id);
-
-        $category_id = $_REQUEST['category_id'];
-        // Get full data for current category
-        $category_data = fn_get_category_data($category_id);
-
-        if (!empty($category_data)) {
-            $params['cid'] = $category_id;
-            if (Registry::get('settings.General.show_products_from_subcategories') == 'Y') {
-                $params['subcats'] = 'Y';
-            }
-
-            // [Breadcrumbs]
-            $parent_ids = explode('/', $category_data['id_path']);
-            array_pop($parent_ids);
-
-            if (!empty($parent_ids)) {
-                $cats = fn_get_category_name($parent_ids);
-                foreach ($parent_ids as $c_id) {
-                    fn_add_breadcrumb($cats[$c_id], "companies.products?category_id=$c_id&company_id=$company_id");
-                }
-            }
-            fn_add_breadcrumb($category_data['category']);
-        }
-
-        // Get subcategories list for current category
-        Tygh::$app['view']->assign('subcategories', fn_get_subcategories($category_id));
-        Tygh::$app['view']->assign('category_data', $category_data);
-        Tygh::$app['view']->assign('reset_url', fn_url('companies.products?category_id=' . $category_id . '&company_id=' . $company_id));
-
-    } else {
-        if (!empty($_REQUEST['q'])) {
-            fn_add_breadcrumb($company_data['company'], 'companies.products?company_id=' . $company_id);
-            fn_add_breadcrumb(__('search'));
-        } else {
-            fn_add_breadcrumb($company_data['company']);
-        }
-        Tygh::$app['view']->assign('reset_url', fn_url('companies.products?company_id=' . $company_id));
-    }
-
-    list($products, $search) = fn_get_products($params, Registry::get('settings.Appearance.products_per_page'));
-
-    if (defined('AJAX_REQUEST') && (!empty($params['features_hash']) && !$products)) {
-        fn_filters_not_found_notification();
-        exit;
-    }
-
-    fn_gather_additional_products_data($products, array('get_icon' => true, 'get_detailed' => true, 'get_additional' => true, 'get_options'=> true));
-
-    if (!empty($products)) {
-        $_SESSION['continue_url'] = Registry::get('config.current_url');
-    }
-
-    $selected_layout = fn_get_products_layout($params);
-
-    Tygh::$app['view']->assign('products', $products);
-    Tygh::$app['view']->assign('search', $search);
-    Tygh::$app['view']->assign('selected_layout', $selected_layout);
-    Tygh::$app['view']->assign('company_id', $company_data['company_id']);
-
-    Registry::set('runtime.vendor_id', $company_id);
 }

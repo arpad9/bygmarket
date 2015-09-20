@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (!empty($_REQUEST['token'])) {
             $uc_settings = Settings::instance()->getValues('Upgrade_center');
 
-            $is_valid = fn_get_contents(Registry::get('config.resources.updates_server') . '/index.php?dispatch=validators.validate_request&token=' . $_REQUEST['token'] . '&license_key=' . $uc_settings['license_number']);
+            $is_valid = fn_get_contents(Registry::get('config.updates_server') . '/index.php?dispatch=validators.validate_request&token=' . $_REQUEST['token'] . '&license_key=' . $uc_settings['license_number']);
             if ($is_valid == 'valid') {
                 $data = simplexml_load_string(urldecode($_REQUEST['request']));
 

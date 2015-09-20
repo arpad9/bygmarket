@@ -56,27 +56,44 @@ if (defined('PAYMENT_NOTIFICATION')) {
     $r_url = fn_url("payment_notification.result?payment=fribetaling&order_id=$order_id", AREA, 'current');
     $expmm = $order_info['payment_info']['expiry_month'];
     $expyy = $order_info['payment_info']['expiry_year'];
-    $_order_id = ($order_info['repaid']) ? ($order_id .'z'. $order_info['repaid']) : $order_id;
-
-    $post_data = array(
-        'Amount' => $total,
-        'Currency' => $processor_data['processor_params']['currency'],
-        'Decline' => $r_url,
-        'Accept' => $r_url,
-        'Cardnumber' => $order_info['payment_info']['card_number'],
-        'CVC' => $order_info['payment_info']['cvv2'],
-        'Expmm' => $expmm,
-        'Expyy' => $expyy,
-        'Merchant' => $processor_data['processor_params']['merchant_id'],
-        'Ordernumber' => $order_id,
-    );
 
     if ($processor_data["processor_params"]["mode"] == 'A') {
-        $post_data['Testtransaction'] = 'A';
+        $test_live = '<input type="hidden" name ="Testtransaction" value="A" />';
     } elseif ($processor_data["processor_params"]["mode"] == 'D') {
-        $post_data['Testtransaction'] = 'D';
+        $test_live = '<input type="hidden" name ="Testtransaction" value="D" />';
+    } else {
+        $test_live = '';
     }
+    $_order_id = ($order_info['repaid']) ? ($order_id .'z'. $order_info['repaid']) : $order_id;
 
-    fn_create_payment_form('https://pgw.fribetaling.dk/betal.fri', $post_data, 'FRIbetaling');
-    exit;
+echo <<<EOT
+<form method="post" action="https://pgw.fribetaling.dk/betal.fri" name="process" target="_TOP" autocomplete="OFF">
+    <input type="hidden" name ="Amount" value="{$total}" />
+    <input type="hidden" name ="Currency" value="{$processor_data['processor_params']['currency']}" />
+    <input type="hidden" name ="Decline" value="{$r_url}" />
+    <input type="hidden" name ="Accept" value="{$r_url}" />
+    <input type="hidden" name ="Cardnumber" value="{$order_info['payment_info']['card_number']}" />
+    <input type="hidden" name ="CVC" value="{$order_info['payment_info']['cvv2']}" />
+    <input type="hidden" name ="Expmm" value="{$expmm}" />
+    <input type="hidden" name ="Expyy" value="{$expyy}" />
+    <input type="hidden" name ="Merchant" value="{$processor_data['processor_params']['merchant_id']}" />
+    <input type="hidden" name ="Ordernumber" value="{$order_id}" />
+    {$test_live}
+EOT;
+
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'FRIbetaling server'
+));
+echo <<<EOT
+    </form>
+   <p><div align=center>{$msg}</div></p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
+exit;
 }

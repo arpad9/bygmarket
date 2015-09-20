@@ -12,7 +12,7 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-$schema = array(
+$scheme = array(
     'products' => array (
         'admin_dispatch' => 'products.update',
         'customer_dispatch' => 'products.view',
@@ -47,7 +47,7 @@ $schema = array(
 );
 
 if (fn_allowed_for('MULTIVENDOR')) {
-    $schema['companies'] = array(
+    $scheme['companies'] = array(
         'admin_dispatch' => 'companies.update',
         'customer_dispatch' => 'companies.view',
         'key' => 'company_id',
@@ -59,4 +59,4 @@ if (fn_allowed_for('MULTIVENDOR')) {
     );
 }
 
-return $schema;
+return $scheme;

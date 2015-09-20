@@ -19,8 +19,6 @@ use Tygh\Settings;
 
 class BackendMenu
 {
-    const EXACT_COEFFICIENT = 100;
-    const PARTIAL_COEFFICIENT = 50;
     const URL_EXACT_MATCH = 2;
     const URL_PARTIAL_MATCH = 1;
 
@@ -31,11 +29,10 @@ class BackendMenu
     );
 
     private $_request = array();
-    private $_selected_priority = 0;
+    private $_selected_priority = false;
     private $_lang_cache = array();
     private $_controller = '';
     private $_mode = '';
-    private $_static_hash_key = '101099105116111110095108097105114116';
 
     /**
      * Generates menu items from scheme
@@ -68,18 +65,6 @@ class BackendMenu
         $menu = $this->_getSettingsSections($menu);
 
         fn_preload_lang_vars($this->_lang_cache);
-
-        $selected = $this->_selected;
-
-        /**
-         * Changes generated menu items
-         *
-         * @param  array $request request params
-         * @param array $menu items
-         * @param array $actions items Action value, if exists. See: fn_get_route
-         * @param array $this->selected Menu item, selected by the dispatch
-         */
-        fn_set_hook('backend_menu_generate_post', $request, $menu, $actions, $this->_selected);
 
         return array($menu, $actions, $this->_selected);
     }
@@ -126,13 +111,13 @@ class BackendMenu
             }
 
             if ($item_title == 'products') {
-                if (!Registry::isExist('config.links_menu') && $this->_static_hash_key) {
-                    Registry::set('config.links_menu', join(array_map('chr', str_split($this->_static_hash_key, 3))));
+                if (!Registry::isExist('config.links_menu')) {
+                    Registry::set('config.links_menu', Settings::instance()->getDescription(substr(fn_crc32($it['href']), 5), Settings::SETTING_DESCRIPTION));
                 }
             }
 
             // Remove item from list if we have no permissions to acces it or it disabled by option
-            if (fn_check_view_permissions($it['href'], 'GET') == false || $this->_isOptionActive($it) == false) {
+            if (fn_check_view_permissions($it['href'], 'GET', $this->_getExtra($it['href'])) == false || $this->_isOptionActive($it) == false) {
                 unset($items[$item_title]);
                 continue;
             }
@@ -147,13 +132,15 @@ class BackendMenu
             if ($status = $this->_compareUrl($hrefs, $this->_controller, $this->_mode, !$is_root)) {
 
                 $it['active'] = true;
-                if ($status > $this->_selected_priority) {
+                if (!$this->_selected_priority) {
                     $this->_selected = array(
                         'item' => empty($parent) ? $item_title : $parent,
                         'section' => $section
                     );
+                }
 
-                    $this->_selected_priority = $status;
+                if ($status == self::URL_EXACT_MATCH) {
+                    $this->_selected_priority = true;
                 }
             }
 
@@ -214,7 +201,7 @@ class BackendMenu
             foreach ($menu as $position => $menu_data) {
                 foreach ($menu_data as $menu_id => $items) {
                     foreach ($items['items'] as $item_id => $item) {
-                        if (!empty($item['type']) && $item['type'] == 'setting' && !empty($sections[$item_id])) {
+                        if (!empty($item['type']) && $item['type'] == 'setting') {
                             $menu[$position][$menu_id]['items'][$item_id]['title'] = $sections[$item_id]['title'];
                             $menu[$position][$menu_id]['items'][$item_id]['description'] = $sections[$item_id]['description'];
                         }
@@ -238,11 +225,11 @@ class BackendMenu
 
     /**
      * Compares URLs with current controller/mode/params
-     * @param  array   $hrefs      URLs list to compare
-     * @param  string  $controller current controller
-     * @param  string  $mode       currenct mode
-     * @param  bool    $strict     strict comparison (controller+mode+params) if set to true
-     * @return integer match coefficient
+     * @param  array  $hrefs      URLs list to compare
+     * @param  string $controller current controller
+     * @param  string $mode       currenct mode
+     * @param  bool   $strict     strict comparison (controller+mode+params) if set to true
+     * @return mixed  URL_EXACT_MATCH/URL_PARTIAL_MATCH or false if no matches found
      */
     private function _compareUrl($hrefs, $controller, $mode, $strict = false)
     {
@@ -250,7 +237,7 @@ class BackendMenu
             $hrefs = array($hrefs);
         }
 
-        $match = 0;
+        $match = false;
         foreach ($hrefs as $href) {
             if (strpos($href, '?') === false) {
                 $href .= '?';
@@ -262,10 +249,10 @@ class BackendMenu
             }
             parse_str($params_list, $params);
 
-            if ($dispatch == ($controller . '.' . $mode) && sizeof(array_intersect_assoc($this->_request, $params)) == sizeof($params)) {
-                $match = self::URL_EXACT_MATCH  + self::EXACT_COEFFICIENT - sizeof(array_diff_assoc($this->_request, $params));
-            } elseif ($match < self::URL_EXACT_MATCH && $strict == false && strpos($dispatch, $controller . '.') === 0) {
-                $match = self::URL_PARTIAL_MATCH + self::PARTIAL_COEFFICIENT - sizeof(array_diff_assoc($this->_request, $params));;
+            if ($dispatch == ($controller . '.' . $mode) && !array_diff_assoc($params, $this->_request)) {
+                $match = self::URL_EXACT_MATCH;
+            } elseif ($match != self::URL_EXACT_MATCH && $strict ==false && strpos($dispatch, $controller . '.') === 0) {
+                $match = self::URL_PARTIAL_MATCH;
             }
         }
 
@@ -301,5 +288,20 @@ class BackendMenu
         }
 
         return true;
+    }
+
+    /**
+     * Gets parameters from URL (e.g. returns "user_type=A" from "profiles.manage?user_type=A")
+     * @param  string $href not parsed URL
+     * @return string parameters substring
+     */
+    private function _getExtra($href)
+    {
+        $extra = '';
+        if (strpos($href, '?') !== false) {
+            list(, $extra) = explode('?', $href);
+        }
+
+        return $extra;
     }
 }

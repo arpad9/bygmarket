@@ -12,10 +12,7 @@
             {/foreach}
         {/if}
         {if $onclick}onclick="{$onclick nofilter}; return false;"{/if}
-        >
-        {if $icon && $icon_first}<i class="{$icon}"></i>{/if}
-        {$text}
-        {if $icon && !$icon_first}<i class="{$icon}"></i>{/if}</a>
+        >{$text}{if $icon}<i class="{$icon}"></i>{/if}</a>
     {/if}
 
     {* shortcut for the list *}
@@ -31,7 +28,7 @@
     {* shortcut for the delete_selected *}
     {if $type == "delete_selected"}
         {if $icon}
-            {$class="btn `$class`"}
+            {$class="btn"}
             {$text=" "}
         {/if}
         {$data['data-ca-target-form'] = $form}
@@ -76,18 +73,13 @@
         {btn type="text" title=$title class="cm-tooltip btn" icon="icon-plus"  href=$href}
     {/if}
 
-    {* shortcut for add button with text *}
-    {if $type == "text_add"}
-        {btn type="text" text=$text class="btn btn-primary `$class`" icon="icon-plus icon-white" icon_first=true href=$href}
-    {/if}
-
     {/if}
 {/function}
 
 {* dropdown *}
-{function name="dropdown" text="" title="" class="" content="" icon="" no_caret=false placement="left"}
-    {if $content|strip_tags:false|replace:"&nbsp;":""|trim != ""}
-        <div class="btn-group{if $placement == "left"} dropleft{/if} {$class}" {if $id}id="{$id}"{/if}>
+{function name="dropdown" text="" title="" class="" content="" icon="" no_caret=false}
+    {if $content|strip_tags:false|trim != ""}
+        <div class="btn-group {$class}" {if $id}id="{$id}"{/if}>
             <a class="btn dropdown-toggle" data-toggle="dropdown" {if $title}title="{$title}"{/if}>
                 <i class="{$icon|default:"icon-cog"}"></i>
                 {if $text}

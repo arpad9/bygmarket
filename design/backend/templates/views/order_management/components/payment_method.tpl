@@ -9,7 +9,7 @@
         <div class="control-group">
             <label class="control-label" for="payment_methods">{__("method")}</label>
             <div class="controls">
-            <select name="payment_id" id="payment_methods" class="cm-submit cm-ajax cm-skip-validation" data-ca-dispatch="dispatch[order_management.update_payment]">
+            <select name="payment_id" id="payment_methods" onchange="Tygh.$.selectPaymentMethod(Tygh.$(this).val())">
                 {foreach from=$payment_methods item="pm" name="pay"}
                 <option value="{$pm.payment_id}" {if $cart.payment_id == $pm.payment_id || (!$cart.payment_id && $smarty.foreach.pay.first)}{assign var="selected_payment_id" value=$pm.payment_id}selected="selected"{/if}>{$pm.payment}</option>
                 {/foreach}
@@ -20,7 +20,7 @@
             {capture name="payment_details"}
                 {include file=$payment_method.template payment_id=$payment_method.payment_id}
             {/capture}
-            {if $smarty.capture.payment_details|trim}
+            {if $smarty.capture.payment_details|trim ne ''}
                 {$smarty.capture.payment_details nofilter}
             {/if}
         {/if}

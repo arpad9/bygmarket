@@ -21,7 +21,7 @@ if ($mode == 'view') {
 
     fn_add_breadcrumb(__('sitemap'));
     $sitemap_settings = Settings::instance()->getValues('Sitemap');
-    Tygh::$app['view']->assign('sitemap_settings', $sitemap_settings);
+    Registry::get('view')->assign('sitemap_settings', $sitemap_settings);
 
     if ($sitemap_settings['show_cats'] == 'Y') {
         if ($sitemap_settings['show_rootcats_only'] == 'Y') {
@@ -41,8 +41,7 @@ if ($mode == 'view') {
     if ($sitemap_settings['show_site_info'] == 'Y') {
         $_params = array(
             'get_tree' => 'plain',
-            'status' => 'A',
-            'simple' => true,
+            'status' => 'A'
         );
         list($sitemap['pages_tree']) = fn_get_pages($_params);
     }
@@ -84,5 +83,5 @@ if ($mode == 'view') {
         }
     }
 
-    Tygh::$app['view']->assign('sitemap', $sitemap);
+    Registry::get('view')->assign('sitemap', $sitemap);
 }

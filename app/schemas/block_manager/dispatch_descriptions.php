@@ -12,7 +12,7 @@
  * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
  ****************************************************************************/
 
-$schema = array(
+$scheme = array(
     'categories' => 'categories',
     'categories.catalog' => 'catalog',
     'categories.view' => 'view_categories',
@@ -39,7 +39,7 @@ $schema = array(
 );
 
 if (fn_allowed_for('MULTIVENDOR')) {
-    $schema['companies.view'] = 'vendors';
+    $scheme['companies.view'] = 'vendors';
 }
 
-return $schema;
+return $scheme;

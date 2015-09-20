@@ -17,7 +17,7 @@ use Tygh\Storage;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
-fn_define('ITEMS_PER_PAGE', 50);
+define('ITEMS_PER_PAGE', 50);
 define('MAX_SIZE', 50);
 define('CATEGORY_NAME_HEIGHT', 20);
 
@@ -71,9 +71,9 @@ fn_price_list_timer(); // Start timer;
 
 $filename = fn_get_cache_path() . 'price_list/price_list_' . CART_LANGUAGE . '.xlsx'; // Must be unique for each xls mode.
 
-if (Storage::instance('assets')->isExist($filename)) {
+if (Storage::instance('statics')->isExist($filename)) {
 
-    Storage::instance('assets')->get($filename);
+    Storage::instance('statics')->get($filename);
     exit;
 
 } elseif (!fn_price_list_is_xls_supported()) {
@@ -83,12 +83,9 @@ if (Storage::instance('assets')->isExist($filename)) {
     fn_redirect($url);
 
 } else {
+
     // FIX ME manually unpacking options
     $selected_fields = Registry::get('addons.price_list.price_list_fields');
-    if (isset($selected_fields['image']) && Registry::get('addons.price_list.disable_images_in_xml') == 'Y') {
-        unset($selected_fields['image']);
-    }
-
     if (strpos($selected_fields, '#M#') === 0) {
         parse_str(str_replace('#M#', '', $selected_fields), $selected_fields);
     }
@@ -281,7 +278,7 @@ if (Storage::instance('assets')->isExist($filename)) {
     $writer->save($imp_filename);
     $pexcel->disconnectWorksheets();
     unset($pexcel);
-    Storage::instance('assets')->put($filename, array(
+    Storage::instance('statics')->put($filename, array(
         'file' => $imp_filename,
         'caching' => true
     ));
@@ -400,7 +397,7 @@ function fn_price_list_print_product_data($product, &$worksheet, $row, &$width, 
 
             if (!empty($image_data)) {
 
-                $mime_type = fn_get_file_type($image_data['absolute_path']);
+                $mime_type = fn_get_file_type($image_data['image_path']);
                 $src = $image_data['absolute_path'];
                 $image_width = $image_data['width'];
                 $image_height = $image_data['height'];

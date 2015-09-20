@@ -63,10 +63,7 @@ class Backend extends ACommon
                         $sort_data['sort_order'] = $view_params['sort_order'];
                         unset($view_params['sort_order']);
                     }
-                    if (!empty($view_params['dispatch'])) {
-                        unset($params['dispatch']);
-                    }
-                    $params = fn_array_merge($view_params, $params);
+                    $params = fn_array_merge($params, $view_params);
                 }
 
             }
@@ -86,6 +83,14 @@ class Backend extends ACommon
                         'params' => serialize($_params),
                         'view_results' => serialize(array('items_ids' => array(), 'total_pages' => 0, 'items_per_page' => 0, 'total_items' => 0)),
                         'user_id' => $this->_auth['user_id']
+                    );
+                    $this->_updateCurrentView($data);
+                }
+
+                if (!empty($view) && (serialize($_params) != $view['params'])) {
+                    $data = array (
+                        'params' => serialize($_params),
+                        'view_results' => serialize(array('items_ids' => array(), 'total_pages' => 0, 'items_per_page' => 0, 'total_items' => 0)),
                     );
                     $this->_updateCurrentView($data);
                 }
@@ -113,40 +118,13 @@ class Backend extends ACommon
         $this->_checkUpdateActions($object, $params);
 
         if (!empty($params['view_id'])) {
-            $data = $this->getViewParams($params['view_id']);
+            $data = db_get_row("SELECT params, view_id FROM ?:views WHERE view_id = ?i", $params['view_id']);
             if (!empty($data)) {
-                $result['view_id'] = $params['view_id'];
-                $result = fn_array_merge($params, $data);
+                $params['view_id'] = $data['view_id'];
+                $params = fn_array_merge($params, unserialize($data['params']));
 
-                if (!empty($params['sort_by'])) {
-                    $result['sort_by'] = $params['sort_by'];
-                }
-
-                if (!empty($params['sort_order'])) {
-                    $result['sort_order'] = $params['sort_order'];
-                }
-
-                db_query("UPDATE ?:views SET active = IF(view_id = ?i, 'Y', 'N') WHERE user_id = ?i AND object = ?s", $params['view_id'], $this->_auth['user_id'], $object);
-
-                return $result;
+                db_query("UPDATE ?:views SET active = IF(view_id = ?i, 'Y', 'N') WHERE user_id = ?i AND object = ?s", $data['view_id'], $this->_auth['user_id'], $object);
             }
-        }
-
-        return $params;
-    }
-
-    /**
-     * Get view params
-     * @param integer $view_id view ID
-     * @return array unserialized params list
-     */
-    public function getViewParams($view_id)
-    {
-        $params = db_get_field("SELECT params FROM ?:views WHERE view_id = ?i", $view_id);
-        if (!empty($params)) {
-            $params = unserialize($params);
-        } else {
-            $params = array();
         }
 
         return $params;

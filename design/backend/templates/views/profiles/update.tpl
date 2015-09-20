@@ -6,7 +6,6 @@
 
 {include file="views/profiles/components/profiles_scripts.tpl"}
 
-<form name="profile_form" action="{""|fn_url}" method="post" class="form-horizontal form-edit form-table {if ($runtime.company_id && $id && $user_data.company_id != $runtime.company_id && $id != $auth.user_id) || $hide_inputs} cm-hide-inputs{/if}">
 {capture name="mainbox"}
 
 {capture name="tabsbox"}
@@ -23,6 +22,8 @@
     {if "MULTIVENDOR"|fn_allowed_for && (!$user_data|fn_allow_save_object:"users" || $runtime.company_id && ($smarty.request.user_type == 'C' || $user_data.company_id|fn_string_not_empty && $user_data.company_id != $runtime.company_id)) && $user_data.user_id != $auth.user_id}
         {$hide_inputs=true}
     {/if}
+
+    <form name="profile_form" action="{""|fn_url}" method="post" class="form-horizontal form-edit {if ($runtime.company_id && $id && $user_data.company_id != $runtime.company_id && $id != $auth.user_id) || $hide_inputs} cm-hide-inputs{/if}">
 
     <input type="hidden" name="user_id" value="{$id}" />
     <input type="hidden" class="cm-no-hide-input" name="selected_section" id="selected_section" value="{$selected_section}" />
@@ -104,9 +105,9 @@
         {hook name="profiles:detailed_content"}
         {/hook}
     </div>
-    {if $show_api_tab}
+    {if $user_data|fn_check_user_type_admin_area && $user_data.user_id}
         <div id="content_api">
-            <div class="control-group {if $hide_api_checkbox}hidden{/if}">
+            <div class="control-group">
                 <div class="controls">
                     <label class="checkbox" for="sw_api_container">
                     <input {if $user_data.api_key != ""}checked="checked"{/if} class="cm-combination" type="checkbox" name="user_api_status" value="Y" id="sw_api_container" />{__("allow_api_access")}</label>
@@ -126,9 +127,17 @@
 
     {hook name="profiles:tabs_content"}
     {/hook}
+
+    <div class="control-group notify-customer cm-toggle-button">
+        <label class="control-label" for="notify_customer">{__("notify_user")}</label>
+        <div class="controls">
+            <input type="checkbox" name="notify_customer" value="Y" checked="checked"  id="notify_customer" />
+        </div>
+    </div>
     {if !$user_data|fn_allow_save_object:"users" && $id && $user_data.user_id != $auth.user_id || $hide_inputs}
         {assign var="hide_first_button" value=true}
     {/if}
+    </form>
 
     {if $id}
         {hook name="profiles:tabs_extra"}
@@ -139,7 +148,6 @@
 {include file="common/tabsbox.tpl" content=$smarty.capture.tabsbox group_name=$runtime.controller active_tab=$selected_section track=true}
 
 {/capture}
-
 {if !$id}
     {assign var="_user_desc" value=$user_type|fn_get_user_type_description}
     {assign var="_title" value="{__("new_profile")} (`$_user_desc`)"}
@@ -153,9 +161,6 @@
     {/if}
 {/if}
 
-{$_title = $_title|strip_tags}
-{assign var="redirect_url" value="profiles.manage%26user_type=`$user_data.user_type`"}
-
 {capture name="buttons"}
     {capture name="tools_list"}
         {hook name="profiles:update_tools_list"}
@@ -164,27 +169,15 @@
         {/if}
         {if $user_data.user_type|fn_user_need_login && (!$runtime.company_id || $runtime.company_id == $auth.company_id) && $user_data.user_id != $auth.user_id && !($user_data.user_type == 'A' && $user_data.is_root == 'Y' && !$user_data.company_id)}
             <li>{btn type="list" target="_blank" text=__("act_on_behalf") href="profiles.act_as_user?user_id=`$id`"}</li>
-            <li class="divider"></li>
-            <li>{btn type="list" text=__("delete") class="cm-confirm cm-post" href="profiles.delete?user_id=`$id`&redirect_url=`$redirect_url`"}</li>
         {/if}
         {/hook}
     {/capture}
     {if $id && $smarty.capture.tools_list|trim !==""}
         {dropdown content=$smarty.capture.tools_list}
     {/if}
-<div class="btn-group btn-hover dropleft">
-    {if $id}
-        {include file="buttons/save_changes.tpl" but_meta="dropdown-toggle" but_role="submit-link" but_name="dispatch[profiles.`$runtime.mode`]" but_target_form="profile_form" save=$id}
-    {else}
-        {include file="buttons/button.tpl" but_text=__("create") but_meta="dropdown-toggle" but_role="submit-link" but_name="dispatch[profiles.`$runtime.mode`]" but_target_form="profile_form" save=$id}
-    {/if}
-    <ul class="dropdown-menu">
-        <li><a><input type="checkbox" name="notify_customer" value="Y" checked="checked"  id="notify_customer" />
-            {__("notify_user")}</a></li>
-    </ul>
-</div>
+
+    {include file="buttons/save_cancel.tpl" but_name="dispatch[profiles.`$runtime.mode`]" hide_first_button=$hide_first_button hide_second_button=$hide_first_button but_target_form="profile_form" save=$id}
 
 {/capture}
 
 {include file="common/mainbox.tpl" title=$_title content=$smarty.capture.mainbox buttons=$smarty.capture.buttons}
-</form>

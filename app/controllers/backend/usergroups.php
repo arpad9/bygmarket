@@ -63,46 +63,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $suffix = ".requests";
     }
 
-    if ($mode == 'delete') {
-        if (!empty($_REQUEST['usergroup_id'])) {
-            fn_delete_usergroups((array) $_REQUEST['usergroup_id']);
+    if ($mode == 'update_privilege_descriptions') {
+        foreach ((array) $_REQUEST['section_name'] as $sec_id => $v) {
+            db_query("UPDATE ?:privilege_section_descriptions SET description = ?s WHERE section_id = ?i AND lang_code = ?s", $v, $sec_id, DESCR_SL);
         }
 
-        return array(CONTROLLER_STATUS_REDIRECT, 'usergroups.manage');
+        foreach ((array) $_REQUEST['privilege_descr'] as $pr_id => $v) {
+            db_query("UPDATE ?:privilege_descriptions SET description = ?s WHERE privilege = ?s AND lang_code = ?s", $v, $pr_id, DESCR_SL);
+        }
 
+        $suffix = ".privileges";
     }
 
-    if ($mode == 'update_status') {
-        $user_data = fn_get_user_info($_REQUEST['user_id']);
-        if (empty($user_data) || (Registry::get('runtime.company_id') && $user_data['is_root'] == 'Y') || (defined('RESTRICTED_ADMIN') && ($auth['user_id'] == $_REQUEST['user_id'] || fn_is_restricted_admin(array('user_id' => $_REQUEST['user_id']))))) {
-            fn_set_notification('E', __('error'), __('access_denied'));
-            exit;
-        }
-
-        $group_type = db_get_field("SELECT type FROM ?:usergroups WHERE usergroup_id = ?i", $_REQUEST['id']);
-
-        if (empty($group_type) || ($group_type == 'A' && !in_array($user_data['user_type'], array('A','V')))) {
-            fn_set_notification('E', __('error'), __('access_denied'));
-            exit;
-        }
-
-        $old_status = db_get_field("SELECT status FROM ?:usergroup_links WHERE user_id = ?i AND usergroup_id = ?i", $_REQUEST['user_id'], $_REQUEST['id']);
-
-        $result = fn_change_usergroup_status($_REQUEST['status'], $_REQUEST['user_id'], $_REQUEST['id'], fn_get_notification_rules($_REQUEST));
-        if ($result) {
-            fn_set_notification('N', __('notice'), __('status_changed'));
-        } else {
-            fn_set_notification('E', __('error'), __('error_status_not_changed'));
-            Tygh::$app['ajax']->assign('return_status', empty($old_status) ? 'F' : $old_status);
-        }
-
-        exit;
-    }
-
-    return array(CONTROLLER_STATUS_OK, 'usergroups' . $suffix);
+    return array(CONTROLLER_STATUS_OK, "usergroups$suffix");
 }
 
-if ($mode == 'manage') {
+if ($mode == 'privileges') {
+    /* Translate privileges */
+
+    $privileges = db_get_hash_multi_array("SELECT a.*, b.*, c.description as section FROM ?:privileges as a LEFT JOIN ?:privilege_descriptions as b ON b.privilege = a.privilege AND b.lang_code = ?s INNER JOIN ?:privilege_section_descriptions as c on c.section_id = b.section_id AND c.lang_code = ?s ORDER BY b.section_id, b.description", array('section_id'), DESCR_SL, DESCR_SL);
+
+    Registry::get('view')->assign('privileges', $privileges);
+
+} elseif ($mode == 'manage') {
 
     $where = defined('RESTRICTED_ADMIN') ? "a.type != 'A' ": '1';
 
@@ -118,7 +101,7 @@ if ($mode == 'manage') {
         $usergroups = array_merge($usergroups, $customer_usergroups);
     }
 
-    Tygh::$app['view']->assign('usergroups', $usergroups);
+    Registry::get('view')->assign('usergroups', $usergroups);
 
     Registry::set('navigation.tabs', array (
         'general_0' => array (
@@ -131,7 +114,7 @@ if ($mode == 'manage') {
 
     $usergroup = db_get_row("SELECT a.usergroup_id, a.status, a.type, b.usergroup FROM ?:usergroups as a LEFT JOIN ?:usergroup_descriptions as b ON b.usergroup_id = a.usergroup_id AND b.lang_code = ?s WHERE a.usergroup_id = ?i", DESCR_SL, $_REQUEST['usergroup_id']);
 
-    Tygh::$app['view']->assign('usergroup', $usergroup);
+    Registry::get('view')->assign('usergroup', $usergroup);
 
     $tabs = array(
         'general_' . $_REQUEST['usergroup_id'] => array(
@@ -159,46 +142,51 @@ if ($mode == 'manage') {
 
     $usergroup_privileges = db_get_hash_single_array("SELECT privilege FROM ?:usergroup_privileges WHERE usergroup_id = ?i", array('privilege', 'privilege'), $_REQUEST['usergroup_id']);
 
-    $privileges_data = db_get_array("SELECT a.* FROM ?:privileges as a ORDER BY a.section_id");
-    $_preload = array();
-
-    foreach ($privileges_data as $key => $privilege) {
-        $section = 'privilege_sections.' . $privilege['section_id'];
-        if (!in_array($section, $_preload)) {
-            $_preload[] = $section;
-        }
-        $_preload[] = 'privileges.' . $privilege['privilege'];
-    }
-
-    fn_preload_lang_vars($_preload);
-
-    $_sections = array();
-    foreach ($privileges_data as $key => $privilege) {
-        $_sections[$privilege['section_id']] = __('privilege_sections.' . $privilege['section_id']);
-        $privileges_data[$key]['description'] = __('privileges.' . $privilege['privilege']);
-    }
-
-    $privileges_data = fn_sort_array_by_key($privileges_data, 'description');
-    asort($_sections);
-    $privileges = array_fill_keys(array_keys($_sections), array());
-
-    foreach ($privileges_data as $privilege) {
-        $privilege['section'] = $_sections[$privilege['section_id']];
-        $privileges[$privilege['section_id']][] = $privilege;
-    }
-
-    Tygh::$app['view']->assign('usergroup_privileges', $usergroup_privileges);
-    Tygh::$app['view']->assign('usergroup_name', $usergroup_name);
-    Tygh::$app['view']->assign('privileges', $privileges);
+    Registry::get('view')->assign('usergroup_privileges', $usergroup_privileges);
+    Registry::get('view')->assign('usergroup_name', $usergroup_name);
+    Registry::get('view')->assign('privileges', db_get_hash_multi_array("SELECT a.*, b.*, c.description as section FROM ?:privileges as a LEFT JOIN ?:privilege_descriptions as b ON b.privilege = a.privilege AND b.lang_code = ?s INNER JOIN ?:privilege_section_descriptions as c on c.section_id = b.section_id AND c.lang_code = ?s ORDER BY b.section_id, b.description", array('section_id'), CART_LANGUAGE, CART_LANGUAGE));
 
     Registry::set('navigation.tabs', $tabs);
+
+} elseif ($mode == 'delete') {
+    if (!empty($_REQUEST['usergroup_id'])) {
+        fn_delete_usergroups((array) $_REQUEST['usergroup_id']);
+    }
+
+    return array(CONTROLLER_STATUS_REDIRECT, "usergroups.manage");
+
+} elseif ($mode == 'update_status') {
+    $user_data = fn_get_user_info($_REQUEST['user_id']);
+    if (empty($user_data) || (Registry::get('runtime.company_id') && $user_data['is_root'] == 'Y') || (defined('RESTRICTED_ADMIN') && ($auth['user_id'] == $_REQUEST['user_id'] || fn_is_restricted_admin(array('user_id' => $_REQUEST['user_id']))))) {
+        fn_set_notification('E', __('error'), __('access_denied'));
+        exit;
+    }
+
+    $group_type = db_get_field("SELECT type FROM ?:usergroups WHERE usergroup_id = ?i", $_REQUEST['id']);
+
+    if (empty($group_type) || ($group_type == 'A' && !in_array($user_data['user_type'], array('A','V')))) {
+        fn_set_notification('E', __('error'), __('access_denied'));
+        exit;
+    }
+
+    $old_status = db_get_field("SELECT status FROM ?:usergroup_links WHERE user_id = ?i AND usergroup_id = ?i", $_REQUEST['user_id'], $_REQUEST['id']);
+
+    $result = fn_change_usergroup_status($_REQUEST['status'], $_REQUEST['user_id'], $_REQUEST['id'], fn_get_notification_rules($_REQUEST));
+    if ($result) {
+        fn_set_notification('N', __('notice'), __('status_changed'));
+    } else {
+        fn_set_notification('E', __('error'), __('error_status_not_changed'));
+        Registry::get('ajax')->assign('return_status', empty($old_status) ? 'F' : $old_status);
+    }
+
+    exit;
 
 } elseif ($mode == 'requests') {
 
     list($requests, $search) = fn_get_usergroup_requests($_REQUEST, Registry::get('settings.Appearance.admin_orders_per_page'));
 
-    Tygh::$app['view']->assign('usergroup_requests', $requests);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('usergroup_requests', $requests);
+    Registry::get('view')->assign('search', $search);
 }
 
 function fn_get_usergroup_requests($params, $items_per_page = 0, $status = 'P', $lang_code = CART_LANGUAGE)
@@ -248,10 +236,98 @@ function fn_get_usergroup_requests($params, $items_per_page = 0, $status = 'P', 
     $limit = '';
     if (!empty($params['items_per_page'])) {
         $params['total_items'] = db_get_field("SELECT COUNT(?:usergroup_links.link_id) FROM ?:usergroup_links $join WHERE ?:usergroup_links.status = ?s $condition", $status);
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+        $limit = db_paginate($params['page'], $params['items_per_page']);
     }
 
     $requests = db_get_array("SELECT " . implode(', ', $fields) . " FROM ?:usergroup_links $join WHERE ?:usergroup_links.status = ?s $condition $sorting $limit", $status);
 
     return array($requests, $params);
+}
+
+function fn_delete_usergroups($usergroup_ids)
+{
+    db_query("DELETE FROM ?:usergroups WHERE usergroup_id IN (?n)", $usergroup_ids);
+    db_query("DELETE FROM ?:usergroup_descriptions WHERE usergroup_id IN (?n)", $usergroup_ids);
+    db_query("DELETE FROM ?:usergroup_privileges WHERE usergroup_id IN (?n)", $usergroup_ids);
+    db_query("DELETE FROM ?:usergroup_links WHERE usergroup_id IN (?n)", $usergroup_ids);
+}
+
+function fn_change_usergroup_status($status, $user_id, $usergroup_id, $force_notification = array())
+{
+    $data = array(
+        'user_id' => $user_id,
+        'usergroup_id' => $usergroup_id,
+        'status' => $status
+    );
+    $result = db_query("REPLACE INTO ?:usergroup_links SET ?u", $data);
+
+    if (!empty($force_notification['C'])) {
+        fn_send_usergroup_status_notification($user_id, (array) $usergroup_id, $status);
+    }
+
+    return $result;
+}
+
+function fn_send_usergroup_status_notification($user_id, $usergroup_ids, $status)
+{
+    $user_data = fn_get_user_info($user_id);
+    $prefix = ($status == 'A') ? 'activation' : 'disactivation';
+
+    Mailer::sendMail(array(
+        'to' => $user_data['email'],
+        'from' => 'company_users_department',
+        'data' => array(
+            'user_data' => $user_data,
+            'usergroups' => fn_get_usergroups('F', $user_data['lang_code']),
+            'usergroup_ids' => $usergroup_ids
+        ),
+        'tpl' => 'profiles/usergroup_' . $prefix . '.tpl',
+        'company_id' => $user_data['company_id'],
+    ), fn_check_user_type_admin_area($user_data['user_type']) ? 'A' : 'C', $user_data['lang_code']);
+}
+
+function fn_update_usergroup($usergroup_data, $usergroup_id = 0, $lang_code = DESCR_SL)
+{
+    $old_status = '';
+    if (!empty($usergroup_id)) {
+        $old_status = db_get_field("SELECT status FROM ?:usergroups WHERE usergroup_id = ?i", $usergroup_id);
+    }
+    if (defined('RESTRICTED_ADMIN') && ($usergroup_data['type'] == 'A' || $old_status == 'A')) {
+        fn_set_notification('E', __('error'), __('access_denied'));
+
+        return false;
+    }
+
+    if (empty($usergroup_id)) {
+        $usergroup_id = db_query("INSERT INTO ?:usergroups ?e", $usergroup_data);
+
+        if ($usergroup_id < ALLOW_USERGROUP_ID_FROM) {
+            db_query("UPDATE ?:usergroups SET usergroup_id = ?i WHERE usergroup_id = ?i", ALLOW_USERGROUP_ID_FROM, $usergroup_id);
+            $usergroup_id = ALLOW_USERGROUP_ID_FROM;
+        }
+
+        $usergroup_data['usergroup_id'] = $usergroup_id;
+
+        foreach (fn_get_translation_languages() as $usergroup_data['lang_code'] => $_v) {
+            db_query("INSERT INTO ?:usergroup_descriptions ?e", $usergroup_data);
+        }
+    } else {
+        db_query("UPDATE ?:usergroups SET ?u WHERE usergroup_id = ?i", $usergroup_data, $usergroup_id);
+        db_query("UPDATE ?:usergroup_descriptions SET ?u WHERE usergroup_id = ?i AND lang_code = ?s", $usergroup_data, $usergroup_id, $lang_code);
+    }
+
+    if (isset($usergroup_data['privileges']) && $usergroup_data['type'] == 'A') {
+        db_query("DELETE FROM ?:usergroup_privileges WHERE usergroup_id = ?i", $usergroup_id);
+
+        if (is_array($usergroup_data['privileges'])) {
+            $data = array (
+                'usergroup_id' => $usergroup_id
+            );
+            foreach ($usergroup_data['privileges'] as $data['privilege'] => $v) {
+                db_query("INSERT INTO ?:usergroup_privileges ?e", $data);
+            }
+        }
+    }
+
+    return $usergroup_id;
 }

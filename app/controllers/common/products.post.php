@@ -27,12 +27,12 @@ if ($mode == 'options') {
     // Apply the specific block template settings
     if (!empty($_REQUEST['appearance'])) {
         foreach ($_REQUEST['appearance'] as $setting => $value) {
-            Tygh::$app['view']->assign($setting, $value);
+            Registry::get('view')->assign($setting, $value);
         }
     }
 
-    Tygh::$app['view']->assign('show_images', true);
-    Tygh::$app['view']->assign('no_capture', true);
+    Registry::get('view')->assign('show_images', true);
+    Registry::get('view')->assign('no_capture', true);
 
     if (!empty($_REQUEST['product_data'])) {
         // Product data
@@ -83,7 +83,7 @@ if ($mode == 'options') {
             $product['product_id'] = $_REQUEST['extra_id'];
         }
 
-        Tygh::$app['view']->assign('product', $product);
+        Registry::get('view')->assign('product', $product);
 
         // Update the images in the list/grid templates
         if (!empty($_REQUEST['image'])) {
@@ -98,7 +98,7 @@ if ($mode == 'options') {
                 );
             }
 
-            Tygh::$app['view']->assign('images', $images_data);
+            Registry::get('view')->assign('images', $images_data);
         }
 
         if (AREA == 'C') {
@@ -111,7 +111,7 @@ if ($mode == 'options') {
             }
         } else {
             $display_tpl = 'views/products/components/select_product_options.tpl';
-            Tygh::$app['view']->assign('product_options', $product['product_options']);
+            Registry::get('view')->assign('product_options', $product['product_options']);
         }
 
     } else {
@@ -157,11 +157,7 @@ if ($mode == 'options') {
                 }
 
                 $_cart['products'][$cart_id]['amount'] = $amount;
-                $_cart['products'][$cart_id]['selected_options'] = isset($item['product_options']) ? $item['product_options'] : array();
-                $_cart['products'][$cart_id]['product_options'] = fn_get_selected_product_options($item['product_id'], $_cart['products'][$cart_id]['selected_options']);
-                $_cart['products'][$cart_id] = fn_apply_options_rules($_cart['products'][$cart_id]);
-
-                $_cart['products'][$cart_id]['product_options'] = $_cart['products'][$cart_id]['selected_options'];
+                $_cart['products'][$cart_id]['product_options'] = isset($item['product_options']) ? $item['product_options'] : array();
 
                 if (!empty($_cart['products'][$cart_id]['extra']['saved_options_key'])) {
                     $_cart['saved_product_options'][$_cart['products'][$cart_id]['extra']['saved_options_key']] = $_cart['products'][$cart_id]['product_options'];
@@ -238,8 +234,8 @@ if ($mode == 'options') {
         }
 
         Registry::set('navigation', array());
-        Tygh::$app['view']->assign('cart_products', $cart_products);
-        Tygh::$app['view']->assign('cart', $_cart);
+        Registry::get('view')->assign('cart_products', $cart_products);
+        Registry::get('view')->assign('cart', $_cart);
 
         if (AREA == 'C') {
             $display_tpl = 'views/checkout/components/cart_items.tpl';
@@ -251,7 +247,7 @@ if ($mode == 'options') {
     $data = isset($product_data) ? $product_data : $cart_products;
     fn_set_hook('after_options_calculation', $mode, $data);
 
-    Tygh::$app['view']->display($display_tpl);
+    Registry::get('view')->display($display_tpl);
 
     exit;
 }
@@ -282,17 +278,17 @@ if ($mode == 'picker') {
         }
     }
 
-    Tygh::$app['view']->assign('products', $products);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('products', $products);
+    Registry::get('view')->assign('search', $search);
 
     if (isset($_REQUEST['company_id'])) {
-        Tygh::$app['view']->assign('picker_selected_company', $_REQUEST['company_id']);
+        Registry::get('view')->assign('picker_selected_company', $_REQUEST['company_id']);
     }
     if (!empty($_REQUEST['company_ids'])) {
-        Tygh::$app['view']->assign('picker_selected_companies', $_REQUEST['company_ids']);
+        Registry::get('view')->assign('picker_selected_companies', $_REQUEST['company_ids']);
     }
 
-    Tygh::$app['view']->display('pickers/products/picker_contents.tpl');
+    Registry::get('view')->display('pickers/products/picker_contents.tpl');
     exit;
 
 }

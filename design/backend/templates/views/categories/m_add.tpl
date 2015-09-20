@@ -20,7 +20,7 @@
 <tr id="box_new_cat_tag">
     <td>
         {if "categories"|fn_show_picker:$smarty.const.CATEGORY_THRESHOLD}
-            {include file="pickers/categories/picker.tpl" data_id="location_category" input_name="categories_data[0][parent_id]" item_ids=0 hide_link=true hide_delete_button=true default_name=__("root_level")}
+            {include file="pickers/categories/picker.tpl" data_id="location_category" input_name="categories_data[0][parent_id]" item_ids=0 hide_link=true hide_delete_button=true show_root=true default_name=__("root_level")}
         {else}
             {include file="common/select_category.tpl" name="categories_data[0][parent_id]" select_class="input-medium" root_text=__("root_level") id=""}
         {/if}
@@ -39,7 +39,7 @@
 
     {if !"ULTIMATE:FREE"|fn_allowed_for}
         <td>     
-            {include file="common/select_usergroups.tpl" id="ug" select_mode=true title=__("usergroup") id="ship_data_`$shipping.shipping_id`" name="categories_data[0][usergroup_ids]" usergroups=["type"=>"C", "status"=>["A", "H"]]|fn_get_usergroups:$smarty.const.DESCR_SL input_extra=""}
+            {include file="common/select_usergroups.tpl" id="ug" select_mode=true title=__("usergroup") id="ship_data_`$shipping.shipping_id`" name="categories_data[0][usergroup_ids]" usergroups="C"|fn_get_usergroups:$smarty.const.DESCR_SL input_extra=""}
         </td>
     {/if}
     <td>

@@ -77,25 +77,6 @@
 </div>
 
 <div class="control-group">
-    <label class="control-label" for="sw_delivery_confirmation">{__("ship_ups_use_delivery_confirmation")}</label>
-    <div class="controls">
-    <input type="hidden" name="shipping_data[service_params][delivery_confirmation]" value="N" />
-    <input id="sw_delivery_confirmation" type="checkbox" name="shipping_data[service_params][delivery_confirmation]" value="Y" {if $shipping.service_params.delivery_confirmation == "Y"}checked="checked"{/if} class="cm-combination" />
-    </div>
-</div>
-
-<div id="delivery_confirmation" class="control-group {if $shipping.service_params.delivery_confirmation != "Y"}hidden{/if}">
-    <label class="control-label" for="dcist_type">{__("ship_ups_dcist_type")}</label>
-    <div class="controls">
-    <select id="dcist_type" name="shipping_data[service_params][dcist_type]">
-        <option value="1" {if $shipping.service_params.dcist_type == "1"}selected="selected"{/if}>{__("ship_ups_delivery_confirmation")}</option>
-        <option value="2" {if $shipping.service_params.dcist_type == "2"}selected="selected"{/if}>{__("ship_ups_delivery_confirmation_signature")}</option>
-        <option value="3" {if $shipping.service_params.dcist_type == "3"}selected="selected"{/if}>{__("ship_ups_delivery_confirmation_adult_signature")}</option>
-    </select>
-    </div>
-</div>
-
-<div class="control-group">
     <label class="control-label" for="max_weight">{__("max_box_weight")}</label>
     <div class="controls">
     <input id="max_weight" type="text" name="shipping_data[service_params][max_weight_of_box]" size="30" value="{$shipping.service_params.max_weight_of_box|default:0}"/>

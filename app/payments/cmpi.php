@@ -22,25 +22,58 @@ if (!defined('BOOTSTRAP')) { die('Access denied'); }
 if (defined('PAYMENT_NOTIFICATION')) {
 
     if ($mode == 'frame' && !empty($_SESSION['cmpi']['acs_url'])) {
-        fn_create_payment_form($_SESSION['cmpi']['acs_url'], $_SESSION['cmpi']['frame_data'], 'Card Issuer', false, 'post', false);
+
+        echo <<<EOT
+    <form action="{$_SESSION['cmpi']['acs_url']}" method="POST" name="process">
+EOT;
+        foreach ($_SESSION['cmpi']['frame_data'] as $k => $v) {
+        echo <<<EOT
+<input type="hidden" name="{$k}" value="{$v}" />
+EOT;
+        }
+
+        $msg = __('text_cc_processor_connection', array(
+            '[processor]' => 'Card Issuer server'
+        ));
+
+        echo <<<EOT
+    </form>
+    <div align=center>{$msg}</div>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+</body>
+</html>
+EOT;
         exit;
+
     } elseif ($mode == 'bank' && !empty($_SESSION['cmpi']['order_id'])) {
-        $order_info = fn_get_order_info($_SESSION['cmpi']['order_id']);
-        $processor_data = fn_get_processor_data($order_info['payment_method']['payment_id']);
-        $payment_name = str_replace('.php', '', $processor_data['processor_script']);
+
         $_SESSION['cmpi']['pares'] = !empty($_REQUEST['PaRes']) ? $_REQUEST['PaRes'] : '';
         $sess = Session::getName() . '=' . Session::getId();
-        $src = fn_url("payment_notification.auth?payment=$payment_name&$sess", AREA, 'current');
+        $src = fn_url("payment_notification.auth?payment=cmpi&$sess", AREA, 'current');
 
         $msg = __('text_cc_processor_connection', array(
             '[processor]' => '3-D Secure server'
         ));
 
-        fn_create_payment_form($src, array(), '3-D Secure', false, 'get', false, 'parent');
+        echo <<<EOT
+<br />
+<div align=center>{$msg}</div>
+<script type="text/javascript">
+window.onload = function(){
+    window.parent.location='{$src}';
+};
+</script>
+</body>
+</html>
+EOT;
         exit;
 
     } elseif ($mode == 'auth' && !empty($_SESSION['cmpi']['order_id'])) {
-        $view = Tygh::$app['view'];
+        $view = Registry::get('view');
         $view->assign('order_action', __('placing_order'));
         $view->display('views/orders/components/placing_order.tpl');
         fn_flush();
@@ -69,7 +102,7 @@ if (defined('PAYMENT_NOTIFICATION')) {
  * @param array $order_info Order information
  * @return boolean true
  */
-function fn_cmpi_lookup($processor_data, $order_info, $mode = '')
+function fn_cmpi_lookup($processor_data, $order_info)
 {
     unset($_SESSION['cmpi']);
 
@@ -127,6 +160,14 @@ function fn_cmpi_lookup($processor_data, $order_info, $mode = '')
 </CardinalMPI>
 EOT;
 
+    /*
+    <Item_Name_1>Three Stone Princess Cut Diamond Ring</Item_Name_1>
+    <Item_Desc_1>This classic women's diamond ring in 18K white gold features 3 brilliant diamonds. The diamonds are Channel-Set and weigh a total of 1.98 ctw. Gift Box included.</Item_Desc_1>
+    <Item_Price_1>39999</Item_Price_1>
+    <Item_Quantity_1>1</Item_Quantity_1>
+    <Item_SKU_1>SKU17513</Item_SKU_1>
+    */
+
     Registry::set('log_cut_data', array('CardNumber', 'CardExpMonth', 'CardExpYear'));
     $response_data = Http::post($_SESSION['cmpi']['transaction_url'], array('cmpi_msg' => $cardinal_request));
 
@@ -156,17 +197,16 @@ EOT;
     if ($err_no == 0 && $_SESSION['cmpi']['enrolled'] == 'Y' && !empty($acs_url)) {
 
         $sess = Session::getName() . '=' . Session::getId();
-        $payment_name = str_replace('.php', '', $processor_data['processor_script']);
 
         $_SESSION['cmpi']['acs_url']    = $acs_url;
         $_SESSION['cmpi']['order_id']   = $order_info['order_id'];
         $_SESSION['cmpi']['frame_data'] = array(
             'PaReq'   => (string) $cmpi->Payload,
-            'TermUrl' => fn_url("payment_notification.bank?payment=$payment_name&$sess", AREA, 'current'),
+            'TermUrl' => fn_url("payment_notification.bank?payment=cmpi&$sess", AREA, 'current'),
             'MD'      => '',
         );
 
-        $frame_src = fn_url("payment_notification.frame?payment=$payment_name&$sess", AREA, 'current');
+        $frame_src = fn_url("payment_notification.frame?payment=cmpi&$sess", AREA, 'current');
 
         $msg = __('text_cmpi_frame_message');
         $back_link_msg = __('text_cmpi_go_back');

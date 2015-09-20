@@ -222,11 +222,10 @@ class Location
      *  description - description data @see BM_Location::_update_description()
      * )</pre>
      *
-     * @param  array  $location_data Array of location data
-     * @param  string $lang_code language code
-     * @return int    Location id if new location was created, DB result otherwise
+     * @param  array $location_data Array of location data
+     * @return int   Location id if new location was created, DB result otherwise
      */
-    public function update($location_data, $lang_code = DESCR_SL)
+    public function update($location_data)
     {
         if (!empty($location_data['is_default']) && $location_data['is_default'] == 'Y') {
             $default = true;
@@ -258,19 +257,7 @@ class Location
         if (!empty($location_data['location_id'])) {
             // Updating location
             $location_id = intval($location_data['location_id']);
-            $this->_updateDescription($location_id, $location_data, $lang_code);
-
-            if (!empty($location_data['copy'])) {
-                foreach ($location_data['copy'] as $field) {
-                    db_query("UPDATE ?:bm_locations SET ?f = ?s WHERE layout_id = ?i", $field, $location_data[$field], $this->_layout_id);
-                }
-            }
-
-            if (!empty($location_data['copy_translated'])) {
-                foreach ($location_data['copy_translated'] as $field) {
-                    db_query("UPDATE ?:bm_locations_descriptions LEFT JOIN ?:bm_locations ON ?:bm_locations.location_id = ?:bm_locations_descriptions.location_id SET ?f = ?s WHERE ?:bm_locations.layout_id = ?i AND lang_code = ?s", $field, $location_data[$field], $this->_layout_id, $lang_code);
-                }
-            }
+            $this->_updateDescription($location_id, $location_data);
 
             /**
              * Actions to be performed after the location is updated
@@ -429,16 +416,15 @@ class Location
      *  meta_keywords,
      * )</pre>
      *
-     * @param  int    $location_id Location identifier
-     * @param  array  $description Array of description data
-     * @param  string $lang_code language code
+     * @param  int   $location_id Location identifier
+     * @param  array $description Array of description data
      * @return bool  True in success, false otherwise
      */
-    private function _updateDescription($location_id, $description, $lang_code = DESCR_SL)
+    private function _updateDescription($location_id, $description)
     {
         if (!empty($location_id) && isset($description['name'])) {
             if (!isset($description['lang_code'])) {
-                $description['lang_code'] = $lang_code;
+                $description['lang_code'] = CART_LANGUAGE;
             }
 
             $description['location_id'] = $location_id;

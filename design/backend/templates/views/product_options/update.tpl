@@ -39,7 +39,7 @@
 
 <div class="tabs cm-j-tabs">
     <ul class="nav nav-tabs">
-        <li id="tab_option_details_{$id}" class="cm-js active"><a>{__("general")}</a></li>
+        <li id="tab_option_details_{$id}" class="cm-js cm-active"><a>{__("general")}</a></li>
         {if $option_data.option_type == "S" || $option_data.option_type == "R" || $option_data.option_type == "C" || !$option_data}
             <li id="tab_option_variants_{$id}" class="cm-js"><a>{__("variants")}</a></li>
         {/if}
@@ -65,10 +65,10 @@
 
         <div class="control-group">
             <label class="control-label" for="elm_inventory_{$id}">{__("inventory")}</label>
-            <input type="hidden" name="option_data[inventory]" value="N" />
-            <div class="controls">
+            <div class="controls">           
             {if "SRC"|strpos:$option_data.option_type !== false}
             <label class="checkbox">
+                <input type="hidden" name="option_data[inventory]" value="N" />
                 <input type="checkbox" name="option_data[inventory]" id="elm_inventory_{$id}" value="Y" {if $option_data.inventory == "Y"}checked="checked"{/if}/>
             </label>
             {else}

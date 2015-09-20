@@ -59,19 +59,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_REQUEST['ewayTrxnStatus'])) 
     $testmode = ($processor_data['processor_params']['test']=='Y') ? "TRUE" : "FALSE";
     $_order_id = $processor_data['processor_params']['order_prefix'] . (($order_info['repaid']) ? ($order_id . '_' . $order_info['repaid']) : $order_id);
 
-    $post_data = array(
-        'ewayCustomerID' => $processor_data['processor_params']['client_id'],
-        'ewayTotalAmount' => $order_total,
-        'ewayCustomerInvoiceRef' => $_order_id,
-        'ewayCustomerFirstName' => $order_info['firstname'],
-        'ewayCustomerLastName' => $order_info['lastname'],
-        'ewayCustomerEmail' => $order_info['email'],
-        'ewayCustomerAddress' => $order_info['b_address'],
-        'ewayCustomerPostcode' => $order_info['b_zipcode'],
-        'ewayOption3' => $testmode,
-        'ewayURL' => $return_url,
-    );
+echo <<<EOT
+<form method="post" action="https://www.eway.com.au/gateway/payment.asp" name="process">
+    <input type="hidden" name="ewayCustomerID" value="{$processor_data['processor_params']['client_id']}" />
+    <input type="hidden" name="ewayTotalAmount" value="{$order_total}" />
+    <input type="hidden" name="ewayCustomerInvoiceRef" value="{$_order_id}" />
+    <input type="hidden" name="ewayCustomerFirstName" value="{$order_info['firstname']}" />
+    <input type="hidden" name="ewayCustomerLastName" value="{$order_info['lastname']}" />
+    <input type="hidden" name="ewayCustomerEmail" value="{$order_info['email']}" />
+    <input type="hidden" name="ewayCustomerAddress" value="{$order_info['b_address']}" />
+    <input type="hidden" name="ewayCustomerPostcode" value="{$order_info['b_zipcode']}" />
+    <input type="hidden" name="ewayOption3" value="{$testmode}" />
+    <input type="hidden" name="ewayURL" value="{$return_url}" />
+EOT;
 
-    fn_create_payment_form('https://www.eway.com.au/gateway/payment.asp', $post_data, 'eWay');
-    exit;
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'eWAY server'
+));
+echo <<<EOT
+    </form>
+    <p><div align=center>{$msg}</div></p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
+exit;
 }

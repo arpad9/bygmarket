@@ -14,8 +14,6 @@
 
 use Tygh\Registry;
 use Tygh\Settings;
-use Tygh\BlockManager\Layout;
-use Tygh\Themes\Styles;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -40,12 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 Registry::set('runtime.simple_ultimate', false);
             }
 
-            if (isset($_REQUEST['company_data']['is_create_vendor_admin'])
-                && $_REQUEST['company_data']['is_create_vendor_admin'] == 'Y'
-            ) {
-                if (!empty($_REQUEST['company_data']['admin_username'])
-                    && db_get_field("SELECT COUNT(*) FROM ?:users WHERE user_login = ?s", $_REQUEST['company_data']['admin_username']) > 0
-                ) {
+            if (isset($_REQUEST['company_data']['is_create_vendor_admin']) && $_REQUEST['company_data']['is_create_vendor_admin'] == 'Y') {
+                if (!empty($_REQUEST['company_data']['admin_username']) && db_get_field("SELECT COUNT(*) FROM ?:users WHERE user_login = ?s", $_REQUEST['company_data']['admin_username']) > 0) {
                     fn_set_notification('E', __('error'), __('error_admin_not_created_name_already_used'));
                     fn_save_post_data('company_data', 'update'); // company data and settings
                     $suffix = '.add';
@@ -110,25 +104,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             } else {
                 $company_id = fn_update_company($_REQUEST['company_data']);
-            }
-
-            if (!empty($company_id)) {
-                if (fn_allowed_for('ULTIMATE') && !empty($_REQUEST['update'])) {
-                    fn_ult_set_company_settings_information($_REQUEST['update'], $company_id);
+                if (!empty($company_id)) {
+                    $suffix = ".update?company_id=$company_id";
+                } else {
+                    fn_save_post_data('company_data', 'update');
                 }
-
-                $suffix = ".update?company_id=$company_id";
-
-                $redirect_url = empty($_REQUEST['redirect_url']) ? 'companies' . $suffix : $_REQUEST['redirect_url'];
-
-                if (defined('AJAX_REQUEST')) {
-                    Tygh::$app['ajax']->assign('non_ajax_notifications', true);
-                    Tygh::$app['ajax']->assign('force_redirection', fn_url($redirect_url));
-
-                    exit();
-                }
-            } else {
-                fn_save_post_data('company_data', 'update');
             }
         }
 
@@ -153,8 +133,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             if (fn_allowed_for('ULTIMATE') && !empty($_REQUEST['company_id'])) {
                 fn_ult_set_company_settings_information($_REQUEST['update'], $_REQUEST['company_id']);
-
-                fn_clear_cache('registry'); // clean up block cache to re-generate storefront urls
             }
         }
 
@@ -169,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
 
-        return array(CONTROLLER_STATUS_OK, 'companies.manage');
+        return array(CONTROLLER_STATUS_OK, "companies.manage");
     }
 
     if (fn_allowed_for('MULTIVENDOR')) {
@@ -182,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 fn_delete_company($_REQUEST['from_company_id']);
             }
 
-            return array(CONTROLLER_STATUS_REDIRECT, 'companies.manage');
+            return array(CONTROLLER_STATUS_REDIRECT, "companies.manage");
         }
 
         if ($mode == 'm_delete_payouts' && !Registry::get('runtime.company_id')) {
@@ -237,47 +215,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 fn_set_notification('E', __('error'), __('error_status_not_changed'), 'I');
             }
 
-            return array(CONTROLLER_STATUS_REDIRECT, 'companies.manage');
+            return array(CONTROLLER_STATUS_REDIRECT, "companies.manage");
         }
     }
 
+    return array(CONTROLLER_STATUS_OK, "companies$suffix");
+}
 
-    if ($mode == 'delete') {
-
-        fn_delete_company($_REQUEST['company_id']);
-
-        return array(CONTROLLER_STATUS_REDIRECT, 'companies.manage');
-    }
-
-    if ($mode == 'update_status') {
-
-        $notification = !empty($_REQUEST['notify_user']) && $_REQUEST['notify_user'] == 'Y';
-
-        if (fn_companies_change_status($_REQUEST['id'], $_REQUEST['status'], '', $status_from, false, $notification)) {
-            fn_set_notification('N', __('notice'), __('status_changed'));
-        } else {
-            fn_set_notification('E', __('error'), __('error_status_not_changed'));
-            Tygh::$app['ajax']->assign('return_status', $status_from);
-        }
-        exit;
-    }
-
-    if ($mode == 'payout_delete' && !Registry::get('runtime.company_id')) {
-        fn_companies_delete_payout($_REQUEST['payout_id']);
-    }
-
-    return array(CONTROLLER_STATUS_OK, 'companies' . $suffix);
+if ($mode == 'payout_delete' && !Registry::get('runtime.company_id')) {
+    fn_companies_delete_payout($_REQUEST['payout_id']);
 }
 
 if ($mode == 'manage') {
 
     list($companies, $search) = fn_get_companies($_REQUEST, $auth, Registry::get('settings.Appearance.admin_elements_per_page'));
 
-    Tygh::$app['view']->assign('companies', $companies);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('companies', $companies);
+    Registry::get('view')->assign('search', $search);
 
-    Tygh::$app['view']->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
-    Tygh::$app['view']->assign('states', fn_get_all_states());
+    Registry::get('view')->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
+    Registry::get('view')->assign('states', fn_get_all_states());
+
+} elseif ($mode == 'delete') {
+
+    fn_delete_company($_REQUEST['company_id']);
+
+    return array(CONTROLLER_STATUS_REDIRECT);
 
 } elseif ($mode == 'update' || $mode == 'add') {
 
@@ -293,11 +256,11 @@ if ($mode == 'manage') {
             $company_data['logos'] = fn_get_logos($company_id);
         }
 
-        Tygh::$app['view']->assign('logo_types', fn_get_logo_types(true));
+        Registry::get('view')->assign('logo_types', fn_get_logo_types(true));
     }
 
     $restored_company_data = fn_restore_post_data('company_data');
-    if (!empty($restored_company_data) && $mode == 'add') {
+    if (!empty($restored_company_data)) {
         if (!empty($restored_company_data['shippings'])) {
             $restored_company_data['shippings'] = implode(',', $restored_company_data['shippings']);
         }
@@ -309,13 +272,7 @@ if ($mode == 'manage') {
         if ($mode == 'update') {
             $available_themes = fn_get_available_themes(fn_get_theme_path('[theme]', 'C', $company_id));
 
-            $theme_name = fn_get_theme_path('[theme]', 'C', $company_id);
-            $layout = Layout::instance($company_id)->getDefault($theme_name);
-
-            $style = Styles::factory($theme_name)->get($layout['style_id']);
-
-            Tygh::$app['view']->assign('current_style', $style);
-            Tygh::$app['view']->assign('theme_info', $available_themes['current']);
+            Registry::get('view')->assign('theme_info', $available_themes['current']);
         }
 
         $countries_list = fn_get_simple_countries();
@@ -339,11 +296,11 @@ if ($mode == 'manage') {
             unset($_countries, $company_countries);
         }
 
-        Tygh::$app['view']->assign('countries_list', $countries_list);
+        Registry::get('view')->assign('countries_list', $countries_list);
 
         if ($mode == 'add') {
             $schema = fn_init_clone_schemas();
-            Tygh::$app['view']->assign('clone_schema', $schema);
+            Registry::get('view')->assign('clone_schema', $schema);
         }
 
         // Get "Company" settings from the DB
@@ -359,26 +316,22 @@ if ($mode == 'manage') {
             }
         }
 
-        Tygh::$app['view']->assign('company_settings', $settings_data['main']);
+        Registry::get('view')->assign('company_settings', $settings_data['main']);
         unset($settings_data, $section);
     }
 
-    Tygh::$app['view']->assign('company_data', $company_data);
-    Tygh::$app['view']->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
-    Tygh::$app['view']->assign('states', fn_get_all_states());
+    Registry::get('view')->assign('company_data', $company_data);
+    Registry::get('view')->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
+    Registry::get('view')->assign('states', fn_get_all_states());
 
     $profile_fields = fn_get_profile_fields('A', array(), CART_LANGUAGE, array('get_custom' => true, 'get_profile_required' => true));
-    Tygh::$app['view']->assign('profile_fields', $profile_fields);
+    Registry::get('view')->assign('profile_fields', $profile_fields);
 
+    // [Page sections]
     $tabs['detailed'] = array (
         'title' => __('general'),
         'js' => true
     );
-    $tabs['addons'] = array (
-        'title' => __('addons'),
-        'js' => true
-    );
-
     if (fn_allowed_for('MULTIVENDOR')) {
         $tabs['description'] = array (
             'title' => __('description'),
@@ -400,9 +353,11 @@ if ($mode == 'manage') {
         );
     }
 
+    Registry::set('navigation.tabs', $tabs);
+
     if (!Registry::get('runtime.company_id')) {
-        $shippings = db_get_hash_array("SELECT a.shipping_id, a.status, b.shipping FROM ?:shippings as a LEFT JOIN ?:shipping_descriptions as b ON a.shipping_id = b.shipping_id AND b.lang_code = ?s WHERE a.company_id = 0 AND a.status = 'A' ORDER BY a.position", 'shipping_id', DESCR_SL);
-        Tygh::$app['view']->assign('shippings', $shippings);
+        $shippings = db_get_hash_array("SELECT a.shipping_id, a.status, b.shipping FROM ?:shippings as a LEFT JOIN ?:shipping_descriptions as b ON a.shipping_id = b.shipping_id AND b.lang_code = ?s WHERE company_id = 0 ORDER BY a.position", 'shipping_id', DESCR_SL);
+        Registry::get('view')->assign('shippings', $shippings);
 
         if (!fn_allowed_for('ULTIMATE')) {
             $tabs['shipping_methods'] = array (
@@ -410,20 +365,39 @@ if ($mode == 'manage') {
                 'js' => true
             );
         }
+
+        $tabs['addons'] = array (
+            'title' => __('addons'),
+            'js' => true
+        );
+
+        Registry::set('navigation.tabs', $tabs);
+    }
+    // [/Page sections]
+
+} elseif ($mode == 'update_status') {
+
+    $notification = !empty($_REQUEST['notify_user']) && $_REQUEST['notify_user'] == 'Y';
+
+    if (fn_companies_change_status($_REQUEST['id'], $_REQUEST['status'], '', $status_from, false, $notification)) {
+        fn_set_notification('N', __('notice'), __('status_changed'));
+    } else {
+        fn_set_notification('E', __('error'), __('error_status_not_changed'));
+        Registry::get('ajax')->assign('return_status', $status_from);
     }
 
-    Registry::set('navigation.tabs', $tabs);
+    exit;
 
 } elseif ($mode == 'picker') {
     list($companies, $search) = fn_get_companies($_REQUEST, $auth, Registry::get('settings.Appearance.admin_elements_per_page'));
 
-    Tygh::$app['view']->assign('companies', $companies);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('companies', $companies);
+    Registry::get('view')->assign('search', $search);
 
-    Tygh::$app['view']->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
-    Tygh::$app['view']->assign('states', fn_get_all_states());
+    Registry::get('view')->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
+    Registry::get('view')->assign('states', fn_get_all_states());
 
-    Tygh::$app['view']->display('pickers/companies/picker_contents.tpl');
+    Registry::get('view')->display('pickers/companies/picker_contents.tpl');
     exit;
 }
 
@@ -450,27 +424,27 @@ if (fn_allowed_for('MULTIVENDOR')) {
 
         list($companies, $search) = fn_get_companies($_REQUEST, $auth, Registry::get('settings.Appearance.admin_elements_per_page'));
 
-        Tygh::$app['view']->assign('company_id', $company_id);
-        Tygh::$app['view']->assign('company_name', $company_data['company']);
-        Tygh::$app['view']->assign('companies', $companies);
-        Tygh::$app['view']->assign('search', $search);
-        Tygh::$app['view']->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
-        Tygh::$app['view']->assign('states', fn_get_all_states());
+        Registry::get('view')->assign('company_id', $company_id);
+        Registry::get('view')->assign('company_name', $company_data['company']);
+        Registry::get('view')->assign('companies', $companies);
+        Registry::get('view')->assign('search', $search);
+        Registry::get('view')->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
+        Registry::get('view')->assign('states', fn_get_all_states());
 
     } elseif ($mode == 'balance') {
 
         list($payouts, $search, $total) = fn_companies_get_payouts($_REQUEST, Registry::get('settings.Appearance.admin_elements_per_page'));
 
-        Tygh::$app['view']->assign('payouts', $payouts);
-        Tygh::$app['view']->assign('search', $search);
-        Tygh::$app['view']->assign('total', $total);
+        Registry::get('view')->assign('payouts', $payouts);
+        Registry::get('view')->assign('search', $search);
+        Registry::get('view')->assign('total', $total);
     }
 }
 
 if (fn_allowed_for('ULTIMATE')) {
     if ($mode == 'get_object_share') {
-        $sharing_schema = fn_get_schema('sharing', 'schema');
-        $view = Tygh::$app['view'];
+        $sharing_schema = fn_get_schema('clone', 'sharing');
+        $view = Registry::get('view');
 
         if (!empty($_REQUEST['object_id']) && !empty($_REQUEST['object'])) {
             $schema = $sharing_schema[$_REQUEST['object']];

@@ -54,7 +54,7 @@ class Grid
         $grids = db_get_hash_multi_array(
             "SELECT " . implode(', ', $fields) . " FROM ?:bm_containers as c "
             . "LEFT JOIN ?:bm_grids as g ON g.container_id = c.container_id ?p"
-            . "WHERE 1 ?p ORDER BY g.order, g.parent_id, g.grid_id ASC",
+            . "WHERE 1 ?p ORDER BY g.parent_id, g.grid_id ASC",
             array('container_id', 'grid_id'),
             $join,
             $condition
@@ -85,7 +85,7 @@ class Grid
          */
         fn_set_hook('get_grid_pre', $grid_id, $lang_code);
 
-        $grid = db_get_row('SELECT * FROM ?:bm_grids WHERE grid_id = ?i ORDER BY ?:bm_grids.order', $grid_id);
+        $grid = db_get_row('SELECT * FROM ?:bm_grids WHERE grid_id = ?i', $grid_id);
 
         /**
          * Processes grid data after getting it

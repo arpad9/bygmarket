@@ -22,13 +22,6 @@ fn_define('LOG_MAX_DATA_LENGTH', 10000);
 
 function fn_log_event($type, $action, $data = array())
 {
-    $object_primary_keys = array(
-        'users' => 'user_id',
-        'orders' => 'order_id',
-        'products' => 'product_id',
-        'categories' => 'category_id',
-    );
-
     $update = false;
     $content = array();
 
@@ -64,10 +57,6 @@ function fn_log_event($type, $action, $data = array())
         $_btrace = array();
         $func = '';
         foreach (array_reverse($data['backtrace']) as $v) {
-            if (!empty($v['file'])) {
-                $v['file'] = fn_get_rel_dir($v['file']);
-            }
-
             if (empty($v['file'])) {
                 $func = $v['function'];
                 continue;
@@ -103,11 +92,7 @@ function fn_log_event($type, $action, $data = array())
         );
 
         if ($action == 'status') {
-            $content['status'] = '';
-            if (isset($order_status_descr[$data['status_from']])) {
-                $content['status'] = $order_status_descr[$data['status_from']] . ' -> ';
-            }
-            $content['status'] .= $order_status_descr[$data['status_to']];
+            $content['status'] = $order_status_descr[$data['status_from']] . ' -> ' . $order_status_descr[$data['status_to']];
         }
 
     } elseif ($type == 'products') {
@@ -140,9 +125,9 @@ function fn_log_event($type, $action, $data = array())
         }
 
     } elseif ($type == 'requests') {
+
         if (!empty($cut_data)) {
             $data['data'] = preg_replace("/\<(" . implode('|', $cut_data) . ")\>(.*?)\<\/(" . implode('|', $cut_data) . ")\>/s", '<${1}>******</${1}>', $data['data']);
-            $data['data'] = preg_replace("/%3C(" . implode('|', $cut_data) . ")%3E(.*?)%3C%2F(" . implode('|', $cut_data) . ")%3E/s", '%3C${1}%3E******%3C%2F${1}%3E', $data['data']);
             $data['data'] = preg_replace("/(" . implode('|', $cut_data) . ")=(.*?)(&)/s", '${1}=******${3}', $data['data']);
         }
 
@@ -205,7 +190,7 @@ function fn_log_event($type, $action, $data = array())
         }
     }
 
-    fn_set_hook('save_log', $type, $action, $data, $user_id, $content, $event_type, $object_primary_keys);
+    fn_set_hook('save_log', $type, $action, $data, $user_id, $content, $event_type);
 
     $content = serialize($content);
     if ($update) {
@@ -215,8 +200,8 @@ function fn_log_event($type, $action, $data = array())
         if (Registry::get('runtime.company_id')) {
             $company_id = Registry::get('runtime.company_id');
 
-        } elseif (!empty($object_primary_keys[$type]) && !empty($data[$object_primary_keys[$type]])) {
-            $company_id = fn_get_company_id($type, $object_primary_keys[$type], $data[$object_primary_keys[$type]]);
+        } elseif (!empty($data['company_id'])) {
+            $company_id = $data['company_id'];
 
         } else {
             $company_id = 0;
@@ -238,6 +223,31 @@ function fn_log_event($type, $action, $data = array())
         if ($type == 'users' && $action == 'session') {
             $_SESSION['log']['login_log_id'] = $log_id;
         }
+    }
+
+    return true;
+}
+
+/**
+ * Add a record to the log if the user session is expired
+ *
+ * @param array $entry - session record
+ * @return bool Always true
+ */
+function fn_log_user_logout($entry, $data)
+{
+    if (!empty($data['auth']) && $data['auth']['user_id']) {
+        $this_login = empty($data['auth']['this_login']) ? 0 : $data['auth']['this_login'];
+
+        // Log user logout
+        fn_log_event('users', 'session', array (
+            'user_id' => $data['auth']['user_id'],
+            'ip' => empty($data['auth']['ip']) ? '' : $data['auth']['ip'],
+            'time' => ($entry['expiry'] - $this_login),
+            'timeout' => true,
+            'expiry' => $entry['expiry'],
+            'company_id' => fn_get_company_id('users', 'user_id', $data['auth']['user_id']),
+        ));
     }
 
     return true;
@@ -306,7 +316,7 @@ function fn_get_logs($params, $items_per_page = 0)
     $limit = '';
     if (!empty($params['items_per_page'])) {
         $params['total_items'] = db_get_field("SELECT COUNT(DISTINCT(?:logs.log_id)) FROM ?:logs ?p WHERE 1 ?p", $join, $condition);
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+        $limit = db_paginate($params['page'], $params['items_per_page']);
     }
 
     $data = db_get_array("SELECT " . join(', ', $fields) . " FROM ?:logs ?p WHERE 1 ?p $sorting $limit", $join, $condition);

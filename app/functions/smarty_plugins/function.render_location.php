@@ -31,11 +31,10 @@ function smarty_function_render_location($params, &$smarty)
     } elseif (!empty($_REQUEST['dynamic_object']) && $area != 'C') {
         $dynamic_object = $_REQUEST['dynamic_object'];
     } else {
-        $dynamic_object_scheme = SchemesManager::getDynamicObject($dispatch, $area, $_REQUEST);
+        $dynamic_object_scheme = SchemesManager::getDynamicObject($dispatch, $area);
         if (!empty($dynamic_object_scheme) && !empty($_REQUEST[$dynamic_object_scheme['key']])) {
             $dynamic_object['object_type'] = $dynamic_object_scheme['object_type'];
             $dynamic_object['object_id'] = $_REQUEST[$dynamic_object_scheme['key']];
-            $dispatch = $dynamic_object_scheme['customer_dispatch'];
         } else {
             $dynamic_object = array();
         }

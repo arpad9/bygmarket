@@ -15,7 +15,6 @@
 use Tygh\Registry;
 
 include_once(Registry::get('config.dir.schemas') . 'exim/products.functions.php');
-include_once(Registry::get('config.dir.schemas') . 'exim/features.functions.php');
 
 $schema = array(
     'section' => 'products',
@@ -24,10 +23,6 @@ $schema = array(
     'key' => array('product_id'),
     'order' => 0,
     'table' => 'products',
-    'permissions' => array(
-        'import' => 'manage_catalog',
-        'export' => 'view_catalog',
-    ),
     'references' => array(
         'product_descriptions' => array(
             'reference_fields' => array('product_id' => '#key', 'lang_code' => '#lang_code'),
@@ -39,8 +34,7 @@ $schema = array(
         ),
         'images_links' => array(
             'reference_fields' => array('object_id' => '#key', 'object_type' => 'product', 'type' => 'M'),
-            'join_type' => 'LEFT',
-            'import_skip_db_processing' => true
+            'join_type' => 'LEFT'
         ),
         'companies' => array(
             'reference_fields' => array('company_id' => '&company_id'),
@@ -68,25 +62,6 @@ $schema = array(
             'args' => array('$primary_object_ids', '$import_data', '$auth'),
             'import_only' => true,
         ),
-    ),
-    'import_get_primary_object_id' => array(
-        'fill_products_alt_keys' => array(
-            'function' => 'fn_import_fill_products_alt_keys',
-            'args' => array('$pattern', '$alt_keys', '$object', '$skip_get_primary_object_id'),
-            'import_only' => true,
-        ),
-    ),
-    'import_process_data' => array(
-        'unset_product_id' => array(
-            'function' => 'fn_import_unset_product_id',
-            'args' => array('$object'),
-            'import_only' => true,
-        ),
-        'sanitize_product_data' => array(
-            'function' => '\Tygh\Tools\SecurityHelper::sanitizeObjectData',
-            'args' => array('product', '$object'),
-            'import_only' => true,
-        )
     ),
     'range_options' => array(
         'selector_url' => 'products.manage',
@@ -120,15 +95,13 @@ $schema = array(
             'title' => 'images_directory',
             'description' => 'text_images_directory',
             'type' => 'input',
-            'default_value' => 'exim/backup/images/',
-            'notes' => __('text_file_editor_notice', array('[href]' => fn_url('file_editor.manage?path=/'))),
+            'default_value' => Registry::get('config.dir.exim') . 'backup/images/'
         ),
         'files_path' => array(
             'title' => 'files_directory',
             'description' => 'text_files_directory',
             'type' => 'input',
-            'default_value' => 'exim/backup/downloads/',
-            'notes' => __('text_file_editor_notice', array('[href]' => fn_url('file_editor.manage?path=/'))),
+            'default_value' => Registry::get('config.dir.exim') . 'backup/downloads/'
         ),
         'delete_files' => array(
             'title' => 'drop_existing_data',
@@ -153,7 +126,6 @@ $schema = array(
             'db_field' => 'product_code',
             'alt_key' => true,
             'required' => true,
-            'alt_field' => 'product_id'
         ),
         'Language' => array(
             'table' => 'product_descriptions',
@@ -161,9 +133,6 @@ $schema = array(
             'type' => 'languages',
             'required' => true,
             'multilang' => true
-        ),
-        'Product id' => array(
-            'db_field' => 'product_id'
         ),
         'Category' => array(
             'process_get' => array('fn_exim_get_product_categories', '#key', 'M', '@category_delimiter', '#lang_code'),
@@ -196,15 +165,6 @@ $schema = array(
         'Min quantity' => array(
             'db_field' => 'min_qty'
         ),
-        'Max quantity' => array(
-            'db_field' => 'max_qty'
-        ),
-        'Quantity step' => array(
-            'db_field' => 'qty_step'
-        ),
-        'List qty count' => array(
-            'db_field' => 'list_qty_count'
-        ),
         'Shipping freight' => array(
             'db_field' => 'shipping_freight',
             'convert_put' => array('fn_exim_import_price', '#this', '@price_dec_sign_delimiter'),
@@ -214,8 +174,7 @@ $schema = array(
             'db_field' => 'timestamp',
             'process_get' => array('fn_timestamp_to_date', '#this'),
             'convert_put' => array('fn_date_to_timestamp', '#this'),
-            'return_result' => true,
-            'default' => array('time')
+            'return_result' => true
         ),
         'Downloadable' => array(
             'db_field' => 'is_edp',
@@ -258,55 +217,36 @@ $schema = array(
         'Product name' => array(
             'table' => 'product_descriptions',
             'db_field' => 'product',
-            'multilang' => true,
-            'process_get' => array('fn_export_product_descr', '#key', '#this', '#lang_code', 'product'),
-            'process_put' => array('fn_import_product_descr', '#this', '#key', 'product'),
+            'multilang' => true
         ),
         'Description' => array(
             'table' => 'product_descriptions',
             'db_field' => 'full_description',
-            'multilang' => true,
-            'process_get' => array('fn_export_product_descr', '#key', '#this', '#lang_code', 'full_description'),
-            'process_put' => array('fn_import_product_descr', '#this', '#key', 'full_description'),
+            'multilang' => true
         ),
         'Short description' => array(
             'table' => 'product_descriptions',
             'db_field' => 'short_description',
-            'multilang' => true,
-            'process_get' => array('fn_export_product_descr', '#key', '#this', '#lang_code', 'short_description'),
-            'process_put' => array('fn_import_product_descr', '#this', '#key', 'short_description'),
+            'multilang' => true
         ),
         'Meta keywords' => array(
             'table' => 'product_descriptions',
             'db_field' => 'meta_keywords',
-            'multilang' => true,
-            'process_get' => array('fn_export_product_descr', '#key', '#this', '#lang_code', 'meta_keywords'),
-            'process_put' => array('fn_import_product_descr', '#this', '#key', 'meta_keywords'),
+            'multilang' => true
         ),
         'Meta description' => array(
             'table' => 'product_descriptions',
             'db_field' => 'meta_description',
-            'multilang' => true,
-            'process_get' => array('fn_export_product_descr', '#key', '#this', '#lang_code', 'meta_description'),
-            'process_put' => array('fn_import_product_descr', '#this', '#key', 'meta_description'),
+            'multilang' => true
         ),
         'Search words' => array(
             'table' => 'product_descriptions',
             'db_field' => 'search_words',
-            'multilang' => true,
-            'process_get' => array('fn_export_product_descr', '#key', '#this', '#lang_code', 'search_words'),
-            'process_put' => array('fn_import_product_descr', '#this', '#key', 'search_words'),
+            'multilang' => true
         ),
         'Page title' => array(
             'table' => 'product_descriptions',
             'db_field' => 'page_title',
-            'multilang' => true,
-            'process_get' => array('fn_export_product_descr', '#key', '#this', '#lang_code', 'page_title'),
-            'process_put' => array('fn_import_product_descr', '#this', '#key', 'page_title'),
-        ),
-        'Promo text' => array (
-            'table' => 'product_descriptions',
-            'db_field' => 'promo_text',
             'multilang' => true
         ),
         'Taxes' => array(
@@ -318,14 +258,15 @@ $schema = array(
         ),
         'Features' => array(
             'process_get' => array('fn_exim_get_product_features', '#key', '@features_delimiter', '#lang_code'),
-            'process_put' => array('fn_exim_set_product_features', '#key', '#this', '@features_delimiter', '#lang_code'),
+            'process_put' => array('fn_exim_set_product_features', '#key', '#this', '@features_delimiter'),
+            'multilang' => true,
             'linked' => false, // this field is not linked during import-export
         ),
         'Options' => array(
-            'process_get' => array('fn_exim_get_product_options', '#key', '#lang_code', '@features_delimiter'),
-            'process_put' => array('fn_exim_set_product_options', '#key', '#this', '#lang_code', '@features_delimiter'),
-            'linked' => false, // this field is not linked during import-export
+            'process_get' => array('fn_exim_get_product_options', '#key', '#lang_code'),
+            'process_put' => array('fn_exim_set_product_options', '#key', '#this'),
             'multilang' => true,
+            'linked' => false, // this field is not linked during import-export
         ),
         'Secondary categories' => array(
             'process_get' => array('fn_exim_get_product_categories', '#key', 'A', '@category_delimiter', '#lang_code'),
@@ -346,12 +287,6 @@ $schema = array(
             'table' => 'images_links',
             'export_only' => true,
         ),
-        'Detailed image URL' => array(
-            'process_get' => array('fn_exim_get_detailed_image_url', '#key', 'product', 'M', '#lang_code'),
-            'db_field' => 'detailed_id',
-            'table' => 'images_links',
-            'export_only' => true,
-        ),
         'Items in box' => array(
             'process_get' => array('fn_exim_get_items_in_box', '#key'),
             'process_put' => array('fn_exim_put_items_in_box', '#key', '#this'),
@@ -362,25 +297,10 @@ $schema = array(
             'process_put' => array('fn_exim_put_box_size', '#key', '#this'),
             'linked' => false, // this field is not linked during import-export
         ),
-        'Usergroup IDs' => array(
-            'db_field' => 'usergroup_ids'
-        ),
-        'Available since' => array(
-            'db_field' => 'avail_since',
-            'process_get' => array('fn_exim_get_optional_timestamp', '#this'),
-            'convert_put' => array('fn_exim_put_optional_timestamp', '#this'),
-            'return_result' => true
-        ),
-        'Options type' => array(
-            'db_field' => 'options_type'
-        ),
-        'Exceptions type' => array(
-            'db_field' => 'exceptions_type'
-        ),
     ),
 );
 
-if (!fn_allowed_for('ULTIMATE:FREE') && Registry::get('config.tweaks.disable_localizations') == false) {
+if (!fn_allowed_for('ULTIMATE:FREE')) {
     $schema['export_fields']['Localizations'] = array(
         'db_field' => 'localization',
         'process_get' => array('fn_exim_get_localizations', '#this', '#lang_code'),
@@ -393,7 +313,7 @@ if (!fn_allowed_for('ULTIMATE:FREE') && Registry::get('config.tweaks.disable_loc
 $company_schema = array(
     'table' => 'companies',
     'db_field' => 'company',
-    'process_put' => array('fn_exim_set_product_company', '#key', '#this')
+    'process_put' => array('fn_exim_set_company', '#key', '#this')
 );
 
 if (fn_allowed_for('ULTIMATE')) {
@@ -403,34 +323,28 @@ if (fn_allowed_for('ULTIMATE')) {
     if (!Registry::get('runtime.company_id')) {
         $schema['export_fields']['Store']['required'] = true;
         $schema['export_fields']['Category']['process_put'] = array('fn_exim_set_product_categories', '#key', 'M', '#this', '@category_delimiter', '%Store%');
-        $schema['export_fields']['Features']['process_put'] = array('fn_exim_set_product_features', '#key', '#this', '@features_delimiter', '#lang_code', '%Store%');
         $schema['export_fields']['Secondary categories']['process_put'] = array('fn_exim_set_product_categories', '#key', 'A', '#this', '@category_delimiter', '%Store%');
     }
-    $schema['import_process_data']['check_product_company_id'] = array(
-        'function' => 'fn_import_check_product_company_id',
-        'args' => array('$primary_object_id', '$object', '$pattern', '$options', '$processed_data', '$processing_groups', '$skip_record'),
-        'import_only' => true,
+
+    $schema['import_process_data'] = array(
+        'check_product_company_id' => array(
+            'function' => 'fn_import_check_product_company_id',
+            'args' => array('$primary_object_id', '$object', '$pattern', '$options', '$processed_data', '$processing_groups', '$skip_record'),
+            'import_only' => true,
+        ),
+    );
+
+    $schema['import_get_primary_object_id'] = array(
+        'fill_products_alt_keys' => array(
+            'function' => 'fn_import_fill_products_alt_keys',
+            'args' => array('$pattern', '$alt_keys', '$object', '$skip_get_primary_object_id'),
+            'import_only' => true,
+        ),
     );
 }
 if (fn_allowed_for('MULTIVENDOR')) {
     $schema['export_fields']['Vendor'] = $company_schema;
-
-    if (!Registry::get('runtime.company_id')) {
-        $schema['export_fields']['Vendor']['required'] = true;
-
-    } else {
-        $schema['import_process_data']['mve_import_check_product_data'] = array(
-            'function' => 'fn_mve_import_check_product_data',
-            'args' => array('$object', '$primary_object_id','$options', '$processed_data', '$skip_record'),
-            'import_only' => true,
-        );
-
-        $schema['import_process_data']['mve_import_check_object_id'] = array(
-            'function' => 'fn_mve_import_check_object_id',
-            'args' => array('$primary_object_id', '$processed_data', '$skip_record'),
-            'import_only' => true,
-        );
-    }
+    $schema['export_fields']['Vendor']['required'] = true;
 }
 
 return $schema;

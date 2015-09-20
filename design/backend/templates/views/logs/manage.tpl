@@ -31,7 +31,7 @@
         {/foreach}
 
         {if $log.backtrace}
-        <p><a onclick="Tygh.$('#backtrace_{$log.log_id}').toggle(); return false;" class="underlined"><span>{__("backtrace")}&rsaquo;&rsaquo;</span></a></p>
+        <p><a onclick="Tygh.$('#backtrace_{$log.log_id}').toggle(); return false;" class="underlined"><span>{__("backtrace")}&#155;&#155;</span></a></p>
         <div id="backtrace_{$log.log_id}" class="notice-box hidden">
         {foreach from=$log.backtrace item="v"}
         {$v.file}{if $v.function}&nbsp;({$v.function }){/if}:&nbsp;{$v.line}<br />
@@ -67,12 +67,10 @@
 
 {capture name="buttons"}
     {capture name="tools_list"}
-        {hook name="logs:tools"}
         <li>{btn type="list" text=__("settings") href="settings.manage?section_id=Logging"}</li>
         <li>{btn type="list" target="_blank" text=__("phpinfo") href="tools.phpinfo"}</li>
-        <li>{btn type="list" text=__("backup_restore") href="datakeeper.manage"}</li>
-        <li>{btn type="list" text=__("clean_logs") href="logs.clean" class="cm-confirm cm-post"}</li>
-        {/hook}
+        <li>{btn type="list" text=__("db_backup_restore") href="database.manage"}</li>
+        <li>{btn type="list" text=__("clean_logs") href="logs.clean" class="cm-confirm"}</li>
     {/capture}
     {dropdown content=$smarty.capture.tools_list}
 {/capture}

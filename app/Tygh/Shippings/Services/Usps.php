@@ -42,7 +42,7 @@ class Usps implements IService
      * @param  string $code 2-letter Country code
      * @return string Country name
      */
-    private function _getCountry($code)
+    private function _getUspsCountry($code)
     {
         static $countries = array (
             'AD' => 'Andorra',
@@ -288,7 +288,7 @@ class Usps implements IService
      * @param  string $service_name Shipping service name (E.g.: First Class Mail <i>tm</i>)
      * @return string Service name in upper case without extra symbols (E.g.: FIRST CLASS MAIL)
      */
-    private function _prepareServiceName($service_name)
+    private function _uspsPrepareServiceName($service_name)
     {
         // Decode HTML entities and remove any text between the tags
         $service_name = preg_replace('/<.+?>.*?<\/.+?>/i', '', html_entity_decode($service_name));
@@ -297,44 +297,6 @@ class Usps implements IService
         $service_name = preg_replace('/[^A-Z ]/i', '', html_entity_decode($service_name));
 
         return $service_name;
-    }
-
-    /**
-     * Gets Extra services like: insurance, drop off, etc
-     *
-     * @return array List of services
-     */
-    private function _getExtraServices()
-    {
-        $extra_services = array(
-            'domestic' => array(
-                0 => 'domestic_service_certified',
-                1 => 'domestic_service_insurance',
-                3 => 'domestic_service_restricted_delivery',
-                4 => 'domestic_service_registered_without_insurance',
-                5 => 'domestic_service_registered_with_insurance',
-                6 => 'domestic_service_collect_on_delivery',
-                7 => 'domestic_service_return_receipt_for_merchandise',
-                8 => 'domestic_service_return_receipt',
-                9 => 'domestic_service_certificate_of_mailing_per_individual_article',
-                10 => 'domestic_service_certificate_of_mailing_for_firm_mailing_books',
-                11 => 'domestic_service_express_mail_insurance',
-                13 => 'domestic_service_delivery_confirmation',
-                15 => 'domestic_service_signature_confirmation',
-                16 => 'domestic_service_return_receipt_electronic',
-
-            ),
-            'intl' => array(
-                0 => 'intl_service_registered_mail',
-                1 => 'intl_service_insurance',
-                2 => 'intl_service_return_receipt',
-                5 => 'intl_service_pick_up_on_demand',
-                6 => 'intl_service_certificate_of_mailing',
-                9 => 'intl_service_edelivery_confirmation',
-            ),
-        );
-
-        return $extra_services;
     }
 
     /**
@@ -358,11 +320,10 @@ class Usps implements IService
         $return = array(
             'cost' => false,
             'error' => false,
-            'delivery_time' => false,
         );
 
         $code = $this->_shipping_info['service_code'];
-        $code = $this->_prepareServiceName($code);
+        $code = $this->_uspsPrepareServiceName($code);
 
         $rates = $this->processRates($response, $this->_is_domestic, $this->_shipping_info['service_params']);
 
@@ -420,7 +381,33 @@ class Usps implements IService
         $xml = @simplexml_load_string($response);
         $return = array();
 
-        $extra_services = $this->_getExtraServices();
+        $extra_services = array(
+            'domestic' => array(
+                0 => 'domestic_service_certified',
+                1 => 'domestic_service_insurance',
+                3 => 'domestic_service_restricted_delivery',
+                4 => 'domestic_service_registered_without_insurance',
+                5 => 'domestic_service_registered_with_insurance',
+                6 => 'domestic_service_collect_on_delivery',
+                7 => 'domestic_service_return_receipt_for_merchandise',
+                8 => 'domestic_service_return_receipt',
+                9 => 'domestic_service_certificate_of_mailing_per_individual_article',
+                10 => 'domestic_service_certificate_of_mailing_for_firm_mailing_books',
+                11 => 'domestic_service_express_mail_insurance',
+                13 => 'domestic_service_delivery_confirmation',
+                15 => 'domestic_service_signature_confirmation',
+                16 => 'domestic_service_return_receipt_electronic',
+
+            ),
+            'intl' => array(
+                0 => 'intl_service_registered_mail',
+                1 => 'intl_service_insurance',
+                2 => 'intl_service_return_receipt',
+                5 => 'intl_service_pick_up_on_demand',
+                6 => 'intl_service_certificate_of_mailing',
+                9 => 'intl_service_edelivery_confirmation',
+            ),
+        );
 
         if (!empty($xml)) {
             if ($is_domestic == true) {
@@ -439,7 +426,7 @@ class Usps implements IService
                 if ($is_domestic == true) {
                     if ($shipment[$i]->Postage) {
                         $service_name = (string) $shipment[$i]->Postage->MailService;
-                        $service_name = $this->_prepareServiceName($service_name);
+                        $service_name = $this->_uspsPrepareServiceName($service_name);
 
                         if ((string) $shipment[$i]->Postage->Rate == '0.00') {
                             $rate = (string) $shipment[$i]->Postage->CommercialRate;
@@ -455,7 +442,7 @@ class Usps implements IService
                                 if (strtoupper($availability) == 'TRUE') {
                                     $service_id = (string) $service->ServiceID;
 
-                                    if (isset($extra_services['domestic'][$service_id]) && isset($shipping_settings[$extra_services['domestic'][$service_id]]) && $shipping_settings[$extra_services['domestic'][$service_id]] == 'Y') {
+                                    if (isset($shipping_settings['usps'][$extra_services['domestic'][$service_id]]) && $shipping_settings['usps'][$extra_services['domestic'][$service_id]] == 'Y') {
                                         $rate += floatval((string) $service->Price);
                                     }
 
@@ -467,8 +454,8 @@ class Usps implements IService
                             $is_machinable = (string) $shipment[$i]->Machinable;
                             if ($service_name == 'STANDARD POST') {
                                 $service_name .= ($is_machinable == 'TRUE' ? ' M' : ' N');
-                            } elseif (strpos($service_name, 'PRIORITY MAIL EXPRESS') !== false) {
-                                $service_name = 'PRIORITY MAIL EXPRESS';
+                            } elseif (strpos($service_name, 'EXPRESS MAIL') !== false) {
+                                $service_name = 'EXPRESS MAIL';
                             } elseif (strpos($service_name, 'PRIORITY MAIL REGIONAL RATE') !== false) {
                                 $service_name = 'PRIORITY MAIL REGIONAL RATE';
                             } elseif (strpos($service_name, 'PRIORITY MAIL') !== false) {
@@ -482,7 +469,7 @@ class Usps implements IService
                     if ($shipment[$i]->Postage) {
                         $service_name = (string) $shipment[$i]->SvcDescription;
 
-                        $service_name = $this->_prepareServiceName($service_name);
+                        $service_name = fn_usps_prepare_service_name($service_name);
 
                         $rate = (string) $shipment[$i]->Postage;
                         $services = $shipment[$i]->ExtraServices;
@@ -493,7 +480,7 @@ class Usps implements IService
                                 if (strtoupper($availability) == 'TRUE') {
                                     $service_id = (string) $service->ServiceID;
 
-                                    if (isset($shipping_settings[$extra_services['intl'][$service_id]]) && $shipping_settings[$extra_services['intl'][$service_id]] == 'Y') {
+                                    if (isset($shipping_settings['usps'][$extra_services['intl'][$service_id]]) && $shipping_settings['usps'][$extra_services['intl'][$service_id]] == 'Y') {
                                         $rate += floatval((string) $service->Price);
                                     }
 
@@ -535,8 +522,6 @@ class Usps implements IService
     {
         $code = $this->_shipping_info['service_code'];
         $weight_data = fn_expand_weight($this->_shipping_info['package_info']['W']);
-        $package_cost = $this->_shipping_info['package_info']['C'];
-
         $shipping_settings = $this->_shipping_info['service_params'];
 
         if (!empty($shipping_settings['test_mode']) && $shipping_settings['test_mode'] == 'Y') {
@@ -548,7 +533,7 @@ class Usps implements IService
         $username = !empty($shipping_settings['username']) ? $shipping_settings['username'] : '';
 
         $machinable = !empty($shipping_settings['machinable']) ? $shipping_settings['machinable'] : '';
-        $container_priority = !empty($shipping_settings['container_priority']) ? strtoupper($shipping_settings['container_priority']) : '';
+        $container_priority = !empty($shipping_settings['container_priority']) ? $shipping_settings['container_priority'] : '';
         $container_express = !empty($shipping_settings['container_express']) ? $shipping_settings['container_express'] : '';
         $mailtype = !empty($shipping_settings['mailtype']) ? $shipping_settings['mailtype'] : '';
 
@@ -578,7 +563,7 @@ class Usps implements IService
                 <Length>$_length</Length>
                 <Height>$_height</Height>
 EOT;
-            if ($container_priority == 'NONRECTANGULAR') {
+            if ($container_priority == 'NonRectangular') {
                 $_priority_girth = !empty($shipping_settings['priority_girth']) ? $shipping_settings['username'] : '';
                 $size_parameters .= "<Girth>$_priority_girth</Girth>";
             }
@@ -600,23 +585,7 @@ EOT;
             $destination_country = 'US';
         }
 
-        $ground_only = !empty($shipping_settings['ground_only']) && $shipping_settings['ground_only'] == 'Y' ? "<GroundOnly>true</GroundOnly>\n" : '';
         if ($origination_country == $destination_country) {
-            $extra_services = $this->_getExtraServices();
-            $_services = array();
-
-            foreach ($shipping_settings as $service_id => $enabled) {
-                if (array_search($service_id, $extra_services['domestic']) !== false && $enabled == 'Y') {
-                    $_services[] = '<SpecialService>' . array_search($service_id, $extra_services['domestic']) . '</SpecialService>';
-                }
-            }
-
-            if (!empty($_services)) {
-                $_services = '<SpecialServices>' . implode("\n", $_services) . '</SpecialServices>';
-            } else {
-                $_services = '';
-            }
-
             // Domestic rate calculation
             $query=<<<EOT
             <RateV4Request USERID="$username">
@@ -629,9 +598,6 @@ EOT;
                 <Ounces>$ounces</Ounces>
                 <Container>$container_express</Container>
                 <Size>$package_size</Size>
-                <Value>$package_cost</Value>
-                $_services
-                $ground_only
               </Package>
               <Package ID="1">
                 <Service>FIRST CLASS</Service>
@@ -642,9 +608,6 @@ EOT;
                 <Ounces>$ounces</Ounces>
                 <Container/>
                 <Size>$package_size</Size>
-                <Value>$package_cost</Value>
-                $_services
-                $ground_only
                 <Machinable>$machinable</Machinable>
               </Package>
               <Package ID="2">
@@ -656,9 +619,6 @@ EOT;
                 <Container>$container_priority</Container>
                 <Size>$package_size</Size>
                 $size_parameters
-                <Value>$package_cost</Value>
-                $_services
-                $ground_only
               </Package>
               <Package ID="3">
                 <Service>PARCEL</Service>
@@ -668,9 +628,6 @@ EOT;
                 <Ounces>$ounces</Ounces>
                 <Container/>
                 <Size>$package_size</Size>
-                <Value>$package_cost</Value>
-                $_services
-                $ground_only
                 <Machinable>$machinable</Machinable>
               </Package>
               <Package ID="4">
@@ -681,9 +638,6 @@ EOT;
                 <Ounces>$ounces</Ounces>
                 <Container/>
                 <Size>$package_size</Size>
-                <Value>$package_cost</Value>
-                $_services
-                $ground_only
               </Package>
               <Package ID="5">
                 <Service>LIBRARY</Service>
@@ -693,9 +647,6 @@ EOT;
                 <Ounces>$ounces</Ounces>
                 <Container/>
                 <Size>$package_size</Size>
-                <Value>$package_cost</Value>
-                $_services
-                $ground_only
               </Package>
               <Package ID="6">
                 <Service>MEDIA</Service>
@@ -705,9 +656,6 @@ EOT;
                 <Ounces>$ounces</Ounces>
                 <Container/>
                 <Size>$package_size</Size>
-                <Value>$package_cost</Value>
-                $_services
-                $ground_only
               </Package>
               <Package ID="7">
                 <Service>PRIORITY COMMERCIAL</Service>
@@ -717,22 +665,6 @@ EOT;
                 <Ounces>$ounces</Ounces>
                 <Container>$container_priority</Container>
                 <Size>$package_size</Size>
-                <Value>$package_cost</Value>
-                $_services
-                $ground_only
-                <Machinable>$machinable</Machinable>
-              </Package>
-              <Package ID="7">
-                <Service>STANDART POST</Service>
-                <ZipOrigination>$origination_postal</ZipOrigination>
-                <ZipDestination>$destination_postal</ZipDestination>
-                <Pounds>$pounds</Pounds>
-                <Ounces>$ounces</Ounces>
-                <Container>$container_priority</Container>
-                <Size>$package_size</Size>
-                <Value>$package_cost</Value>
-                $_services
-                $ground_only
                 <Machinable>$machinable</Machinable>
               </Package>
             </RateV4Request>
@@ -742,14 +674,12 @@ EOT;
                 'API' => 'RateV4',
                 'XML' => $query,
             );
-
             $is_domestic = true;
 
         } else {
 
             // International rate calculation
-            $destination_country = $this->_getCountry($destination_country);
-            $origination_country = $this->_getCountry($origination_country);
+            $destination_country = $this->_getUspsCountry($destination_country);
             if (empty($destination_country)) {
                 return false;
             }
@@ -762,27 +692,6 @@ EOT;
             $intl_package_height = empty($shipping_settings['intl_package_height']) ? '0' : $shipping_settings['intl_package_height'];
             $intl_package_girth = empty($shipping_settings['intl_package_girth']) ? '0' : $shipping_settings['intl_package_girth'];
 
-            $extra_services = $this->_getExtraServices();
-            $_services = array();
-
-            foreach ($shipping_settings as $service_id => $enabled) {
-                if (array_search($service_id, $extra_services['intl']) !== false && $enabled == 'Y') {
-                    $_services[] = '<ExtraService>' . array_search($service_id, $extra_services['intl']) . '</ExtraService>';
-                }
-            }
-
-            if (!empty($_services)) {
-                $_services = '<ExtraServices>' . implode("\n", $_services) . '</ExtraServices>';
-            } else {
-                $_services = '';
-            }
-
-            if ($destination_country == 'Canada' && $origination_country == 'United States') {
-                $origin_zip = "<OriginZip>$origination_postal</OriginZip>";
-            } else {
-                $origin_zip = '';
-            }
-
             $query=<<<EOT
             <IntlRateV2Request USERID="$username">
               <Revision>2</Revision>
@@ -790,7 +699,7 @@ EOT;
                 <Pounds>$pounds</Pounds>
                 <Ounces>$ounces</Ounces>
                 <MailType>$mailtype</MailType>
-                <ValueOfContents>$package_cost</ValueOfContents>
+                <ValueOfContents>0</ValueOfContents>
                 <Country>$destination_country</Country>
                 <Container>$container</Container>
                 <Size>$intl_package_size</Size>
@@ -798,9 +707,7 @@ EOT;
                 <Length>$intl_package_length</Length>
                 <Height>$intl_package_height</Height>
                 <Girth>$intl_package_girth</Girth>
-                $origin_zip
                 <CommercialFlag>N</CommercialFlag>
-                $_services
               </Package>
             </IntlRateV2Request>
 EOT;

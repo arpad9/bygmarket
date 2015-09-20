@@ -16,7 +16,6 @@ namespace Tygh\Backend\Cache;
 
 use Tygh\Database as Db;
 use Tygh\Registry;
-use Tygh\Exceptions\DatabaseException;
 
 class Database extends ABackend
 {
@@ -119,7 +118,7 @@ class Database extends ABackend
             $res = Db::query('CREATE TABLE ?:cache (name varchar(255), company_id int(11) unsigned not null default \'0\', data mediumtext, expiry int, tags varchar(255), PRIMARY KEY(name, company_id), KEY (tags), KEY (name, company_id, expiry), KEY (company_id)) Engine=MyISAM DEFAULT CHARSET UTF8');
             Registry::set('runtime.database.skip_errors', false);
             if ($res == false) {
-                throw new DatabaseException('Database cache data storage is not supported. Please choose another one.');
+                die('Database cache data storage is not supported. Please choose another one.');
             }
         }
 

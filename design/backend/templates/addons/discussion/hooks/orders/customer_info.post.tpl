@@ -1,4 +1,4 @@
-{if $runtime.company_id && "ULTIMATE"|fn_allowed_for || "MULTIVENDOR"|fn_allowed_for || $runtime.simple_ultimate}
+{if $runtime.company_id && "ULTIMATE"|fn_allowed_for || "MULTIVENDOR"|fn_allowed_for}
 
 {assign var="discussion" value=$order_info.order_id|fn_get_discussion:"O"}
 
@@ -7,7 +7,7 @@
 <div class="control-group">
     <label class="control-label">{__("discussion_title_order")}</label>
     <div class="controls">
-        {if "discussion.add"|fn_check_view_permissions}
+        {if "discussion.update"|fn_check_view_permissions}
 	    <input type="hidden" name="discussion[object_id]" value="{$order_info.order_id}" />
 	    <input type="hidden" name="discussion[object_type]" value="O" /> 
 	    <select name="discussion[type]">

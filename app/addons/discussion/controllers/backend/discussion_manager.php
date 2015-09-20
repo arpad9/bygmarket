@@ -48,10 +48,10 @@ if ($mode == 'manage') {
         }
     }
 
-    Tygh::$app['view']->assign('posts', $posts);
-    Tygh::$app['view']->assign('search', $search);
-    Tygh::$app['view']->assign('discussion_object_type', $_REQUEST['object_type']);
-    Tygh::$app['view']->assign('discussion_object_types', $discussion_object_types);
+    Registry::get('view')->assign('posts', $posts);
+    Registry::get('view')->assign('search', $search);
+    Registry::get('view')->assign('discussion_object_type', $_REQUEST['object_type']);
+    Registry::get('view')->assign('discussion_object_types', $discussion_object_types);
 }
 
 function fn_get_discussions($params, $items_per_page)
@@ -111,7 +111,7 @@ function fn_get_discussions($params, $items_per_page)
     }
 
     if (isset($params['ip_address']) && fn_string_not_empty($params['ip_address'])) {
-        $condition .= db_quote(" AND ?:discussion_posts.ip_address = ?s", fn_ip_to_db(trim($params['ip_address'])));
+        $condition .= db_quote(" AND ?:discussion_posts.ip_address = ?s", trim($params['ip_address']));
     }
 
     if (!empty($params['rating_value'])) {
@@ -136,16 +136,10 @@ function fn_get_discussions($params, $items_per_page)
     $limit = '';
     if (!empty($params['items_per_page'])) {
         $params['total_items'] = db_get_field("SELECT COUNT(*) FROM ?:discussion_posts $join WHERE 1 $condition");
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+        $limit = db_paginate($params['page'], $params['items_per_page']);
     }
 
     $posts = db_get_array("SELECT " . implode(',', $fields) . " FROM ?:discussion_posts $join WHERE 1 $condition $sorting $limit");
-
-    foreach ($posts as $k => $post) {
-        if (isset($post['ip_address'])) {
-            $posts[$k]['ip_address'] = fn_ip_from_db($post['ip_address']);
-        }
-    }
 
     return array($posts, $params);
 }

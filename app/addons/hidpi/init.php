@@ -15,6 +15,5 @@
 fn_register_hooks(
     'update_image',
     'generate_thumbnail_file_pre',
-    'delete_image',
-    'init_templater_post'
+    'delete_image'
 );

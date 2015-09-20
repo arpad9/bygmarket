@@ -12,8 +12,6 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-use Tygh\Registry;
-
 $customers_items = array(
     'vendor_administrators' => array(
         'href' => 'profiles.manage?user_type=V',
@@ -39,38 +37,10 @@ $schema['central']['vendors'] = array(
     'position' => 600,
 );
 
-$schema['top']['settings']['items']['Vendors'] = array(
-    'href' => 'settings.manage?section_id=vendors',
+$schema['top']['settings']['items']['Suppliers'] = array(
+    'href' => 'settings.manage?section_id=suppliers',
     'position' => 950,
     'type' => 'setting',
 );
-
-if (Registry::get('runtime.company_id')) {
-    $schema['top']['administration']['items']['import_data'] = array(
-        'href' => 'exim.import',
-        'position' => 1200,
-        'subitems' => array(
-            'products' => array(
-                'href' => 'exim.import?section=products',
-                'position' => 200,
-            ),
-        ),
-    );
-
-    $schema['top']['administration']['items']['export_data'] = array(
-        'href' => 'exim.export',
-        'position' => 1300,
-        'subitems' => array(
-            'orders' => array(
-                'href' => 'exim.export?section=orders',
-                'position' => 100,
-            ),
-            'products' => array(
-                'href' => 'exim.export?section=products',
-                'position' => 200,
-            ),
-        ),
-    );
-}
 
 return $schema;

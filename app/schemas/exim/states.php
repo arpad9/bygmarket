@@ -19,10 +19,6 @@ return array(
     'key' => array('state_id'),
     'order' => 1,
     'table' => 'states',
-    'permissions' => array(
-        'import' => 'manage_locations',
-        'export' => 'view_locations',
-    ),
     'references' => array(
         'state_descriptions' => array(
             'reference_fields' => array('state_id' => '#key', 'lang_code' => '#lang_code'),

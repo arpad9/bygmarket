@@ -54,7 +54,6 @@ class Dhl implements IService
         if (is_object($doc->root)) {
             $root = $doc->getRoot();
             $shipment = $root->getElementsByName($request_type);
-
             for ($i = 0; $i < count($shipment); $i++) {
                 $_charge = $shipment[$i]->getValueByPath("/EstimateDetail/RateEstimate/TotalChargeEstimate");
                 if (!empty($_charge)) {
@@ -67,10 +66,7 @@ class Dhl implements IService
                             $_c .= ":1030";
                         }
                     }
-                    $return[$_c] = array(
-                        'rate' => trim($_charge),
-                        'delivery_time' => $_d,
-                    );
+                    $return[$_c] = trim($_charge);
                 }
             }
         }
@@ -99,17 +95,12 @@ class Dhl implements IService
         $return = array(
             'cost' => false,
             'error' => false,
-            'delivery_time' => false,
         );
 
         $rates = $this->_getRates($response, $this->_request_type);
 
         if (!empty($rates[$this->_shipping_info['service_code']])) {
-            $return['cost'] = $rates[$this->_shipping_info['service_code']]['rate'];
-
-            if (isset($rates[$this->_shipping_info['service_code']]['delivery_time'])) {
-                $return['delivery_time'] = $rates[$this->_shipping_info['service_code']]['delivery_time'];
-            }
+            $return['cost'] = $rates[$this->_shipping_info['service_code']];
         } else {
             $return['error'] = $this->processErrors($response);
         }
@@ -174,6 +165,10 @@ class Dhl implements IService
         $shipping_settings = $this->_shipping_info['service_params'];
         $origination = $this->_shipping_info['package_info']['origination'];
         $location = $this->_shipping_info['package_info']['location'];
+
+        if ($location['country'] == 'GB') {
+            $location['country'] = 'UK';
+        }
 
         $this->_request_type = ($location['country'] != $origination['country']) ? 'IntlShipment' : 'Shipment';
 

@@ -5,6 +5,15 @@
 {/if}
 
 {capture name="mainbox"}
+    {capture name="sidebar"}
+        <div class="sidebar-row">
+            <ul class="nav nav-list">
+                <li class="last">
+                    <a href="{"profiles.manage?user_type=C"|fn_url}">{__("customers")}</a>
+                </li>
+            </ul>
+        </div>
+    {/capture}
     <div id="content_reward_points">
         <form action="{""|fn_url}" method="post" name="reward_points">
         
@@ -29,14 +38,14 @@
             {foreach from=$reward_usergroups item=m}
                 {assign var="m_id" value=$m.usergroup_id}
                 {assign var="point" value=$reward_points.$m_id}
-                <tr id="container_earned_points_{$object_type}_{$m_id}">
+                <tr>
                     <td>
                         <input type="hidden" name="reward_points[{$m_id}][usergroup_id]" value="{$m_id}">
                         {$m.usergroup}</td>
                     <td>
                         <input type="text" id="earned_points_{$object_type}_{$m_id}" name="reward_points[{$m_id}][amount]" value="{$point.amount|default:"0"}" {if $show_update_for_all}disabled="disabled"{/if}></td>
                     <td>
-                        <select name="reward_points[{$m_id}][amount_type]" id="type_earned_points_{$object_type}_{$m_id}" class="expanded input-xlarge" {if $show_update_for_all}disabled="disabled"{/if}>
+                        <select name="reward_points[{$m_id}][amount_type]"  id="type_earned_points_{$object_type}_{$m_id}" class="expanded input-xlarge" {if $show_update_for_all}disabled="disabled"{/if}>
                             <option value="A" {if $point.amount_type == "A"}selected="selected"{/if}>{__("absolute")} ({__("points_lower")})</option>
                             <option value="P" {if $point.amount_type == "P"}selected="selected"{/if}>{__("percent")} (%)</option>
                         </select>
@@ -58,4 +67,4 @@
     </div>
 {/capture}
 
-{include file="common/mainbox.tpl" title=__("reward_points") buttons=$smarty.capture.buttons content=$smarty.capture.mainbox}
+{include file="common/mainbox.tpl" title=__("reward_points") buttons=$smarty.capture.buttons sidebar=$smarty.capture.sidebar content=$smarty.capture.mainbox}

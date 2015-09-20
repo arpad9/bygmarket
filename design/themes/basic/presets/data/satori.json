@@ -1,0 +1,87 @@
+{
+    "name": "Satori (default)",
+    "is_base": "1",
+    "data": {
+        "general": {
+            "rounded_corners": "1"
+        },
+        "colors": {
+            "links": "#0088cc",
+            "menu": "#5f5f5f",
+            "base": "#808080",
+            "font": "#333333",
+            "primary_button": "#fb8913",
+            "secondary_button": "#d9d9d9",
+            "sidebar": "#a4a4a4",
+            "price": "#a80006",
+            "discount_label": "#62ad00",
+            "in_stock": "#62ad00",
+            "out_of_stock": "#a80006",
+            "top_panel_links": "#0088cc",
+            "top_panel_text": "#555555",
+            "footer_text": "#808080",
+            "decorative": "#e3e3e3"
+        },
+        "fonts": {
+            "body_font": {
+                "family": "Arial,Helvetica,sans-serif",
+                "size": "13"
+            },
+            "headings_font": {
+                "family": "Arial,Helvetica,sans-serif",
+                "size": "26",
+                "style": {
+                    "B": "1"
+                }
+            },
+            "links_font": {
+                "family": "Arial,Helvetica,sans-serif",
+                "size": "13"
+            },
+            "price_font": {
+                "family": "Arial,Helvetica,sans-serif",
+                "size": "36"
+            },
+            "buttons_font": {
+                "family": "Arial,Helvetica,sans-serif",
+                "size": "11",
+                "style": {
+                    "B": "1"
+                }
+            }
+        },
+        "backgrounds": {
+            "general_bg": {
+                "color": "#ffffff",
+                "image_data": "",
+                "repeat": "repeat",
+                "attachment": "scroll"
+            },
+            "top_panel_bg": {
+                "color": "#f3f3f3",
+                "gradient": "#efefef",
+                "full_width": "1",
+                "repeat": "repeat",
+                "attachment": "scroll"
+            },
+            "header_bg": {
+                "color": "#ffffff",
+                "gradient": "#ffffff",
+                "repeat": "repeat",
+                "attachment": "scroll"
+            },
+            "content_bg": {
+                "color": "#ffffff",
+                "repeat": "repeat",
+                "attachment": "scroll"
+            },
+            "footer_bg": {
+                "color": "#f3f3f3",
+                "gradient": "#f3f3f3",
+                "full_width": "1",
+                "repeat": "repeat",
+                "attachment": "scroll"
+            }
+        }
+    }
+}

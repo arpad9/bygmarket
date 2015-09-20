@@ -15,9 +15,7 @@
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
 if (defined('PAYMENT_NOTIFICATION')) {
-    if (!empty($_REQUEST['order_id'])) {
-        fn_payments_set_company_id($_REQUEST['order_id']);
-    }
+
     if (!empty($_REQUEST['key'])) {
         $payment_id = db_get_field("SELECT payment_id FROM ?:orders WHERE order_id = ?i", $_REQUEST['order_id']);
         $processor_data = fn_get_payment_method_data($payment_id);
@@ -83,99 +81,99 @@ if (defined('PAYMENT_NOTIFICATION')) {
     $is_test = ($processor_data['processor_params']['mode'] == 'test') ? 'Y' : 'N';
     $cart_order_id = ($order_info['repaid']) ? ($order_id .'_'. $order_info['repaid']) : $order_id;
     $sh_cost = fn_order_shipping_cost($order_info);
-    $need_shipping = false;
 
-    $it = 0;
-    if (!empty($order_info['products'])) {
-        foreach ($order_info['products'] as $k => $v) {
-            $it++;
-            if (!empty($v['extra']['is_edp']) && $v['extra']['is_edp'] == 'Y') {
-                if ($v['extra']['edp_shipping'] == 'Y') {
-                    $need_shipping = true;
-                }
-                $is_tangible = 'N';
-            } else {
-                $need_shipping = true;
-                $is_tangible = 'Y';
-            }
-            $is_tangible = (!empty($v['extra']['is_edp']) && $v['extra']['is_edp'] == 'Y') ? 'N' : 'Y';
-            $price = fn_format_price($v['price'] - (fn_external_discounts($v) / $v['amount']));
-            $suffix = "_$it";
+echo <<<EOT
+<form action="https://www.2checkout.com/2co/buyer/purchase" method="POST" name="process">
+    <input type="hidden" name="sid" value="{$processor_data['processor_params']['account_number']}" />
+    <input type="hidden" name="total" value="{$order_info['total']}" />
 
-            $form_data["c_prod{$suffix}"] = $v['product_id'] . ',' . $v['amount'];
-            $form_data["c_name{$suffix}"] = $v['product'];
-            $form_data["c_description{$suffix}"] = $v['product'];
-            $form_data["c_price{$suffix}"] = $price;
-            $form_data["c_tangible{$suffix}"] = $is_tangible;
-        }
+    <input type="hidden" name="merchant_order_id" value="{$cart_order_id}" />
+    <input type="hidden" name="cart_order_id" value="{$cart_order_id}" />
+
+    <input type="hidden" name="card_holder_name" value="{$order_info['b_firstname']} {$order_info['b_lastname']}" />
+    <input type="hidden" name="street_address" value="{$order_info['b_address']}" />
+    <input type="hidden" name="city" value="{$order_info['b_city']}" />
+    <input type="hidden" name="state" value="{$__bstate}" />
+    <input type="hidden" name="zip" value="{$order_info['b_zipcode']}" />
+    <input type="hidden" name="country" value="{$order_info['b_country']}" />
+    <input type="hidden" name="email" value="{$order_info['email']}" />
+    <input type="hidden" name="phone" value="{$order_info['phone']}" />
+    <input type="hidden" name="ship_name" value="{$order_info['s_firstname']} {$order_info['s_lastname']}" />
+    <input type="hidden" name="ship_street_address" value="{$order_info['s_address']}" />
+    <input type="hidden" name="ship_city" value="{$order_info['s_city']}" />
+    <input type="hidden" name="ship_state" value="{$__sstate}" />
+    <input type="hidden" name="ship_zip" value="{$order_info['s_zipcode']}" />
+    <input type="hidden" name="ship_country" value="{$order_info['s_country']}" />
+    <input type="hidden" name="fixed" value="Y" />
+    <input type="hidden" name="id_type" value="1" />
+    <input type="hidden" name="sh_cost" value="{$sh_cost}" />
+    <input type="hidden" name="demo" value="{$is_test}" />
+    <input type="hidden" name="dispatch" value="payment_notification" />
+    <input type="hidden" name="payment" value="2checkout" />
+    <input type="hidden" name="order_id" value="{$order_id}" />
+EOT;
+
+// Products
+$it = 0;
+if (!empty($order_info['products'])) {
+    foreach ($order_info['products'] as $k => $v) {
+        $it++;
+        $is_tangible = (!empty($v['extra']['is_edp']) && $v['extra']['is_edp'] == 'Y') ? 'N' : 'Y';
+        $price = fn_format_price($v['price'] - (fn_external_discounts($v) / $v['amount']));
+        $suffix = "_$it";
+        echo <<<EOT
+    <input type="hidden" name="c_prod{$suffix}" value="{$v['product_id']},{$v['amount']}" />
+    <input type="hidden" name="c_name{$suffix}" value="{$v['product']}" />
+    <input type="hidden" name="c_description{$suffix}" value="{$v['product']}" />
+    <input type="hidden" name="c_price{$suffix}" value="{$price}" />
+    <input type="hidden" name="c_tangible{$suffix}" value="{$is_tangible}" />
+EOT;
     }
-
-    $form_data = array(
-        'sid' => $processor_data['processor_params']['account_number'],
-        'total' => $order_info['total'],
-        'merchant_order_id' => $cart_order_id,
-        'cart_order_id' => $cart_order_id,
-        'card_holder_name' => $order_info['b_firstname'] . ' ' . $order_info['b_lastname'],
-        'street_address' => $order_info['b_address'],
-        'city' => $order_info['b_city'],
-        'state' => $__bstate,
-        'zip' => $order_info['b_zipcode'],
-        'country' => $order_info['b_country'],
-        'email' => $order_info['email'],
-        'phone' => $order_info['phone'],
-        'fixed' => 'Y',
-        'id_type' => '1',
-        'sh_cost' => $sh_cost,
-        'demo' => $is_test,
-        'dispatch' => 'payment_notification',
-        'payment' => '2checkout',
-        'order_id' => $order_id        
-    );
-
-    if ($need_shipping) {
-        $shipping_form_data = array(
-            'ship_name' => $order_info['s_firstname'] . ' ' . $order_info['s_lastname'],
-            'ship_street_address' => $order_info['s_address'],
-            'ship_city' => $order_info['s_city'],
-            'ship_state' => $__sstate,
-            'ship_zip' => $order_info['s_zipcode'],
-            'ship_country' => $order_info['s_country'],
-        );
-        $form_data = fn_array_merge($form_data, $shipping_form_data);
+}
+// Certificates
+if (!empty($order_info['gift_certificates'])) {
+    foreach ($order_info['gift_certificates'] as $k => $v) {
+        $it++;
+        $v['amount'] = (!empty($v['extra']['exclude_from_calculate'])) ? 0 : $v['amount'];
+        $suffix = "_$it";
+    echo <<<EOT
+    <input type="hidden" name="c_prod{$suffix}" value="{$v['gift_cert_id']},1" />
+    <input type="hidden" name="c_name{$suffix}" value="{$v['gift_cert_code']}" />
+    <input type="hidden" name="c_description{$suffix}" value="{$v['gift_cert_code']}" />
+    <input type="hidden" name="c_price{$suffix}" value="{$v['amount']}" />
+    <input type="hidden" name="c_tangible{$suffix}" value="N" />
+EOT;
     }
+}
 
-    // Products
-    $it = 0;
-    if (!empty($order_info['products'])) {
-        foreach ($order_info['products'] as $k => $v) {
-            $it++;
-            $is_tangible = (!empty($v['extra']['is_edp']) && $v['extra']['is_edp'] == 'Y') ? 'N' : 'Y';
-            $price = fn_format_price($v['price'] - (fn_external_discounts($v) / $v['amount']));
-            $suffix = "_$it";
-            
-            $form_data["c_prod{$suffix}"] = $v['product_id'] . ',' . $v['amount'];
-            $form_data["c_name{$suffix}"] = $v['product'];
-            $form_data["c_description{$suffix}"] = $v['product'];
-            $form_data["c_price{$suffix}"] = $price;
-            $form_data["c_tangible{$suffix}"] = $is_tangible;
-        }
-    }
+/*if (floatval($order_info['subtotal_discount'])) {
+    $it++;
+    $suffix = "_$it";
+    $desc = __('order_discount');
+    $pr = fn_format_price($order_info['subtotal_discount']);
+    echo <<<EOT
+    <input type="hidden" name="c_prod{$suffix}" value="ORDER_DISCOUNT,1" />
+    <input type="hidden" name="c_name{$suffix}" value="{$desc}" />
+    <input type="hidden" name="c_description{$suffix}" value="{$desc}" />
+    <input type="hidden" name="c_price{$suffix}" value="{$pr}" />
+    <input type="hidden" name="c_tangible{$suffix}" value="N" />
+EOT;
+}*/
 
-    // Certificates
-    if (!empty($order_info['gift_certificates'])) {
-        foreach ($order_info['gift_certificates'] as $k => $v) {
-            $it++;
-            $v['amount'] = (!empty($v['extra']['exclude_from_calculate'])) ? 0 : $v['amount'];
-            $suffix = "_$it";
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => '2checkout.com'
+));
 
-            $form_data["c_prod{$suffix}"] = $v['gift_cert_id'] . ',1';
-            $form_data["c_name{$suffix}"] = $v['gift_cert_code'];
-            $form_data["c_description{$suffix}"] = $v['gift_cert_code'];
-            $form_data["c_price{$suffix}"] = $v['amount'];
-            $form_data["c_tangible{$suffix}"] = 'N';
-        }
-    }
-
-    fn_create_payment_form('https://www.2checkout.com/2co/buyer/purchase', $form_data, '2Checkout', false);
+echo <<<EOT
+    </form>
+    <div align=center>{$msg}</div>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
 }
 exit;

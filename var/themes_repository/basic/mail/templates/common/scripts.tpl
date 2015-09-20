@@ -1,3 +1,3 @@
-{if $runtime.customization_mode.live_editor}
+{if $runtime.customization_mode.translation}
     {include file="common/translation.tpl"}
 {/if}

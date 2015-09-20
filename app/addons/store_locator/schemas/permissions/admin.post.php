@@ -13,13 +13,8 @@
 ****************************************************************************/
 
 $schema['store_locator'] = array (
-    'permissions' => array('GET' => 'view_store_locator', 'POST' => 'manage_store_locator'),
-    'modes' => array(
-        'delete' => array(
-            'permissions' => 'manage_store_locator'
-        )
-    ),
+    'permissions' => 'manage_cms'
 );
-$schema['tools']['modes']['update_status']['param_permissions']['table']['store_locations'] = 'manage_store_locator';
+$schema['tools']['modes']['update_status']['param_permissions']['table_names']['store_locations'] = 'manage_catalog';
 
 return $schema;

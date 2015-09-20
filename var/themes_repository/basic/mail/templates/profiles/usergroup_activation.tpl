@@ -3,7 +3,6 @@
 {__("text_usergroup_activated")}<br>
 <p>
 <table>
-{if $usergroup_ids}
 <tr>
     <td>{if $usergroup_ids|sizeof > 1}{__("usergroups")}{else}{__("usergroup")}{/if}:</td>
     <td>
@@ -12,13 +11,12 @@
         {/foreach}
     </td>
 </tr>
-{/if}
 <tr>
     <td>{__("username")}:</td>
-    <td>{$user_data.email}</td>
+    <td>{if $settings.General.use_email_as_login == 'Y'}{$user_data.email}{else}{$user_data.user_login}{/if}</td>
 </tr>
 <tr>
-    <td>{__("person_name")}:</td>
+    <td>{__("name")}:</td>
     <td>{$user_data.firstname}&nbsp;{$user_data.lastname}</td>
 </tr>
 </table>

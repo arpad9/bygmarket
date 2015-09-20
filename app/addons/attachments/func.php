@@ -134,10 +134,9 @@ function fn_get_attachment($attachment_id)
 
     fn_set_hook('attachments_get_attachment', $data, $attachment_id);
 
-    if (!empty($data)) {
-        Storage::instance('attachments')->get($data['object_type'] . '/' . $data['object_id'] . '/' . $data['filename']);
-    }
-    exit;
+    Storage::instance('attachments')->get($data['object_type'] . '/' . $data['object_id'] . '/' . $data['filename']);
+
+    return true;
 }
 
 /**

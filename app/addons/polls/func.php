@@ -216,11 +216,7 @@ function fn_get_poll_data($page_id, $lang_code = CART_LANGUAGE)
 
     // Check if poll completed by the current user
     $ip = fn_get_ip();
-    $poll['completed'] = db_get_field(
-        "SELECT vote_id FROM ?:polls_votes WHERE page_id = ?i AND ip_address = ?s",
-        $page_id,
-        fn_ip_to_db($ip['host'])
-    );
+    $poll['completed'] = db_get_field("SELECT vote_id FROM ?:polls_votes WHERE page_id = ?i AND ip_address = ?s", $page_id, $ip['host']);
 
     if (!empty($poll['completed']) || AREA == 'A') {
         fn_polls_get_results($poll);
@@ -238,8 +234,7 @@ function fn_get_poll_data($page_id, $lang_code = CART_LANGUAGE)
  */
 function fn_polls_get_page_data(&$page_data, &$lang_code)
 {
-    list($polls, $params) = fn_get_polls(array('item_ids' => $page_data['page_id']), $lang_code);
-    $page_data['poll'] = current($polls);
+    $page_data['poll'] = fn_get_poll_data($page_data['page_id'], $lang_code);
 
     return true;
 }
@@ -400,7 +395,7 @@ function fn_polls_get_comments($params, $items_per_page = 0)
     $limit = '';
     if (!empty($params['items_per_page'])) {
         $params['total_items'] = db_get_field("SELECT COUNT(answer_id) FROM ?:polls_answers WHERE item_id = ?i AND answer_id = ?i AND comment != ''", $params['item_id'], $params['answer_id']);
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+        $limit = db_paginate($params['page'], $params['items_per_page']);
     }
 
     $comments = db_get_hash_array("SELECT ?:polls_answers.answer_id, ?:polls_answers.comment, ?:polls_votes.time, ?:polls_votes.vote_id FROM ?:polls_answers LEFT JOIN ?:polls_votes USING(vote_id) WHERE ?:polls_answers.item_id = ?i AND ?:polls_answers.answer_id = ?i AND ?:polls_answers.comment != '' ORDER BY answer_id DESC " . $limit, 'vote_id', $params['item_id'], $params['answer_id']);
@@ -467,17 +462,11 @@ function fn_polls_get_votes($params, $items_per_page = 0)
     $limit = '';
     if (!empty($params['items_per_page'])) {
         $params['total_items'] = db_get_field("SELECT COUNT(DISTINCT(?:polls_votes.vote_id)) FROM ?:polls_votes ?p WHERE ?p", $join, $condition);
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+        $limit = db_paginate($params['page'], $params['items_per_page']);
     }
 
     $join .= " LEFT JOIN ?:users ON ?:users.user_id = ?:polls_votes.user_id";
     $votes = db_get_hash_array("SELECT " . implode(', ', $fields) . " FROM ?:polls_votes ?p WHERE ?p ORDER BY time DESC $limit", 'vote_id', $join, $condition);
-
-    foreach ($votes as $k => $vote) {
-        if (isset($vote['ip_address'])) {
-            $votes[$k]['ip_address'] = fn_ip_from_db($vote['ip_address']);
-        }
-    }
 
     return array($votes, $params);
 }
@@ -512,10 +501,6 @@ function fn_get_polls($params, $lang_code = CART_LANGUAGE)
         $polls[$k]['page'] = $_poll['page'];
     }
 
-    if (!empty($params['item_ids'])) {
-        $polls = fn_sort_by_ids($polls, explode(',', $params['item_ids']), 'page_id');
-    }
-
     return array ($polls, $params);
 }
 
@@ -528,11 +513,6 @@ function fn_polls_page_object_by_type(&$types)
         'edit_name' => 'editing_poll',
         'new_name' => 'new_poll',
     );
-}
-
-function fn_polls_settings_variants_image_verification_use_for(&$objects)
-{
-    $objects['polls'] = __('use_for_polls');
 }
 
 function fn_polls_remove_pages()

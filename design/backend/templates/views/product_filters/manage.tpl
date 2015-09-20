@@ -1,6 +1,7 @@
 {script src="js/tygh/tabs.js"}
 
 <script type="text/javascript">
+//<![CDATA[
     var filter_fields = {ldelim}{rdelim};
     {foreach from=$filter_fields item=filter_field key=key}
     filter_fields['{$key}'] = '{$filter_field.slider}';
@@ -14,10 +15,11 @@ function fn_check_product_filter_type(value, tab_id, id)
     $('[id^=inputs_ranges' + id + ']').toggleBy((value.indexOf('D') == 0));
     $('[id^=dates_ranges' + id + ']').toggleBy(!(value.indexOf('D') == 0));
     $('#round_to_' + id + '_container').toggleBy(!filter_fields[value.replace(/\w+-/, '')]);
-    $('#display_count_' + id + '_container').toggleBy(!(value.indexOf('R') == 0) && !(value.indexOf('F') == 0) && !(value.indexOf('S') > 0));
+    $('#display_count_' + id + '_container').toggleBy(!(value.indexOf('R') == 0) && !(value.indexOf('F') == 0));
 }
-{/literal}
+//]]>
 </script>
+{/literal}
 
 {capture name="mainbox"}
 
@@ -25,16 +27,15 @@ function fn_check_product_filter_type(value, tab_id, id)
 
 {assign var="r_url" value=$config.current_url|escape:url}
 
-<div class="items-container{if ""|fn_check_form_permissions} cm-hide-inputs{else} cm-sortable{/if}" data-ca-sortable-table="product_filters" data-ca-sortable-id-name="filter_id" id="manage_filters_list">
-<table width="100%" class="table table-middle table-objects table-striped">
+<div class="items-container{if ""|fn_check_form_permissions} cm-hide-inputs{/if}" id="manage_filters_list">
+<table width="100%" class="table table-middle table-objects">
 <tbody>
 
 {foreach from=$filters item="filter"}
-
+    
     {if $filter|fn_allow_save_object:"product_filters"}
         {include file="common/object_group.tpl"
             id=$filter.filter_id
-            show_id=true
             details=$filter.filter_description
             text=$filter.filter
             status=$filter.status
@@ -44,8 +45,7 @@ function fn_check_product_filter_type(value, tab_id, id)
             delete_target_id="pagination_contents"
             table="product_filters"
             no_table=true
-            draggable=true
-            additional_class="cm-no-hide-input cm-sortable-row cm-sortable-id-`$filter.filter_id`"
+            additional_class="cm-no-hide-input"
             header_text="{__("editing_filter")}: `$filter.filter`"
             link_text=__("edit")
             company_object=$filter
@@ -53,7 +53,6 @@ function fn_check_product_filter_type(value, tab_id, id)
     {else}
         {include file="common/object_group.tpl"
             id=$filter.filter_id
-            show_id=true
             details=$filter.filter_description
             text=$filter.filter
             status=$filter.status

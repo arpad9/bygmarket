@@ -42,6 +42,5 @@ fn_register_hooks(
     'delete_order',
     'ult_delete_company',
     'update_cart_by_data_post',
-    'promotion_apply_pre',
-    'place_suborders'
+    'promotion_apply_pre'
 );

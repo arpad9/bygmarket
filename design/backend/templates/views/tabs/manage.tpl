@@ -23,13 +23,14 @@
         {assign var="dynamic_object_href" value="&dynamic_object[object_type]=`$dynamic_object.object_type`&dynamic_object[object_id]=`$dynamic_object.object_id`&selected_location=`$location.location_id`&hide_status=1"}
         {assign var="r_url" value="products.update?product_id=`$dynamic_object.object_id`&selected_section=product_tabs"|urlencode}
         {assign var="additional_class" value=""}
-        {assign var="draggable" value=false}
+        {assign var="draggable" value="true"}
         {assign var="_href_update" value=""}
+        {assign var="display" value="text"}
     {else}
         {assign var="dynamic_object_href" value=""}
         {assign var="r_url" value="tabs.manage"}
         {assign var="additional_class" value="cm-sortable-row cm-sortable-id-`$tab.tab_id`"}
-        {assign var="draggable" value=true}
+        {assign var="draggable" value="true"}
         {assign var="_href_update" value="tabs.update?tab_data[tab_id]=`$tab.tab_id`&return_url=`$r_url`"}
     {/if}
 
@@ -60,6 +61,7 @@
             ){/strip}</span>
         {/if}
     {/strip}{/capture}
+
     {include
         file="common/object_group.tpl"
         id=$tab.tab_id
@@ -70,15 +72,15 @@
         header_text="{__("editing_tab")}: `$tab.name`"
         table="product_tabs"
         object_id_name="tab_id"
-        draggable=$draggable
         update_controller='tabs'
         dynamic_object=$dynamic_object_href
         status=$tab.status
         additional_class=$additional_class
         href_desc=$smarty.capture.tool_items
         non_editable=$dynamic_object
+        confirm=$confirm
+        prefix="product_tabs"
         no_table=true
-        can_change_status=true
     }
 {foreachelse}
 

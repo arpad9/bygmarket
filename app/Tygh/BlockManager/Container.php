@@ -109,7 +109,9 @@ class Container
         $container_ids = array();
 
         if (is_array($containers)) {
-            $container_ids = fn_array_column($containers, 'container_id');
+            foreach ($containers as $container) {
+                $container_ids[] = $container['container_id'];
+            }
         }
 
         return $container_ids;
@@ -184,7 +186,7 @@ class Container
             $_containers[$position] = $container;
             if ($area == 'C') {
                 // Always override by default containers
-                if (!empty($def_containers[$position]) && $container['linked_to_default'] == 'Y') {
+                if (!empty($def_containers[$position])) {
                     $_containers[$position] = $def_containers[$position];
                 }
             } elseif ($area == 'A') {

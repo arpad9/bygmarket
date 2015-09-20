@@ -12,7 +12,9 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 use Tygh\Settings;
+use Tygh\Addons\SchemesManager;
 use Tygh\Registry;
+use Tygh\Navigation\LastView;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -26,186 +28,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (isset($_REQUEST['addon_data'])) {
             fn_update_addon($_REQUEST['addon_data']);
         }
-
-        return array(CONTROLLER_STATUS_OK, 'addons.update?addon=' . $_REQUEST['addon']);
-
-    } elseif ($mode == 'recheck') {
-        $source = fn_get_cache_path(false) . 'tmp/addon_pack/';
-        $destination = Registry::get('config.dir.root');
-
-        if ($action == 'ftp_upload') {
-            $ftp_access = array(
-                'hostname' => $_REQUEST['ftp_access']['ftp_hostname'],
-                'username' => $_REQUEST['ftp_access']['ftp_username'],
-                'password' => $_REQUEST['ftp_access']['ftp_password'],
-                'directory' => $_REQUEST['ftp_access']['ftp_directory'],
-            );
-
-            $ftp_copy_result = fn_copy_by_ftp($source, $destination, $ftp_access);
-
-            if ($ftp_copy_result === true) {
-                $struct = fn_get_dir_contents($source, false, true, '', '', true);
-                $addon_name = '';
-
-                $relative_addon_path = str_replace(Registry::get('config.dir.root') . '/', '', Registry::get('config.dir.addons'));
-
-                foreach ($struct as $file) {
-                    if (preg_match('#' . $relative_addon_path . '[^a-zA-Z0-9_]*([a-zA-Z0-9_-]+).+?addon.xml$#i', $file, $matches)) {
-                        if (!empty($matches[1])) {
-                            $addon_name = $matches[1];
-                            break;
-                        }
-                    }
-                }
-
-                fn_install_addon($addon_name);
-
-            } else {
-                fn_set_notification('E', __('error'), $ftp_copy_result);
-            }
-
-            if (defined('AJAX_REQUEST')) {
-                Tygh::$app['ajax']->assign('non_ajax_notifications', true);
-                Tygh::$app['ajax']->assign('force_redirection', fn_url('addons.manage'));
-
-                exit();
-            } else {
-                return array(CONTROLLER_STATUS_OK, 'addons.manage');
-            }
-        }
-
-        $non_writable_folders = fn_check_copy_ability($source, $destination);
-
-        if (!empty($non_writable_folders)) {
-            if (!empty($_REQUEST['ftp_access'])) {
-                Tygh::$app['view']->assign('ftp_access', $_REQUEST['ftp_access']);
-            }
-
-            Tygh::$app['view']->assign('non_writable', $non_writable_folders);
-
-            if (defined('AJAX_REQUEST')) {
-                Tygh::$app['view']->display('views/addons/components/correct_permissions.tpl');
-
-                exit();
-            }
-
-        } else {
-            fn_addons_move_and_install($extract_path, Registry::get('config.dir.root'));
-
-            if (defined('AJAX_REQUEST')) {
-                Tygh::$app['ajax']->assign('force_redirection', fn_url('addons.manage'));
-
-                exit();
-            }
-        }
-
-    } elseif ($mode == 'upload') {
-        if (defined('RESTRICTED_ADMIN') || Registry::get('runtime.company_id')) {
-            fn_set_notification('E', __('error'), __('access_denied'));
-
-            return array(CONTROLLER_STATUS_REDIRECT, 'addons.manage');
-        }
-
-        $addon_pack = fn_filter_uploaded_data('addon_pack', Registry::get('config.allowed_pack_exts'));
-
-        if (empty($addon_pack[0])) {
-            fn_set_notification('E', __('error'), __('text_allowed_to_upload_file_extension', array('[ext]' => implode(',', Registry::get('config.allowed_pack_exts')))));
-        } else {
-            // Extract the add-on pack and check the permissions
-            $extract_path = fn_get_cache_path(false) . 'tmp/addon_pack/';
-            $addon_pack = $addon_pack[0];
-
-            // Re-create source folder
-            fn_rm($extract_path);
-            fn_mkdir($extract_path);
-
-            fn_copy($addon_pack['path'], $extract_path . $addon_pack['name']);
-
-            if (fn_decompress_files($extract_path . $addon_pack['name'], $extract_path)) {
-                fn_rm($extract_path . $addon_pack['name']);
-
-                $struct = fn_get_dir_contents($extract_path, false, true, '', '', true);
-                $addon_name = '';
-                $relative_addon_path = str_replace(Registry::get('config.dir.root') . '/', '', Registry::get('config.dir.addons'));
-
-                foreach ($struct as $file) {
-                    if (preg_match('#' . $relative_addon_path . '[^a-zA-Z0-9_]*([a-zA-Z0-9_-]+).+?addon.xml$#i', $file, $matches)) {
-                        if (!empty($matches[1])) {
-                            $addon_name = $matches[1];
-                        }
-                    }
-                }
-
-                if (empty($addon_name)) {
-                    fn_set_notification('E', __('error'), __('broken_addon_pack'));
-
-                    if (defined('AJAX_REQUEST')) {
-                        Tygh::$app['ajax']->assign('non_ajax_notifications', true);
-                        Tygh::$app['ajax']->assign('force_redirection', fn_url('addons.manage'));
-
-                        exit();
-                    } else {
-                        return array(CONTROLLER_STATUS_REDIRECT, 'addons.manage');
-                    }
-                }
-
-                $non_writable_folders = fn_check_copy_ability($extract_path, Registry::get('config.dir.root'));
-
-                if (!empty($non_writable_folders)) {
-                    Tygh::$app['view']->assign('non_writable', $non_writable_folders);
-
-                    if (defined('AJAX_REQUEST')) {
-                        Tygh::$app['view']->display('views/addons/components/correct_permissions.tpl');
-
-                        exit();
-                    }
-
-                } else {
-                    fn_addons_move_and_install($extract_path, Registry::get('config.dir.root'));
-
-                    if (defined('AJAX_REQUEST')) {
-                        Tygh::$app['ajax']->assign('force_redirection', fn_url('addons.manage'));
-
-                        exit();
-                    }
-                }
-            }
-        }
-
-        if (defined('AJAX_REQUEST')) {
-            Tygh::$app['view']->display('views/addons/components/upload_addon.tpl');
-
-            exit();
-        }
     }
 
-    if ($mode == 'update_status') {
-
-        $is_snapshot_correct = fn_check_addon_snapshot($_REQUEST['id']);
-
-        if (!$is_snapshot_correct) {
-            $status = false;
-
-        } else {
-            $status = fn_update_addon_status($_REQUEST['id'], $_REQUEST['status']);
-        }
-
-        if ($status !== true) {
-            Tygh::$app['ajax']->assign('return_status', $status);
-        }
-        Registry::clearCachedKeyValues();
-    }
-
-    if ($mode == 'install') {
-        fn_install_addon($_REQUEST['addon']);
-        Registry::clearCachedKeyValues();
-    }
-
-    if ($mode == 'uninstall') {
-        fn_uninstall_addon($_REQUEST['addon']);
-    }
-
-    return array(CONTROLLER_STATUS_OK, 'addons.manage');
+    return array(CONTROLLER_STATUS_OK, "addons.manage");
 }
 
 if ($mode == 'update') {
@@ -223,8 +48,8 @@ if ($mode == 'update') {
     fn_update_lang_objects('sections', $subsections);
     fn_update_lang_objects('options', $options);
 
-    Tygh::$app['view']->assign('options', $options);
-    Tygh::$app['view']->assign('subsections', $subsections);
+    Registry::get('view')->assign('options', $options);
+    Registry::get('view')->assign('subsections', $subsections);
 
     $addon =  db_get_row(
         'SELECT a.addon, a.status, b.name as name, b.description as description, a.separate '
@@ -234,9 +59,29 @@ if ($mode == 'update') {
     );
 
     if ($addon['separate'] == true || !defined('AJAX_REQUEST')) {
-        Tygh::$app['view']->assign('separate', true);
-        Tygh::$app['view']->assign('addon_name', $addon['name']);
+        Registry::get('view')->assign('separate', true);
+        Registry::get('view')->assign('addon_name', $addon['name']);
     }
+
+} elseif ($mode == 'install') {
+
+    fn_install_addon($_REQUEST['addon']);
+
+    return array(CONTROLLER_STATUS_OK, "addons.manage");
+
+} elseif ($mode == 'uninstall') {
+
+    fn_uninstall_addon($_REQUEST['addon']);
+
+    return array(CONTROLLER_STATUS_OK, "addons.manage");
+
+} elseif ($mode == 'update_status') {
+
+    if (($res = fn_update_addon_status($_REQUEST['id'], $_REQUEST['status'])) !== true) {
+        Registry::get('ajax')->assign('return_status', $res);
+    }
+
+    exit;
 
 } elseif ($mode == 'manage') {
 
@@ -245,6 +90,100 @@ if ($mode == 'update') {
 
     list($addons, $search) = fn_get_addons($params);
 
-    Tygh::$app['view']->assign('search', $search);
-    Tygh::$app['view']->assign('addons_list', $addons);
+    Registry::get('view')->assign('search', $search);
+    Registry::get('view')->assign('addons_list', $addons);
+}
+
+/**
+ * Gets addons list
+ * @param array $params search params
+ * @param int $items_per_page items per page for pagination
+ * @param string $lang_code language code
+ * @return array addons list and filtered search params
+ */
+function fn_get_addons($params, $items_per_page = 0, $lang_code = CART_LANGUAGE)
+{
+    $params = LastView::instance()->update('addons', $params);
+
+    $default_params = array(
+        'type' => 'any',
+    );
+
+    $params = array_merge($default_params, $params);
+
+    $addons = array();
+    $sections =  Settings::instance()->getAddons();
+    $all_addons = fn_get_dir_contents(Registry::get('config.dir.addons'), true, false);
+    $installed_addons = db_get_hash_array(
+        'SELECT a.addon, a.status, b.name as name, b.description as description, a.separate, a.unmanaged, a.has_icon '
+        . 'FROM ?:addons as a LEFT JOIN ?:addon_descriptions as b ON b.addon = a.addon AND b.lang_code = ?s'
+        . 'ORDER BY b.name ASC',
+        'addon', $lang_code
+    );
+
+    foreach ($installed_addons as $key => $addon) {
+        $installed_addons[$key]['has_options'] = Settings::instance()->sectionExists($sections, $addon['addon']);
+
+        // Check add-on snaphot
+        if (!fn_check_addon_snapshot($key)) {
+            $installed_addons[$key]['status'] = 'D';
+            $installed_addons[$key]['snapshot_correct'] = false;
+        } else {
+            $installed_addons[$key]['snapshot_correct'] = true;
+        }
+    }
+
+    foreach ($all_addons as $addon) {
+
+        if (in_array($params['type'], array('any', 'installed', 'active', 'disabled'))) {
+
+            $search_status = $params['type'] == 'active' ? 'A' : ($params['type'] == 'disabled' ? 'D' : '');
+
+            if (!empty($installed_addons[$addon])) {
+                // exclude unmanaged addons from the list
+                if ($installed_addons[$addon]['unmanaged'] == true) {
+                    continue;
+                }
+
+                if (!empty($search_status) && $installed_addons[$addon]['status'] != $search_status) {
+                    continue;
+                }
+
+                $addons[$addon] = $installed_addons[$addon];
+
+                fn_update_lang_objects('installed_addon', $addons[$addon]);
+
+                // Generate custom description
+                $func = 'fn_addon_dynamic_description_' . $addon;
+                if (function_exists($func)) {
+                    $addons[$addon]['description'] = $func($addons[$addon]['description']);
+                }
+            }
+        }
+
+        if (empty($installed_addons[$addon]) && empty($params['for_company']) && (in_array($params['type'], array('any', 'not_installed')))) {
+            $addon_scheme = SchemesManager::getScheme($addon);
+            if ($addon_scheme != false && !$addon_scheme->getUnmanaged()) {
+                $addons[$addon] = array(
+                    'status' => 'N', // Because it's not installed
+                    'name' => $addon_scheme->getName(),
+                    'snapshot_correct' => fn_check_addon_snapshot($addon),
+                    'description' => $addon_scheme->getDescription(),
+                    'has_icon' => $addon_scheme->hasIcon()
+                );
+            }
+        }
+    }
+
+    if (!empty($params['q'])) {
+        foreach ($addons as $addon => $addon_data) {
+            if (!preg_match('/' . preg_quote($params['q']) . '/ui', $addon_data['name'], $m)) {
+                unset($addons[$addon]);
+            }
+        }
+    }
+
+    $addons = fn_sort_array_by_key($addons, 'name', SORT_ASC);
+
+    return array($addons, $params);
 }

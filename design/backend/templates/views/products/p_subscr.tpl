@@ -22,7 +22,7 @@
     {/if}
     <th width="15%"><a class="cm-ajax" href="{"`$c_url`&sort_by=code&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("sku")}{if $search.sort_by == "code"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
     <th width="60%"><a class="cm-ajax" href="{"`$c_url`&sort_by=product&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("name")}{if $search.sort_by == "product"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>    
-    <th>{hook name="products:p_subscr_head"}{/hook}</th>
+    <th>{hook name="products:manage_head"}{/hook}</th>    
     <th class="center" width="15%"><a class="cm-ajax" href="{"`$c_url`&sort_by=num_subscr&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("subscribers")}{if $search.sort_by == "num_subscr"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
     <th width="5%">&nbsp;</th>
 </tr>
@@ -42,19 +42,19 @@
         <a href="{"products.update?product_id=`$product.product_id`&selected_section=subscribers"|fn_url}" {if $product.status == "N"}class="manage-root-item-disabled"{/if}>{$product.product nofilter}</a>
         {include file="views/companies/components/company_name.tpl" object=$product}
     </td>
-    <td>{hook name="products:p_subscr_body"}{/hook}</td>
+    <td>{hook name="products:manage_body"}{/hook}</td>
     <td class="center">
         <span>&nbsp;{$product.num_subscr}&nbsp;</span>
     </td>
     <td class="nowrap">
         {capture name="tools_list"}
-            {hook name="products:p_subscr_extra_links"}
+            {hook name="products:list_extra_links"}
                 <li>{btn type="list" text=__("edit") href="products.update?product_id=`$product.product_id`&selected_section=subscribers"}</li>
-                <li>{btn type="list" class="cm-confirm cm-post" text=__("delete") href="products.delete_subscr?product_id=`$product.product_id`"}</li>
+                <li>{btn type="list" class="cm-confirm" text=__("delete") href="products.delete_subscr?product_id=`$product.product_id`"}</li>
             {/hook}
         {/capture}
         <div class="hidden-tools">
-            {dropdown content=$smarty.capture.tools_list}
+            {dropdown content=$smarty.capture.tools_list class="dropleft"}
         </div>
     </td>
 </tr>

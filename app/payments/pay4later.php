@@ -39,6 +39,8 @@ if (defined('PAYMENT_NOTIFICATION')) {
             $transactions_id = (int) $_REQUEST['CreditRequestID'];
         }
 
+        $prefix = ((Registry::get('settings.General.secure_auth') == 'Y') && (AREA == 'C')) ? Registry::get('config.https_location') . '/' : '';
+
         $trans_order_id = db_get_field("SELECT order_id FROM ?:order_data WHERE data = ?i AND type = 'E'", $transactions_id);
         $order_id = !empty($_REQUEST['retaileruniqueref']) ? (int) $_REQUEST['retaileruniqueref'] : 0;
 
@@ -140,18 +142,32 @@ if (defined('PAYMENT_NOTIFICATION')) {
     $order_description = __('order') . " #$order_id";
     $_SESSION['order_id'] = $order_id;
 
-    $post_data = array(
-        'Identification[api_key]' => $processor_data['processor_params']['merchant_key'],
-        'Identification[RetailerUniqueRef]' => $_order_id,
-        'Identification[InstallationID]' => $processor_data['processor_params']['installation_id'],
-        'Goods[0][Description]' => $order_description,
-        'Goods[0][Quantity]' => '1',
-        'Goods[0][Price]' => $order_info['total'],
-        'Finance[Code]' => $processor_data['processor_params']['finance_product_code'],
-        'Finance[Deposit]' => $processor_data['processor_params']['deposit_amount'],
-    );
+echo <<<EOT
+<form method="post" action="{$post_url}" name="process">
+    <input type="hidden" name="Identification[api_key]" value="{$processor_data['processor_params']['merchant_key']}"/>
+    <input type="hidden" name="Identification[RetailerUniqueRef]" value="{$_order_id}"/>
+    <input type="hidden" name="Identification[InstallationID]" value="{$processor_data['processor_params']['installation_id']}"/>
+    <input type="hidden" name="Goods[0][Description]" value="{$order_description}"/>
+    <input type="hidden" name="Goods[0][Quantity]" value="1"/>
+    <input type="hidden" name="Goods[0][Price]" value="{$order_info['total']}"/>
+    <input type="hidden" name="Finance[Code]" value="{$processor_data['processor_params']['finance_product_code']}"/>
+    <input type="hidden" name="Finance[Deposit]" value="{$processor_data['processor_params']['deposit_amount']}"/>
+EOT;
 
-    fn_create_payment_form($post_url, $post_data, 'Pay4Later');
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'Pay4Later server'
+));
+echo <<<EOT
+    </form>
+    <p><div align=center>{$msg}</div></p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
 }
 exit;
 

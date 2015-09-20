@@ -36,20 +36,12 @@ if ($_SERVER['REQUEST_METHOD']	== 'POST') {
     // Add/edit banners
     //
     if ($mode == 'update') {
-        $banner_id = fn_banners_update_banner($_REQUEST['banner_data'], $_REQUEST['banner_id'], DESCR_SL);
+        $banner_id = fn_update_banner($_REQUEST['banner_data'], $_REQUEST['banner_id'], DESCR_SL);
 
         $suffix = ".update?banner_id=$banner_id";
     }
 
-    if ($mode == 'delete') {
-        if (!empty($_REQUEST['banner_id'])) {
-            fn_delete_banner_by_id($_REQUEST['banner_id']);
-        }
-
-        $suffix = '.manage';
-    }
-
-    return array(CONTROLLER_STATUS_OK, 'banners' . $suffix);
+    return array(CONTROLLER_STATUS_OK, "banners$suffix");
 }
 
 if ($mode == 'update') {
@@ -66,19 +58,50 @@ if ($mode == 'update') {
         ),
     ));
 
-    Tygh::$app['view']->assign('banner', $banner);
+    Registry::get('view')->assign('banner', $banner);
 
 } elseif ($mode == 'manage' || $mode == 'picker') {
 
     list($banners, ) = fn_get_banners(array(), DESCR_SL);
 
-    Tygh::$app['view']->assign('banners', $banners);
+    Registry::get('view')->assign('banners', $banners);
+
+} elseif ($mode == 'delete') {
+    if (!empty($_REQUEST['banner_id'])) {
+        fn_delete_banner_by_id($_REQUEST['banner_id']);
+    }
+
+    return array(CONTROLLER_STATUS_REDIRECT, "banners.manage");
 }
 
 //
-// Banners picker
+// Categories picker
 //
 if ($mode == 'picker') {
-    Tygh::$app['view']->display('addons/banners/pickers/banners/picker_contents.tpl');
+    Registry::get('view')->display('addons/banners/pickers/banners/picker_contents.tpl');
     exit;
+}
+
+function fn_update_banner($data, $banner_id, $lang_code = DESCR_SL)
+{
+    if (isset($data['timestamp'])) {
+        $data['timestamp'] = fn_parse_date($data['timestamp']);
+    }
+
+    $data['localization'] = empty($data['localization']) ? '' : fn_implode_localizations($data['localization']);
+
+    if (!empty($banner_id)) {
+        db_query("UPDATE ?:banners SET ?u WHERE banner_id = ?i", $data, $banner_id);
+        db_query("UPDATE ?:banner_descriptions SET ?u WHERE banner_id = ?i AND lang_code = ?s", $data, $banner_id, $lang_code);
+    } else {
+        $banner_id = $data['banner_id'] = db_query("REPLACE INTO ?:banners ?e", $data);
+
+        foreach (fn_get_translation_languages() as $data['lang_code'] => $v) {
+            db_query("REPLACE INTO ?:banner_descriptions ?e", $data);
+        }
+    }
+
+    fn_attach_image_pairs('banners_main', 'promo', $banner_id, $lang_code);
+
+    return $banner_id;
 }

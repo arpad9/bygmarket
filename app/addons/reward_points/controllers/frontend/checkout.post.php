@@ -25,16 +25,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         $redirect_mode = isset($_REQUEST['redirect_mode']) ? $_REQUEST['redirect_mode'] : 'checkout';
 
-        return array(CONTROLLER_STATUS_REDIRECT, 'checkout.' . $redirect_mode . '.show_payment_options');
-    }
-
-    if ($mode == 'delete_points_in_use') {
-        unset($_SESSION['cart']['points_info']['in_use']);
-
-        $redirect_mode = isset($_REQUEST['redirect_mode']) ? $_REQUEST['redirect_mode'] : 'checkout';
-
-        return array(CONTROLLER_STATUS_REDIRECT, 'checkout.' . $redirect_mode . '.show_payment_options');
+        return array(CONTROLLER_STATUS_REDIRECT, "checkout.$redirect_mode.show_payment_options");
     }
 
     return;
+}
+
+if ($mode == 'delete_points_in_use') {
+    unset($_SESSION['cart']['points_info']['in_use']);
+
+    $redirect_mode = isset($_REQUEST['redirect_mode']) ? $_REQUEST['redirect_mode'] : 'checkout';
+
+    return array(CONTROLLER_STATUS_REDIRECT, "checkout.$redirect_mode.show_payment_options");
 }

@@ -12,24 +12,12 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-if (fn_check_permissions('seo_rules', 'manage', 'admin', 'GET')) {
-    $schema['central']['website']['items']['seo']['href'] = 'seo_rules.manage';
-}
-
-$schema['central']['website']['items']['seo']['subitems']['seo_rules'] = array(
+$schema['central']['website']['items']['seo_rules'] = array(
     'attrs' => array(
         'class'=>'is-addon'
     ),
     'href' => 'seo_rules.manage',
-    'position' => 100
-);
-
-$schema['central']['website']['items']['seo']['subitems']['seo.redirects_manager'] = array(
-    'attrs' => array(
-        'class'=>'is-addon'
-    ),
-    'href' => 'seo_redirects.manage',
-    'position' => 200
+    'position' => 400
 );
 
 return $schema;

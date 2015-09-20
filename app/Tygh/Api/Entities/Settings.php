@@ -17,7 +17,6 @@ namespace Tygh\Api\Entities;
 use Tygh\Api\AEntity;
 use Tygh\Api\Response;
 use Tygh\Settings as CartSettings;
-use Tygh\Registry;
 
 class Settings extends AEntity
 {
@@ -30,8 +29,8 @@ class Settings extends AEntity
      */
     public function index($id = 0, $params = array())
     {
-        $company_id = $this->safeGet($params, 'company_id', null);
-        $lang_code = $this->safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
+        $company_id = $this->_safeGet($params, 'company_id', null);
+        $lang_code = $this->_safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
 
         if (!empty($id)) {
             $data = CartSettings::instance()->getData($id, $company_id);
@@ -43,27 +42,10 @@ class Settings extends AEntity
             }
 
         } else {
-            $section_id = $this->safeGet($params, 'section_id', 0);
-            $section_tab_id = $this->safeGet($params, 'section_tab_id', 0);
-            $items_per_page = $this->safeGet($params, 'items_per_page', Registry::get('settings.Appearance.admin_elements_per_page'));
-            $page = $this->safeGet($params, 'page', 1);
+            $section_id = $this->_safeGet($params, 'section_id', 0);
+            $section_tab_id = $this->_safeGet($params, 'section_tab_id', 0);
 
             $data = CartSettings::instance()->getList($section_id, $section_tab_id, true, $company_id, $lang_code);
-
-            if ($items_per_page) {
-                $data = array_slice($data, ($page - 1) * $items_per_page, $items_per_page);
-            }
-
-            $data = array(
-                'settings' => $data,
-                'params' => array(
-                    'section_id' => $section_id,
-                    'section_tab_id' => $section_tab_id,
-                    'items_per_page' => $items_per_page,
-                    'page' => $page,
-                    'total_items' => count($data),
-                ),
-            );
             $status = Response::STATUS_OK;
         }
 
@@ -86,7 +68,7 @@ class Settings extends AEntity
         $status = Response::STATUS_BAD_REQUEST;
 
         if (!empty($id) && !empty($params['value'])) {
-            $company_id = $this->safeGet($params, 'company_id', null);
+            $company_id = $this->_safeGet($params, 'company_id', null);
 
             $result = CartSettings::instance()->updateValueById($id, $params['value'], $company_id);
 
@@ -111,7 +93,7 @@ class Settings extends AEntity
         );
     }
 
-    public function privileges()
+    public function priveleges()
     {
         return array(
             'create' => 'update_settings',

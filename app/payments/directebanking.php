@@ -107,7 +107,6 @@ if (defined('PAYMENT_NOTIFICATION')) {
     $currencies = Registry::get('currencies');
     $currency_code = $processor_data['processor_params']['currency_id'];
 
-    $amount = 0;
     foreach ($currencies as $k => $v) {
         if ($k == $currency_code) {
             $amount = fn_format_price($order_info['total'] / $v['coefficient']);
@@ -136,10 +135,49 @@ if (defined('PAYMENT_NOTIFICATION')) {
     );
 
     $post_data_implode = implode('|', $post_data);
-    $post_data['hash'] = sha1($post_data_implode);
-    $post_data['language_id'] = $processor_data['processor_params']['language_id'];
+    $hash = sha1($post_data_implode);
 
-    fn_create_payment_form($url, $post_data, 'DIRECTebanking');
+echo <<<EOT
+<form method="post" action="{$url}" name="process">
+    <input type="hidden" name="user_id" value="{$post_data['user_id']}">
+    <input type="hidden" name="project_id" value="{$post_data['project_id']}">
+    <input type="hidden" name="amount" value="{$post_data['amount']}">
 
-    exit;
+    <input type="hidden" name="reason_1" value="{$post_data['reason_1']}">
+    <input type="hidden" name="reason_2" value="{$post_data['reason_2']}">
+
+    <input type="hidden" name="user_variable_0" value="{$post_data['user_variable_0']}">
+    <input type="hidden" name="user_variable_1" value="{$post_data['user_variable_1']}">
+    <input type="hidden" name="user_variable_2" value="{$post_data['user_variable_2']}">
+    <input type="hidden" name="user_variable_3" value="{$post_data['user_variable_3']}">
+    <input type="hidden" name="user_variable_4" value="{$post_data['user_variable_4']}">
+    <input type="hidden" name="user_variable_5" value="{$post_data['user_variable_5']}">
+
+    <input type="hidden" name="sender_bank_code" value="{$post_data['sender_bank_code']}">
+    <input type="hidden" name="sender_account_number" value="{$post_data['sender_account_number']}">
+    <input type="hidden" name="sender_holder" value="{$post_data['sender_holder']}">
+    <input type="hidden" name="sender_country_id" value="{$post_data['sender_country_id']}">
+
+    <input type="hidden" name="hash" value="{$hash}">
+
+    <input type="hidden" name="currency_id" value="{$post_data['currency_id']}">
+    <input type="hidden" name="language_id" value="{$processor_data['processor_params']['language_id']}">
+
+EOT;
+
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'DIRECTebanking server'
+));
+echo <<<EOT
+    </form>
+   <p><div align=center>{$msg}</div></p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
+exit;
 }

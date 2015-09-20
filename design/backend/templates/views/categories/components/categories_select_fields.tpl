@@ -9,7 +9,7 @@
         
         <label class="checkbox" for="elm_meta_description"><input type="checkbox" value="meta_description" name="selected_fields[data][]" id="elm_meta_description" checked="checked" class="cm-item-s" />{__("meta_description")}</label>
 
-        <label class="checkbox" for="elm_product_details_view"><input type="checkbox" value="product_details_view" name="selected_fields[data][]" id="elm_product_details_view" checked="checked" class="cm-item-s" />{__("product_details_view")}</label>
+        <label class="checkbox" for="elm_product_details_layout"><input type="checkbox" value="product_details_layout" name="selected_fields[data][]" id="elm_product_details_layout" checked="checked" class="cm-item-s" />{__("product_details_layout")}</label>
 
         <label for="elm_position" class="checkbox"><input type="checkbox" value="position" name="selected_fields[data][]" id="elm_position" checked="checked" class="cm-item-s" />{__("position")}</label>
     </td>
@@ -22,14 +22,15 @@
 
         <label for="elm_timestamp" class="checkbox"><input type="checkbox" value="timestamp" id="elm_timestamp" name="selected_fields[data][]" checked="checked" class="cm-item-s" />{__("creation_date")}</label>
 
-        {if $config.tweaks.disable_localizations == false}
-            <label class="checkbox" for="elm_localization"><input type="checkbox" id="elm_localization" value="localization" name="selected_fields[data][]" checked="checked" class="cm-item-s" />{__("localization")}</label>
-        {/if}
+        <label class="checkbox" for="elm_localization"><input type="checkbox" id="elm_localization" value="localization" name="selected_fields[data][]" checked="checked" class="cm-item-s" />{__("localization")}</label>
     </td>
     <td>
         <label for="elm_description" class="checkbox"><input type="checkbox" value="description" name="selected_fields[data][]" id="elm_description" checked="checked" class="cm-item-s" />{__("category_description")}</label>
 
+        {* Uncomment the section below to enable uploading of category images *}
+        {*
         <label class="checkbox" for="elm_image_pair"><input type="checkbox" value="image_pair" name="selected_fields[images][]" id="elm_image_pair" checked="checked" class="cm-item-s" />{__("image_pair")}</label>
+        *}
 
         <label class="checkbox" for="elm_page_title"><input type="checkbox" value="page_title" id="elm_page_title" name="selected_fields[data][]" checked="checked" class="cm-item-s" />{__("title")}</label>
 

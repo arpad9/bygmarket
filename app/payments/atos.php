@@ -189,7 +189,7 @@ $processor_error['response_code'] = array(
         $payment_id = db_get_field("SELECT ?:payments.payment_id FROM ?:payments LEFT JOIN ?:payment_processors ON ?:payment_processors.processor_id = ?:payments.processor_id WHERE ?:payment_processors.processor_script = 'atos.php' AND ?:payments.status = 'A'");
         $processor_data = fn_get_payment_method_data($payment_id);
 
-        $message = escapeshellarg("message=$_REQUEST[DATA]");
+        $message = "message=$_REQUEST[DATA]";
         $pathfile = "pathfile=".$processor_data['processor_params']['atos_files'] . '/pathfile';
         $path_bin = $processor_data['processor_params']['atos_files'] . '/response';
         $result = exec("$path_bin $pathfile $message");
@@ -258,7 +258,6 @@ EOT;
     // -> Windows : $path_bin = "c:\\repertoire\\bin\\request";
     // -> Unix    : $path_bin = "/home/repertoire/bin/request";
     $path_bin = $processor_data['processor_params']['atos_files']. '/request';
-    $param = escapeshellarg($param);
 
     $result = exec("$path_bin $parm");
 

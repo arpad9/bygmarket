@@ -38,7 +38,7 @@
         {capture name="tools_list"}
             <li>{btn type="list" text=__("edit") href="banners.update?banner_id=`$banner.banner_id`"}</li>
         {if $allow_save}
-            <li>{btn type="list" class="cm-confirm cm-post" text=__("delete") href="banners.delete?banner_id=`$banner.banner_id`"}</li>
+            <li>{btn type="list" class="cm-confirm" text=__("delete") href="banners.delete?banner_id=`$banner.banner_id`"}</li>
         {/if}
         {/capture}
         <div class="hidden-tools">

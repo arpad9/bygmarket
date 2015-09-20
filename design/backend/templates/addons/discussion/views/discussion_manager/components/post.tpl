@@ -1,4 +1,4 @@
-{assign var="current_redirect_url" value=$config.current_url|fn_link_attach:"selected_section=discussion"|escape:url}
+{assign var="current_redirect_url" value=$config.current_url|escape:url}
 <div class="summary">
     <input type="text" name="posts[{$post.post_id}][name]" value="{$post.name}" size="40" class="input-hidden">
 
@@ -33,21 +33,16 @@
                 </span>
             {/if}
             {if "discussion.delete"|fn_check_view_permissions}
-                <a class="icon-trash cm-tooltip cm-confirm cm-post" href="{"discussion.delete?post_id=`$post.post_id`&redirect_url=`$current_redirect_url`"|fn_url}" title="{__("delete")}"></a>
+                <a class="icon-trash cm-tooltip cm-confirm" href="{"discussion.delete?post_id=`$post.post_id`&redirect_url=`$current_redirect_url`"|fn_url}" title="{__("delete")}"></a>
             {/if}
         </div>
     </div>
 
 
     <div class="pull-right">
-        <span class="muted">
-            {include file="common/calendar.tpl" date_id="elm_date_holder_`$post.post_id`" date_name="posts[`$post.post_id`][date]" date_val=$post.timestamp|default:$smarty.const.TIME start_year=$settings.Company.company_start_year date_meta="post-date"}
-            <input class="input-time" size="5" maxlength="5" type="text" name="posts[{$post.post_id}][time]" value="{$post.timestamp|date_format:"%H:%M"}" placeholder="00:00" />
-            /
-            {__("ip_address")}:&nbsp;{$post.ip_address}
-        </span>
+        <span class="muted">{$post.timestamp|date_format:"`$settings.Appearance.date_format`, `$settings.Appearance.time_format`"} / {__("ip_address")}:&nbsp;{$post.ip_address}</span>
 
-        {if ($type == "R" || $type == "B") && $post.rating_value > 0}
+        {if $type == "R" || $type == "B"}
             {if $allow_save}
                 {include file="addons/discussion/views/discussion_manager/components/rate.tpl" rate_id="rating_`$post.post_id`" rate_value=$post.rating_value rate_name="posts[`$post.post_id`][rating_value]"}
             {else}

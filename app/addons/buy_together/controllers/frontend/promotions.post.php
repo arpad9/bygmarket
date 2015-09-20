@@ -25,10 +25,10 @@ if ($mode == 'list') {
     $chains = fn_buy_together_get_chains($params, $auth);
 
     if (!empty($chains)) {
-        $promotions = Tygh::$app['view']->getTemplateVars('promotions');
+        $promotions = Registry::get('view')->getTemplateVars('promotions');
         $promotions['chains'] = $chains;
 
-        Tygh::$app['view']->assign('promotions', $promotions);
+        Registry::get('view')->assign('promotions', $promotions);
     }
 
 }

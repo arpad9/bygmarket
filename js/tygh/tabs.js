@@ -35,14 +35,95 @@
                 } else {
                     $('.cm-save-buttons').show();
                 }
-
-                $.ceEvent('trigger', 'ce.tab.show');
             } else {
                 id_obj.hide();
                 tab_tools.hide();
             }
 
             return true;
+        }
+
+        function _checkSize(tabs_elm)
+        {
+            var ul = $('ul:first', tabs_elm);
+            var sub_tab = $('.cm-subtabs', ul);
+
+            if (sub_tab.length) {
+                // if submenu already defined move subtabs back
+                $('li', sub_tab).each(function() {
+                    $(this).appendTo(ul);
+                    // remove cloned subtab
+                    $('.cm-subtab-item').remove();
+                });
+                sub_tab.appendTo(ul);
+            }
+
+            if (!sub_tab.length) {
+                sub_tab = $('<li class="dropdown cm-subtabs subtab dropleft pull-right">' +
+                    '<a class="dropdown-toggle" data-toggle="dropdown">' + _.tr('more') + '<b class="caret"></b></a>' +
+                    '<ul class="dropdown-menu">' +
+                    '</ul>' +
+                    '</li>').appendTo(ul);
+            }
+
+            // show or hide submenu on hover
+            $('.cm-subtabs').hover(
+                function () {
+                    $(this).addClass('open');
+                },
+                function () {
+                    $(this).removeClass('open');
+                }
+            );
+
+
+            var list = $('li:not(.cm-subtabs)', ul);
+            var sub_menu = $('ul', sub_tab);
+            var sub_width = sub_tab.outerWidth();
+            // set custom width
+            var max_width = $(tabs_elm).data('caWidth') ? $(tabs_elm).data('caWidth') : 760;
+            var total_width = 0;
+            var total_items = list.length;
+            var is_sub = false;
+            sub_tab.hide();
+
+            // If the sub tab is selected then the display text
+            $('.dropdown-toggle', sub_tab).html(_.tr('more') + '<b class="caret"></b>');
+
+            list.each(function(index) {
+                var self = $(this);
+                total_width += self.outerWidth();
+
+                self.removeClass('pull-right');
+
+                // check if further items should be moved to submenu
+                if (!is_sub) {
+                    if (total_width > max_width) {
+                        // current item does not fit the width
+                        is_sub = true;
+                    } else if ((index + 1) < total_items) {
+                        // not last item
+                        if ((total_width + sub_width) > max_width) {
+                            // both submenu and current item will not fit
+                            is_sub = true;
+                        }
+                    }
+                }
+                if (is_sub) {
+                    self.appendTo(sub_menu);
+                    if (self.hasClass('active')) {
+                        var elem = $(self).clone();
+
+                        elem.addClass('active pull-right subtab nowrap cm-subtab-item');
+                        $(sub_tab).after(elem);
+                        $('.dropdown-toggle', sub_tab).html('<b class="caret"></b>');
+                    }
+                }
+            });
+
+            if (is_sub) {
+                sub_tab.show();
+            }
         }
 
         function _cloneTools(tab_id, prev_id)
@@ -91,17 +172,19 @@
                             return true;
                         }
 
-                        var active_id = $('li.active:first', ul).prop('id');
+                        var active_id = $('li.cm-active:first', ul).prop('id');
 
                         $('li', ul).each(function() {
                             var self= $(this);
-                            self.removeClass('active');
+                            self.removeClass('cm-active active');
                             _switchTab(self.prop('id'), false);
                         });
 
                         //Select clicked tab and show content
-                        elm.addClass('active');
+                        elm.addClass('cm-active active');
                         var sub_tab = elm.parents('.cm-subtabs', ul);
+
+                        _checkSize(tabs_elm);
 
                         if (sub_tab.length && elm.hasClass('cm-no-highlight')) {
                             sub_tab.addClass('active');
@@ -125,8 +208,8 @@
 
                     //Select default tab
                     var test;
-                    if ((test = list.filter('.active')).length) {
-                        test.trigger('click'); //Select tab with class 'active'
+                    if ((test = list.filter('.cm-active')).length) {
+                        test.trigger('click'); //Select tab with class 'cm-active'
                     } else {
                         test = list.filter(':first').trigger('click'); //Select first tab
                     }
@@ -139,7 +222,7 @@
                         var tab_id = self.prop('id');
 
                         // Check if the active content needs to be loaded
-                        if (self.hasClass('active')) {
+                        if (self.hasClass('-active')) {
                             content = $('#content_' + tab_id).html().replace(/<!--.*?-->/, '').replace(/(^\s+|\s+$)/, '');
                             if (content.length) {
                                 return true;
@@ -172,11 +255,17 @@
                         }
                     });
 
+                    // move exceed link to sub_menu
+                    _checkSize(tabs_elm);
+
                     return true;
                 });
+            },
 
-                $.ceEvent('trigger', 'ce.tab.init');
-
+            resize: function() {
+                $(this).each(function() {
+                    _checkSize($(this));
+                });
             }
         };
 

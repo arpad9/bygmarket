@@ -1,3 +1,9 @@
 User-agent: *
+Disallow: /
+Disallow: /images/thumbnails/
 Disallow: /app/
+Disallow: /design/
+Disallow: /js/
+Disallow: /var/
 Disallow: /store_closed.html
+

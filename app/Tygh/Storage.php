@@ -14,8 +14,6 @@
 
 namespace Tygh;
 
-use Tygh\Exceptions\DeveloperException;
-
 class Storage
 {
     private static $_instance = array();
@@ -24,7 +22,7 @@ class Storage
      * Gets storage object instance
      *
      * @param  string  $type    type of storage
-     * @param  array   $options options
+     * @param  string  $storage storage backend
      * @return Storage storage object instance
      */
     public static function instance($type, $options = array())
@@ -33,16 +31,11 @@ class Storage
         $storage = $options['storage'];
 
         if (empty($storage)) {
-            throw new DeveloperException('Storage: undefined storage backend');
-        }
-
-        // FIXME: backward compatibility for "statics"
-        if ($type == 'statics') {
-            $type = 'assets';
+            fn_error('Storage: undefined storage backend');
         }
 
         if (!Registry::get('config.storage.' . $type)) {
-            throw new DeveloperException('Storage: undefined storage type - ' . $type);
+            fn_error('Storage: undefined storage type');
         }
 
         if (empty(self::$_instance[$storage])) {

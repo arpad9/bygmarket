@@ -14,7 +14,7 @@
 <tr>
     <td colspan="3" class="row-gray strong">
         {assign var="lang_section" value=__($section)}
-        {if $section|strpos:__("options_for") === false}{$lang_section}{else}{$section}{/if}</td>
+        {if $lang_section|strpos:__("options_for") === false}{$lang_section}{else}{$section}{/if}</td>
 </tr>
     {if $section == 'payments' || $section == 'currencies' || $section == 'taxes' || $section == 'shippings' || $section == 'promotions' || $section == 'addons'}
     <tr>

@@ -12,7 +12,6 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-use Tygh\Enum\ProductFeatures;
 use Tygh\Registry;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
@@ -60,13 +59,13 @@ if ($mode == 'add_product') {
         $added_products[$p_id]['display_price'] = fn_get_product_price($p_id, 1, $_SESSION['auth']);
         $added_products[$p_id]['amount'] = 1;
         $added_products[$p_id]['main_pair'] = fn_get_cart_product_icon($p_id);
-        Tygh::$app['view']->assign('added_products', $added_products);
+        Registry::get('view')->assign('added_products', $added_products);
 
         $title = __('product_added_to_cl');
-        $msg = Tygh::$app['view']->fetch('views/product_features/components/product_notification.tpl');
+        $msg = Registry::get('view')->fetch('views/product_features/components/product_notification.tpl');
         fn_set_notification('I', $title, $msg, 'I');
     } else {
-        fn_set_notification('W', __('notice'), __('product_in_comparison_list'));
+        fn_set_notification('W', __('notice'), __('product_in_compare_list'));   
     }
 
     return array(CONTROLLER_STATUS_REDIRECT);
@@ -76,8 +75,8 @@ if ($mode == 'add_product') {
     unset($_SESSION['excluded_features']);
 
     if (defined('AJAX_REQUEST')) {
-        Tygh::$app['view']->assign('compared_products', array());
-        Tygh::$app['view']->display('blocks/static_templates/feature_comparison.tpl');
+        Registry::get('view')->assign('compared_products', array());
+        Registry::get('view')->display('blocks/static_templates/feature_comparison.tpl');
         exit;
     }
 
@@ -97,88 +96,97 @@ if ($mode == 'add_product') {
 } elseif ($mode == 'compare') {
     fn_add_breadcrumb(__('feature_comparison'));
     if (!empty($_SESSION['comparison_list'])) {
-        Tygh::$app['view']->assign('comparison_data', fn_get_product_data_for_compare($_SESSION['comparison_list'], $action));
-        Tygh::$app['view']->assign('total_products', count($_SESSION['comparison_list']));
+        Registry::get('view')->assign('comparison_data', fn_get_product_data_for_compare($_SESSION['comparison_list'], $action));
+        Registry::get('view')->assign('total_products', count($_SESSION['comparison_list']));
     }
-    Tygh::$app['view']->assign('list', $list);
-    Tygh::$app['view']->assign('action', $action);
+    Registry::get('view')->assign('list', $list);
+    Registry::get('view')->assign('action', $action);
 
     if (!empty($_SESSION['continue_url'])) {
-        Tygh::$app['view']->assign('continue_url', $_SESSION['continue_url']);
+        Registry::get('view')->assign('continue_url', $_SESSION['continue_url']);
     }
 }
 
-if ($mode == 'view_all') {
+if (!fn_allowed_for('ULTIMATE:FREE')) {
+    if ($mode == 'view_all') {
 
-    $filter_id = !empty($_REQUEST['filter_id']) ? $_REQUEST['filter_id'] : 0;
-
-    if (empty($filter_id)) {
-        return array(CONTROLLER_STATUS_NO_PAGE);
-    }
-
-    list($filters) = fn_get_filters_products_count($_REQUEST);
-
-    if (empty($filters[$filter_id]) || $filters[$filter_id]['feature_type'] != ProductFeatures::EXTENDED) {
-        return array(CONTROLLER_STATUS_NO_PAGE);
-    }
-
-    fn_add_breadcrumb($filters[$filter_id]['filter']);
-
-    $variants = array();
-    if (!empty($filters[$filter_id]['variants'])) {
-        foreach ($filters[$filter_id]['variants'] as $variant) {
-            $variants[fn_substr($variant['variant'], 0, 1)][] = $variant;
+        if (!empty($_REQUEST['q'])) {
+            parse_str(substr($_REQUEST['q'], strpos($_REQUEST['q'], '?') + 1), $params);
+        } else {
+            $params = $_REQUEST;
         }
+
+        if (empty($params['filter_id'])) {
+            return array(CONTROLLER_STATUS_NO_PAGE);
+        }
+
+        $params['view_all'] = 'Y';
+        $params['get_custom'] = 'Y';
+
+        if (!empty($params['category_id'])) {
+            $parent_ids = explode('/', db_get_field("SELECT id_path FROM ?:categories WHERE category_id = ?i", $params['category_id']));
+
+            if (!empty($parent_ids)) {
+                $cats = fn_get_category_name($parent_ids);
+                foreach ($cats as $c_id => $c_name) {
+                    fn_add_breadcrumb($c_name, "categories.view?category_id=$c_id");
+                }
+            }
+        }
+
+        list( , $view_all_filter) = fn_get_filters_products_count($params);
+
+        fn_add_breadcrumb(db_get_field("SELECT filter FROM ?:product_filter_descriptions WHERE filter_id = ?i AND lang_code = ?s", $params['filter_id'], CART_LANGUAGE));
+
+        Registry::get('view')->assign('params', $params);
+        Registry::get('view')->assign('view_all_filter', $view_all_filter);
+
+    } elseif ($mode == 'view') {
+
+        $variant_data = fn_get_product_feature_variant($_REQUEST['variant_id']);
+        Registry::get('view')->assign('variant_data', $variant_data);
+
+        if (!empty($_REQUEST['features_hash']) || !empty($_REQUEST['advanced_filter'])) {
+            fn_add_breadcrumb($variant_data['variant'], "product_features.view?variant_id=$_REQUEST[variant_id]");
+            fn_add_filter_ranges_breadcrumbs($_REQUEST, "product_features.view?variant_id=$_REQUEST[variant_id]");
+        } else {
+            fn_add_breadcrumb($variant_data['variant']);
+        }
+
+        // Override meta description/keywords
+        if (!empty($variant_data['meta_description']) || !empty($variant_data['meta_keywords'])) {
+            Registry::get('view')->assign('meta_description', $variant_data['meta_description']);
+            Registry::get('view')->assign('meta_keywords', $variant_data['meta_keywords']);
+        }
+
+        // Override page title
+        if (!empty($variant_data['page_title'])) {
+            Registry::get('view')->assign('page_title', $variant_data['page_title']);
+        }
+
+        fn_define('FILTER_CUSTOM_ADVANCED', true); // this constant means that extended filtering should be stayed on the same page
+
+        $params = $_REQUEST;
+        $params['features_hash'] = (!empty($params['features_hash']) ? ($params['features_hash'] . '.') : '') . 'V' . $params['variant_id'];
+
+        if (!empty($params['advanced_filter']) && $params['advanced_filter'] == 'Y') {
+            fn_add_breadcrumb(__('advanced_filter'));
+            list($filters) = fn_get_filters_products_count($params);
+            Registry::get('view')->assign('filter_features', $filters);
+        }
+
+        // Get products
+        $params['extend'] = array('description');
+        list($products, $search) = fn_get_products($params, Registry::get('settings.Appearance.products_per_page'));
+
+        fn_gather_additional_products_data($products, array('get_icon' => true, 'get_detailed' => true, 'get_options' => true, 'get_discounts' => true, 'get_features' => false));
+
+        $selected_layout = fn_get_products_layout($_REQUEST);
+
+        Registry::get('view')->assign('products', $products);
+        Registry::get('view')->assign('search', $search);
+        Registry::get('view')->assign('selected_layout', $selected_layout);
     }
-    ksort($variants);
-
-    Tygh::$app['view']->assign('variants', $variants);
-
-} elseif ($mode == 'view') {
-
-    $variant_data = fn_get_product_feature_variant($_REQUEST['variant_id']);
-    if (empty($variant_data)) {
-        return array(CONTROLLER_STATUS_NO_PAGE);
-    }
-
-    Tygh::$app['view']->assign('variant_data', $variant_data);
-
-    fn_add_breadcrumb($variant_data['variant']);
-
-    // Override meta description/keywords
-    if (!empty($variant_data['meta_description']) || !empty($variant_data['meta_keywords'])) {
-        Tygh::$app['view']->assign('meta_description', $variant_data['meta_description']);
-        Tygh::$app['view']->assign('meta_keywords', $variant_data['meta_keywords']);
-    }
-
-    // Override page title
-    if (!empty($variant_data['page_title'])) {
-        Tygh::$app['view']->assign('page_title', $variant_data['page_title']);
-    }
-
-    $params = $_REQUEST;
-    $params['extend'] = array('description');
-
-    list($products, $search) = fn_get_products($params, Registry::get('settings.Appearance.products_per_page'));
-
-    if (defined('AJAX_REQUEST') && (!empty($params['features_hash']) && !$products)) {
-        fn_filters_not_found_notification();
-        exit;
-    }
-
-    fn_gather_additional_products_data($products, array(
-        'get_icon' => true,
-        'get_detailed' => true,
-        'get_options' => true,
-        'get_discounts' => true,
-        'get_features' => false
-    ));
-
-    $selected_layout = fn_get_products_layout($_REQUEST);
-
-    Tygh::$app['view']->assign('products', $products);
-    Tygh::$app['view']->assign('search', $search);
-    Tygh::$app['view']->assign('selected_layout', $selected_layout);
 }
 
 function fn_get_product_data_for_compare($product_ids, $action)
@@ -196,11 +204,11 @@ function fn_get_product_data_for_compare($product_ids, $action)
 
         if (!empty($product_data['product_features'])) {
             foreach ($product_data['product_features'] as $k => $v) {
-                if ($v['feature_type'] == ProductFeatures::GROUP && empty($v['subfeatures'])) {
+                if ($v['feature_type'] == 'G' && empty($v['subfeatures'])) {
                     continue;
                 }
-                $_features = ($v['feature_type'] == ProductFeatures::GROUP) ? $v['subfeatures'] : array($k => $v);
-                $group_id = ($v['feature_type'] == ProductFeatures::GROUP) ? $k : 0;
+                $_features = ($v['feature_type'] == 'G') ? $v['subfeatures'] : array($k => $v);
+                $group_id = ($v['feature_type'] == 'G') ? $k : 0;
                 $comparison_data['feature_groups'][$k] = $v['description'];
                 foreach ($_features as $_k => $_v) {
                     if (in_array($_k, $_SESSION['excluded_features'])) {
@@ -229,7 +237,7 @@ function fn_get_product_data_for_compare($product_ids, $action)
                 unset($value);
                 $c = ($action == 'similar_only') ? true : false;
                 foreach ($comparison_data['products'] as $product) {
-                    $features = !empty($group_id) && isset($product['product_features'][$group_id]['subfeatures']) ? $product['product_features'][$group_id]['subfeatures'] : $product['product_features'];
+                    $features = !empty($group_id) && isset($product['product_features'][$group_id]) ? $product['product_features'][$group_id]['subfeatures'] : $product['product_features'];
                     if (empty($features[$feature_id])) {
                         $c = !$c;
                         break;
@@ -257,8 +265,8 @@ function fn_get_feature_selected_value($feature)
 {
     $value = null;
 
-    if (strpos(ProductFeatures::getSelectable(), $feature['feature_type']) !== false) {
-        if ($feature['feature_type'] == ProductFeatures::MULTIPLE_CHECKBOX) {
+    if (strpos('SMNE', $feature['feature_type']) !== false) {
+        if ($feature['feature_type'] == 'M') {
             foreach ($feature['variants'] as $v) {
                 if ($v['selected']) {
                     $value[] = $v['variant_id'];
@@ -268,7 +276,7 @@ function fn_get_feature_selected_value($feature)
             $value = $feature['variant_id'];
         }
 
-    } elseif (strpos(ProductFeatures::NUMBER_FIELD . ProductFeatures::DATE, $feature['feature_type']) !== false) {
+    } elseif (strpos('OD', $feature['feature_type']) !== false) {
         $value = $feature['value_int'];
     } else {
         $value = $feature['value'];

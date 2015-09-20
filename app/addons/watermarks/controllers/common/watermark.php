@@ -13,7 +13,6 @@
 ****************************************************************************/
 
 use Tygh\Storage;
-use Tygh\Registry;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -25,9 +24,8 @@ if ($mode == 'create') {
     $result_image = '';
 
     if (!empty($_SERVER['REQUEST_URI'])) {
-        $path = defined('HTTPS') ? Registry::get('config.https_path') : Registry::get('config.http_path');
 
-        $image_file = str_replace($path . '/images/', '', $_SERVER['REQUEST_URI']);
+        list(, $image_file) = explode(WATERMARKS_DIR_NAME, $_SERVER['REQUEST_URI']);
         $watermarked_file = WATERMARKS_DIR_NAME . $image_file;
 
         if (Storage::instance('images')->isExist($watermarked_file)) {
@@ -42,9 +40,7 @@ if ($mode == 'create') {
                 $is_detailed = ($image_link['detailed_id'] == $image_id);
                 $image_type = $is_detailed ? 'detailed' : 'icons';
 
-                $generate_watermark = fn_is_need_watermark($image_link['object_type'], $is_detailed, Registry::get('runtime.company_id'));
-
-                if (fn_watermark_create($image_file, $watermarked_file, $is_detailed, Registry::get('runtime.company_id'), $generate_watermark)) {
+                if (fn_watermark_create($image_file, $watermarked_file, $is_detailed)) {
                     $result_image = Storage::instance('images')->getUrl($watermarked_file);
                 }
             }

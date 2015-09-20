@@ -14,6 +14,6 @@
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
-fn_define('ITEMS_PER_PAGE', 100);
-fn_define('MAX_URLS_IN_MAP', 50000); // 50 000 is the maximum for one sitemap file
-fn_define('MAX_SIZE_IN_KBYTES', 10000); // 10240 KB || 10 Mb is the maximum for one sitemap file
+fn_register_hooks(
+    'get_rewrite_rules'
+);

@@ -31,6 +31,7 @@ class Pdf
         $transaction_id = Http::post(self::_action('/pdf/batch/add'),
             json_encode(array(
                 'transaction_id' => !empty(self::$_transaction_id) ? self::$_transaction_id : '',
+                'page_size' => 'A4',
                 'content' => self::_convertImages($html)
             )), array(
                 'headers' => array(
@@ -52,21 +53,12 @@ class Pdf
      *
      * @param  string  $filename filename to save PDF or name of attachment to download
      * @param  boolean $save     saves to file if true, outputs if not
-     * @param  array   $params   params to post along with request
      * @return mixed   true if document saved, false on failure or outputs document
      */
-    public static function batchRender($filename = '', $save = false, $params = array())
+    public static function batchRender($filename = '', $save = false)
     {
-        $default_params = array(
-            'transaction_id' => self::$_transaction_id,
-            'page_size' => 'A4'
-        );
-
-        $params = array_merge($default_params, $params);
-
-        $content = Http::post(self::_action('/pdf/batch/render'), json_encode($params), array(
+        $content = Http::get(self::_action('/pdf/batch/render/' . self::$_transaction_id), array(), array(
             'headers' => array(
-                'Content-type: application/json',
                 'Accept: application/pdf'
             ),
             'binary_transfer' => true
@@ -86,10 +78,9 @@ class Pdf
      * @param  string  $html     HTML code
      * @param  string  $filename filename to save PDF or name of attachment to download
      * @param  boolean $save     saves to file if true, outputs if not
-     * @param  array   $params   params to post along with request
      * @return mixed   true if document saved, false on failure or outputs document
      */
-    public static function render($html, $filename = '', $save = false, $params = array())
+    public static function render($html, $filename = '', $save = false)
     {
         if (is_array($html)) {
             $html = implode("<div style='page-break-before: always;'>&nbsp;</div>", $html);
@@ -99,20 +90,17 @@ class Pdf
             $html = self::_convertImages($html);
         }
 
-        $default_params = array(
-            'content' => $html,
-            'page_size' => 'A4'
-        );
-
-        $params = array_merge($default_params, $params);        
-
-        $content = Http::post(self::_action('/pdf/render'), json_encode($params), array(
-            'headers' => array(
-                'Content-type: application/json',
-                'Accept: application/pdf'
-            ),
-            'binary_transfer' => true
-        ));
+        $content = Http::post(self::_action('/pdf/render'),
+            json_encode(array(
+                'page_size' => 'A4',
+                'content' => $html
+            )), array(
+                'headers' => array(
+                    'Content-type: application/json',
+                    'Accept: application/pdf'
+                ),
+                'binary_transfer' => true
+            ));
 
         if (!empty($content)) {
             return self::_output($content, $filename, $save);
@@ -238,7 +226,7 @@ class Pdf
             ),
             '127' => array(
                 'min' => ip2long('127.0.0.0'),
-                'max' => ip2long('127.255.255.255')
+                'max' => ip2long('127.0.0.1')
             ),
             '172' => array(
                 'min' => ip2long('172.16.0.0'),

@@ -30,13 +30,8 @@ function fn_exim_google_export_format_description($product_descr, $max_length = 
 // @product_id - current product id
 function fn_exim_google_export_format_price($product_price, $product_id = 0)
 {
-    static $auth;
-
-    if (empty($auth)) {
-        $auth = fn_fill_auth();
-    }
-
-    $product = fn_get_product_data($product_id, $auth, CART_LANGUAGE, false, false, false, false, false, false, false);
+    $auth = fn_fill_auth();
+    $product = fn_get_product_data($product_id, $auth, CART_LANGUAGE, true, true, false, false, false);
     fn_promotion_apply('catalog', $product, $auth);
 
     $_discount = 0;

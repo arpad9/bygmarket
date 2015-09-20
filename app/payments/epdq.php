@@ -67,7 +67,7 @@ if (defined('PAYMENT_NOTIFICATION')) {
                 $pp_response['reason_text'] = ($status_code == 1) ? __('text_transaction_declined') : __('payments.epdq.hash_error');
             }
             fn_finish_payment($order_id, $pp_response);
-            exit;
+            die();
         } else {
             die('Access_denied');
         }
@@ -91,7 +91,7 @@ if (defined('PAYMENT_NOTIFICATION')) {
         }
     }
 } else {
-    $form_url = ($processor_data['processor_params']['epdq_mode'] == 'test') ? 'https://mdepayments.epdq.co.uk/ncol/test/orderstandard_utf8.asp' : 'https://payments.epdq.co.uk/ncol/prod/orderstandard_utf8.asp';
+    $form_url = ($processor_data['processor_params']['epdq_mode'] == 'test') ? 'https://mdepayments.epdq.co.uk/ncol/test/orderstandard_utf8.asp' : 'https://mdepayments.epdq.co.uk/ncol/prod/orderstandard_utf8.asp';
     $sucess_url = fn_url("payment_notification.sucess?payment=epdq&order_id=$order_id", AREA, 'current');
     $decline_url = fn_url("payment_notification.decline?payment=epdq&order_id=$order_id", AREA, 'current');
     $exception_url = $cancel_url = fn_url("payment_notification.cancel?payment=epdq&order_id=$order_id", AREA, 'current');
@@ -148,7 +148,7 @@ if (defined('PAYMENT_NOTIFICATION')) {
     if (!empty($order_info['products'])) {
         foreach ($order_info['products'] as $order_product) {
             $post["ITEMID$key"] = $order_product['product_id'];
-            $post["ITEMNAME$key"] = fn_format_long_string($order_product['product'], 40);
+            $post["ITEMNAME$key"] = $order_product['product'];
             $post["ITEMPRICE$key"] = $order_product['price'];
             $post["ITEMQUANT$key"] = $order_product['amount'];
             $post["ITEMDISCOUNT$key"] = $discount;
@@ -169,7 +169,7 @@ if (defined('PAYMENT_NOTIFICATION')) {
         foreach ($order_info['taxes'] as $tax_id => $tax_data) {
             if ($tax_data['price_includes_tax'] == 'N') {
                 $post["ITEMID$key"] = $tax_id;
-                $post["ITEMNAME$key"] = fn_format_long_string($tax_data['description'], 40);
+                $post["ITEMNAME$key"] = $tax_data['description'];
                 $post["ITEMPRICE$key"] = $tax_data['tax_subtotal'];
                 $post["ITEMQUANT$key"] = 1;
                 $key ++;

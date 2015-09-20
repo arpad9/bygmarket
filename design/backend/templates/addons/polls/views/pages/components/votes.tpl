@@ -29,7 +29,7 @@
        <td>{if $vote.user_id}{$vote.lastname}{if $vote.lastname && $vote.firstname}&nbsp;{/if}{$vote.firstname}{else}{__("anonymous")}{/if}</td>
        <td>{$vote.ip_address}</td>
        <td>{if $vote.type == "C"}{__("yes")}{else}{__("no")}{/if}</td>
-       <td>{include file="buttons/clone_delete.tpl" href_delete="pages.delete_vote?vote_id=`$vote.vote_id`" microformats="cm-post"}</td>
+       <td>{include file="buttons/clone_delete.tpl" href_delete="pages.delete_vote?vote_id=`$vote.vote_id`"}</td>
 </tr>
 {/foreach}
 </tbody>

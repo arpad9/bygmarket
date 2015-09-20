@@ -16,7 +16,7 @@ return array(
     'A' => array( // menu items
         'param' => 'url',
         'tooltip' => 'tts_link_text',
-        'descr' => 'name',
+        'descr' => 'link_text',
         'add_title' => 'new_items',
         'add_button' => 'add_item',
         'edit_title' => 'editing_item',
@@ -33,12 +33,6 @@ return array(
                 'tooltip' => 'tts_generate_submenu',
                 'type' => 'megabox', // :)
                 'name' => 'param_3'
-            ),
-            array(
-                'title' => 'user_class',
-                'tooltip' => 'tts_menu_user_class',
-                'type' => 'input',
-                'name' => 'class'
             ),
         ),
         'has_localization' => true,

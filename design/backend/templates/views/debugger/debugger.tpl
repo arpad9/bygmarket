@@ -9,6 +9,14 @@ var codeArr={};
 
 $(document).ready(function() {
 
+    $(window).on('beforeunload', function() {
+        $.ajax({
+            url: '{/literal}{"debugger.clear_session?debugger_hash=`$debugger_hash`"|fn_url}{literal}',
+            cache: false,
+            async: false,
+        });
+    });
+
     $(window).on('keydown', function(e) {
         codeArr[e.keyCode] = true;
 
@@ -16,6 +24,11 @@ $(document).ready(function() {
             // show toolbar on ctrl+alt+d
             if (e.keyCode == 68) {
                 $('.deb-content').toggle();
+            }
+
+            // clear cache on ctrl+alt+c
+            if (e.keyCode == 67) {
+                $("#DebugToolbarClearCache").click();
             }
 
             codeArr={};
@@ -215,8 +228,6 @@ $(document).ready(function() {
             border: 0px !important;
             border-radius: 0px !important;
             font-family: monospace !important;
-            white-space: pre-wrap;
-            line-height: 18px;
         }
         #DebugToolbar ul, #DebugToolbar li {
             padding: 0px;
@@ -235,28 +246,12 @@ $(document).ready(function() {
             z-index: 99999;
             cursor: pointer;
         }
-        #DebugToolbar .deb-x {
-            color: white;
-            position: absolute;
-            top: 58px;
-            left: -24px;
-            display: block;
-            padding: 5px 7px;
-            height: 18px;
-            -webkit-border-radius: 4px 0 0 4px;
-            -moz-border-radius: 4px 0 0 4px;
-            border-radius: 4px 0 0 4px;
-            background: #4d4d4d;
-            text-decoration: none;
-            visibility: hidden;
-            opacity: 0;
-        }
         #DebugToolbar .deb-logo {
             width: 86px;
             height: 19px;
             display: block;
             position: absolute;
-            top: 25px;
+            top: 34px;
             right: 94px;
             z-index: 99999;
         }
@@ -273,15 +268,6 @@ $(document).ready(function() {
             z-index: 99998;
             color: white;
             min-height: 630px;
-        }
-        #DebugToolbar .deb-panel:hover .deb-x {
-            visibility: visible;
-            opacity: 1;
-            -webkit-transition: all 0.2s ease;
-            -moz-transition: all 0.2s ease;
-            -ms-transition: all 0.2s ease;
-            -o-transition: all 0.2s ease;
-            transition: all 0.2s ease;
         }
         #DebugToolbar .deb-panel .deb-menu {
             margin-top: 85px;
@@ -549,8 +535,7 @@ $(document).ready(function() {
         #DebugToolbar [type="checkbox"] {
             margin: 0px;
         }
-        #DebugToolbar #DebugToolbarSubTabSQLList,
-        #DebugToolbar #DebugToolbarSubTabCacheQueriesList {
+        #DebugToolbar #DebugToolbarSubTabSQLList {
             display: block;
         }
 
@@ -561,17 +546,11 @@ $(document).ready(function() {
     <div class="deb-content">
     <div class="deb-panel">
         <a href="#" class="deb-logo"><img src="{$images_dir}/debugger/logo.png"></a>
-        {if $smarty.const.DEBUG_MODE !== true}
-            {$current_url = $config.current_url|fn_query_remove:$config.debugger_token}
-            {$current_url = $current_url|escape:url}
-            <a href="{"debugger.quit?redirect_url=`$current_url`"|fn_url}" id="DebugToolbarQuit" class="deb-x">&#10006;</a>
-        {/if}
         <ul class="deb-menu">
             <li><a class="cm-ajax cm-ajax-cache" href="{"debugger.server?debugger_hash=`$debugger_hash`"|fn_url}" data-ca-target-id="DebugToolbarTabServerContent" data-tab-content-id="#DebugToolbarTabServer">Server<small>{$smarty.const.PRODUCT_NAME}: version <b>{$smarty.const.PRODUCT_VERSION} {$smarty.const.PRODUCT_EDITION} {if $smarty.const.PRODUCT_STATUS != ''} ({$smarty.const.PRODUCT_STATUS}){/if} {if $smarty.const.PRODUCT_BUILD != ''} {$smarty.const.PRODUCT_BUILD}{/if}</b></small></a></li>
             <li><a class="cm-ajax cm-ajax-cache" href="{"debugger.request?debugger_hash=`$debugger_hash`"|fn_url}" data-ca-target-id="DebugToolbarTabRequestContent" data-tab-content-id="#DebugToolbarTabRequest">Request</a></li>
-            <li><a class="cm-ajax cm-ajax-cache" href="{"debugger.config?debugger_hash=`$debugger_hash`"|fn_url}" data-ca-target-id="DebugToolbarTabConfigContent" data-tab-content-id="#DebugToolbarTabConfig">Config</a></li>
+            <li><a class="cm-ajax cm-ajax-cache" href="{"debugger.config?debugger_hash=`$debugger_hash`"|fn_url}" data-ca-target-id="DebugToolbarTabConfigContent" data-tab-content-id="#DebugToolbarTabConfig">Config<small>DEBUG on</small></a></li>
             <li><a class="cm-ajax cm-ajax-cache" href="{"debugger.sql?debugger_hash=`$debugger_hash`"|fn_url}" data-ca-target-id="DebugToolbarTabSQLContent" data-tab-content-id="#DebugToolbarTabSQL">SQL<small>{$totals.count_queries} queries {$totals.time_queries|number_format:"4"} s</small></a></li>
-            <li><a class="cm-ajax cm-ajax-cache" href="{"debugger.cache_queries?debugger_hash=`$debugger_hash`"|fn_url}" data-ca-target-id="DebugToolbarTabCacheQueriesContent" data-tab-content-id="#DebugToolbarTabCacheQueries">Cache queries<small>{$totals.count_cache_queries} queries {$totals.time_cache_queries|number_format:"4"} s</small></a></li>
             <li><a class="cm-ajax cm-ajax-cache" href="{"debugger.logging?debugger_hash=`$debugger_hash`"|fn_url}" data-ca-target-id="DebugToolbarTabLoggingContent" data-tab-content-id="#DebugToolbarTabLogging">Logging</a></li>
             <li><a class="cm-ajax cm-ajax-cache" href="{"debugger.templates?debugger_hash=`$debugger_hash`"|fn_url}" data-ca-target-id="DebugToolbarTabTemplatesContent" data-tab-content-id="#DebugToolbarTabTemplates" >Templates<small>{$totals.count_tpls} included templates</small></a></li>
         </ul>
@@ -579,18 +558,15 @@ $(document).ready(function() {
         <div class="deb-down-content">
             <p class="deb-down-help-text">
             Ctrl+Alt+D - show/hide toolbar
+            Ctrl+Alt+C - clear cache
         </p>
         </div>
         <ul class="deb-resource-usage">
             <li>Page generating time <small>{$totals.time_page|number_format:"4"} s</small></li>
             <li>Memory usage <small>{$totals.memory_page|number_format:"2":".":" "} KB</small></li>
-            {if "ULTIMATE"|fn_allowed_for && !$runtime.company_id}
-                <li>Debugger ID is <small>{$debugger_id}</small></li>
-            {elseif "MULTIVENDOR"|fn_allowed_for}
-                <li>Debug on <a href="{"?`$config.debugger_token`=`$debugger_id`"|fn_url:'C'}" target="_blank" >storefront</a></li>
-            {else}
-                <li>Debug on <a href="{"?`$config.debugger_token`=`$debugger_id`&company_id=`$runtime.company_id`"|fn_url:'C'}" target="_blank" >storefront</a></li>
-            {/if}
+            <li>Session size <small id="sessionSize">{$totals.size_session|number_format:"2":".":" "} KB</small></li>
+            <li><a class="cm-ajax" href="{"debugger.clear_session"|fn_url}" data-ca-target-id="sessionSize">Clear debugger cache</a></li>
+            <li><a class="cm-ajax" href="{"debugger.clear_cache"|fn_url}" id="DebugToolbarClearCache">Clear cache</a></li>
         </ul>
         </div>
     </div>
@@ -633,16 +609,6 @@ $(document).ready(function() {
         <div class="deb-tab-content" id="DebugToolbarTabSQLContent">
         </div>
     </div>
-
-    <!--Cache queries tab-->
-    <div class="deb-tab" id="DebugToolbarTabCacheQueries">
-        <div class="deb-tab-title">
-            <h1>Cache queries</h1>
-            <a href="#" class="deb-close">&#10006;</a>
-        </div>
-        <div class="deb-tab-content" id="DebugToolbarTabCacheQueriesContent">
-        </div>
-    </div>    
 
     <!--Logging tab-->
     <div class="deb-tab" id="DebugToolbarTabLogging">

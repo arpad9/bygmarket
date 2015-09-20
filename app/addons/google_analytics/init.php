@@ -15,6 +15,7 @@
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
 fn_register_hooks(
-    'change_order_status',
-    'get_order_items_info_post'
+    'get_order_info',
+    'place_order',
+    'change_order_status'
 );

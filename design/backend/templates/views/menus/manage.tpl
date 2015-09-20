@@ -13,12 +13,11 @@
         {assign var="dialog_name" value="{__("editing_menu")}: `$menu.name`"}
         {assign var="name" value=$menu.name}
         {assign var="edit_link" value="menus.update?menu_data[menu_id]=`$menu.menu_id`&return_url=$r_url"}
-        {assign var="manage_items_link" value="static_data.manage?section=A&menu_id=`$menu.menu_id`"}
         {capture name = "items_link"}            
-            <li>{btn type="list" text=__("manage_items") href=$manage_items_link}</li>
+            <li>{btn type="list" text=__("manage_items") href="static_data.manage?section=A&menu_id=`$menu.menu_id`"}</li>
             <li class="divider"></li>
         {/capture}
-        {include file="common/object_group.tpl" id=$menu.menu_id text=$name href=$edit_link main_link=$manage_items_link href_edit=$edit_link href_delete=$_href_delete delete_target_id="manage_tabs_list" header_text=$dialog_name table="menus" object_id_name="menu_id" status=$menu.status tool_items=$smarty.capture.items_link no_table=true}
+        {include file="common/object_group.tpl" id=$menu.menu_id text=$name href=$edit_link href_delete=$_href_delete delete_target_id="manage_tabs_list" header_text=$dialog_name table="menus" object_id_name="menu_id" status=$menu.status tool_items=$smarty.capture.items_link no_table=true}
     {/foreach}
 </table>
 {else}

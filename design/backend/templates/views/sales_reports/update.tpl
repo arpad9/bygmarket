@@ -39,20 +39,18 @@
     </thead>
     <tbody>
     {foreach from=$report.tables item=table}
+    <input type="hidden" name="report_data[tables][{$table.table_id}][table_id]" value="{$table.table_id}">
     <tr>
-        <td class="center">
-            <input type="hidden" name="report_data[tables][{$table.table_id}][table_id]" value="{$table.table_id}">
-            <input type="checkbox" name="del[{$table.table_id}]" id="delete_checkbox" value="Y" class="cm-item">
-        </td>
+        <td class="center"><input type="checkbox" name="del[{$table.table_id}]" id="delete_checkbox" value="Y" class="cm-item"></td>
         <td><input type="text" name="report_data[tables][{$table.table_id}][position]" value="{$table.position}" size="3" class="input-micro input-hidden"></td>
         <td><a href="{"sales_reports.update_table?report_id=`$report_id`&table_id=`$table.table_id`"|fn_url}">{$table.description}</a></td>
         <td>
-            <select name="report_data[tables][{$table.table_id}][type]">
-                <option value="T">{__("table")}</option>
-                <option value="B" {if $table.type == "B"}selected="selected"{/if}>{__("graphic")} [{__("bar")}] </option>
-                <option value="P" {if $table.type == "P"}selected="selected"{/if}>{__("graphic")} [{__("pie_3d")}] </option>
-            </select>
-        </td>
+        <select name="report_data[tables][{$table.table_id}][type]">
+            <option value="T">{__("table")}</option>
+            <option value="B" {if $table.type == "B"}selected="selected"{/if}>{__("graphic")} [{__("bar")}] </option>
+            <option value="P" {if $table.type == "P"}selected="selected"{/if}>{__("graphic")} [{__("pie_3d")}] </option>
+            <option value="C" {if $table.type == "C"}selected="selected"{/if}>{__("graphic")} [{__("pie")}] </option>
+        </select></td>
         <td>
         <select name="report_data[tables][{$table.table_id}][display]">
             {foreach from=$report_elements.values item=element}
@@ -64,12 +62,10 @@
         <td class="nowrap right">
             <div class="hidden-tools">
                 {capture name="tools_list"}
-                    {hook name="sales_reports:update_tools_list"}
-                        <li>{btn type="list" text=__("edit") href="sales_reports.update_table?report_id=`$report_id`&table_id=`$table.table_id`"}</li>
-                        <li>{btn type="delete" class="cm-config cm-post" href="sales_reports.delete_table?table_id=`$table.table_id`&report_id=`$report.report_id`"}</li>
-                    {/hook}
+                    <li>{btn type="list" text=__("edit") href="sales_reports.update_table?report_id=`$report_id`&table_id=`$table.table_id`"}</li>
+                    <li>{btn type="delete" href="sales_reports.delete_table?table_id=`$table.table_id`&report_id=`$report.report_id`"}</li>
                 {/capture}
-                {dropdown content=$smarty.capture.tools_list}
+                {dropdown content=$smarty.capture.tools_list class="dropleft"}
             </div>
         </td>
     </tr>
@@ -81,13 +77,13 @@
     {/if}
 </div>
 {/if}
-</form>
+
 {/capture}
 {include file="common/tabsbox.tpl" content=$smarty.capture.tabsbox active_tab=$smarty.request.selected_section track=true}
 
 {capture name="adv_buttons"}
     {if $report_id}
-        {include file="common/tools.tpl" tool_href="sales_reports.update_table?report_id=`$report_id`" prefix="bottom" hide_tools=true title=__("add_chart")}
+        {include file="common/tools.tpl" tool_href="sales_reports.update_table?report_id=`$report_id`" prefix="bottom" hide_tools=true title=__("add_chart") icon=true}
     {/if}
 {/capture}
 
@@ -101,6 +97,7 @@
     {include file="buttons/save_cancel.tpl" but_name="dispatch[sales_reports.update]" but_role="submit-link" but_target_form="statistics_form" save=$report_id}
 {/capture}
 
+</form>
 {/capture}
 
 {if $report_id}

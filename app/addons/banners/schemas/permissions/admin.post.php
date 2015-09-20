@@ -15,6 +15,6 @@
 $schema['banners'] = array (
     'permissions' => 'manage_banners',
 );
-$schema['tools']['modes']['update_status']['param_permissions']['table']['banners'] = 'manage_banners';
+$schema['tools']['modes']['update_status']['param_permissions']['table_names']['banners'] = 'manage_banners';
 
 return $schema;

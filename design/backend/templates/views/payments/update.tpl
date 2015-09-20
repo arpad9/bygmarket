@@ -13,10 +13,8 @@
 
 <div class="tabs cm-j-tabs">
     <ul class="nav nav-tabs">
-        <li id="tab_details_{$id}" class="cm-js active"><a>{__("general")}</a></li>
+        <li id="tab_details_{$id}" class="cm-js cm-active"><a>{__("general")}</a></li>
         <li id="tab_conf_{$id}" class="cm-js cm-ajax {if !$payment.processor_id}hidden{/if}"><a {if $payment.processor_id}href="{"payments.processor?payment_id=`$id`"|fn_url}"{/if}>{__("configure")}</a></li>
-        {hook name="payments:tabs_list"}
-        {/hook}
     </ul>
 </div>
 
@@ -43,22 +41,20 @@
             <div class="controls">
                 <select id="elm_payment_processor_{$id}" name="payment_data[processor_id]" onchange="fn_switch_processor({$id}, this.value);">
                     <option value="">{__("offline")}</option>
-                    {hook name="payments:processors_optgroups"}
                     <optgroup label="{__("checkout")}">
                         {foreach from=$payment_processors item="processor"}
-                            {if $processor.type == "C" || $processor.type == "B"}
-                                <option value="{$processor.processor_id}" {if $payment.processor_id == $processor.processor_id}selected="selected"{/if} {if $processor.processor_status == "D"}disabled="disabled"{/if}>{$processor.processor}</option>
+                            {if $processor.type != "P"}
+                                <option value="{$processor.processor_id}" {if $payment.processor_id == $processor.processor_id}selected="selected"{/if}>{$processor.processor}</option>
                             {/if}
                         {/foreach}
                     </optgroup>
                     <optgroup label="{__("gateways")}">
                         {foreach from=$payment_processors item="processor"}
                             {if $processor.type == "P"}
-                                <option value="{$processor.processor_id}" {if $payment.processor_id == $processor.processor_id}selected="selected"{/if} {if $processor.processor_status == "D"}disabled="disabled"{/if}>{$processor.processor}</option>
+                                <option value="{$processor.processor_id}" {if $payment.processor_id == $processor.processor_id}selected="selected"{/if}>{$processor.processor}</option>
                             {/if}
                         {/foreach}
                     </optgroup>
-                    {/hook}
                 </select>
                 
                 <p id="elm_processor_description_{$id}" class="description {if !$payment_processors[$payment.processor_id].description}hidden{/if}"><br>
@@ -161,9 +157,6 @@
         {/hook}
     </fieldset>
     <!--content_tab_details_{$id}--></div>
-
-    {hook name="payments:tabs_content"}
-    {/hook}
 </div>
 
 {if !$hide_for_vendor}

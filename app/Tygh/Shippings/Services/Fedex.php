@@ -47,22 +47,16 @@ class Fedex implements IService
      */
     private function _prepareAddress($request, $address, $address_type_key, $code = '')
     {
-        $request[$address_type_key]['Address']['StreetLines']  = !empty($address['address']) ? $address['address'] : '';
+        $request[$address_type_key]['Address']['StreetLines']  = $address['address'];
         preg_match_all("/[\d\w]/", $address['zipcode'], $matches);
         $request[$address_type_key]['Address']['PostalCode'] = !empty($matches[0]) ? implode('', $matches[0]) : '';
-        $request[$address_type_key]['Address']['City'] = !empty($address['city']) ? $address['city'] : '';
+        $request[$address_type_key]['Address']['City'] = $address['city'];
         $request[$address_type_key]['Address']['StateOrProvinceCode'] = (strlen($address['state']) > 2) ? '' : $address['state'];
         $request[$address_type_key]['Address']['CountryCode'] = $address['country'];
 
         $request[$address_type_key]['Contact']['PersonName'] = isset($address['firstname']) ? ($address['firstname'] . ' ' . $address['lastname']) : $address['name'];
-
-        $_phone = '8001234567';
-        if (isset($address['phone'])) {
-            preg_match_all("/[\d]/", $address['phone'], $matches);
-            if (!empty($matches[0])) {
-                $_phone = implode('', $matches[0]);
-            }
-        }
+        preg_match_all("/[\d]/", $address['phone'], $matches);
+        $_phone = (!empty($matches[0]) ? implode('', $matches[0]) : '8001234567');
         $request[$address_type_key]['Contact']['PhoneNumber'] = (strlen($_phone) >= 10) ? substr($_phone, 0, 10) : str_pad($_phone, 10, '0');
 
         if ($address_type_key == 'Recipient' && ($code == 'GROUND_HOME_DELIVERY' || empty($address['address_type']) || (!empty($address['address_type']) && $address['address_type'] == 'residential'))) {
@@ -275,17 +269,13 @@ EOT;
         $return = array(
             'cost' => false,
             'error' => false,
-            'delivery_time' => false,
         );
 
         $code = $this->_shipping_info['service_code'];
-        // FIXME: FexEx returned GROUND for international as "FEDEX_GROUND" and not INTERNATIONAL_GROUND
-        // We sent a request to clarify this situation to FedEx.
-        $intl_code = str_replace('INTERNATIONAL_', 'FEDEX_', $code);
         $rates = $this->processRates($response);
 
-        if (isset($rates[$code]) || isset($rates[$intl_code])) {
-            $return['cost'] = isset($rates[$code]) ? $rates[$code] : $rates[$intl_code];
+        if (isset($rates[$code])) {
+            $return['cost'] = $rates[$code];
         } else {
             $return['error'] = $this->processErrors($response);
         }
@@ -310,15 +300,9 @@ EOT;
         if ($xml) {
             $rate_reply = $xml->Body->RateReply;
             if ($rate_reply) {
-                if ((string) $rate_reply->HighestSeverity == 'SUCCESS') {
-                    $error['type'] = 'ERROR';
-                    $error['code'] = '';
-                    $error['message'] = __('service_not_available');
-                } else {
-                    $error['type'] = (string) $rate_reply->HighestSeverity;
-                    $error['code'] = (string) $rate_reply->Notifications->Code;
-                    $error['message'] = (string) $rate_reply->Notifications->Message;
-                }
+                $error['type'] = (string) $rate_reply->HighestSeverity;
+                $error['code'] = (string) $rate_reply->Notifications->Code;
+                $error['message'] = (string) $rate_reply->Notifications->Message;
             } else {
                 $error = array('type' => 'ERROR', 'code' => '', 'message' => 'Unknown error');
             }

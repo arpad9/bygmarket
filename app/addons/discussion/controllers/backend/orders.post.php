@@ -40,10 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $data = $_REQUEST['discussion'];
                 if (fn_allowed_for('ULTIMATE') && Registry::get('runtime.company_id')) {
                     $data['company_id'] = Registry::get('runtime.company_id');
-                } elseif (fn_allowed_for('ULTIMATE') && Registry::get('runtime.simple_ultimate')) {
-                    $data['company_id'] = Registry::get('runtime.forced_company_id');
                 }
-
                 db_query("REPLACE INTO ?:discussion ?e", $data);
                 if ($_REQUEST['discussion']['type'] != 'D') {
                     $_REQUEST['selected_section'] = 'discussion';
@@ -57,13 +54,13 @@ if ($mode == 'details') {
 
     $discussion = fn_get_discussion($_REQUEST['order_id'], 'O', true, $_REQUEST);
     if (!empty($discussion) && $discussion['type'] != 'D') {
-        if (fn_allowed_for('MULTIVENDOR') || (fn_allowed_for('ULTIMATE') && Registry::get('runtime.company_id')) || Registry::get('runtime.simple_ultimate')) {
+        if (fn_allowed_for('MULTIVENDOR') || fn_allowed_for('ULTIMATE') && Registry::get('runtime.company_id')) {
             Registry::set('navigation.tabs.discussion', array (
                 'title' => __('communication'),
                 'js' => true
             ));
 
-            Tygh::$app['view']->assign('discussion', $discussion);
+            Registry::get('view')->assign('discussion', $discussion);
         }
     }
 }

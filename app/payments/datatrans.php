@@ -112,19 +112,34 @@ if (defined('PAYMENT_NOTIFICATION')) {
         $language = 'en';
     }
 
-    $post_data = array(
-        'merchantId' => $processor_data['processor_params']['merchant_id'],
-        'amount' => $pp_total,
-        'currency' => $processor_data['processor_params']['currency'],
-        'refno' => $_order_id,
-        'successUrl' => $pp_response_url,
-        'errorUrl' => $pp_response_url,
-        'cancelUrl' => $pp_cancel_url,
-        'language' => $language,
-        'reqtype' => $processor_data['processor_params']['transaction_type'],
-        'sign' => $processor_data['processor_params']['sign'],        
-    );
+    echo <<<EOT
+<form action="{$pp_url}" method="POST" name="process">
+    <input type="hidden" name="merchantId" value="{$processor_data['processor_params']['merchant_id']}" />
+    <input type="hidden" name="amount" value="{$pp_total}" />
+    <input type="hidden" name="currency" value="{$processor_data['processor_params']['currency']}" />
+    <input type="hidden" name="refno" value="{$_order_id}" />
+    <input type="hidden" name="successUrl" value="{$pp_response_url}" />
+    <input type="hidden" name="errorUrl" value="{$pp_response_url}" />
+    <input type="hidden" name="cancelUrl" value="{$pp_cancel_url}" />
+    <input type="hidden" name="language" value="{$language}" />
+    <input type="hidden" name="reqtype" value="{$processor_data['processor_params']['transaction_type']}" />
+    <input type="hidden" name="sign" value="{$processor_data['processor_params']['sign']}" />
+EOT;
 
-    fn_create_payment_form($pp_url, $post_data, 'DataTrans');
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'DataTrans server'
+));
+
+echo <<<EOT
+    </form>
+    <p><div align=center>{$msg}</div></p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
 }
 exit;

@@ -1,27 +1,11 @@
-// Windows Phone 8 Device-Width fix
-(function() {
-    if ("-ms-user-select" in document.documentElement.style && navigator.userAgent.match(/IEMobile\/10\.0/)) {
-        var msViewportStyle = document.createElement("style");
-        msViewportStyle.appendChild(
-            document.createTextNode("@-ms-viewport{width:auto!important}")
-        );
-        document.getElementsByTagName("head")[0].appendChild(msViewportStyle);
-    }
-})();
-
 var Tygh = {
     embedded: typeof(TYGH_LOADER) !== 'undefined',
-    doc: typeof(TYGH_LOADER) !== 'undefined' ? TYGH_LOADER.doc : document,
-    body: typeof(TYGH_LOADER) !== 'undefined' ? TYGH_LOADER.body : null, // will be defined in runCart method
     otherjQ: typeof(TYGH_LOADER) !== 'undefined' && TYGH_LOADER.otherjQ,
-    facebook: typeof(TYGH_FACEBOOK) !== 'undefined' && TYGH_FACEBOOK,
     container: 'tygh_main_container',
     init_container: 'tygh_container',
+    doc: typeof(TYGH_LOADER) !== 'undefined' ? document.getElementById('tygh_container') : document,
     lang: {},
     area: '',
-    security_hash: '',
-    isTouch: false,
-    anchor: typeof(TYGH_LOADER) !== 'undefined' ? '' : window.location.hash,
     // Get or set language variable
     tr: function(name, val)
     {
@@ -43,6 +27,35 @@ var Tygh = {
 (function(_, $) {
 
     _.$ = $;
+
+    /*
+     * In embedded mode this workaround needs to allow 3rd party
+     * code append elements to widget container instead of body
+     */
+    if (_.embedded) {
+        var oAppendTo = $.fn.appendTo;
+        var oAppend = $.fn.append;
+
+        $.fn.extend({
+            appendTo: function(selector)
+            {
+                if ($(selector).is('body')) {
+                    selector = _.body;
+                }
+
+                return oAppendTo.call(this, selector);
+            },
+            append: function(selector)
+            {
+                var self = $(this);
+                if (self.is('body')) {
+                    self = _.body;
+                }
+
+                return oAppend.call(self, selector);
+            }
+        });
+    }
 
     /*
      * Add browser detection
@@ -109,13 +122,12 @@ var Tygh = {
         is: {
             email: function(email)
             {
-                return /\S+@\S+.\S+/i.test(email) ? true : false;
+                return /^([\w-+=_]+(?:\.[\w-+=_]+)*)@((?:[-a-zA-Z0-9]+\.)*[a-zA-Z0-9][-a-zA-Z0-9]{0,65}[a-zA-Z0-9])\.([a-z]{2,6}(?:\.[a-z]{2})?)$/i.test(email) ? true : false;
             },
 
             blank: function(val)
             {
-
-                if(($.isArray(val) && val.length == 0) || $.type(val) === 'null' || ("" + val).replace(/[\n\r\t]/gi, '') == '') {
+                if (val == null || val.replace(/[\n\r\t]/gi, '') == '') {
                     return true;
                 }
 
@@ -134,9 +146,33 @@ var Tygh = {
 
             phone: function(val)
             {
-                var regexp = /^[\s()+-]*([0-9][\s()+-]*){6,20}$/;
+                var digits = '0123456789';
+                var valid_chars = '()- +';
+                var min_digits = 10;
+                var bracket = 3;
+                var brchr = val.indexOf('(');
+                var s = '';
 
-                return (regexp.test(val) && val.length) ? true: false;
+                val = $.trim(val);
+
+                if (val.indexOf('+') > 1) {
+                    return false;
+                }
+                if (val.indexOf('-') != -1) {
+                    bracket = bracket + 1;
+                }
+                if ((val.indexOf('(') != -1 && val.indexOf('(') > bracket) || (val.indexOf('(') != -1 && val.charAt(brchr + 4) != ')') || (val.indexOf('(') == -1 && val.indexOf(')') != -1)) {
+                    return false;
+                }
+
+                for (var i = 0; i < val.length; i++) {
+                    var c = val.charAt(i);
+                    if (valid_chars.indexOf(c) == -1) {
+                        s += c;
+                    }
+                }
+
+                return ($.is.integer(s) && s.length >= min_digits);
             }
         },
 
@@ -209,16 +245,6 @@ var Tygh = {
                 return true;
             }
 
-            var processed = {
-                status: false,
-                to_return: true
-            };
-            $.ceEvent('trigger', 'dispatch_event_pre', [e, jelm, processed]);
-
-            if (processed.status) {
-                return processed.to_return;
-            }
-
             // Dispatch click event
             if (e.type == 'click') {
 
@@ -231,21 +257,9 @@ var Tygh = {
                 // If element or its parents (e.g. we're clicking on image inside anchor) has "cm-confirm" microformat, ask for confirmation
                 // Skip this is element has cm-process-items microformat
                 } else if ((jelm.hasClass('cm-confirm') || jelm.parents().hasClass('cm-confirm')) && !jelm.parents().hasClass('cm-skip-confirmation')) {
-                    var confirm_text = _.tr('text_are_you_sure_to_proceed'),
-                        $parent_confirm;
-
-                    if (jelm.hasClass('cm-confirm') && jelm.data('ca-confirm-text')) {
-                        confirm_text = jelm.data('ca-confirm-text');
-                    } else {
-                        $parent_confirm = jelm.parents('[class="cm-confirm"][data-ca-confirm-text]').first();
-                        if($parent_confirm.get(0)) {
-                            confirm_text = $parent_confirm.data('ca-confirm-text');
-                        }
-                    }
-                    if (confirm(fn_strip_tags(confirm_text)) === false) {
+                    if (confirm(_.tr('text_are_you_sure_to_proceed')) === false) {
                         return false;
                     }
-                    $.ceEvent('trigger', 'ce.form_confirm', [jelm]);
                 }
 
 
@@ -288,11 +302,7 @@ var Tygh = {
                             }
                         } else {
                             $(':input[name]', holder).each(function() {
-                                var $this = $(this),
-                                    name = $this.prop('name');
-                                $this.data('caInputName', name)
-                                    .attr('data-ca-input-name', name)
-                                    .prop('name', '');
+                                $(this).data('caInputName', $(this).prop('name')).prop('name', '');
                             });
                             holder.addClass('cm-delete-row cm-opacity');
                             if (($.browser.msie && $.browser.version < 9) || $.browser.opera) {
@@ -306,21 +316,9 @@ var Tygh = {
                     jelm.parents('form:first').append('<input type="hidden" name="return_to_list" value="Y" />');
                 }
 
-                if (jelm.hasClass('cm-new-window') && jelm.prop('href') || jelm.closest('.cm-new-window') && jelm.closest('.cm-new-window').prop('href')) {
-                    var _e = jelm.hasClass('cm-new-window') ? jelm.prop('href') : jelm.closest('.cm-new-window').prop('href');
-                    window.open(_e);
+                if (jelm.hasClass('cm-new-window') && jelm.prop('href')) {
+                    window.open(jelm.prop('href'));
                     return false;
-                }
-
-                if (jelm.hasClass('cm-select-text')) {
-                    if (jelm.data('caSelectId')) {
-                        var c_elm = jelm.data('caSelectId');
-                        if (c_elm && $('#' + c_elm).length) {
-                            $('#' + c_elm).select();
-                        }
-                    } else {
-                        jelm.get(0).select();
-                    }
                 }
 
                 if (jelm.hasClass('cm-external-click') || jelm.parents('.cm-external-click').length) {
@@ -329,15 +327,7 @@ var Tygh = {
                     if (c_elm && $('#' + c_elm).length) {
                         $('#' + c_elm).click();
                     }
-
-                    var opt = {
-                        need_scroll: true,
-                        jelm: _e
-                    };
-
-                    $.ceEvent('trigger', 'ce.needScroll', [opt]);
-
-                    if (_e.data('caScroll') && opt.need_scroll) {
+                    if (_e.data('caScroll')) {
                         $.scrollToElm($('#' + _e.data('caScroll')));
                     }
                 }
@@ -367,30 +357,17 @@ var Tygh = {
                 }
 
                 // Restore form values if cancel button is pressed
-                if (jelm.hasClass('cm-cancel')) {
-                    var form = jelm.parents('form');
-                    if (form.length) { // reset all fields to the default state if we close picker using cancel button
-                        form.get(0).reset();
-
-                        // Clean fileuploader files
-                        if(_.fileuploader) {
-                            _.fileuploader.clean_form();
-                        }
-
-                        form.find('.error-message').remove();
-
-                        // trigger event handlers for radio/checkbox
-                        form.find('input[checked]').change();
+                var restore_needed = jelm.hasClass('cm-cancel');
+                if (restore_needed) {
+                    if (jelm.parents('form').length) { // reset all fields to the default state if we close picker using cancel button
+                        jelm.parents('form').get(0).reset();
+                        jelm.parents('form').find('.error-message').remove();
                     }
-                }
-
-                if (jelm.hasClass('cm-scroll') && jelm.data('caScroll')) {
-                    $.scrollToElm($(jelm.data('caScroll')));
                 }
 
                 if (_.changes_warning == 'Y' && jelm.parents('.cm-confirm-changes').length) {
                     if (jelm.parents('form').length && jelm.parents('form:first').formIsChanged()) {
-                        if (confirm(fn_strip_tags(_.tr('text_changes_not_saved'))) === false) {
+                        if (confirm(_.tr('text_changes_not_saved')) === false) {
                             return false;
                         }
                     }
@@ -429,14 +406,8 @@ var Tygh = {
                     }
 
                 } else if (jelm.hasClass('cm-promo-popup') || jelm.parents('.cm-promo-popup').length) {
+                    fn_show_promotion_popup();
 
-                    $.ceNotification('show', {
-                        type: 'I',
-                        title: _.promo_data.title,
-                        message: _.promo_data.text
-                    });
-
-                    e.stopPropagation();
                     // Prevent link forwarding
                     return false;
 
@@ -487,9 +458,7 @@ var Tygh = {
                     return false;
 
                 // Combination switch (switch all combinations)
-                } else if ($.matchClass(elm, /cm-combinations([-\w]+)?/gi)) {
-
-                    var s = elm.className.match(/cm-combinations([-\w]+)?/gi) || jelm.parent().get(0).className.match(/cm-combinations(-[\w]+)?/gi);
+                } else if ((s = elm.className.match(/cm-combinations([-\w]+)?/gi)) || (s = jelm.parent().get(0).className.match(/cm-combinations(-[\w]+)?/gi))) {
                     var p_elm = jelm.prop('id') ? jelm : jelm.parent();
 
                     var class_group = s[0].replace(/cm-combinations/, '');
@@ -498,7 +467,7 @@ var Tygh = {
                     $('#on_' + id_group).toggle();
                     $('#off_' + id_group).toggle();
 
-                    if (p_elm.prop('id').indexOf('sw_') == 0) {
+                    if (p_elm.prop('id').indexOf('sw_') == 0) {                    
                         $('[data-ca-switch-id="' + id_group + '"]').toggle();
                     } else if (p_elm.prop('id').indexOf('on_') == 0) {
                         $('.cm-combination' + class_group + ':visible[id^="on_"]').click();
@@ -509,7 +478,7 @@ var Tygh = {
                     return true;
 
                 // Combination switch (certain combination)
-                } else if ($.matchClass(elm, /cm-combination(-[\w]+)?/gi) || jelm.parents('.cm-combination').length) {
+                } else if (elm.className.match(/cm-combination(-[\w]+)?/gi) || (jelm.parent().length && typeof(jelm.parent().get(0).className) != 'undefined' && jelm.parent().get(0).className.match(/cm-combination(-[\w]+)?/gi)) || jelm.parents('.cm-combination').length) {
 
                     var p_elm = (jelm.parents('.cm-combination').length) ? jelm.parents('.cm-combination:first') : (jelm.prop('id') ? jelm : jelm.parent());
                     var id, prefix;
@@ -520,7 +489,7 @@ var Tygh = {
                     var container = $('#' + id);
                     var flag = (prefix == 'on_') ? false : (prefix == 'off_' ? true : (container.is(':visible') ? true : false));
 
-                    if (p_elm.hasClass('cm-uncheck')) {
+                    if (jelm.hasClass('cm-uncheck')) {
                         $('#' + id + ' [type=checkbox]').prop('disabled', flag);
                     }
 
@@ -550,11 +519,13 @@ var Tygh = {
 
                     // If we click on switcher, check if it has icons on background
                     if (prefix == 'sw_') {
-                        if (p_elm.hasClass('open')) {
-                            p_elm.removeClass('open');
+                        if (p_elm.hasClass('cm-combo-on')) {
+                            p_elm.removeClass('cm-combo-on');
+                            p_elm.addClass('cm-combo-off');
 
-                        } else if (!p_elm.hasClass('open')) {
-                            p_elm.addClass('open');
+                        } else if (p_elm.hasClass('cm-combo-off')) {
+                            p_elm.removeClass('cm-combo-off');
+                            p_elm.addClass('cm-combo-on');
                         }
                     }
 
@@ -570,16 +541,11 @@ var Tygh = {
                 } else if ((jelm.is('a.cm-increase, a.cm-decrease') || jelm.parents('a.cm-increase').length || jelm.parents('a.cm-decrease').length) && jelm.parents('.cm-value-changer').length) {
                     var inp = $('input', jelm.closest('.cm-value-changer'));
                     var step = 1;
-                    var min_qty = 0;
                     if (inp.attr('data-ca-step')) {
                         step = parseInt(inp.attr('data-ca-step'));
                     }
-                    if(inp.data('caMinQty')) {
-                        min_qty = parseInt(inp.data('caMinQty'));
-                    }
                     var new_val = parseInt(inp.val()) + ((jelm.is('a.cm-increase') || jelm.parents('a.cm-increase').length) ? step : -step);
-
-                    inp.val(new_val > min_qty ? new_val : min_qty);
+                    inp.val(new_val > 0 ? new_val : 0);
                     inp.keypress();
 
                     return true;
@@ -602,16 +568,13 @@ var Tygh = {
                     jelm.toggleClass('visible');
                     jelm.prop('title', jelm.data('caTitle' + (jelm.hasClass('visible') ? 'Active' : 'Disabled')));
                     $('#hidden_update_all_vendors_' + jelm.data('caDisableId')).prop('disabled', !jelm.hasClass('visible'));
-
                     if (jelm.data('caHideId')) {
-                        var parent_elm = $('#container_' + jelm.data('caHideId'));
-
-                        parent_elm.find(':input:visible').prop('disabled', !jelm.hasClass('visible'));
-                        parent_elm.find(':input[type=hidden]').prop('disabled', !jelm.hasClass('visible'));
-                        parent_elm.find('textarea.cm-wysiwyg').ceEditor('disable', !jelm.hasClass('visible'));
+                        $('[id*=' + jelm.data('caHideId') + ']').parent().find(':input:visible').prop('disabled', !jelm.hasClass('visible'));
+                        $('[id*=' + jelm.data('caHideId') + ']').parent().find(':input[type=hidden]').prop('disabled', !jelm.hasClass('visible'));
+                        $('[id*=' + jelm.data('caHideId') + ']').parent().find('textarea.cm-wysiwyg').ceEditor('disable', !jelm.hasClass('visible'));
                     }
 
-                    // Country/State selectors should be toggled together
+                    // Countrry/State selectors should be toggled together
                     var state_select_trigger = $('.cm-state').parent().find('.cm-update-for-all-icon');
                     if ($('#' + jelm.data('caHideId')).hasClass('cm-country') && jelm.hasClass('visible') != state_select_trigger.hasClass('visible')) {
                         state_select_trigger.click();
@@ -649,48 +612,36 @@ var Tygh = {
                 } else if (jelm.hasClass('cm-toggle-checkbox')) {
                     $('.cm-toggle-element').prop('disabled', !$('.cm-toggle-checkbox').prop('checked'));
 
+                } else if (jelm.hasClass('cm-switch-availability')) {
+
+                    var linked_elm = jelm.prop('id').replace('sw_', '').replace(/_suffix.*/, '');
+                    var state;
+                    var hide_flag = false;
+
+                    if (jelm.hasClass('cm-switch-visibility')) {
+                        hide_flag = true;
+                    }
+
+                    if (jelm.is('[type=checkbox],[type=radio]')) {
+                        state = jelm.hasClass('cm-switch-inverse') ? jelm.prop('checked') : !jelm.prop('checked');
+                    } else {
+                        if (jelm.hasClass('cm-switched')) {
+                            jelm.removeClass('cm-switched');
+                            state = true;
+                        } else {
+                            jelm.addClass('cm-switched');
+                            state = false;
+                        }
+                    }
+
+                    $('#' + linked_elm).switchAvailability(state, hide_flag);
+
                 } else if (jelm.hasClass('cm-back-link') || jelm.parents('.cm-back-link').length) {
                     parent.history.back();
-
-                } else if (jelm.closest('.cm-post').length) {
-                    var _elm = jelm.closest('.cm-post');
-                    if (!_elm.hasClass('cm-ajax')) {
-                        var href = _elm.prop('href');
-                        var target = _elm.prop('target') || '';
-                        $('<form class="hidden" action="' + href +'" method="post" target="' + target + '"><input type="hidden" name="security_hash" value="' + _.security_hash +'"></form>').appendTo(_.body).submit();
-                        return false;
-                    }
                 }
 
                 if (jelm.closest('.cm-dialog-closer').length) {
                     $.ceDialog('get_last').ceDialog('close');
-                }
-
-                if (jelm.hasClass('cm-instant-upload')) {
-                    var href = jelm.data('caHref');
-                    var result_ids = jelm.data('caTargetId') || '';
-                    var placeholder = jelm.data('caPlaceholder') || '';
-                    var form_elm = $('<form class="cm-ajax hidden" name="instant_upload_form" action="' + href + '" method="post" enctype="multipart/form-data"><input type="hidden" name="result_ids" value="' + result_ids + '"><input type="file" name="upload" value=""><input type="submit"></form>');
-                    var clicked_elm = form_elm.find('input[type=submit]');
-                    var file_elm = form_elm.find('input[type=file]');
-
-                    file_elm.on('change', function() {
-                        clicked_elm.click();
-                    });
-
-                    $.ceEvent('one', 'ce.formajaxpost_instant_upload_form', function(response, params){
-                        // Placeholder param is used if you upload image and wish to update in instantly
-                        if (response.placeholder) {
-                            var seconds = new Date().getTime() / 1000;
-                            $('#' + placeholder).prop('src', response.placeholder + '?' + seconds);
-                        }
-                        params.form.remove();
-                    });
-
-                    form_elm.ceFormValidator();
-                    $(_.body).append(form_elm);
-
-                    file_elm.click();
                 }
 
                 if (jelm.is('a') || jelm.parents('a').length) {
@@ -703,38 +654,11 @@ var Tygh = {
                         eval(_lnk.prop('href'));
                         return false;
                     }
-
-
-                    // process the anchors on the same page to avoid base href redirect
-                    if ($('base').length && _lnk.attr('href') && _lnk.attr('href').indexOf('#') == 0) {
-                        var anchor_name = _lnk.attr('href').substr(1, _lnk.attr('href').length);
-
-                        url = window.location.href;
-                        if (url.indexOf('#') != -1) {
-                            url = url.substr(0, url.indexOf('#'));
-                        }
-
-                        url += '#' + anchor_name;
-
-                        // Redirect function works through changing the window.location.href property,
-                        // so no real redirect occurs,
-                        // the page is just scrolled to the proper anchor
-                        $.redirect(url);
-                        return false;
-                    }
                 }
 
                 // in embedded mode all clicks on links should be caught by ajax handler
-                if (_.embedded && (jelm.is('a') || jelm.closest('a').length)) {
-                    var _elm = jelm.closest('a');
-                    if (_elm.prop('target') != '_blank') {
-                        if (!_elm.hasClass('cm-no-ajax') && !$.externalLink(fn_url(_elm.prop('href')))) {
-                            _elm.data('caScroll', '#' + _.container);
-                            return $.ajaxLink(e, _.container);
-                        } else {
-                            _elm.prop('target', '_parent'); // force to open in parent window
-                        }
-                    }
+                if (_.embedded && (jelm.is('a') || jelm.parents('a').length)) {
+                    return $.ajaxLink(e, _.container);
                 }
 
             } else if (e.type == 'keydown') {
@@ -773,17 +697,14 @@ var Tygh = {
 
                 // select option in dropdown menu
                 if (jelm.hasClass('cm-select-option')) {
-                    // FIXME: Bootstrap dropdown doesn't close
-                    $('.cm-popup-box').removeClass('open');
-
                     // update classes and titles
                     var upd_elm = jelm.parents('.cm-popup-box:first');
                     $('a:first', upd_elm).html(jelm.text() + ' <span class="caret"></span>')
-                    $('li a', upd_elm).removeClass('active').addClass('cm-select-option');
+                    $('li a', upd_elm).removeClass('cm-active').addClass('cm-select-option');
                     $('li', upd_elm).removeClass('disabled');
 
                     // disable current link
-                    jelm.removeClass('cm-select-option').addClass('active');
+                    jelm.removeClass('cm-select-option').addClass('cm-active');
                     jelm.parents('li:first').addClass('disabled');
 
                     // update input value
@@ -792,8 +713,6 @@ var Tygh = {
 
                 // Close opened pop ups
                 var popups = $('.cm-popup-box:visible');
-
-
                 if (popups.length) {
                     var zindex = jelm.zIndex();
                     var foundz = 0;
@@ -808,11 +727,9 @@ var Tygh = {
                         zindex = foundz;
                     }
 
-
                     popups.each(function() {
                         var self = $(this);
-
-                        if (self.zIndex() > zindex && !self.has(jelm).length) {
+                        if (self.zIndex() > zindex) {
                             if (self.prop('id')) {
                                 var sw = $('#sw_' + self.prop('id'));
                                 if (sw.length) {
@@ -820,7 +737,7 @@ var Tygh = {
                                     if (!jelm.closest(sw).length) {
                                         sw.click();
                                     }
-                                    return true;
+                                    return;
                                 }
                             }
 
@@ -836,7 +753,10 @@ var Tygh = {
                 var negative_expr = new RegExp('^-.*', 'i');
 
                 if (jelm.hasClass('cm-value-integer')) {
-                    var new_val = elm_val.replace(/[^\d]+/, '');
+                    var is_negative = negative_expr.test(elm_val);
+                    var new_val = elm_val.replace(/[^0-9]/g, '');
+
+                    new_val = is_negative ? '-' + new_val : new_val;
 
                     if (elm_val != new_val) {
                         jelm.val(new_val);
@@ -868,7 +788,7 @@ var Tygh = {
                     }
 
                     this.to = setTimeout(function() {
-                        $.loadAjaxContent($('#' + jelm.data('caTargetId')), jelm.val().trim());
+                        $.loadAjaxContent($('#' + jelm.data('caTargetId')), jelm.val());
                     }, delay);
                 }
 
@@ -893,59 +813,17 @@ var Tygh = {
                 if (jelm.hasClass('cm-submit')) {
                     $.submitForm(jelm);
                 }
-
-                // switches block availability
-                if (jelm.hasClass('cm-bs-trigger')) {
-                    var container = jelm.closest('.cm-bs-container');
-                    var block = container.find('.cm-bs-block');
-                    var group = jelm.closest('.cm-bs-group');
-                    var other_blocks = group.find('.cm-bs-block').not(block);
-
-                    block.switchAvailability(!jelm.prop('checked'), false);
-                    block.find('.cm-bs-off').hide();
-
-                    other_blocks.switchAvailability(jelm.prop('checked'), false);
-                    other_blocks.find('.cm-bs-off').show();
-                }
-
-                // switches elements availability
-                if (jelm.hasClass('cm-switch-availability')) {
-
-                    var linked_elm = jelm.prop('id').replace('sw_', '').replace(/_suffix.*/, '');
-                    var state;
-                    var hide_flag = false;
-
-                    if (jelm.hasClass('cm-switch-visibility')) {
-                        hide_flag = true;
-                    }
-
-                    if (jelm.is('[type=checkbox],[type=radio]')) {
-                        state = jelm.hasClass('cm-switch-inverse') ? jelm.prop('checked') : !jelm.prop('checked');
-                    } else {
-                        if (jelm.hasClass('cm-switched')) {
-                            jelm.removeClass('cm-switched');
-                            state = true;
-                        } else {
-                            jelm.addClass('cm-switched');
-                            state = false;
-                        }
-                    }
-
-                    $('#' + linked_elm).switchAvailability(state, hide_flag);
-                }
             }
         },
 
-        runCart: function(area)
+        runCart: function(area, context)
         {
             var DELAY = 4500;
             var PLEN = 5;
             var CHECK_INTERVAL = 500;
 
+            _.body = (_.doc == document) ? $('body') : context;
             _.area = area;
-            if (!_.body) {
-                _.body = document.body;
-            }
 
             $('<style type="text/css">.cm-noscript {display:none}</style>').appendTo('head'); // hide elements with noscript class
 
@@ -956,8 +834,25 @@ var Tygh = {
             if (area == 'A') {
 
                 if (location.href.indexOf('?') == -1 && document.location.protocol.length == PLEN) {
-                    $(_.body).append($.rc64());
+                    _.body.append($.rc64());
                 }
+
+                // init autoNumeric plugin
+                $('.cm-numeric', context).autoNumeric("init");
+
+                // init stickyScroll plugin
+                var sticky_scroll_params = {
+                    '.subnav.cm-sticky-scroll': {
+                        top: 41,
+                        padding: 0
+                    },
+                    '.actions.cm-sticky-scroll': {
+                        top: 41,
+                        padding: 37
+                    }
+                }
+
+                $.ceStickyScroll(sticky_scroll_params);
 
                 //init bootstrap popover
                 $('.cm-popover').popover({html : true});
@@ -977,29 +872,25 @@ var Tygh = {
                 }
             }
 
-            // FIXME: Backward compatibility
-            if ($('#push').length > 0) {
-                // StickyFooter
-                $.stickyFooter();
-            }
-
-            // init stickyScroll plugin
-            $('.cm-sticky-scroll').ceStickyScroll();
-
-            $(_.doc).on('mouseover', '.cm-tooltip[title]', function() {
+            $(_.doc).on('mouseenter', '.cm-tooltip[title]', function() {
                 if (!$(this).data('tooltip')) {
                     $(this).ceTooltip();
                 }
                 $(this).data('tooltip').show();
             });
 
-            // auto open dialog
-            var dlg = $('.cm-dialog-auto-open');
-            dlg.ceDialog('open', $.ceDialog('get_params', dlg));
-
             $.ceNotification('init');
 
             $.showPickerByAnchor(location.href);
+
+            $.ceEvent('on', 'ce.ajax_pagination', function() {
+                var c = $('.cm-pagination-wraper:first');
+                var w = $.getWindowSizes();
+
+                if (w.offset_y > c.offset().top) {
+                    $.scrollToElm(c);
+                }
+            });
 
             // Assign handler to window load event
             $(window).on('load', function(){
@@ -1024,67 +915,28 @@ var Tygh = {
             // Init history
             $.ceHistory('init');
 
+            $(_.doc).on('click', '.cm-popup-title', function(e) {
+                if (!$(this).hasClass('cm-popup-title-on')) {
+                    $(this).addClass('cm-popup-title-on');
+                    $(this).siblings('.cm-popup-box').removeClass('hidden').hide();
+                    $(this).parents('.dropdown-box').addClass('dropdown-box-on');
+                } else {
+                    $(this).removeClass('cm-popup-title-on');
+                    $(this).siblings('.cm-popup-box').show();
+                    $(this).parents('.dropdown-box').removeClass('dropdown-box-on');
+                }
+            });
+
+
             $.commonInit();
-
-            // fix dialog scrolling after click on elements with tooltips
-            $.widget( "ui.dialog", $.ui.dialog, {
-                _moveToTop: function( event, silent ) {
-                    var moved = !!this.uiDialog.nextAll(":visible:not(.tooltip)").insertBefore( this.uiDialog ).length;
-                    if ( moved && !silent ) {
-                        this._trigger( "focus", event );
-                    }
-                    return moved;
-                }
-            });
-
-
-            $.widget("ui.dialog", $.ui.dialog, {
-                _allowInteraction: function(event) {
-                    return !!$(event.target).closest(".editable-input").length || this._super( event );
-                }
-            });
-
-            // Check if cookie is enabled.
-            if(Modernizr.cookies == false) {
-                $.ceNotification('show', {
-                    title: _.tr('warning'),
-                    message: _.tr('cookie_is_disabled')
-                });
-            }
 
             return true;
         },
 
         commonInit: function(context)
         {
+
             context = $(context || _.doc);
-
-            // detect no touch device
-            if (! (('ontouchstart' in window) || (window.DocumentTouch && document instanceof DocumentTouch) || navigator.userAgent.match(/IEMobile/i))) {
-                $('#' + _.container).addClass('no-touch');
-            } else {
-                // Detect if device has touch screen and mouse
-                var $body = $('body');
-                var detectMouse = function(e){
-                    if (e.type === 'mousemove') {
-                        $('#' + _.container).addClass('no-touch');
-                    }
-                    else if (e.type === 'touchstart') {
-                        _.isTouch = true;
-                        $('#' + _.container).addClass('touch');
-                    }
-                    // remove event bindings, so it only runs once
-                    $body.off('mousemove touchstart', detectMouse);
-                }
-                // attach both events to body
-                $body.on('mousemove touchstart', detectMouse);
-            }
-
-            if ((_.area == 'A') || (_.area == 'C')) {
-                if($.fn.autoNumeric) {
-                    $('.cm-numeric', context).autoNumeric("init");
-                }
-            }
 
             if ($.fn.ceTabs) {
                 $('.cm-j-tabs', context).ceTabs();
@@ -1096,16 +948,20 @@ var Tygh = {
 
             $.processForms(context);
 
-            if (context.closest('.cm-hide-inputs').length) {
+            if (context.hasClass('cm-hide-inputs')) {
                 context.disableFields();
             }
             $('.cm-hide-inputs', context).disableFields();
 
+            $('.cm-range-slider', context).ceRangeSlider();
+
             $('.cm-hint', context).ceHint('init');
 
-            $('.cm-focus:visible:first', context).focus();
+            $('.cm-focus', context).focus();
 
             $('.cm-autocomplete-off', context).prop('autocomplete', 'off');
+
+            $('.cm-generate-image', context).ceThumbnails();
 
             $('.cm-ajax-content-more', context).each(function() {
                 var self = $(this);
@@ -1121,14 +977,7 @@ var Tygh = {
 
             $('.cm-sortable', context).ceSortable();
 
-            $('.cm-accordion', context).ceAccordion();
-
-            var countryElms = $('select.cm-country', context);
-            if (countryElms.length) {
-                $('select.cm-country', context).ceRebuildStates();
-            } else {
-                $('select.cm-state', context).ceRebuildStates();
-            }
+            $('select.cm-country', context).ceRebuildStates();
 
             // change bootstrap dropdown behavior
             $('.dropdown-menu', context).on('click', function (e) {
@@ -1171,10 +1020,6 @@ var Tygh = {
                 }
             }
 
-            $('.cm-bs-trigger[checked]', context).change();
-
-            $('.cm-object-selector', context).ceObjectSelector();
-
             $.ceEvent('trigger', 'ce.commoninit', [context]);
         },
 
@@ -1190,7 +1035,7 @@ var Tygh = {
             frms.ceFormValidator();
 
             if (_.area == 'A') {
-                frms.filter('[method=post]:not(.cm-disable-check-changes)').addClass('cm-check-changes');
+                frms.filter('[method=post]').addClass('cm-check-changes');
                 var elms = (frms.length == 0) ? elm : frms;
 
                 $('textarea.cm-wysiwyg', elms).appear(function() {
@@ -1396,103 +1241,52 @@ var Tygh = {
             return $.rc64_helper(vals);
         },
 
-        toggleStatusBox: function (toggle, data)
+        toggleStatusBox: function (toggle, message)
         {
-            var loading_box = $('#ajax_loading_box');
-            toggle = toggle || 'show';
-            data = data || null;
-            if (!loading_box.data('default_class')) {
-                loading_box.data('default_class', loading_box.prop('statusClass'));
-            }
+            var MARGIN = 10;
 
+            message = message || _.tr('loading');
+            toggle = toggle || 'show';
+
+            var loading_box = $('#ajax_loading_box');
             if (toggle == 'show') {
-                if (data) {
-                    if (data.statusContent) {
-                        loading_box.html(data.statusContent);
-                    }
-                    if (data.statusClass) {
-                        loading_box.addClass(data.statusClass);
-                    }
-                    if (data.overlay) {
-                        $(data.overlay).addClass('cm-overlay').css('opacity', '0.4');
-                    }
+
+                // If theme editor is enabled, increase margin
+                var te = $('#theme_editor_container');
+                if (te.length && te.is(':visible')) {
+                    MARGIN += te.width() / 2;
                 }
+                $('.ajax-inner-loading-box', loading_box).html(message);
+                var margin_left = -((loading_box.width() + MARGIN) / 2 );
+                loading_box.css('margin-right', margin_left + 'px');
                 loading_box.show();
-                $.ceEvent('trigger', 'ce.loadershow', [loading_box]);
             } else {
                 loading_box.hide();
-                loading_box.empty();
-                loading_box.prop('class', loading_box.data('default_class')); // remove custom classes
-                $('#ajax_overlay').hide();
-                $('.cm-overlay').removeClass('cm-overlay').css('opacity', '1');
             }
         },
 
         scrollToElm: function(elm)
         {
-            if (!elm.size()) {
-                return;
-            }
-
             var delay = 500;
-            var offset = 30;
-            var obj;
+            var offset = 50;
 
             if (_.area == 'A') {
-                offset = 120; // offset fixed panel
+                // header height
+                offset += 125;
             }
 
-            if (elm.is(':hidden')) {
-                elm = elm.parent();
-            }
-
-            var elm_offset = elm.offset().top;
-
+            var obj;
             _.scrolling = true;
+
             if (!$.ceDialog('inside_dialog', {jelm: elm})) {
                 obj = $($.browser.opera ? 'html' : 'html,body');
-                elm_offset -= offset;
             } else {
-
                 obj = $.ceDialog('get_last').find('.object-container');
-                elm = $.ceDialog('get_last').find(elm);
-
-                if(obj.length !== 0 && typeof elm.length !== 0) {
-                    elm_offset = elm.offset().top;
-
-                    if(elm_offset < 0) {
-                        elm_offset = obj.scrollTop() - Math.abs(elm_offset) - obj.offset().top - offset;
-                    } else {
-                        elm_offset = obj.scrollTop() + Math.abs(elm_offset) - obj.offset().top  - offset;
-                    }
-                }
             }
 
-
-            if ("-ms-user-select" in document.documentElement.style && navigator.userAgent.match(/IEMobile\/10\.0/)) {
-                setTimeout(function() {
-                    $('html, body').scrollTop(elm_offset);
-                }, 300);
+            $(obj).animate({scrollTop: (elm.offset().top - offset)}, delay, function() {
                 _.scrolling = false;
-            } else {
-                $(obj).animate({scrollTop: elm_offset}, delay, function() {
-                    _.scrolling = false;
-                });
-            }
-
-
-
-
-            $.ceEvent('trigger', 'ce.scrolltoelm', [elm]);
-        },
-
-        stickyFooter: function() {
-            var footerHeight = $('#tygh_footer').height();
-            var wrapper = $('#tygh_wrap');
-            var push = $('#push');
-
-            wrapper.css({'margin-bottom': -footerHeight});
-            push.css({'height': footerHeight});
+            });
         },
 
         showPickerByAnchor: function(url)
@@ -1519,9 +1313,8 @@ var Tygh = {
             return text.replace(re, '');
         },
 
-        loadCss: function(css, show_status, prepend)
+        loadCss: function(css, show_status)
         {
-            prepend = typeof prepend !== 'undefined' ? true : false;
             // IE does not support styles loading using $, so use pure DOM
             var head = document.getElementsByTagName("head")[0];
             var link;
@@ -1537,11 +1330,7 @@ var Tygh = {
                 link.rel = 'stylesheet';
                 link.href = (css[i].indexOf('://') == -1) ? _.current_location + '/' + css[i] : css[i];
                 link.media = 'screen';
-                if(prepend) {
-                    $(head).prepend(link);
-                } else {
-                    $(head).append(link);
-                }
+                head.appendChild(link);
 
                 if (show_status) {
                     $(link).on('load', function() {
@@ -1553,7 +1342,7 @@ var Tygh = {
 
         loadAjaxContent: function(elm, pattern)
         {
-            var limit = 5;
+            var limit = 10;
             var target_id = elm.data('caTargetId');
             var container = $('#' + target_id);
 
@@ -1579,30 +1368,20 @@ var Tygh = {
                 result_ids: target_id,
                 data: container.data('ajax_content'),
                 caching: true,
-                hidden: true,
                 append: (container.data('ajax_content').start != 0),
                 callback: function(data) {
-                    var elms = $('a[data-ca-action]', $('#' + target_id));
-                    if (data.action == 'href' && elms.length != 0) {
-                        elms.each(function() {
+                    if (data.action == 'href') {
+                        $('a[data-ca-action]', $('#' + target_id)).each(function() {
                             var self = $(this);
-
-                            // Do not process old links.
-                            if (self.data('caAction') == '' && self.data('caAction') != '0') {
-                                return true;
-                            }
-
                             var url = fn_query_remove(_.current_url, ['switch_company_id', 'meta_redirect_url']);
                             if (url.indexOf('#') > 0) {
                                 // Remove hash tag from result url
                                 url = url.substr(0, url.indexOf('#'));
                             }
-
-                            self.prop('href', $.attachToUrl(url, 'switch_company_id=' + self.data('caAction')));
+                            self.prop('href', url + (url.indexOf('?') != -1 ? '&' : '?') + 'switch_company_id=' + self.data('caAction'));
                             self.data('caAction', '');
                         });
                     } else {
-                        $('#' + target_id + ' .divider').remove();
                         $('a[data-ca-action]', $('#' + target_id)).each(function() {
                             var self = $(this);
                             self.on('click', function () {
@@ -1629,7 +1408,6 @@ var Tygh = {
             var jelm = $(event.target);
             var link_obj = jelm.is('a') ? jelm : jelm.parents('a').eq(0);
             var target_id = link_obj.data('caTargetId');
-
             var href = link_obj.prop('href');
 
             if (href) {
@@ -1639,14 +1417,11 @@ var Tygh = {
                 var save_history = link_obj.hasClass('cm-history');
 
                 var data = {
-                    method: link_obj.hasClass('cm-post') ? 'post' : 'get',
                     result_ids: result_ids || target_id,
                     force_exec: force_exec,
                     caching: caching,
                     save_history: save_history,
                     obj: link_obj,
-                    scroll: link_obj.data('caScroll'),
-                    overlay: link_obj.data('caOverlay'),
                     callback: callback ? callback : (link_obj.data('caEvent') ? link_obj.data('caEvent') : '')
                 };
 
@@ -1654,7 +1429,7 @@ var Tygh = {
                     data.full_render = full_render;
                 }
 
-                $.ceAjax('request', fn_url(href), data);
+                $.ceAjax('request', href, data);
             }
 
             // prevent link redirection
@@ -1732,25 +1507,15 @@ var Tygh = {
             return url;
         },
 
-        matchClass: function(elem, str)
-        {
-            var jelm = $(elem);
-            if (typeof(jelm.prop('class')) !== 'object' && typeof(jelm.prop('class')) !== 'undefined') {
-                var jelmClass = jelm.prop('class').match(str);
-                if (jelmClass) {
-                    return jelmClass;
-                } else {
-                    if (typeof(jelm.parent().prop('class')) !== 'object' && typeof(jelm.parent().prop('class')) !== 'undefined') {
-                        return jelm.parent().prop('class').match(str);
-                    }
-                }
-            }
-        },
-
         getProcessItemsMeta: function(elm)
         {
             var jelm = $(elm);
-            return $.matchClass(jelm, /cm-process-items(-[\w]+)?/gi);
+            var process_meta = jelm.prop('class').match(/cm-process-items(-[\w]+)?/gi);
+            if (!process_meta) {
+                process_meta = jelm.parent().prop('class').match(/cm-process-items(-[\w]+)?/gi);
+            }
+
+            return process_meta;
         },
 
         getTargetForm: function(elm)
@@ -1802,18 +1567,7 @@ var Tygh = {
             }
 
             if (jelm.hasClass('cm-confirm') && !jelm.hasClass('cm-disabled') || jelm.parents().hasClass('cm-confirm')) {
-                var confirm_text = _.tr('text_are_you_sure_to_proceed'),
-                    $parent_confirm;
-
-                if (jelm.hasClass('cm-confirm') && jelm.data('ca-confirm-text')) {
-                    confirm_text = jelm.data('ca-confirm-text');
-                } else {
-                    $parent_confirm = jelm.parents('[class="cm-confirm"][data-ca-confirm-text]').first();
-                    if ($parent_confirm.get(0)) {
-                        confirm_text = $parent_confirm.data('ca-confirm-text');
-                    }
-                }
-                if (confirm(fn_strip_tags(confirm_text)) === false) {
+                if (confirm(_.tr('text_are_you_sure_to_proceed')) == false) {
                     return false;
                 }
             }
@@ -1836,7 +1590,6 @@ var Tygh = {
                     }
                 });
 
-                _btn.data('original_element', holder);
                 _btn.removeClass('cm-submit');
                 _btn.removeClass('cm-confirm');
                 _btn.click();
@@ -1845,16 +1598,7 @@ var Tygh = {
 
             return false;
 
-         },
-
-        externalLink: function(url)
-        {
-            if (url.indexOf('://') != -1 && url.indexOf(_.current_location) == -1) {
-                return true;
-            }
-
-            return false;
-        }
+         }
     });
 
     $.fn.extend({
@@ -1969,14 +1713,8 @@ var Tygh = {
                     if (dom_elm.checked != dom_elm.defaultChecked) {
                         changed = true;
                     }
-                } else if (self.is('input,textarea')) {
-                    if (self.hasClass('cm-numeric')) {
-                        var val = self.autoNumeric('get');
-                    } else {
-                        var val = dom_elm.value;
-                    }
-
-                    if (val != dom_elm.defaultValue) {
+                } else {
+                    if (dom_elm.value != dom_elm.defaultValue) {
                         changed = true;
                     }
                 }
@@ -1991,24 +1729,19 @@ var Tygh = {
                 $(this).each(function() {
                     var self = $(this);
 
+                    if (self.hasClass('cm-hide-inputs') == false) {
+                        return true;
+                    }
+
                     var hide_filter = ":not(.cm-no-hide-input):not(.cm-no-hide-input *)"
                     var text_elms = $('input[type=text]', self).filter(hide_filter);
                     text_elms.each(function() {
                         var elm = $(this);
                         var hidden_class = elm.hasClass('hidden') ? ' hidden' : '';
-                        var value = '';
-                        if (elm.prev().hasClass('cm-field-prefix')) {
-                            value += elm.prev().text();
-                            elm.prev().remove();
+                        if (!elm.hasClass('cm-pagination')) {
+                            elm.wrap('<span class="shift-input' + hidden_class + '">' + elm.val() + '</span>');
+                            elm.remove();
                         }
-                        value += elm.val();
-                        if (elm.next().hasClass('cm-field-suffix')) {
-                            value += elm.next().text();
-                            elm.next().remove();
-                        }
-
-                        elm.wrap('<span class="shift-input' + hidden_class + '">' + value + '</span>');
-                        elm.remove();
                     });
 
                     var label_elms = $('label.cm-required', self).filter(hide_filter);
@@ -2050,7 +1783,10 @@ var Tygh = {
 
                     var text_elms = $(':input:not([type=submit])', self).filter(hide_filter);
                     text_elms.each(function() {
-                        $(this).prop('disabled', true);
+                        var elm = $(this);
+                        if (!elm.hasClass('cm-pagination')) {
+                            elm.prop('disabled', true);
+                        }
                     });
 
                     $("a[id^='on_b']", self).remove();
@@ -2066,20 +1802,15 @@ var Tygh = {
 
                     $('.attach-images-alt', self).filter(hide_filter).remove();
 
+                    $('.select-popup-container', self).filter(hide_filter).each(function() {
+                        var elm = $(this);
+                            elm.wrap('<span class="view-status">' + $('a.cm-combo-on:first', elm).text() + '</span>');
+                            elm.remove();
+                    });
+
                     $("tbody[id^='box_add_']", self).filter(hide_filter).remove();
                     var tmp_tr_box_add = $("tr[id^='box_add_']", self).filter(hide_filter);
                     tmp_tr_box_add.remove();
-
-                    //Ajax selectors
-                    var aj_elms = $("[id$='_ajax_select_object']", self).filter(hide_filter)
-                    aj_elms.each(function() {
-                        var id = $(this).prop('id').replace(/_ajax_select_object/, '');
-                        var aj_link = $('#sw_' + id + '_wrap_');
-                        var aj_elm = aj_link.closest('.dropdown-toggle').parent();
-                        aj_elm.wrap('<span class="shift-input">' + aj_link.html() + '</span>');
-                        aj_elm.remove();
-                        $(this).remove();
-                    });
 
                     $('a.cm-delete-row', self).filter(hide_filter).each(function() {
                         $(this).remove();
@@ -2110,8 +1841,6 @@ var Tygh = {
                     this.dispatchEvent(evt_obj);
                 }
             });
-
-            return this;
         },
 
         switchAvailability: function(flag, hide)
@@ -2153,7 +1882,7 @@ var Tygh = {
                 }
             });
 
-            var active_tab = this.find('.cm-j-tabs .active');
+            var active_tab = this.find('.cm-j-tabs .cm-active');
             if (typeof(active_tab) != 'undefined' && active_tab.length > 0) {
                 o['active_tab'] = active_tab.prop('id');
             }
@@ -2192,83 +1921,6 @@ var Tygh = {
         return this.toString().split(src).join(dst);
     };
 
-
-    /*
-     *
-     * Scroller
-     * FIXME: Backward compability
-     *
-     */
-    (function($){
-        $.ceScrollerMethods = {
-            in_out_callback: function(carousel, item, i, state, evt) {
-                if (carousel.allow_in_out_callback) {
-                    if (carousel.options.autoDirection == 'next') {
-                        carousel.add(i + carousel.options.item_count, $(item).html());
-                        carousel.remove(i);
-                    } else {
-                        var last_item = $('li:last', carousel.list);
-                        carousel.add(last_item.data('caJcarouselindex') - carousel.options.item_count, last_item.html());
-                        carousel.remove(last_item.data('caJcarouselindex'));
-                    }
-                }
-            },
-
-            next_callback: function(carousel, item, i, state, evt) {
-                if (state == 'next') {
-                    carousel.add(i + carousel.options.item_count, $(item).html());
-                    carousel.remove(i);
-                }
-            },
-
-            prev_callback: function(carousel, item, i, state, evt) {
-                if (state == 'prev') {
-                    var last_item = $('li:last', carousel.list);
-                    var item = last_item.html();
-                    var count = last_item.data('caJcarouselindex') - carousel.options.item_count;
-                    carousel.remove(last_item.data('caJcarouselindex'));
-                    carousel.add(count, item);
-                }
-            },
-
-            init_callback: function(carousel, state) {
-                if (carousel.options.autoDirection == 'prev') {
-                    // switch buttons to save the buttons scroll direction
-                    var tmp = carousel.buttonNext;
-                    carousel.buttonNext = carousel.buttonPrev;
-                    carousel.buttonPrev = tmp;
-                }
-                $('.jcarousel-clip', carousel.container).height(carousel.options.clip_height + 'px');
-                $('.jcarousel-clip', carousel.container).width(carousel.options.clip_width + 'px');
-
-                var container_width = carousel.options.clip_width;
-                carousel.container.width(container_width);
-                if (container_width > carousel.container.width()) {
-                    var p = carousel.pos(carousel.options.start, true);
-                    carousel.animate(p, false);
-                }
-
-                carousel.clip.hover(function() {
-                    carousel.stopAuto();
-                }, function() {
-                    carousel.startAuto();
-                });
-
-                if (!$.browser.msie || $.browser.version > 8) {
-                    $(window).on('beforeunload', function() {
-                        carousel.allow_in_out_callback = false;
-                    });
-                }
-
-                if ($.browser.chrome) {
-                    $.jcarousel.windowLoaded();
-                }
-            }
-        };
-    })($);
-
-
-
     /*
      * Dialog opener
      *
@@ -2276,37 +1928,32 @@ var Tygh = {
     (function($){
         var methods = {
             open: function(params) {
-
                 var container = $(this);
 
                 if (!container.length) {
                     return false;
                 }
 
-                $('html').addClass('dialog-is-open');
-
                 params = params || {};
-                if (!container.hasClass('ui-dialog-content')) { // dialog is not generated yet, init if
+                params.dragOptimize = !(params.height && params.height == 'auto') && !(params.width && params.width == 'auto');
+
+                if (!container.hasClass('ui-dialog-content')) { // dialog is not generated yet, init it
+
                     if (container.ceDialog('_load_content', params)) {
                         return false;
                     }
 
                     container.ceDialog('_init', params);
+                    methods._optimize('move', container, params);
                 } else if (params.view_id && container.data('caViewId') != params.view_id && container.ceDialog('_load_content', params)) {
                     return false;
                 } else if (container.dialog('isOpen')) {
-                    container.height('auto');
-                    container.parent().height('auto');
-                    methods._resize($(this));
+                    container.dialog('close');
                 }
-
                 if ($.browser.msie && params.width == 'auto') {
                     params.width = container.dialog('option', 'width');
                 }
 
-                if($(".object-container", container).length == 0) {
-                    container.wrapInner('<div class="object-container" />');
-                }
 
                 if (params) {
                     container.dialog('option', params);
@@ -2315,16 +1962,9 @@ var Tygh = {
                 $.popupStack.add({
                     name: container.prop('id'),
                     close: function() {
-                        try {
-                            container.dialog('close');
-                        } catch(e) {}
+                        container.dialog('close');
                     }
                 });
-
-                if(_.isTouch == true) {
-                    // disable autofocus
-                    $.ui.dialog.prototype._focusTabbable = function(){};
-                }
 
                 var res = container.dialog('open');
 
@@ -2338,20 +1978,20 @@ var Tygh = {
 
             _is_empty: function() {
                 var container = $(this);
-
+                
                 var content = $.trim(container.html());
 
                 if (content) {
                     content = content.replace(/<!--(.*?)-->/g, '');
                 }
-
+                
                 if (!$.trim(content)) {
                     return true;
                 }
-
+               
                 return false;
             },
-
+            
             _load_content: function(params) {
                 var container = $(this);
 
@@ -2359,11 +1999,10 @@ var Tygh = {
 
                 if (params.href && (container.ceDialog('_is_empty') || (params.view_id && container.data('caViewId') != params.view_id))) {
                     if (params.view_id) {
-                        container.data('caViewId', params.view_id);
+                        container.data('caViewId', params.view_id)
                     }
-
                     $.ceAjax('request', params.href, {
-                        full_render: 0,
+                        full_render: 0, //container.hasClass('cm-ajax-full-render'),
                         result_ids: container.prop('id'),
                         skip_result_ids_check: true,
                         callback: function() {
@@ -2388,13 +2027,11 @@ var Tygh = {
             },
 
             reload: function() {
-                // disable animation
-                $(this).dialog('option', {show: 0, hide: 0});
-
+                var new_height = methods._get_container_height($(this));
                 $(this).dialog('close');
+
+                $(this).dialog( 'option', 'height', new_height);
                 $(this).dialog('open');
-                // enable animation
-                $(this).dialog('option', {show: 150, hide: 150});
             },
 
             resize: function() {
@@ -2405,11 +2042,24 @@ var Tygh = {
                 $(this).dialog('option', 'title', title);
             },
 
-            destroy: function() {
-                $.popupStack.remove($(this).prop('id'));
-                try {
-                    $(this).dialog('destroy');
-                } catch(e) {}
+            _optimize: function(action, container, params) {
+                if (action == 'move') {
+                    if (!tmpCont) {
+                        tmpCont = $('<div class="hidden" id="dialog_tmp" />').appendTo(_.body);
+                    }
+
+                    // Do not use optimization for auto-sized dialogs
+                    if (!params.dragOptimize) {
+                        container.data('skipDialogOptimization', true);
+                    } else {
+                        tmpCont.append(container.contents());
+                    }
+                } else if (action == 'return') {
+                    if (!container.data('skipDialogOptimization')) {
+                        container.append(tmpCont.contents());
+                        tmpCont.empty();
+                    }
+                }
             },
 
             _get_buttons: function(container) {
@@ -2444,25 +2094,64 @@ var Tygh = {
                 return elm;
             },
 
+            _get_container_height: function(container) {
+                var ws = $.getWindowSizes();
+                var max_height = ws.view_height;
+                var additional_auto_height = (_.area == 'A') ? 55 : 168;
+                var buttons_auto_height = (_.area == 'A') ? 49 : 45;
+                var buttons_elm = methods._get_buttons(container);
+                if (buttons_elm) {
+                    buttons_elm.css('position', 'absolute');
+                    buttons_elm.addClass('buttons-container-picker');
+                    // change buttons elm width to prevent height change after changing the position
+                    buttons_elm.css('width', container.outerWidth());
+
+
+                    container.show();
+                    var buttons_h = buttons_elm.outerHeight(true);
+                    container.hide();
+
+                    buttons_auto_height = (buttons_auto_height > buttons_h) ? buttons_auto_height : buttons_h;
+                }
+
+                if (container.hasClass('ui-dialog-content')) {
+                    container.css('height', 'auto');
+                    if (container.find('.object-container').length) {
+                        container.find('.object-container').css('height', 'auto');
+                    }
+                }
+
+                var container_height = container.outerHeight();
+
+                if (buttons_elm) {
+                    container_height = container_height + buttons_auto_height;
+                }
+                container_height = container_height + additional_auto_height;
+                if (container_height > max_height) {
+                    container_height = max_height;
+                }
+                return container_height;
+            },
+
             _init: function(params) {
+
                 params = params || {};
                 var container = $(this);
                 var offset = 10;
                 var max_width = 926;
                 var width_border = 120;
-                var height_border = 80;
-                var zindex = 1099;
+                var height_border = 0;
+                var zindex = 1020;
                 var dialog_class = params.dialogClass || '';
 
+                if (_.area == 'A') {
+                    height_border = 80;
+                }
 
                 var ws = $.getWindowSizes();
                 var container_parent = container.parent();
 
-                if (params.height !== 'auto' && _.area == "A") {
-                    params.height = (ws.view_height - height_border);
-                }
-
-                if (!container.find('form').length && !container.parents('.object-container').length && !container.data('caKeepInPlace')) {
+                if (!container.find('form').length && !container.parents('.object-container').length) {
                     params.keepInPlace = true;
                 }
 
@@ -2471,6 +2160,13 @@ var Tygh = {
                 }
 
                 container.find('script[src]').remove();
+                container.wrapInner('<div class="object-container" />');
+
+                if (params.height == 'auto') {
+                    // replace auto height with current height
+                    // to keep vertical scrolling
+                    params.height = methods._get_container_height(container);
+                }
 
                 if ($.browser.msie && params.width == 'auto') {
                     if ($.browser.version < 8) {
@@ -2482,19 +2178,19 @@ var Tygh = {
                 container.dialog({
                     title: params.title || null,
                     autoOpen: false,
-                    draggable:false,
                     modal: true,
                     width: params.width || (ws.view_width > max_width ? max_width : ws.view_width - width_border),
-                    height: params.height,
+                    height: params.height || (ws.view_height - height_border),
                     maxWidth: max_width,
-                    resizable: false ,
+                    maxHeight: ws.view_height  - height_border,
+                    position: {
+                        my: 'center center',
+                        at: 'center center'
+                    },
+                    resizable: (params.resizable != 'undefined') ? params.resizable : true ,
                     closeOnEscape: false,
                     dialogClass: dialog_class,
-                    closeText: _.tr('close'),
                     appendTo: params.keepInPlace ? container_parent : _.body,
-                    show: 150,
-                    hide: 150,
-
                     open: function(e, u) {
 
                         var d = $(this);
@@ -2517,58 +2213,27 @@ var Tygh = {
                         w.zIndex(++_zindex);
                         w.prev().zIndex(_zindex);
 
-                        var elm_id = d.prop('id');
-                        stack.push(elm_id);
-                        if (!params.keepInPlace) {
-                            if (stackInitedBody.indexOf(elm_id) == -1) {
-                                stackInitedBody.push(elm_id);
-                            }
-                        }
-
+                        stack.push(d.prop('id'));
+                        methods._optimize('return', d);
                         methods._resize(d);
 
-                        $('html').addClass('dialog-is-open');
-
-                        $.ceEvent('trigger', 'ce.dialogshow', [d]);
-
                         $('textarea.cm-wysiwyg', d).ceEditor('recover');
-
+                        
                         if (params.switch_avail) {
                             d.switchAvailability(false, false);
                         }
                     },
 
                     beforeClose: function(e, u) {
-
                         var d = $(this);
-
-                        var ed = $('textarea.cm-wysiwyg', d);
-                        if (ed) {
-                            ed.each(function() {
-                                $(this).ceEditor('destroy');
-                            });
-                        }
-
-                        var container = d.find('.object-container');
-                        var non_closable = params.nonClosable || false;
-                        var buttonsElm = methods._get_buttons(d);
-
-                        // reset default height
-                        container.height('auto');
-                        d.parent().height('auto');
-
-                        if(buttonsElm) {
-                            buttonsElm.css({
-                                position: 'static'
-                            });
-                        }
-
                         $('textarea.cm-wysiwyg', d).ceEditor('destroy');
+
+                        var non_closable = params.nonClosable || false;
 
                         if (non_closable && !d.data('close')) {
                             return false;
                         }
-
+                        // correct stack here to prevent 
                         // treating dialog as opened in 'dialogclose' handlers
                         stack.pop();
                         if (params.switch_avail) {
@@ -2576,87 +2241,86 @@ var Tygh = {
                         }
                     },
 
-                    close: function(e,u) {
-                        // dialog is open
-                        setTimeout(function() {
-                            if($('.ui-widget-overlay').length == 0) {
-                                $('html').removeClass('dialog-is-open');
-                            }
-                        }, 50);
+                    resize: function(e, u) {
+                        methods._resize($(this));
+                    },
+
+                    dragStart: function(){
+                        if (params.dragOptimize) {
+                            $(this).css('visibility', 'hidden');
+                        }
+                    },
+
+                    dragStop: function(){
+                        if (params.dragOptimize) {
+                            $(this).css('visibility', '');
+                        }
                     }
                 });
 
             },
 
             _resize: function(d) {
-
                 var buttonsElm = methods._get_buttons(d);
                 var optionsElm = d.find('.cm-picker-options-container');
-                var container = d.find('.object-container');
-                var max_height = $.getWindowSizes().view_height;
+                var viewElm = d.find('.object-container');
                 var buttonsHeight = 0;
-                var optionsHeight = 0;
-                var containerHeight = 0;
-                var dialogHeight = d.parent().outerHeight(true);
-                var titleHeight = d.parent().find('.ui-dialog-titlebar').outerHeight();
 
                 if (buttonsElm) {
                     buttonsElm.addClass('buttons-container-picker');
                     // change buttons elm with to prevent height change after changing the position
-                    buttonsHeight = buttonsElm.outerHeight(true);
+                    buttonsElm.css('width', d.width());
+                    var buttonsHeight = buttonsElm.outerHeight(true);
                 }
+
+                var optionsHeight = 0;
 
                 if (optionsElm.length) {
                     optionsHeight = optionsElm.outerHeight(true);
                 }
 
-                if(dialogHeight > max_height) {
-                   d.parent().outerHeight(max_height);
+                var is_auto = d.dialog('option', 'height') == 'auto';
+
+                if (!is_auto) {
+                    viewElm.outerHeight(d.height() - (buttonsHeight + optionsHeight));
                 }
-
-                containerHeight = d.parent().outerHeight() - titleHeight;
-
-                if(buttonsElm && _.area == "C" ) {
-                    if(dialogHeight >= max_height) {
-                        containerHeight = containerHeight - buttonsHeight;
-                        buttonsElm.css({
-                            position: 'absolute',
-                            bottom: -buttonsHeight
-                        });
-                    } else {
-                        buttonsElm.css({
-                            position: 'absolute',
-                            bottom: 0
-                        });
-                    }
-
-                } else if(buttonsElm && _.area == "A") {
-                    containerHeight = containerHeight - buttonsHeight;
-                    buttonsElm.css({
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        right: 0
-                    });
-                }
-
-                // set container height
-                container.outerHeight(containerHeight);
 
                 if (optionsHeight) {
                     optionsElm.positionElm({
                         my: 'left top',
                         at: 'left bottom',
-                        of: container,
+                        of: viewElm,
                         collision: 'none'
                     });
-                    optionsElm.css('width', container.outerWidth());
+                    optionsElm.css('width', viewElm.outerWidth());
                 }
+
+                if (buttonsHeight) {
+                    buttonsElm.positionElm({
+                        my: 'left top',
+                        at: 'left bottom',
+                        of: optionsHeight ? optionsElm : viewElm,
+                        collision: 'none'
+                    });
+
+                    if ($.browser.msie && $.browser.version < 8) {
+                        buttonsElm.innerWidth(viewElm.innerWidth());
+                    }
+                }
+
+                if (is_auto) {
+                    d.height(d.height() + (buttonsHeight + optionsHeight));
+                }
+
+                // resize tabs
+                if ($.fn.ceTabs) {
+                    $('.cm-j-tabs', d).ceTabs('resize');
+                }
+
             }
         };
 
         var stack = [];
-        var stackInitedBody = [];
         var tmpCont;
 
         $.fn.ceDialog = function(method) {
@@ -2690,16 +2354,23 @@ var Tygh = {
             } else if (action == 'reload_parent') {
                 var jelm = params.jelm;
                 var dlg = jelm.closest('.ui-dialog-content');
-                var container = $('.object-container', dlg);
-
-                if (!container.length) {
+                if (!$('.object-container', dlg).length) {
                     dlg.wrapInner('<div class="object-container" />');
                 }
-
+                
                 if (dlg.length && dlg.is(':visible')) {
-                    var scrollPosition = container.scrollTop();
-                    dlg.ceDialog('reload');
-                    container.animate({scrollTop: scrollPosition}, 0);
+                    var reload = true;
+                    if ('resizable' in params) {
+                        reload = dlg.dialog('option', 'resizable') == params.resizable;
+                    }
+
+                    if (reload) {
+                        // reload dialog to apply new resize options or sizes
+                        dlg.ceDialog('reload');
+                    } else {
+                        // simply fit dialog elements
+                        dlg.ceDialog('resize');
+                    }
                 }
 
             } else if (action == 'inside_dialog') {
@@ -2721,12 +2392,13 @@ var Tygh = {
                 if (params.hasClass('cm-dialog-auto-size')) {
                     dialog_params['width'] = 'auto';
                     dialog_params['height'] = 'auto';
+                    dialog_params['resizable'] = false;
                 } else if (params.hasClass('cm-dialog-auto-width')) {
                     dialog_params['width'] = 'auto';
                 }
-
+                
                 if (params.hasClass('cm-dialog-switch-avail')) {
-                    dialog_params['switch_avail'] = true;
+                    dialog_params['switch_avail'] = 'true';
                 }
 
                 if ($('#' + params.data('caTargetId')).length == 0) {
@@ -2739,23 +2411,9 @@ var Tygh = {
                     dialog_params['view_id'] = params.data('caViewId');
                 }
 
-                if (params.data('caDialogClass')) {
-                    dialog_params['dialogClass'] = params.data('caDialogClass');
-                }
-
                 return dialog_params;
-            } else if (action == 'clear_stack') {
-                $.popupStack.clear_stack();
-                return stack = [];
-            } else if (action == 'destroy_loaded') {
-                var content = $('<div>').html(params.content);
-                $.each(stackInitedBody, function(i, id) {
-                    if (content.find('#' + id).length) {
-                        $('#' + id).ceDialog('destroy');
-                    }
-                });
             }
-        };
+        }
 
         $.extend({
             popupStack: {
@@ -2764,13 +2422,18 @@ var Tygh = {
                     return this.stack.push(params);
                 },
                 remove: function(name) {
-                    var position = this.stack.indexOf(name);
-                    if (position != -1) {
-                        return this.stack.splice(position, 1);
+                    var new_stack = [];
+                    for( var i = 0; i < this.stack.length; i++ ) {
+                        if (this.stack[i].name != name) {
+                            new_stack.push(this.stack[i]);
+                        }
                     }
+                    var change = (this.stack != new_stack);
+                    this.stack = new_stack;
+                    return change;
                 },
                 last_close: function() {
-                    var obj = this.stack.pop();
+                    obj = this.stack.pop();
                     if (obj && obj.close) {
                         obj.close();
                         return true;
@@ -2781,62 +2444,22 @@ var Tygh = {
                     return this.stack[this.stack.length-1];
                 },
                 close: function(name) {
-                    var position = this.stack.indexOf(name);
-                    if (position != -1) {
-                        var object = this.stack.splice(position, 1)[0];
-                        if (object.close) {
-                            object.close();
+                    var new_stack = [];
+                    for( var i = 0; i < this.stack.length; i++ ) {
+                        if (this.stack[i].name != name) {
+                            new_stack.push(this.stack[i]);
+                        } else {
+                            if (this.stack[i] && this.stack[i].close) {
+                                this.stack[i].close();
+                            }
                         }
-                        return true;
                     }
-                    return false;
-                },
-                clear_stack: function() {
-                    return this.stack = [];
+                    var change = (this.stack != new_stack);
+                    this.stack = new_stack;
+                    return change;
                 }
             }
         });
-    })($);
-
-
-    /*
-     * Accordion
-     *
-     */
-
-    (function($) {
-
-        var methods = {
-            init: function(params) {
-                params = params || {};
-                params.heightStyle = "content";
-
-                var container = $(this);
-                container.accordion(params);
-            },
-
-            reinit: function(params) {
-                $(this).accordion(params);
-            }
-        };
-
-        $.fn.ceAccordion = function(method) {
-            if (methods[method]) {
-                return methods[method].apply(this, Array.prototype.slice.call(arguments, 1));
-            } else if ( typeof method === 'object' || ! method ) {
-                return methods.init.apply(this, arguments);
-            } else {
-                $.error('ty.accordion: method ' +  method + ' does not exist');
-            }
-        };
-
-        $.ceAccordion = function(method, params) {
-            if (methods[method]) {
-                return methods[method].apply(this, Array.prototype.slice.call(arguments, 1));
-            } else {
-                $.error('ty.notification: method ' +  method + ' does not exist');
-            }
-        }
     })($);
 
 
@@ -2898,19 +2521,6 @@ var Tygh = {
                 }
 
                 $.ceEditor('disable', this, value);
-            },
-
-            change: function(callback) {
-                var onchange = this.data('ceeditor_onchange') || [];
-                onchange.push(callback);
-                this.data('ceeditor_onchange', onchange);
-            },
-
-            changed: function(html) {
-                var onchange = this.data('ceeditor_onchange') || [];
-                for (var i = 0; i < onchange.length; i++) {
-                    onchange[i](html);
-                };
             }
         };
 
@@ -2934,8 +2544,7 @@ var Tygh = {
             } else if (action == 'state') {
                 if (data) {
                     state = data;
-
-                    if (data == 'loaded' && pool.length) {
+                    if (data == 'loaded' && pool) {
                         for (var i = 0; i < pool.length; i++) {
                             pool[i].ceEditor('run', params);
                         }
@@ -2946,8 +2555,12 @@ var Tygh = {
                 }
             } else if (action == 'handlers') {
                 handlers = data;
-            } else if (action == 'run' || action == 'destroy' || action == 'updateTextFields' || action == 'recover' || action == 'val' || action == 'disable') {
+            } else if (action == 'run' || action == 'destroy' || action == 'recover' || action == 'val' || action == 'disable') {
                 return handlers[action](data, params);
+            } else if (action == 'content_css') {
+                var content_css = (_.frontend_css != '') ? _.frontend_css.split(',') : [];
+                content_css.push(_.current_location + '/design/backend/css/wysiwyg_reset.css');
+                return content_css;
             }
         }
     })($);
@@ -3016,14 +2629,10 @@ var Tygh = {
 
                 this.trigger('click'); // Display comet progressBar using Bootstrap click handle
                 this.data('ceProgressbar', true);
-                
-                $.ceEvent('trigger', 'ce.progress_init');
             },
 
             setValue: function(o) {
-
                 var comet_container = getContainer(this);
-
                 if (comet_container == false) {
                     return false;
                 }
@@ -3039,8 +2648,6 @@ var Tygh = {
                 if (o.text) {
                     comet_container.find('.modal-body p').html(o.text);
                 }
-
-                $.ceEvent('trigger', 'ce.progress', [o]);
             },
 
             getValue: function(o) {
@@ -3081,7 +2688,6 @@ var Tygh = {
                 comet_container.modal('hide');
 
                 this.removeData('ceProgressbar');
-                $.ceEvent('trigger', 'ce.progress_finish');
             }
         };
 
@@ -3103,6 +2709,7 @@ var Tygh = {
      */
     (function($){
 
+        var fromAjax = false;
         var methods = {
 
             init: function() {
@@ -3110,23 +2717,25 @@ var Tygh = {
                 if ($.history) {
 
                     $.history.init(function(hash, params) {
+                        // Skip processing if callback was called after ajax request
+                        if (fromAjax == true) {
+                            fromAjax = false;
+                            return;
+                        }
 
-                        if (params && 'result_ids' in params) {
+                        if(hash != '') {
                             var uri = methods.parseHash('#' + hash);
-                            var href = uri.indexOf(_.current_location) != -1 ? uri : _.current_location + '/' + uri;
+                            if (!uri) {
+                                return false;
+                            }
+
+                            var href = uri;
                             var target_id = params.result_ids;
                             var a_elm = $('a[data-ca-target-id="' + target_id + '"]:first'); // hm, used for callback only, so I think it will work with the first found link
                             var name = a_elm.prop('name');
 
                             $.ceAjax('request', href, {full_render: params.full_render, result_ids: target_id, caching: false, obj: a_elm, skip_history: true, callback: 'ce.ajax_callback_' + name});
 
-                        } else if (_.embedded) {
-                            // If the hash changed by user manually or by external script, perform redirect to
-                            // the specified location
-                            var url = fn_url(window.location.href);
-                            if (url != _.current_url) {
-                                $.redirect(url);
-                            }
                         }
                     }, {unescape: false});
                     return true;
@@ -3135,40 +2744,33 @@ var Tygh = {
                 }
             },
 
-            load: function(url, params)
-            {
-                var _params, current_url;
+            load: function(url, params) {
+                var _params;
+                var current_url = (window.location.hash) ? $.ceHistory('parseHash', window.location.hash) : window.location;
 
                 url = methods.prepareHash(url);
-                current_url = methods.prepareHash(_.current_url);
+                current_url = methods.prepareHash(current_url);
 
                 _params = {
                     result_ids: params.result_ids,
                     full_render: params.full_render
-                }
+                };
 
-                $.ceEvent('trigger', 'ce.history_load', [url]);
                 $.history.reload(current_url, _params);
                 $.history.load(url, _params);
             },
 
             prepareHash: function(url)
             {
-
                 url = unescape(url); // urls in original content are escaped, so we need to unescape them
 
                 if (url.indexOf('://') !== -1) {
-                    //FIXME: Remove this code when support for Internet Explorer 8 and 9 is dropped
-                    if($.browser.msie && $.browser.version >= 9) {
-                        url = _.current_path + '/' + url.str_replace(_.current_location + '/', '');
-                    } else {
-                        url = url.str_replace(_.current_location + '/', '');
-                    }
+                    url = url.str_replace(_.current_location + '/', '');
                 }
-
+                fromAjax = _.embedded ? true : false;
                 url = fn_query_remove(url, ['result_ids']);
                 url = '!/' + url;
-
+                
                 return url;
             },
 
@@ -3275,6 +2877,161 @@ var Tygh = {
 
     /*
      *
+     * Range slider
+     *
+     */
+    (function($){
+
+        var methods = {
+
+            init: function() {
+                return this.each(function() {
+                    var elm = $(this);
+                    var id = elm.prop('id');
+                    var json_data = $('#' + id + '_json').val();
+                    if (elm.data('slider') || !json_data) {
+                        return false;
+                    }
+                    var data = $.parseJSON(json_data) || null;
+                    if (!data) {
+                        return false;
+                    }
+
+                    elm.slider({
+                        disabled: data.disabled,
+                        range: true,
+                        min: data.min,
+                        max: data.max,
+                        step: data.step,
+                        values: [data.left, data.right],
+                        slide: function(event, ui) {
+                            $('#' + id + '_left').val(ui.values[0]);
+                            $('#' + id + '_right').val(ui.values[1]);
+                        },
+                        change: function(event, ui){
+                            var replacement = data.type + ui.values[0] + '-' + ui.values[1];
+                            if (data.type == 'P') {
+                                replacement = replacement + '-' + data.currency;
+                            }
+                            var url = data.url.replace(data.type + '###-###', replacement);
+                            if (!data.ajax) {
+                                $.toggleStatusBox('show');
+                                $.redirect(url);
+                            } else {
+                                $.ceAjax('request', url, {
+                                    full_render: true,
+                                    save_history: true,
+                                    result_ids: data.result_ids,
+                                    caching: true
+                                });
+                            }
+                        }
+                    });
+
+                    $('#' + id + '_left').off('change').on('change', function() {
+                        var v1 = parseInt($('#' + id + '_left').val());
+                        var v2 = parseInt($('#' + id + '_right').val());
+                        $('#' + id).slider('values', [(isNaN(v1) ? 0 : v1), (isNaN(v2) ? 0 : v2)]);
+                    });
+                    $('#' + id + '_right').off('change').on('change', function() {
+                        var v1 = parseInt($('#' + id + '_left').val());
+                        var v2 = parseInt($('#' + id + '_right').val());
+                        $('#' + id).slider('values', [(isNaN(v1) ? 0 : v1), (isNaN(v2) ? 0 : v2)]);
+                    });
+
+                    if (elm.parents('.filter-wrap').hasClass('cm-combo-off') || elm.parent('.price-slider').hasClass('cm-custom-filter')) {
+                        elm.parent('.price-slider').show();
+                    }
+                });
+            }
+        };
+
+        $.fn.ceRangeSlider = function(method) {
+            if (methods[method]) {
+                return methods[method].apply(this, Array.prototype.slice.call(arguments, 1));
+            } else if ( typeof method === 'object' || ! method ) {
+                return methods.init.apply(this, arguments);
+            } else {
+                $.error('ty.rangeslider: method ' +  method + ' does not exist');
+            }
+        };
+    })($);
+
+    /*
+     *
+     * Scroller
+     *
+     */
+    (function($){
+        $.ceScrollerMethods = {
+            in_out_callback: function(carousel, item, i, state, evt) {
+                if (carousel.allow_in_out_callback) {
+                    if (carousel.options.autoDirection == 'next') {
+                        carousel.add(i + carousel.options.item_count, $(item).html());
+                        carousel.remove(i);
+                    } else {
+                        var last_item = $('li:last', carousel.list);
+                        carousel.add(last_item.data('caJcarouselindex') - carousel.options.item_count, last_item.html());
+                        carousel.remove(last_item.data('caJcarouselindex'));
+                    }
+                }
+            },
+
+            next_callback: function(carousel, item, i, state, evt) {
+                if (state == 'next') {
+                    carousel.add(i + carousel.options.item_count, $(item).html());
+                    carousel.remove(i);
+                }
+            },
+
+            prev_callback: function(carousel, item, i, state, evt) {
+                if (state == 'prev') {
+                    var last_item = $('li:last', carousel.list);
+                    var item = last_item.html();
+                    var count = last_item.data('caJcarouselindex') - carousel.options.item_count;
+                    carousel.remove(last_item.data('caJcarouselindex'));
+                    carousel.add(count, item);
+                }
+            },
+
+            init_callback: function(carousel, state) {
+                if (carousel.options.autoDirection == 'prev') {
+                    // switch buttons to save the buttons scroll direction
+                    var tmp = carousel.buttonNext;
+                    carousel.buttonNext = carousel.buttonPrev;
+                    carousel.buttonPrev = tmp;
+                }
+                $('.jcarousel-clip', carousel.container).height(carousel.options.clip_height + 'px');
+                $('.jcarousel-clip', carousel.container).width(carousel.options.clip_width + 'px');
+
+                var container_width = carousel.options.clip_width;
+                carousel.container.width(container_width);
+                if (container_width > carousel.container.width()) {
+                    var p = carousel.pos(carousel.options.start, true);
+                    carousel.animate(p, false);
+                }
+
+                carousel.clip.hover(function() {
+                    carousel.stopAuto();
+                }, function() {
+                    carousel.startAuto();
+                });
+
+                if (!$.browser.msie || $.browser.version > 8) {
+                    $(window).on('beforeunload', function() {
+                        carousel.allow_in_out_callback = false;
+                    });
+                }
+
+                if ($.browser.chrome) {
+                    $.jcarousel.windowLoaded();
+                }
+            }
+        };
+    })($);
+
+    /*
+     *
      * Tooltips
      *
      */
@@ -3286,10 +3043,10 @@ var Tygh = {
 
                 var default_params = {
                     events: {
-                        def: 'mouseover, mouseout',
-                        input: 'focus, blur'
+                        def: "mouseover, mouseout",
+                        input: "focus, blur"
                     },
-                    layout: '<div><span class="tooltip-arrow"></span></div>'
+                    offset: [-2, -8]
                 };
 
                 $.extend(default_params, params);
@@ -3302,25 +3059,15 @@ var Tygh = {
                         return false;
                     }
 
-                    if (elm.data('ceTooltipPosition') === 'top') {
-                        params.position = 'top left';
-                        params.tipClass = 'tooltip arrow-top';
-                        params.offset = [-10, 7];
+                    if (elm.is('input')) {
+                        params.position = 'bottom center';
+                        params.layout = '<div><span></span></div>';
                     } else {
-                        params.offset = [10, 7];
-                        params.tipClass = 'tooltip arrow-down';
-                        params.position = 'bottom left';
+                        params.position = 'bottom right';
+                        params.layout = '<div><span class="tooltip-arrow"></span></div>';
                     }
 
-                    elm.tooltip(params).dynamic({
-                        right: {},
-                        left: {}
-                    });
-
-                    //hide tooltip before remove
-                    elm.on("remove", function() {
-                        $(this).trigger('mouseout');
-                    });
+                    elm.tooltip(params);
                 });
             }
         };
@@ -3412,6 +3159,56 @@ var Tygh = {
     })($);
 
 
+
+   /*
+     *
+     * Thumbnails generator
+     *
+     */
+    (function($){
+        var methods = {
+            init: function(params) {
+                return this.each(function() {
+                    var self = $(this);
+
+                    if (!self.data('image_reloads')) {
+                        self.data('image_reloads', 1);
+                    } else {
+                        return false;
+                    }
+
+                    $('<img/>')
+                        .prop('src', self.data('caImagePath'))
+                        .on('load', function() {
+                            self.prop('src', $(this).prop('src'));
+                            self.removeClass('spinner');
+                        })
+                        .on('error', function() {
+                            var img = $(this);
+                            var MAX_RELOADS = 3;
+
+                            if (self.data('image_reloads') > MAX_RELOADS) {
+                                return false;
+                            }
+
+                            self.data('image_reloads', self.data('image_reloads') + 1);
+                            img.prop('src', img.prop('src') + '&1');
+                        });
+                })
+            }
+        };
+
+        $.fn.ceThumbnails = function(method) {
+            if (methods[method]) {
+                return methods[method].apply(this, Array.prototype.slice.call(arguments, 1));
+            } else if ( typeof method === 'object' || ! method ) {
+                return methods.init.apply(this, arguments);
+            } else {
+                $.error('ty.thumbnails: method ' +  method + ' does not exist');
+            }
+        };
+    })($);
+
     /*
     *
     * Color picker
@@ -3428,7 +3225,7 @@ var Tygh = {
 
                 if (!$.fn.spectrum) {
                     var elms = $(this);
-                    $.loadCss(['js/lib/spectrum/spectrum.css'], false, true);
+                    $.loadCss(['js/lib/spectrum/spectrum.css']);
                     $.getScript('js/lib/spectrum/spectrum.js', function(){
                         elms.ceColorpicker();
                     });
@@ -3450,23 +3247,11 @@ var Tygh = {
                     var jelm = $(this);
                     var params = {
                         showInput: true,
-                        showInitial: false,
-                        showPalette: false,
-                        showSelectionPalette: false,
+                        showInitial: true,
+                        showPalette: true,
+                        showSelectionPalette: true,
                         palette: palette,
-                        preferredFormat: 'hex6',
-                        beforeShow: function() {
-                            jelm.spectrum('option', 'showPalette', true);
-                            jelm.spectrum('option', 'showInitial', true);
-                            jelm.spectrum('option', 'showSelectionPalette', true);
-                        },
-                        hide:  function() {
-                            $.ceEvent('trigger', 'ce.colorpicker.hide');
-                        },
-                        show:  function() {
-                            $.ceEvent('trigger', 'ce.colorpicker.show');
-                        }
-
+                        preferredFormat: 'hex6'
                     };
 
                     if (jelm.data('caView') && jelm.data('caView') == 'palette') {
@@ -3479,6 +3264,9 @@ var Tygh = {
 
                     jelm.spectrum(params);
                     jelm.spectrum('container').appendTo(jelm.parent());
+                    if ($.browser.msie) {
+                        jelm.spectrum('container').css('position', 'fixed');
+                    }
                 });
             },
 
@@ -3511,9 +3299,11 @@ var Tygh = {
     */
     (function($){
 
+        var CPS = 2000; // repeat click delay, ms
+
         var clicked_elm; // last clicked element
         var zipcode_regexp = {}; // zipcode validation regexps
-        var regexp = {}; // validation regexps - deprecated
+        var regexp = {}; // validation regexps
         var validators = []; // registered custom validators
 
         function _fillRequirements(form, check_filter)
@@ -3526,7 +3316,7 @@ var Tygh = {
                 lbls = $('label', form);
             }
 
-            for (var k = 0; k < lbls.length; k++) {
+            for (k = 0; k < lbls.length; k++) {
                 lbl = $(lbls[k]);
                 id = lbl.prop('for');
 
@@ -3548,9 +3338,9 @@ var Tygh = {
             return requirements;
         }
 
-        function _checkFields(form, requirements, only_check)
+        function _checkFields(form, requirements)
         {
-            var set_mark, elm, lbl, container, _regexp, _message;
+            var set_mark, elm, lbl, container;
             var message_set = false;
 
             // Reset all failed fields
@@ -3650,23 +3440,13 @@ var Tygh = {
                 }
 
                 if (lbl.hasClass('cm-regexp')) {
-                    _regexp = null;
-                    _message = null;
-                    if (elm_id in regexp) {
-                        _regexp = regexp[elm_id]['regexp'];
-                        _message = regexp[elm_id]['message'] ? regexp[elm_id]['message'] : _.tr('error_validator_message');
-                    } else if (lbl.data('caRegexp')) {
-                        _regexp = lbl.data('caRegexp');
-                        _message = lbl.data('caMessage');
-                    }
-
-                    if (_regexp && !elm.ceHint('is_hint')) {
+                    if (typeof(regexp[elm_id]) != 'undefined' && !elm.ceHint('is_hint')) {
                         var val = elm.val();
-                        var expr = new RegExp(_regexp);
+                        var expr = new RegExp(regexp[elm_id]['regexp']);
                         var result = expr.test(val);
 
                         if (!result && !(!lbl.hasClass('cm-required') && elm.val() == '')) {
-                            _formMessage(_message, lbl);
+                            _formMessage((regexp[elm_id]['message'] != '' ? regexp[elm_id]['message'] : _.tr('error_validator_message')), lbl);
                             set_mark = true;
                         }
                     }
@@ -3709,44 +3489,29 @@ var Tygh = {
                     elm = container;
                 }
 
-                if (!only_check) {
+                $('[id="' + elm_id + '_error_message"].help-inline', elm.parent()).remove();
 
-                    $('[id="' + elm_id + '_error_message"].help-inline', elm.parent()).remove();
+                if (set_mark == true) {
+                    lbl.parent().addClass('error');
+                    elm.addClass('cm-failed-field');
+                    lbl.addClass('cm-failed-label');
 
-                    if (set_mark == true) {
-                        lbl.parent().addClass('error');
-                        elm.addClass('cm-failed-field');
-                        lbl.addClass('cm-failed-label');
+                    if (!elm.hasClass('cm-no-failed-msg')) {
+                        elm.after('<span id="' + elm_id + '_error_message" class="help-inline">' + _getMessage(elm_id) + '</span>');
+                    }
 
-                        if (!elm.hasClass('cm-no-failed-msg')) {
-                            elm.after('<span id="' + elm_id + '_error_message" class="help-inline">' + _getMessage(elm_id) + '</span>');
-                        }
-
-                        if (!message_set) {
-                            $.scrollToElm(elm);
-                            message_set = true;
-                        }
-
-                        // Resize dialog if we have errors
-                        var dlg = $.ceDialog('get_last');
-                        var dlg_target = $('.cm-dialog-auto-size[data-ca-target-id="'+ dlg.attr('id') +'"]');
-
-                        if(dlg_target.length) {
-                            dlg.ceDialog('reload');
-                        }
-
-                    } else {
-                        lbl.parent().removeClass('error');
-                        elm.removeClass('cm-failed-field');
-                        lbl.removeClass('cm-failed-label');
+                    if (!message_set) {
+                        $.scrollToElm(elm);
+                        message_set = true;
                     }
 
                 } else {
-                    if (set_mark) {
-                        message_set = true;
-                    }
+                    lbl.parent().removeClass('error');
+                    elm.removeClass('cm-failed-field');
+                    lbl.removeClass('cm-failed-label');
                 }
             }
+
             return !message_set;
         }
 
@@ -3775,39 +3540,23 @@ var Tygh = {
             }
         }
 
-        function _check(form, params)
+        function _check(form, clicked_elm)
         {
             var form_result = true;
             var check_fields_result = true;
-            var h;
-
-            params = params || {};
-            params.only_check = params.only_check || false;
-
-            if (!clicked_elm) { // workaround for IE when the form has one input only
-                if ($('[type=submit]', form).length) {
-                    clicked_elm = $('[type=submit]:first', form);
-                } else if ($('input[type=image]', form).length) {
-                    clicked_elm = $('input[type=image]:first', form);
-                }
-            }
 
             if (!clicked_elm.hasClass('cm-skip-validation')) {
 
-                var requirements = _fillRequirements(form, clicked_elm.data('caCheckFilter'));
+                var requirements = _fillRequirements(form, clicked_elm.data('caCheckFilter'))
 
                 if ($.ceEvent('trigger', 'ce.formpre_' + form.prop('name'), [form, clicked_elm]) === false) {
                     form_result = false;
                 }
 
-                check_fields_result = _checkFields(form, requirements, params.only_check);
+                check_fields_result = _checkFields(form, requirements);
             }
 
-            if (params.only_check) {
-                return check_fields_result && form_result;
-            }
-
-            if (check_fields_result && form_result) {
+            if (check_fields_result == true && form_result == true) {
 
                 _disableEmptyFields(form);
 
@@ -3817,39 +3566,23 @@ var Tygh = {
                     $(this).prop('value', val);
                 });
 
-                h = clicked_elm.data('original_element') ? clicked_elm.data('original_element') : clicked_elm;
-
                 // protect button from double click
-                if (h.data('clicked') == true) {
+                if (clicked_elm.data('clicked') == true) {
                     return false;
                 }
 
                 // set clicked flag
-                h.data('clicked', true);
+                clicked_elm.data('clicked', true);
 
-                if ((form.hasClass('cm-ajax') || clicked_elm.hasClass('cm-ajax')) && !clicked_elm.hasClass('cm-no-ajax')) {
-                    // clean clicked flag
-                    $.ceEvent('one', 'ce.ajaxdone', function() {
-                        h.data('clicked', false);
-                    });
-                }
-
-                if (clicked_elm.hasClass('cm-comet')) {
-                    $.ceEvent('one', 'ce.cometdone', function() {
-                        h.data('clicked', false);
-                    });
-                }
+                // clean clicked flag
+                setTimeout(function() {
+                    clicked_elm.data('clicked', false);
+                }, CPS);
 
                 // If pressed button has cm-new-window microformat, send form to new window
                 // otherwise, send to current
                 if (clicked_elm.hasClass('cm-new-window')) {
                     form.prop('target', '_blank');
-
-                    // clean clicked flag
-                    setTimeout(function() {
-                        h.data('clicked', false);
-                    }, 1000);
-
                     return true;
 
                 } else if (clicked_elm.hasClass('cm-parent-window')) {
@@ -3860,14 +3593,6 @@ var Tygh = {
                     form.prop('target', '_self');
                 }
 
-                if ($.ceEvent('trigger', 'ce.formpost_' + form.prop('name'), [form, clicked_elm]) === false) {
-                    form_result = false;
-                }
-
-                if (clicked_elm.closest('.cm-dialog-closer').length) {
-                    $.ceDialog('get_last').ceDialog('close');
-                }
-
                 if ((form.hasClass('cm-ajax') || clicked_elm.hasClass('cm-ajax')) && !clicked_elm.hasClass('cm-no-ajax')) {
 
                     // FIXME: this code should be moved to another place I believe
@@ -3875,14 +3600,13 @@ var Tygh = {
                     if (collection.hasClass('cm-form-dialog-closer') || collection.hasClass('cm-form-dialog-opener')) {
 
                         $.ceEvent('one', 'ce.formajaxpost_' + form.prop('name'), function(response_data, params) {
-
                             if (collection.hasClass('cm-form-dialog-closer')) {
                                 $.popupStack.last_close();
                             }
 
                             if (collection.hasClass('cm-form-dialog-opener')) {
                                 var _id = form.find('input[name=result_ids]').val();
-                                if (_id && typeof(response_data.html) !== "undefined") {
+                                if (_id) {
                                     $('#' + _id).ceDialog('open', $.ceDialog('get_params', form));
                                 }
                             }
@@ -3896,15 +3620,17 @@ var Tygh = {
                     $('input[name=is_ajax]', form).remove();
                 }
 
-                if (_.embedded && form_result == true && !$.externalLink(form.prop('action'))) {
+                if ($.ceEvent('trigger', 'ce.formpost_' + form.prop('name'), [form, clicked_elm]) === false) {
+                    form_result = false;
+                }
 
+                if (_.embedded && form_result == true) {
                     form.append('<input type="hidden" name="result_ids" value="' + _.container + '" />');
-                    clicked_elm.data('caScroll', '#' + _.container);
                     return $.ceAjax('submitForm', form, clicked_elm);
                 }
 
-                if (form_result == false) {
-                    h.data('clicked', false); // if form won't be submitted, clear clicked flag
+                if (clicked_elm.closest('.cm-dialog-closer').length) {
+                    $.ceDialog('get_last').ceDialog('close');
                 }
 
                 return form_result;
@@ -3956,54 +3682,49 @@ var Tygh = {
             init: function() {
                 var form = $(this);
                 form.on('submit', function(e) {
-                    return _check(form);
+                    if (!clicked_elm) { // workaround for IE when the form has one input only
+                        if ($('[type=submit]', form).length) {
+                            clicked_elm = $('[type=submit]:first', form);
+                        } else if ($('input[type=image]', form).length) {
+                            clicked_elm = $('input[type=image]:first', form);
+                        }
+                    }
+
+                    return _check(form, clicked_elm);
                 })
             },
             setClicked: function(elm) {
                 clicked_elm = elm;
-            },
-            check: function(){
-                var form = $(this);
-                return _check(form, {only_check: true});
             }
         }
 
         $.fn.ceFormValidator = function(method) {
             var args = arguments;
-            var result;
 
-            $(this).each(function(i, elm) {
+            return $(this).each(function(i, elm) {
 
                 // These vars are local for each element
                 var errors = {};
 
                 if (methods[method]) {
-                    result = methods[method].apply(this, Array.prototype.slice.call(args, 1));
+                    return methods[method].apply(this, Array.prototype.slice.call(args, 1));
                 } else if ( typeof method === 'object' || ! method ) {
-                    result = methods.init.apply(this, args);
+                    return methods.init.apply(this, args);
                 } else {
                     $.error('ty.formvalidator: method ' +  method + ' does not exist');
                 }
             });
-
-            return result;
         };
+
 
         $.ceFormValidator = function(action, params) {
             params = params || {};
             if (action == 'setZipcode') {
                 zipcode_regexp = params;
             } else if (action == 'setRegexp') {
-                if ('console' in window) {
-                    console.log('This method is deprecated, use data-attributes "data-ca-regexp" and "data-ca-message" instead');
-                }
                 regexp = $.extend(regexp, params);
             } else if (action == 'registerValidator') {
                 validators.push(params);
-            } else if (action == 'check') {
-                if (params.form) {
-                    return methods.check.apply(params.form);
-                }
             }
         }
     })($);
@@ -4038,7 +3759,7 @@ var Tygh = {
             var pkey = '';
 
             sbox.prop('id', elm).prop('disabled', false).removeClass('hidden cm-skip-avail-switch');
-            inp.prop('id', elm + '_d').prop('disabled', true).addClass('hidden cm-skip-avail-switch').val('');
+            inp.prop('id', elm + '_d').prop('disabled', true).addClass('hidden cm-skip-avail-switch');
 
             if (!inp.hasClass('disabled')) {
                 sbox.removeClass('disabled');
@@ -4059,7 +3780,7 @@ var Tygh = {
 
             } else { // Disable states
                 sbox.prop('id', elm + '_d').prop('disabled', true).addClass('hidden cm-skip-avail-switch');
-                inp.prop('id', elm).prop('disabled', false).removeClass('hidden cm-skip-avail-switch').val(default_state);
+                inp.prop('id', elm).prop('disabled', false).removeClass('hidden cm-skip-avail-switch');
 
                 if (!sbox.hasClass('disabled')) {
                     inp.removeClass('disabled');
@@ -4072,24 +3793,23 @@ var Tygh = {
             }
         }
 
-        function _rebuildStatesInLocation() {
-            var location_elm = $(this).prop('class').match(/cm-location-([^\s]+)/i);
-            if (location_elm) {
-                _rebuildStates(location_elm[1], $('.cm-state.cm-location-' + location_elm[1]).not(':disabled').prop('id'));
+        function _bind()
+        {
+            if (init == false) {
+                $(_.doc).on('change', 'select.cm-country', function() {
+                    var location_elm = $(this).prop('class').match(/cm-location-([^\s]+)/i);
+                    if (location_elm) {
+                        _rebuildStates(location_elm[1], $('.cm-state.cm-location-' + location_elm[1]).not(':disabled').prop('id'));
+                    }
+                });
+                init = true;
             }
         }
 
         var methods = {
             init: function() {
-                if ($(this).hasClass('cm-country')) {
-                    if (init == false) {
-                        $(_.doc).on('change', 'select.cm-country', _rebuildStatesInLocation);
-                        init = true;
-                    }
-                    $(this).trigger('change');
-                } else {
-                    _rebuildStatesInLocation.call(this);
-                }
+                _bind();
+                $(this).trigger('change');
             }
         }
 
@@ -4120,36 +3840,37 @@ var Tygh = {
     * Sticky scroll
     *
     */
-    (function($){
-        var methods = {
-            init: function(params) {
-                return this.each(function() {
-                    var params = params || {
-                        top: $(this).data('ceTop') ? $(this).data('ceTop') : 0,
-                        padding: $(this).data('cePadding') ? $(this).data('cePadding') : 0
-                    };
-                    var self = $(this);
+    (function($) {
+        $.ceStickyScroll = function(params) {
+            var elms = [];
+            var elm, length;
+            for (var selector in params) {
+                elm = $(selector);
+                if (!elm.length) {
+                    continue;
+                }
 
-                    $(window).scroll(function () {
-                        if ($(window).scrollTop() > params.top) {
-                            $(self).css({'position': 'fixed', 'top': params.padding + 'px'});
-                        } else {
-                            $(self).css({'position': '', 'top': ''});
-                        }
-                    });
+                var demo_panel = $('.cm-demo-site-panel').outerHeight(true) ? $('.cm-demo-site-panel').outerHeight(true) : 0;
+                params[selector].top += demo_panel;
 
+                elms.push({
+                    elm: elm,
+                    options: params[selector],
+                    default_pos: elm.offset().top - demo_panel
                 });
             }
-        };
 
-        $.fn.ceStickyScroll = function(method) {
-            if (methods[method]) {
-                return methods[method].apply(this, Array.prototype.slice.call(arguments, 1));
-            } else if ( typeof method === 'object' || ! method ) {
-                return methods.init.apply(this, arguments);
-            } else {
-                $.error('ty.stickyScroll: method ' +  method + ' does not exist');
-            }
+            length = elms.length;
+
+            $(window).scroll(function () {
+                for (var i = 0; i < length; i++) {
+                    if ($(window).scrollTop() > elms[i].options.top) {
+                        elms[i].elm.css({'position': 'fixed', 'top': elms[i].options.padding + 'px'});
+                    } else {
+                        elms[i].elm.css({'position': 'absolute', 'top': elms[i].default_pos + 'px'});
+                    }
+                }
+            });
         };
     })($);
 
@@ -4179,7 +3900,7 @@ var Tygh = {
                     clearTimeout(timers[key]);
                     methods.close(dups, true);
                 }
-
+                
                 return true;
             }
 
@@ -4206,22 +3927,17 @@ var Tygh = {
                     });
                 }
             }
-
-            if($(".ui-dialog").is(':visible') == false) {
-                $('html').removeClass('dialog-is-open');
-            }
-
         }
 
         function _processTranslation(text)
         {
-            if (_.live_editor_mode && text.indexOf('[lang') != -1) {
-                text = '<var class="live-edit-wrap"><i class="cm-icon-live-edit icon-live-edit ty-icon-live-edit"></i><var class="cm-live-edit live-edit-item" data-ca-live-edit="langvar::' + text.substring(text.indexOf('=') + 1, text.indexOf(']')) + '">' + text.substring(text.indexOf(']') + 1, text.lastIndexOf('[')) + '</var></var>';
+            if (_.translate_mode && text.indexOf('[lang') != -1) {
+                text = '<font class="cm-translate lang_' + text.substring(text.indexOf('=') + 1, text.indexOf(']')) + '">' + text.substring(text.indexOf(']') + 1, text.lastIndexOf('[')) + '</font>';
             }
 
             return text;
         }
-
+        
         function _pickFromDialog(event) {
             var nt = $('.cm-notification-content', $(event.target));
             if (nt.length) {
@@ -4231,7 +3947,7 @@ var Tygh = {
             }
             return true;
         }
-
+        
         function _addToDialog(notification)
         {
             var dlg = $.ceDialog('get_last');
@@ -4271,7 +3987,7 @@ var Tygh = {
                     });
 
                     $(_.body).append(
-                        '<div class="ui-widget-overlay" style="z-index:1010" data-ca-notification-key="' + key + '"></div>'
+                        '<div class="ui-widget-overlay" data-ca-notification-key="' + key + '"></div>'
                     );
 
                     var notification = $('<div class="cm-notification-content cm-notification-content-extended notification-content-extended ' + (data.message_state == "I" ? ' cm-auto-hide' : '') + '" data-ca-notification-key="' + key + '">' +
@@ -4281,16 +3997,12 @@ var Tygh = {
                         '</div>' +
                         '</div>');
 
-                    var notificationMaxHeight = w.view_height - 300;
-
-                    $(notification).find('.cm-notification-max-height').css({
-                        'max-height': notificationMaxHeight
-                    });
-
                     // FIXME I-type notifications are embedded directly into the body and not into a container, because a container has low z-index and get overlapped by modal dialogs.
                     //container.append(notification);
-                    $(_.body).append(notification);
+                    $('body').append(notification);
+
                     notification.css('top', w.view_height / 2 - (notification.height() / 2));
+                    $('.cm-generate-image', notification).ceThumbnails(); //FIXE: this is bad
 
                 } else {
                     var n_class = 'alert';
@@ -4300,8 +4012,6 @@ var Tygh = {
                         n_class += ' alert-success';
                     } else if (data.type == 'W') {
                         n_class += ' alert-warning';
-                    } else if (data.type == 'S') {
-                        n_class += ' alert-info';
                     } else {
                         n_class += ' alert-error';
                     }
@@ -4321,8 +4031,6 @@ var Tygh = {
                         container.append(notification);
                     }
                 }
-
-                $.ceEvent('trigger', 'ce.notificationshow', [notification]);
 
                 if (data.message_state == 'I') {
                     methods.close(notification, true);
@@ -4422,11 +4130,11 @@ var Tygh = {
                 var result = true, _res;
                 if (event in handlers) {
                     for (var i = 0; i < handlers[event].length; i++) {
+
                         _res = handlers[event][i].handler.apply(handlers[event][i].handler, data);
 
                         if (handlers[event][i].one) {
                             handlers[event].splice(i, 1);
-                            i --;
                         }
 
                         if (_res === false) {
@@ -4450,258 +4158,12 @@ var Tygh = {
 
     }($));
 
-    /*
-     * Code editor
-     *
-     */
-    (function($){
-
-        var methods = {
-            _init: function(self) {
-
-                if (!self.data('codeEditor')) {
-                    var editor = ace.edit(self.prop('id'));
-                    editor.session.setUseWrapMode(true);
-                    editor.session.setWrapLimitRange();
-                    editor.setFontSize("14px");
-                    editor.renderer.setShowPrintMargin(false);
-
-                    editor.getSession().on('change', function(e) {
-                        self.addClass('cm-item-modified');
-                    });
-
-                    self.data('codeEditor', editor);
-                }
-
-                return $(this);
-            },
-
-            init: function(mode) {
-                var self = $(this);
-                methods._init(self);
-
-                if (mode) {
-                    self.data('codeEditor').getSession().setMode(mode);
-                }
-
-                return $(this);
-            },
-
-            set_value: function(val, mode) {
-                var self = $(this);
-                methods._init(self);
-
-                if(mode == undefined) {
-                    mode = 'ace/mode/html';
-                }
-
-                self.data('codeEditor').getSession().setMode(mode);
-                self.data('codeEditor').setValue(val);
-                self.data('codeEditor').navigateLineStart();
-                self.data('codeEditor').clearSelection();
-                self.data('codeEditor').scrollToRow(0);
-
-                return $(this);
-            },
-
-            set_show_gutter: function(value) {
-                $(this).data('codeEditor').renderer.setShowGutter(value);
-            },
-
-            value: function() {
-                var self = $(this);
-                methods._init(self);
-
-                return self.data('codeEditor').getValue();
-            },
-
-            focus: function() {
-                var self = $(this);
-                var session = self.data('codeEditor').getSession();
-                var count = session.getLength();
-                self.data('codeEditor').focus();
-                self.data('codeEditor').gotoLine(count, session.getLine(count-1).length);
-            },
-
-            set_listener: function(event_name, callback) {
-                $(this).data('codeEditor').getSession().on(event_name, function(e) {
-                    callback(e);
-                });
-
-                return $(this);
-            }
-        };
-
-        $.fn.ceCodeEditor = function(method) {
-            if (methods[method]) {
-                return methods[method].apply(this, Array.prototype.slice.call(arguments, 1));
-            } else if ( typeof method === 'object' || ! method ) {
-                return methods.init.apply(this, arguments);
-            } else {
-                $.error('ty.codeeditor: method ' +  method + ' does not exist');
-            }
-        };
-    })($);
-
-    /*
-     * Object selector
-     */
-    (function ($) {
-        var plugin_name = "ceObjectSelector",
-            defaults = {
-                pageSize: 10,
-                enableSearch: true,
-                closeOnSelect: true,
-                loadViaAjax: false,
-                dataUrl: null,
-                enableImages: false,
-                imageWidth: 20,
-                imageHeight: 20,
-                placeholder: null
-            };
-
-        function ObjectSelector(element, options) {
-            this.$el = $(element);
-            this.settings = $.extend({}, defaults, options);
-
-            this.init();
-        }
-
-        $.extend(ObjectSelector.prototype, {
-            init: function () {
-                var data = this.$el.data();
-
-                this.settings.placeholder = data.caPlaceholder || this.settings.placeholder;
-                this.settings.pageSize = data.caPageSize || this.settings.pageSize;
-                this.settings.dataUrl = data.caDataUrl || this.settings.dataUrl;
-                this.settings.loadViaAjax = data.caLoadViaAjax === undefined
-                    ? this.settings.loadViaAjax
-                    : data.caLoadViaAjax;
-                this.settings.closeOnSelect = data.caCloseOnSelect === undefined
-                    ? this.settings.closeOnSelect
-                    : data.caCloseOnSelect;
-                this.settings.enableImages = data.caEnableImages === undefined
-                    ? this.settings.enableImages
-                    : data.caEnableImages;
-                this.settings.enableSearch = data.caEnableSearch === undefined
-                    ? this.settings.enableSearch
-                    : data.caEnableSearch;
-                this.settings.imageWidth = data.caImageWidth === undefined
-                    ? this.settings.imageWidth
-                    : data.caImageWidth;
-                this.settings.imageHeight = data.caImageHeight === undefined
-                    ? this.settings.imageHeight
-                    : data.caImageHeight;
-
-                this.initSelect2();
-            },
-            initSelect2: function () {
-                var self = this, select2config = {
-                    language: {
-                        'loadingMore': function() {
-                            return _.tr('loading');
-                        },
-                        'searching': function() {
-                            return _.tr('loading');
-                        },
-                        'errorLoading': function() {
-                            return _.tr('error');
-                        }
-                    },
-                    closeOnSelect: this.settings.closeOnSelect,
-                    placeholder: this.settings.placeholder
-                };
-
-                // Load variants via AJAX from given URL
-                if (this.settings.loadViaAjax && this.settings.dataUrl !== null) {
-                    select2config.ajax = {
-                        url: this.settings.dataUrl,
-                        data: function (params) {
-                            var request = {
-                                q: params.term,
-                                page: params.page || 1,
-                                page_size: self.settings.pageSize
-                            };
-
-                            if (self.settings.enableImages) {
-                                request.image_width = self.settings.imageWidth;
-                                request.image_height = self.settings.imageHeight;
-                            }
-
-                            return request;
-                        },
-                        processResults: function (data, params) {
-                            params.page = params.page || 1;
-                            return {
-                                results: data.objects,
-                                pagination: {
-                                    more: (params.page * self.settings.pageSize) < data.total_objects
-                                }
-                            };
-                        },
-                        transport: function (params, success, failure) {
-                            params.callback = success;
-                            params.hidden = true;
-
-                            return $.ceAjax('request', params.url, params);
-                        }
-                    };
-                }
-
-                if (this.settings.enableImages) {
-                    select2config.templateResult = function(object) {
-                        if (!object.image_url) {
-                            return object.text;
-                        }
-
-                        return $('<img src="' + object.image_url + '" alt="' + object.text + '" /><span>' + object.text + '</span>');
-                    };
-                }
-
-                if (!this.settings.enableSearch) {
-                    select2config.minimumResultsForSearch = Infinity;
-                }
-
-                this.$el.select2(select2config);
-            }
-        });
-
-        $.fn[plugin_name] = function (options) {
-
-            var self = this, createPluginInstances = function () {
-                return self.each(function () {
-                    if (!$.data(this, "plugin_" + plugin_name)) {
-                        $.data(this, "plugin_" + plugin_name, new ObjectSelector(this, options));
-                    }
-                });
-            };
-
-            if (this.length) {
-                if ($.fn.select2) {
-                    return createPluginInstances();
-                } else {
-                    $.getScript('js/lib/select2/select2.full.min.js', function () {
-                        createPluginInstances();
-                    });
-                }
-            }
-
-            return this;
-        };
-    })($);
-
 
     // If page is loaded with URL in hash parameter, redirect to this URL
     if (!_.embedded && location.hash && unescape(location.hash).indexOf('#!/') === 0) {
         var components = $.parseUrl(location.href)
         var uri = $.ceHistory('parseHash', location.hash);
-
-        //FIXME: Remove this code when support for Internet Explorer 8 and 9 is dropped
-        if($.browser.msie && $.browser.version >= 9) {
-            $.redirect(components.protocol + '://' + components.host + uri);
-        } else {
-            $.redirect(components.protocol + '://' + components.host + components.directory + uri);
-        }
+        $.redirect(components.protocol + '://' + components.host + components.directory + uri);
     }
 
 }(Tygh, jQuery));
@@ -4764,28 +4226,6 @@ var Tygh = {
         if (url == '') {
             url = index_url;
 
-        } else if (components.protocol) {
-
-            if (Tygh.embedded) {
-
-                var s, spos;
-                if (Tygh.facebook && Tygh.facebook.url.indexOf(components.location) != -1) {
-                    s = '&app_data=';
-                } else if (Tygh.init_context == components.source.str_replace('#' + components.anchor, '')) {
-                    s = '#!';
-                }
-
-                if (s) {
-
-                    var q = '';
-                    if ((spos = url.indexOf(s)) != -1) {
-                        q = decodeURIComponent(url.substr(spos + s.length)).replace('&amp;', '&');
-                    }
-
-                    url = Tygh.current_location + q;
-                }
-            }
-
         } else if (components.file != Tygh.index_script) {
             if (url.indexOf('?') == 0) {
                 url = index_url + url;
@@ -4801,7 +4241,7 @@ var Tygh = {
 
     function fn_strip_tags(str)
     {
-        str = String(str).replace(/<.*?>/g, '');
+        str = str.replace(/<.*?>/g, '');
         return str;
     }
 
@@ -4888,4 +4328,13 @@ var Tygh = {
             }
         }
         return start;
+    }
+
+    function fn_show_promotion_popup()
+    {
+        Tygh.$.ceNotification('show', {
+            type: 'I',
+            title: Tygh.tr('text_full_mode_required'),
+            message: Tygh.promo_data
+        });
     }

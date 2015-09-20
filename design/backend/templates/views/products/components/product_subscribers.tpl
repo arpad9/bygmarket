@@ -28,7 +28,7 @@
                 </form>
             {/capture}
             <span class="shift-right">
-                {include file="common/popupbox.tpl" id="add_new_subscribers" text=__("new_subscribers") content=$smarty.capture.new_email_picker link_text=__("add_subscriber") act="general" icon="icon-plus"}
+                {include file="common/popupbox.tpl" id="add_new_subscribers" text=__("new_subscribers") content=$smarty.capture.new_email_picker link_text=__("add_subscriber") act="general"}
             </span>
 
             {include file="pickers/users/picker.tpl" no_container=true data_id="subscr_user" picker_for="subscribers" extra_var="products.update?product_id=`$product_id`&selected_section=subscribers" but_text=__("add_subscribers_from_users") view_mode="button" but_meta="btn"}
@@ -64,7 +64,7 @@
             {/capture}
             <div class="hidden-tools">
             {if !$runtime.company_id || $runtime.company_id && $product_data.company_id == $runtime.company_id}
-                {dropdown content=$smarty.capture.tools_list}
+                {dropdown content=$smarty.capture.tools_list class="dropleft"}
             {/if}
             </div>
         </td>

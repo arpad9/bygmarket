@@ -58,20 +58,17 @@ if (!empty($secure_verified_3d) && empty($already_posted)) {
     $already_posted = false;
     $card_type = fn_get_payment_card($order_info['payment_info']['card_number'], array(
         'visa' => 'VISA',
-        'visa_debit' => 'DELTA',
         'mastercard' => 'MC',
-        'mastercard_debit' => 'MCDEBIT',
         'amex' => 'AMEX',
         'jcb' => 'JCB',
         'maestro' => 'MAESTRO',
-        'visa_electron' => 'UKE',
         'laser' => 'LASER',
         'diners_club_carte_blanche' => 'DINERS',
         'diners_club_international' => 'DINERS'
     ));
 
     $post = array();
-    $post['VPSProtocol'] = '2.23';
+    $post['VPSProtocol'] =' 2.23';
     $post['TxType'] = $processor_data['processor_params']['transaction_type'];
     $post['Vendor'] = $pp_merch;
     $post['VendorTxCode'] = ((!empty($processor_data['processor_params']['order_prefix']) ? $processor_data['processor_params']['order_prefix'] : 'O') . '-' . (($order_info['repaid']) ? ($order_info['order_id'] . '-' . $order_info['repaid']) : $order_info['order_id'])) . '-' . fn_date_format(time(), '%H_%M_%S');
@@ -180,15 +177,33 @@ if ($response['Status'] == '3DAUTH') {
 
 $payment_mode = $processor_data['processor_params']['testmode'];
 
-$term_url = fn_payment_url('https', "sagepay_direct.php?order_id=" . $order_info['order_id'] . "&payment_mode=$payment_mode");
+$term_url = fn_payment_url('https', "sagepay_direct.php?order_id={$order_info[order_id]}&payment_mode=$payment_mode");
 
-$post_data = array(
-    'PaReq' => $response['PAReq'],
-    'TermUrl' => $term_url,
-    'MD' => $response['MD'],
-);
+echo <<<EOT
+    <form action="{$response['ACSURL']}" method="post" name="process">
+        <input type="hidden" name="PaReq" value="{$response['PAReq']}"/>
+        <input type="hidden" name="TermUrl" value="{$term_url}"/>
+        <input type="hidden" name="MD" value="{$response['MD']}"/>
+        <NOSCRIPT>
+        <center><p>Please click button below to Authenticate your card</p><input type="submit" value="Authenticate"/></p></center>
+        </NOSCRIPT>
+        </form>
+EOT;
 
-fn_create_payment_form($response['ACSURL'], $post_data, '3D Secure');
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => '3D Secure server'
+));
+echo <<<EOT
+        <p><div align=center>{$msg}</div></p>
+    </form>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+</body>
+</html>
+EOT;
 exit;
 
 } elseif ($response['Status'] == 'OK' || $response['Status'] == 'AUTHENTICATED'  || $response['Status'] == 'REGISTERED') {

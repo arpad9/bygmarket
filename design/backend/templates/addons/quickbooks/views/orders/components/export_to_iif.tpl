@@ -22,7 +22,7 @@ INVITEM{$_d}{if $product.product_code}{$product.product_code}{else}{$product.pro
 {foreach from=$orders item="order"}
 TRNS{$_d}INVOICE{$_d}{$order.timestamp|date_format:"%m/%d/%Y"}{$_d}Accounts Receivable{$_d}{$order.b_lastname}, {$order.b_firstname}{$_d}{$addons.quickbooks.trns_class}{$_d}{$order.total}{$_d}{$order.order_id}{$_d}Website Order: {$order.details|replace:"\r":" "|replace:"\n":" "|replace:"\t":" "}{$_d}{$order.b_firstname} {$order.b_lastname}{$_d}{$order.b_address} {$order.b_address_2}{$_d}"{$order.b_city}, {$order.b_state} {$order.b_zipcode}"{$_d}{$order.b_countryname}{$_d}{$_d}{if ($order.status == "P" || $order.status == "C")}Y{else}N{/if}{$_d}{$_d}{$order.s_firstname} {$order.s_lastname}{$_d}{$order.s_address} {$order.s_address_2}{$_d}"{$order.s_city}, {$order.s_state} {$order.s_zipcode}"{$_d}{$order.s_countryname}{$_d}{$_d}Y
 {*********  PRODUCTS  **********}
-{foreach from=$order.products item="item"}
+{foreach from=$order.items item="item"}
 {strip}
 {assign var="_tax" value=0}
 {assign var="p_id" value=$item.cart_id}

@@ -19,9 +19,11 @@
 
 
     <script type="text/javascript">
+    //<![CDATA[
     block_properties['{$location}_{$id}{$block_type}_'] = {$block.properties|json_encode};
     block_location['{$location}_{$id}{$block_type}_'] = '{$block.location}';
     block_properties_used['{$location}_{$id}{$block_type}_'] = false;
+    //]]>
     </script>
 {/if}
 {if $redirect_url}
@@ -30,7 +32,7 @@
 
     <div class="tabs cm-j-tabs">
         <ul class="nav nav-tabs">
-            <li class="cm-js active"><a>{__("general")}</a></li>
+            <li class="cm-js cm-active"><a>{__("general")}</a></li>
         </ul>
     </div>
 
@@ -163,9 +165,11 @@
 
     {if $block.text_id != "central_content"}
     <script type="text/javascript">
+    //<![CDATA[
     Tygh.$(document).ready(function() {$ldelim}
         fn_check_block_params({$js_param}, '{$location}', {$id}, null, '{$block_type}');
     {$rdelim});
+    //]]>
     </script>
     {/if}
     <div class="buttons-container">

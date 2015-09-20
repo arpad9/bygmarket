@@ -12,12 +12,15 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
+$d = SEO_DELIMITER;
+
 $schema = !empty($schema) ? $schema : array();
 
 $general = array(
+    ' ' => $d,
     '\'' => '',
     '"' => '',
-    '&' => SEO_DELIMITER . 'and' . SEO_DELIMITER,
+    '&' => $d . 'and' . $d,
     '?' => '-',
     ' ' => '-',
     '/' => '-',

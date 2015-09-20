@@ -15,9 +15,6 @@
 $schema['data_feeds'] = array (
     'permissions' => array ('GET' => 'view_catalog', 'POST' => 'manage_catalog')
 );
-$schema['tools']['modes']['update_status']['param_permissions']['table']['data_feeds'] = 'manage_catalog';
-
-$schema['exim']['modes']['export_datafeed']['use_company'] = false;
-$schema['exim']['modes']['cron_export']['use_company'] = false;
+$schema['tools']['modes']['update_status']['param_permissions']['table_names']['data_feeds'] = 'manage_catalog';
 
 return $schema;

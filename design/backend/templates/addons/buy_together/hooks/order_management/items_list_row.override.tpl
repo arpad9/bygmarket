@@ -46,7 +46,7 @@
         <input class="input-text" type="text" size="3" name="cart_products[{$key}][amount]" value="{$cp.amount}" {if $cp.exclude_from_calculate}disabled="disabled"{/if} /></td>
     <td class="nowrap">
         {capture name="tools_items"}
-        <li><a class="cm-confirm cm-post" href="{"order_management.delete?cart_ids[]=`$key`"|fn_url}">{__("delete")}</a></li>
+        <li><a class="cm-confirm" href="{"order_management.delete?cart_id=`$key`"|fn_url}">{__("delete")}</a></li>
         {/capture}
         {include file="common/table_tools_list.tpl" prefix=$cp.product_id tools_list=$smarty.capture.tools_items href="products.update?product_id=`$cp.product_id`"}
     </td>

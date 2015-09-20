@@ -28,6 +28,8 @@ define('POINTS', 'W');
 define('POINTS_MODIFIER_TYPE', 'R');
 define('POINTS_IN_USE', 'I');
 
+define('POINTS_FOR_USERGROUP_BY_AMOUNT_TYPE', 'P');
+
 //
 //These constants define the reason for the change of points
 //

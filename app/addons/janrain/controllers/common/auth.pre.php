@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $user_data = db_get_row("SELECT user_id, password FROM ?:users WHERE 1 $condition");
 
                 if (empty($user_data['user_id'])) {
-                    Registry::get('settings.Checkout.address_position') == 'billing_first' ? $address_zone = 'b' : $address_zone = 's';
+                    Registry::get('settings.General.address_position') == 'billing_first' ? $address_zone = 'b' : $address_zone = 's';
                     $user_data = array();
                     $user_data['janrain_identifier'] = md5($data['profile']['identifier']);
                     $user_data['email'] = (!empty($data['profile']['verifiedEmail'])) ? $data['profile']['verifiedEmail'] : ((!empty($data['profile']['email'])) ? $data['profile']['email'] : $data['profile']['displayName'] . '@' . $data['profile']['preferredUsername'] . '.com');
@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $user_data['title'] = (!empty($data['profile']['honorificPrefix']) ? $data['profile']['honorificPrefix'] : 'mr');
                     $user_data[$address_zone . '_firstname'] = (!empty($data['profile']['name']['givenName'])) ? $data['profile']['name']['givenName'] : $data['profile']['displayName'];
                     $user_data[$address_zone . '_lastname'] = (!empty($data['profile']['name']['familyName'])) ? $data['profile']['name']['familyName'] : '';
-                    list($user_data['user_id'], $profile_id) = fn_update_user('', $user_data, $auth, true, true, false);
+                    list($user_data['user_id'], $profile_id) = fn_update_user('', $user_data, $auth, true, false, false);
                 }
                 $user_status = (empty($user_data['user_id'])) ? LOGIN_STATUS_USER_NOT_FOUND : fn_login_user($user_data['user_id']);
 

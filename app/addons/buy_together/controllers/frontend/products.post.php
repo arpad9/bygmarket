@@ -30,6 +30,6 @@ if ($mode == 'view') {
 
         $chains = fn_buy_together_get_chains($params, $auth);
 
-        Tygh::$app['view']->assign('chains', $chains);
+        Registry::get('view')->assign('chains', $chains);
     }
 }

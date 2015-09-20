@@ -1,3 +1,6 @@
+<p>{__("text_innovative_notice")}</p>
+<hr>
+
 <div class="control-group">
     <label class="control-label" for="username">{__("username")}:</label>
     <div class="controls">

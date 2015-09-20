@@ -18,14 +18,13 @@ $schema['polls'] = array (
             'remove_indent' => true,
             'hide_label' => true,
             'type' => 'enum',
-            'object' => 'polls',
+            'object' => 'news',
             'items_function' => 'fn_get_polls',
             'fillings' => array (
                 'manually' => array (
                     'picker' => 'addons/polls/pickers/polls/picker.tpl',
                     'picker_params' => array (
                         'multiple' => true,
-                        'positions' => true,
                     ),
                 ),
             ),

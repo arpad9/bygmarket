@@ -7,7 +7,7 @@
 	<input type="text" name="q" size="20" value="{$smarty.request.q}" class="search-input-text" />
 </div>
 
-{include file="buttons/search.tpl" but_name="dispatch[languages.translations]"}
+{include file="buttons/search.tpl" but_name="dispatch[languages.manage]"}
 </form>
 
 </div>

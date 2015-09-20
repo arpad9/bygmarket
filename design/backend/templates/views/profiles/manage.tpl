@@ -26,13 +26,16 @@
     <th width="1%" class="center {$no_hide_input}">
         {include file="common/check_items.tpl"}</th>
     <th width="3%" class="nowrap"><a class="cm-ajax" href="{"`$c_url`&sort_by=id&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{__("id")}{if $search.sort_by == "id"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
-    <th width="18%"><a class="cm-ajax" href="{"`$c_url`&sort_by=name&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{__("person_name")}{if $search.sort_by == "name"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
+    {if $settings.General.use_email_as_login != "Y"}
+    <th width="18%"><a class="cm-ajax" href="{"`$c_url`&sort_by=username&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{__("username")}{if $search.sort_by == "username"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
+    {/if}
+    <th width="18%"><a class="cm-ajax" href="{"`$c_url`&sort_by=name&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{__("name")}{if $search.sort_by == "name"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
     <th width="20%"><a class="cm-ajax" href="{"`$c_url`&sort_by=email&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{__("email")}{if $search.sort_by == "email"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
     <th width="16%"><a class="cm-ajax" href="{"`$c_url`&sort_by=date&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{__("registered")}{if $search.sort_by == "date"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
     <th><a class="cm-ajax" href="{"`$c_url`&sort_by=type&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{__("type")}{if $search.sort_by == "type"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
     {hook name="profiles:manage_header"}{/hook}
     <th class="right">&nbsp;</th>
-    <th width="10%" class="right"><a class="cm-ajax" href="{"`$c_url`&sort_by=status&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{__("status")}{if $search.sort_by == "status"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
+    <th width="10%" class="right"><a class="cm-ajax" href="{"`$c_url`&sort_by=status&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{if $search.sort_by == "status"}{$c_icon nofilter}{else}{$c_dummy nofilter}{__("status")}{/if}</a></th>
 
 </tr>
 </thead>
@@ -60,6 +63,9 @@
     <td class="center {$no_hide_input}">
         <input type="checkbox" name="user_ids[]" value="{$user.user_id}" class="checkbox cm-item" /></td>
     <td><a class="row-status" href="{"profiles.update?user_id=`$user.user_id`&user_type=`$user.user_type`"|fn_url}">{$user.user_id}</a></td>
+    {if $settings.General.use_email_as_login != "Y"}
+    <td><a class="row-status" href="{"profiles.update?user_id=`$user.user_id`&user_type=`$user.user_type`"|fn_url}">{$user.user_login}</a></td>
+    {/if}
     <td class="row-status">{if $user.firstname || $user.lastname}<a href="{"profiles.update?user_id=`$user.user_id`&user_type=`$user.user_type`"|fn_url}">{$user.lastname} {$user.firstname}</a>{else}-{/if}{if $user.company_id}{include file="views/companies/components/company_name.tpl" object=$user}{/if}</td>
     <td><a class="row-status" href="mailto:{$user.email|escape:url}">{$user.email}</a></td>
     <td class="row-status">{$user.timestamp|date_format:"`$settings.Appearance.date_format`, `$settings.Appearance.time_format`"}</td>
@@ -91,7 +97,7 @@
             <li>{btn type="list" text=__("edit") href=$user_edit_link}</li>
 
             {capture name="tools_delete"}
-                <li>{btn type="list" text=__("delete") class="cm-confirm cm-post" href="profiles.delete?user_id=`$user.user_id`&redirect_url=`$return_current_url`"}</li>
+                <li>{btn type="list" text=__("delete") class="cm-confirm" href="profiles.delete?user_id=`$user.user_id`&redirect_url=`$return_current_url`"}</li>
             {/capture}
             {if $user.user_id != $smarty.session.auth.user_id}
                 {if !$runtime.company_id && !($user.user_type == "A" && $user.is_root == "Y")}
@@ -139,7 +145,11 @@
 {capture name="buttons"}
     {if $users}
         {capture name="tools_list"}
-            {if "ULTIMATE"|fn_allowed_for || !$runtime.company_id}
+            {if $runtime.company_id && $smarty.request.user_type == "C" && !"ULTIMATE"|fn_allowed_for}
+                {hook name="profiles:list_tools"}
+                {/hook}
+                <li>{btn type="list" text=__("export_selected") dispatch="dispatch[profiles.export_range]" class="cm-confirm cm-process-items"}</li>
+            {else}
                 {hook name="profiles:list_tools"}
                     <li>{btn type="list" text=__("export_selected") dispatch="dispatch[profiles.export_range]" form="userlist_form"}</li>
                 {/hook}
@@ -172,7 +182,7 @@
                     {/if}
                 {/foreach}
             {/capture}
-            {dropdown content=$smarty.capture.tools_list no_caret=true icon="icon-plus" placement="right"}
+            {dropdown content=$smarty.capture.tools_list no_caret=true icon="icon-plus" title=__("add_users")}
         {/if}
     {/if}
 {/capture}

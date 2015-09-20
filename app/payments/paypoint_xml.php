@@ -121,19 +121,19 @@ $post_data = "<?xml version='1.0'?>
     <methodName>SECVPN.validateCardFull</methodName>
     <params>
         <param>
-            <value><string>" . htmlspecialchars($processor_data["processor_params"]["merchant_id"]) . "</string></value>
+            <value><string>" . $processor_data["processor_params"]["merchant_id"] . "</string></value>
         </param>
         <param>
-            <value><string>" . htmlspecialchars($processor_data["processor_params"]["password"]) . "</string></value>
+            <value><string>" . $processor_data["processor_params"]["password"] . "</string></value>
         </param>
         <param>
-            <value><string>" . htmlspecialchars($processor_data["processor_params"]["order_prefix"]) . $_order_id . "</string></value>
+            <value><string>" . $processor_data["processor_params"]["order_prefix"] . $_order_id . "</string></value>
         </param>
         <param>
             <value><string>" . $_SERVER['REMOTE_ADDR'] . "</string></value>
         </param>
         <param>
-            <value><string>" . htmlspecialchars($order_info['payment_info']['cardholder_name']) . "</string></value>
+            <value><string>" . $order_info['payment_info']['cardholder_name'] . "</string></value>
         </param>
         <param>
             <value><string>" . $order_info['payment_info']['card_number'] . "</string></value>
@@ -151,16 +151,16 @@ $post_data = "<?xml version='1.0'?>
             <value><string></string></value>
         </param>
         <param>
-            <value><string>" . htmlspecialchars($ord) . "</string></value>
+            <value><string>" . $ord . "</string></value>
         </param>
         <param>
-            <value><string>" . htmlspecialchars($bill) . "</string></value>
+            <value><string>" . $bill . "</string></value>
         </param>
         <param>
-            <value><string>" . htmlspecialchars($ship) . "</string></value>
+            <value><string>" . $ship . "</string></value>
         </param>
         <param>
-            <value><string>" . htmlspecialchars($opts) . "</string></value>
+            <value><string>" . $opts . "</string></value>
         </param>
     </params>
 </methodCall>";

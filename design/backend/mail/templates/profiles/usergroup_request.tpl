@@ -7,8 +7,14 @@
     <td>{__("usergroup")}:</td>
     <td><b>{$usergroups.$usergroup_id.usergroup}</b></td>
 </tr>
+{if $settings.General.use_email_as_login != "Y"}
 <tr>
-    <td>{__("person_name")}:</td>
+    <td>{__("username")}:</td>
+    <td>{$user_data.user_login}</td>
+</tr>
+{/if}
+<tr>
+    <td>{__("name")}:</td>
     <td>{$user_data.firstname}&nbsp;{$user_data.lastname}</td>
 </tr>
 <tr>

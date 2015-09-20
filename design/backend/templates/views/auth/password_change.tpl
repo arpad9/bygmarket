@@ -8,8 +8,14 @@
         </div>
         <div class="modal-body">
             <p>{__("error_password_expired")}</p>
-            <label>{__("email")}:</label>
-            <div id="email" class="input-text">{$user_data.email}</div>
+            {if $settings.General.use_email_as_login == "Y"}
+                <label>{__("email")}:</label>
+                <div id="email" class="input-text">{$user_data.email}</div>
+            {else}
+                <label>{__("username")}:</label>
+                <div id="user_login_profile" class="input-text">{$user_data.user_login}</div>
+                <input type="hidden" id="email" name="user_data[email]" value="{$user_data.email}">
+            {/if}
             <label for="password1" class="cm-required">{__("password")}:</label>
             <input type="password" id="password1" name="user_data[password1]" class="input-text cm-autocomplete-off" size="20" maxlength="32" value="            ">
 

@@ -15,10 +15,7 @@
 namespace Tygh\BlockManager;
 
 use Tygh\Debugger;
-use Tygh\Development;
-use Tygh\Embedded;
 use Tygh\Registry;
-use Tygh\SmartyEngine\Core;
 
 class RenderManager
 {
@@ -73,17 +70,6 @@ class RenderManager
     private $_dynamic_object_scheme;
 
     /**
-     * @var array
-     */
-    private $_parent_grid;
-
-    /**
-     * Rendered block content
-     * @var array Container
-     */
-    private $_rendered_blocks;
-
-    /**
      * Loads location data, containers, grids and blocks
      *
      * @param string $dispatch       URL dispatch (controller.mode.action)
@@ -126,7 +112,7 @@ class RenderManager
 
             $this->_blocks = $blocks;
 
-            $this->_view = \Tygh::$app['view'];
+            $this->_view = Registry::get('view');
             $this->_theme = self::_getThemePath($this->_area);
             $this->_dynamic_object_scheme = SchemesManager::getDynamicObject($this->_location['dispatch'], 'C');
         }
@@ -162,28 +148,19 @@ class RenderManager
      */
     private function _renderContainer($container)
     {
-        static $layout_width = 0;
-        if (empty($layout_width)) {
-            $layout_width = Registry::get('runtime.layout.width');
-        }
-
         $content = '';
-        $container['width'] = $layout_width;
 
         $this->_view->assign('container', $container);
 
         if (isset($this->_grids[$container['container_id']]) && ($this->_area == 'A' || $container['status'] != 'D')) {
             $grids = $this->_grids[$container['container_id']];
-            $grids = fn_build_hierarchic_tree($grids, 'grid_id');
-            $grids = $this->sortGrids($grids);
 
-            $this->_parent_grid = array();
-            $content = $this->_renderGrids($grids);
+            $grids = fn_build_hierarchic_tree($grids, 'grid_id');
+            foreach ($grids as $grid) {
+                $content .= $this->_renderGrid($grid);
+            }
 
             $this->_view->assign('content', $content);
-
-            // Cleanup old blocks content to avoid extra memory using
-            $this->_rendered_blocks = array();
 
             return $this->_view->fetch($this->_theme . 'container.tpl');
 
@@ -195,78 +172,6 @@ class RenderManager
             }
         }
 
-    }
-
-    private function _renderGrids($grids)
-    {
-        $_grids_content = array();
-
-        $extra = array(
-            'width' => 0,
-            'alpha' => 0,
-            'omega' => 0,
-        );
-
-        foreach ($grids as $index => $grid) {
-            if (!empty($extra['width'])) {
-                if (!empty($grid['fluid_width'])) {
-                    $grid['fluid_width'] += $extra['width'];
-                    $grids[$index]['fluid_width'] = $grid['fluid_width'];
-                }
-                if (!empty($grid['width'])) {
-                    $grid['width'] += $extra['width'];
-                    $grids[$index]['width'] = $grid['width'];
-                }
-
-                if (!empty($extra['alpha'])) {
-                    $grid['alpha'] = $extra['alpha'];
-                }
-
-                if (!empty($extra['omega'])) {
-                    $grid['omega'] = $extra['omega'];
-                }
-            }
-
-            $_content = trim($this->_renderGrid($grid));
-
-            $extra = array(
-                'width' => 0,
-                'alpha' => 0,
-                'omega' => 0,
-            );
-
-            if (empty($_content)) {
-                if ((!empty($grid['alpha']) && empty($grid['omega'])) || (empty($grid['alpha']) && empty($grid['omega']))) {
-                    $extra['width'] = empty($grid['fluid_width']) ? $grid['width'] : $grid['fluid_width'];
-
-                    if (!empty($grid['alpha'])) {
-                        $extra['alpha'] = $grid['alpha'];
-                    }
-
-                } elseif (empty($grid['alpha']) && !empty($grid['omega'])) {
-                    $extra['width'] = empty($grid['fluid_width']) ? $grid['width'] : $grid['fluid_width'];
-                    if (!empty($grids[$prev_index]['fluid_width'])) {
-                        $grids[$prev_index]['fluid_width'] += $extra['width'];
-                    }
-                    if (!empty($grids[$prev_index]['width'])) {
-                        $grids[$prev_index]['width'] += $extra['width'];
-                    }
-
-                    $grids[$prev_index]['omega'] = $grid['omega'];
-
-                    $_grids_content[$prev_index] = $this->_renderGrid($grids[$prev_index]);
-                }
-
-            } else {
-                $_grids_content[$index] = $_content;
-            }
-
-            $prev_index = $index;
-        }
-
-        $content = implode('', $_grids_content);
-
-        return $content;
     }
 
     /**
@@ -281,21 +186,15 @@ class RenderManager
         if ($this->_area == 'A' || $grid['status'] != 'D') {
             if (isset($grid['children']) && !empty($grid['children'])) {
                 $grid['children'] = fn_sort_array_by_key($grid['children'], 'grid_id');
-                $grid['children'] = self::sortGrids($grid['children']);
-
-                $parent_grid = $this->_parent_grid;
-                $this->_parent_grid = $grid;
-
-                $content = $this->_renderGrids($grid['children']);
-
-                $this->_parent_grid = $parent_grid;
+                foreach ($grid['children'] as $child_grid) {
+                    $content .= $this->_renderGrid($child_grid);
+                }
             } else {
                 $content .= $this->renderBlocks($grid);
             }
         }
 
         $this->_view->assign('content', $content);
-        $this->_view->assign('parent_grid', $this->_parent_grid);
         $this->_view->assign('grid', $grid);
 
         return $this->_view->fetch($this->_theme . 'grid.tpl');
@@ -312,31 +211,23 @@ class RenderManager
 
         if (isset($this->_blocks[$grid['grid_id']])) {
             foreach ($this->_blocks[$grid['grid_id']] as $block) {
-                if (isset($this->_rendered_blocks[$block['snapping_id']])) {
-                    $content = $this->_rendered_blocks[$block['snapping_id']];
+                $block['status'] = self::correctStatusForDynamicObject($block, $this->_dynamic_object_scheme);
 
-                } else {
-                    $block['status'] = self::correctStatusForDynamicObject($block, $this->_dynamic_object_scheme);
+                /**
+                 * Actions before render block
+                 * @param array $grid Grid data
+                 * @param array $block Block data
+                 * @param object $this Current RenderManager object
+                 * @param string $content Rendered content of blocks
+                 */
+                fn_set_hook('render_blocks', $grid, $block, $this, $content);
 
-                    /**
-                     * Actions before render block
-                     * @param array $grid Grid data
-                     * @param array $block Block data
-                     * @param object $this Current RenderManager object
-                     * @param string $content Rendered content of blocks
-                     */
-                    fn_set_hook('render_blocks', $grid, $block, $this, $content);
-
-                    if ($this->_area == 'C' && $block['status'] == 'D') {
-                        // Do not render block in frontend if it disabled
-                        continue;
-                    }
-                    Debugger::blockRenderingStarted($block);
-                    $content .= self::renderBlock($block, $grid, $this->_area);
-                    Debugger::blockRenderingEnded($block['block_id']);
-
-                    $this->_rendered_blocks[$block['snapping_id']] = $content;
+                if ($this->_area == 'C' && $block['status'] == 'D') {
+                    // Do not render block in frontend if it disabled
+                    continue;
                 }
+
+                $content .= self::renderBlock($block, $grid, $this->_area);
             }
         }
 
@@ -386,18 +277,16 @@ class RenderManager
      * @param  string $area        Area name
      * @return string
      */
-    public static function renderBlock($block, $parent_grid = array(), $area = 'C', $params = array())
+    public static function renderBlock($block, $parent_grid = array(), $area = 'C')
     {
         if (SchemesManager::isBlockExist($block['type'])) {
-            $view = \Tygh::$app['view'];
+            $view = Registry::get('view');
 
             $view->assign('parent_grid', $parent_grid);
-
-            $content_alignment = !empty($parent_grid['content_align']) ? $parent_grid['content_align'] : 'FULL_WIDTH';
-            $view->assign('content_alignment', $content_alignment);
+            $view->assign('content_alignment', $parent_grid['content_align']);
 
             if ($area == 'C') {
-                return self::renderBlockContent($block, $params);
+                return self::renderBlockContent($block);
             } elseif ($area == 'A') {
                 $scheme = SchemesManager::getBlockScheme($block['type'], array());
                 if (!empty($scheme['single_for_location'])) {
@@ -414,181 +303,99 @@ class RenderManager
 
     /**
      * Renders block content
-     *
      * @static
-     *
-     * @param array $block Block data for rendering content
-     * @param array $params Parameters of rendering:
-     *                       * use_cache - Whether to use cache
-     *                       * parse_js - Whether to move inline JS of the block to the bottom of the page
-     *
+     * @param  array  $block Block data for rendering content
      * @return string HTML code of rendered block content
      */
-    public static function renderBlockContent($block, $params = array())
+    public static function renderBlockContent($block)
     {
-        $default_params = array(
-            'use_cache' => true,
-            'parse_js' => true
-        );
-
-        $params = array_merge($default_params, $params);
-
         // Do not render block if it disabled in the frontend
-        if (isset($block['is_disabled']) && $block['is_disabled']) {
+        if (isset($block['is_disabled']) && $block['is_disabled'] == 1) {
             return '';
         }
-        $smarty = \Tygh::$app['view'];
-        $smarty_original_vars = $smarty->getTemplateVars();
 
-        $display_this_block = true;
+        $smarty = Registry::get('view');
+        $_tpl_vars = $smarty->getTemplateVars(); // save state of original variables
 
-        self::_assignBlockSettingsToTemplate($block);
+        // By default block is displayed
+        $display_block = true;
+
+        self::_assignBlockSettings($block);
 
         // Assign block data from DB
-        $smarty->assign('block', $block);
+        Registry::get('view')->assign('block', $block);
 
         $theme_path = self::getCustomerThemePath();
-        $block_schema = SchemesManager::getBlockScheme($block['type'], array());
-        $grid_id = empty($block['grid_id']) ? 0 : $block['grid_id'];
-        $cache_key = "block_content_{$block['block_id']}_{$block['snapping_id']}_{$block['type']}_{$grid_id}";
 
-        if (!empty($block['object_id']) && !empty($block['object_type'])) {
-            $cache_key .= "_{$block['object_id']}_{$block['object_type']}";
-        }
+        $block_scheme = SchemesManager::getBlockScheme($block['type'], array());
 
-        $cache_this_block = $params['use_cache'] && self::allowCache();
-        if ($cache_this_block
-            && isset($block['content']['items']['filling'])
-            && isset($block_schema['content']['items']['fillings'][$block['content']['items']['filling']]['disable_cache'])
-        ) {
-            $cache_this_block = !$block_schema['content']['items']['fillings'][$block['content']['items']['filling']]['disable_cache'];
-        }
+        $cache_name = 'block_content_' . $block['block_id'] . '_' . $block['snapping_id'] . '_' . $block['type'] . '_' . $block['grid_id'] . '_' . $block['object_id'] . '_' . $block['object_type'];
 
-        /**
-         * Determines flags for Cache
-         *
-         * @param array  $block              Block data
-         * @param string $cache_key          Generated name of cache
-         * @param array  $block_schema       Block schema
-         * @param bool   $cache_this_block   Flag to register cache
-         * @param bool   $display_this_block Flag to display block
-         */
-        fn_set_hook('render_block_register_cache', $block, $cache_key, $block_schema, $cache_this_block,
-            $display_this_block);
-
-        if ($cache_this_block) {
-            // We need an extra data to cache Inline JavaScript
-            $smarty->assign('block_cache_name', $cache_key);
-
-            // Check whether cache was registered successfully
-            $cache_this_block = self::registerBlockCacheIfNeeded($cache_key, $block_schema, $block);
-        } else {
-            $smarty->clearAssign('block_cache_name');
-        }
-
-        $smarty->assign('block_rendering', true);
-        $smarty->assign('block_parse_js', $params['parse_js']);
-
-        // We should load only when cache record exists
-        $load_block_from_cache = $cache_this_block && Registry::isExist($cache_key);
+        // Register cache
+        self::_registerBlockCache($cache_name, $block_scheme);
 
         $block_content = '';
 
-        // Block content is found at cache and should be loaded out of there
-        if ($load_block_from_cache) {
-            $cached_content = Registry::get($cache_key);
-            $block_content = $cached_content['content'];
-
-            if (!empty($cached_content['javascript'])) {
-                $repeat = false;
-                $smarty->loadPlugin('smarty_block_inline_script');
-                smarty_block_inline_script(array(), $cached_content['javascript'], $smarty, $repeat);
-            }
-            Debugger::blockFoundAtCache($block['block_id']);
-        }
-        // Otherwise we should render the content
-        else {
-            if ($block['type'] == Block::TYPE_MAIN) {
+        if (isset($block_scheme['cache']) && Registry::isExist($cache_name) == true && self::allowCache()) {
+            $block_content = Registry::get($cache_name);
+        } else {
+            if ($block['type'] == 'main') {
                 $block_content = self::_renderMainContent();
             } else {
-                $title = $block['name'];
-                if (Registry::get('runtime.customization_mode.live_editor')) {
-                    $le_block_types = fn_get_schema('customization', 'live_editor_block_types');
-                    if (!empty($le_block_types[$block['type']]) && !empty($le_block_types[$block['type']]['name'])) {
-                        $title = sprintf('<span data-ca-live-editor-obj="block:name:%s">%s</span>',
-                            $block['block_id'], $title
-                        );
-                    }
-                }
-                $smarty->assign('title', $title);
+                Registry::get('view')->assign('title', $block['name']);
 
-                if (!empty($block_schema['content'])) {
-                    $all_values_are_empty = true;
-                    foreach ($block_schema['content'] as $template_variable => $field) {
+                if (!empty($block_scheme['content'])) {
+                    foreach ($block_scheme['content'] as $template_variable => $field) {
                         /**
                          * Actions before render any variable of block content
-                         *
                          * @param string $template_variable name of current block content variable
-                         * @param array  $field             Scheme of this content variable from block scheme content section
-                         * @param array  $block_schema      block scheme
-                         * @param array  $block             Block data
+                         * @param array $field Scheme of this content variable from block scheme content section
+                         * @param array $block_scheme block scheme
+                         * @param array $block Block data
                          */
-                        fn_set_hook('render_block_content_pre', $template_variable, $field, $block_schema, $block);
-                        $value = self::getValue($template_variable, $field, $block_schema, $block);
+                        fn_set_hook('render_block_content_pre', $template_variable, $field, $block_scheme, $block);
+                        $value = self::getValue($template_variable, $field, $block_scheme, $block);
 
-                        if ($all_values_are_empty && !empty($value)) {
-                            $all_values_are_empty = false;
+                        // If block have not empty content - display it
+                        if (empty($value)) {
+                            $display_block = false;
                         }
 
-                        $smarty->assign($template_variable, $value);
+                        Registry::get('view')->assign($template_variable, $value);
                     }
-                    // We shouldn't display block which content variables are all empty
-                    $display_this_block = $display_this_block && !$all_values_are_empty;
                 }
 
                 // Assign block data from scheme
-                $smarty->assign('block_scheme', $block_schema);
-                if ($display_this_block && file_exists($theme_path . $block['properties']['template'])) {
-                    $block_content = $smarty->fetch($block['properties']['template']);
+                Registry::get('view')->assign('block_scheme', $block_scheme);
+                if ($display_block && file_exists($theme_path . $block['properties']['template'])) {
+                    $block_content = Registry::get('view')->fetch($block['properties']['template']);
                 }
             }
 
-            if (!empty($block['wrapper']) && file_exists($theme_path . $block['wrapper']) && $display_this_block) {
-                $smarty->assign('content', $block_content);
+            if (!empty($block['wrapper']) && file_exists($theme_path . $block['wrapper']) && $display_block) {
+                Registry::get('view')->assign('content', $block_content);
 
-                if ($block['type'] == Block::TYPE_MAIN) {
-                    $smarty->assign(
-                        'title',
-                        !empty(\Smarty::$_smarty_vars['capture']['mainbox_title'])
-                            ? \Smarty::$_smarty_vars['capture']['mainbox_title']
-                            : '',
-                        false
-                    );
+                if ($block['type'] == 'main') {
+                    Registry::get('view')->assign('title', !empty(\Smarty::$_smarty_vars['capture']['mainbox_title']) ? \Smarty::$_smarty_vars['capture']['mainbox_title'] : '', false);
                 }
-                $block_content = $smarty->fetch($block['wrapper']);
+                $block_content = Registry::get('view')->fetch($block['wrapper']);
             } else {
-                $smarty->assign('content', $block_content);
-                $block_content = $smarty->fetch('views/block_manager/render/block.tpl');
+                Registry::get('view')->assign('content', $block_content);
+                $block_content = Registry::get('view')->fetch('views/block_manager/render/block.tpl');
             }
 
-            fn_set_hook('render_block_content_after', $block_schema, $block, $block_content);
-
-            // Save block contents to cache
-            if ($cache_this_block && $display_this_block) {
-                $cached_content = Registry::get($cache_key);
-                $cached_content['content'] = $block_content;
-
-                Registry::set($cache_key, $cached_content);
+            if (isset($block_scheme['cache']) && $display_block == true && self::allowCache()) {
+                Registry::set($cache_name, $block_content);
             }
         }
 
         $wrap_id = $smarty->getTemplateVars('block_wrap');
 
         $smarty->clearAllAssign();
-        $smarty->assign($smarty_original_vars); // restore original vars
+        $smarty->assign($_tpl_vars); // restore original vars
         \Smarty::$_smarty_vars['capture']['title'] = null;
 
-        if ($display_this_block == true) {
+        if ($display_block == true) {
             if (!empty($wrap_id)) {
                 $block_content = '<div id="' . $wrap_id . '">' . $block_content . '<!--' . $wrap_id . '--></div>';
             }
@@ -608,11 +415,7 @@ class RenderManager
     public static function allowCache()
     {
         $use_cache = true;
-        if (Registry::ifGet('config.tweaks.disable_block_cache', false)
-            || Registry::get('runtime.customizaton_mode.design')
-            || Registry::get('runtime.customizaton_mode.translation')
-            || Development::isEnabled('compile_check')
-        ) {
+        if (Registry::ifGet('config.tweaks.disable_block_cache', false) || Registry::get('runtime.customizaton_mode.design') || Registry::get('runtime.customizaton_mode.translation')) {
             $use_cache = false;
         }
 
@@ -625,7 +428,7 @@ class RenderManager
      */
     private static function _renderMainContent()
     {
-        $smarty = \Tygh::$app['view'];
+        $smarty = Registry::get('view');
         $content_tpl = $smarty->getTemplateVars('content_tpl');
 
         return !empty($content_tpl) ? $smarty->fetch($content_tpl) : '';
@@ -666,225 +469,37 @@ class RenderManager
 
     /**
      * Registers block cache
-     *
      * @param string $cache_name   Cache name
-     * @param array  $block_schema Block schema data
-     * @param array  $block_data   Block data from DB
-     *
-     * @return bool Whether cache have been registered or not
+     * @param array  $block_scheme Block scheme data
      */
-    public static function registerBlockCacheIfNeeded($cache_name, $block_schema, $block_data)
+    private static function _registerBlockCache($cache_name, $block_scheme)
     {
-        // @TODO: remove Registry calls and use RenderManager::$_location instead. This method should be non-static.
-        $dispatch = Registry::get('runtime.controller') . '.' . Registry::get('runtime.mode');
+        if (isset($block_scheme['cache'])) {
+            $additional_level = '';
 
-        // Use parameters for current dispatch with fallback to common params
-        if (!empty($block_schema['cache_overrides_by_dispatch'][$dispatch])) {
-            $cache_params = $block_schema['cache_overrides_by_dispatch'][$dispatch];
-        } elseif (!empty($block_schema['cache'])) {
-            $cache_params = $block_schema['cache'];
-        } else {
-            return false;
-        }
+            $default_handlers = fn_get_schema('block_manager', 'block_cache_properties');
 
-        $cookie_data = fn_get_session_data();
-        $cookie_data['all'] = $cookie_data;
-
-        $callable_handlers_variables = compact('block_schema', 'block_data');
-
-        $disable_cache = false;
-        // Check conditions that disable block caching
-        if (!empty($cache_params['disable_cache_when'])) {
-            $disable_cache |= self::findHandlerParamsAtData($cache_params['disable_cache_when'], 'request_handlers', $_REQUEST);
-            $disable_cache |= self::findHandlerParamsAtData($cache_params['disable_cache_when'], 'session_handlers', $_SESSION);
-            $disable_cache |= self::findHandlerParamsAtData($cache_params['disable_cache_when'], 'cookie_handlers', $cookie_data);
-            $disable_cache |= self::findHandlerParamsAtData($cache_params['disable_cache_when'], 'auth_handlers', $_SESSION['auth']);
-
-            // Disable cache if any of callable handlers returns true
-            if (!empty($cache_params['disable_cache_when']['callable_handlers'])) {
-                self::execCallableHandlers(
-                    function ($handler_name, $handler_result) use (&$disable_cache) {
-                        $disable_cache |= $handler_result;
-                    },
-                    (array) $cache_params['disable_cache_when']['callable_handlers'],
-                    $callable_handlers_variables
-                );
-            }
-        }
-        if ($disable_cache) {
-            return false;
-        }
-
-        // Generate suffix to cache key using dependencies specified at schema
-        $cache_key_suffix = '';
-        $generate_additional_level = function($param_name, $param_value) use (&$cache_key_suffix) {
-            $cache_key_suffix .= '|' . $param_name . '=' . md5(serialize($param_value));
-        };
-        self::findHandlerParamsAtData($cache_params, 'request_handlers', $_REQUEST, $generate_additional_level);
-        self::findHandlerParamsAtData($cache_params, 'session_handlers', $_SESSION, $generate_additional_level);
-        self::findHandlerParamsAtData($cache_params, 'cookie_handlers', $cookie_data, $generate_additional_level);
-        self::findHandlerParamsAtData($cache_params, 'auth_handlers', $_SESSION['auth'], $generate_additional_level);
-
-        if (!empty($cache_params['callable_handlers'])) {
-            self::execCallableHandlers(
-                $generate_additional_level,
-                (array) $cache_params['callable_handlers'],
-                $callable_handlers_variables
-            );
-        }
-
-        $cache_key_suffix .= '|path=' . Registry::get('config.current_path');
-        $cache_key_suffix .= Embedded::isEnabled() ? '|embedded' : '';
-        $cache_key_suffix = empty($cache_key_suffix) ? '' : md5($cache_key_suffix);
-
-        $default_update_handlers = fn_get_schema('block_manager', 'block_cache_properties');
-        if (isset($cache_params['update_handlers']) && is_array($cache_params['update_handlers'])) {
-            $handlers = array_merge($cache_params['update_handlers'], $default_update_handlers['update_handlers']);
-        } else {
-            $handlers = $default_update_handlers['update_handlers'];
-        }
-
-        $cache_level = isset($cache_params['cache_level'])
-            ? $cache_params['cache_level']
-            : Registry::cacheLevel('html_blocks');
-
-        Registry::registerCache($cache_name, $handlers, $cache_level . '__' . $cache_key_suffix);
-
-        // Check conditions that trigger block cache regeneration
-        $regenerate_cache = false;
-        if (!empty($cache_params['regenerate_cache_when'])) {
-            $regenerate_cache |= self::findHandlerParamsAtData($cache_params['regenerate_cache_when'], 'request_handlers', $_REQUEST);
-            $regenerate_cache |= self::findHandlerParamsAtData($cache_params['regenerate_cache_when'], 'session_handlers', $_SESSION);
-            $regenerate_cache |= self::findHandlerParamsAtData($cache_params['regenerate_cache_when'], 'cookie_handlers', $cookie_data);
-            $regenerate_cache |= self::findHandlerParamsAtData($cache_params['regenerate_cache_when'], 'auth_handlers', $_SESSION['auth']);
-
-            // Regenerate cache if any of callable handlers returns true
-            if (!empty($cache_params['regenerate_cache_when']['callable_handlers'])) {
-                self::execCallableHandlers(
-                    function ($handler_name, $handler_result) use (&$regenerate_cache) {
-                        $regenerate_cache |= $handler_result;
-                    },
-                    (array) $cache_params['regenerate_cache_when']['callable_handlers'],
-                    $callable_handlers_variables
-                );
-            }
-        }
-        if ($regenerate_cache) {
-            Registry::del($cache_name);
-        }
-
-        return true;
-    }
-
-    /**
-     * Executes callable cache handlers specified at block cache schema and passes call results to given function.
-     *
-     * @param Callable $wrapper_func      Function that would be called after every handler call.
-     *                                    Should accept handler name as the first argument and handler call result as the second.
-     * @param array    $callable_handlers List of callable handler definitions in format: [handler_name => [Callable, [arg0, arg1, ...]], ...]
-     * @param array    $variables_to_pass List of variable names and their values that may be passed to handler as an arguments
-     *
-     * @TODO: refactor to v5.0.1, see issue @1-14388
-     */
-    public static function execCallableHandlers($wrapper_func, array $callable_handlers, array $variables_to_pass = array())
-    {
-        if (!is_callable($wrapper_func)) {
-            throw new \InvalidArgumentException('Wrapper function should be callable.');
-        }
-
-        foreach ($callable_handlers as $handler_name => $callable_definition) {
-
-            if (isset($callable_definition[0]) && is_callable($callable_definition[0])) {
-                $arguments = array();
-
-                if (isset($callable_definition[1]) && is_array($callable_definition[1])) {
-                    foreach ($callable_definition[1] as $argument) {
-
-                        if (strpos($argument, '$') === 0) {
-                            // Superglobal variables like $_REQUEST
-                            if (isset(${$argument})) {
-                                $arguments[] = ${$argument};
-                            }
-                            // Argument variable name listed at allowed variables to pass
-                            elseif (
-                                ($argument_variable_name = substr($argument, 1))
-                                &&
-                                array_key_exists($argument_variable_name, $variables_to_pass)
-                            ) {
-                                $arguments[] = $variables_to_pass[$argument_variable_name];
-                            } else {
-                                $arguments[] = $argument;
-                            }
-                        } else {
-                            $arguments[] = $argument;
-                        }
-                    }
-                }
-
-                $wrapper_func($handler_name, call_user_func_array($callable_definition[0], $arguments));
-            }
-        }
-    }
-
-    /**
-     * @param               $schema
-     * @param               $handler_name
-     * @param               $data
-     * @param Callable|bool $when_found
-     *
-     * @return bool
-     */
-    protected static function findHandlerParamsAtData($schema, $handler_name, $data, $when_found = true)
-    {
-        if (!empty($schema[$handler_name]) && is_array($schema[$handler_name])) {
-
-            if (in_array('*', $schema[$handler_name])) {
-                if (is_callable($when_found)) {
-                    call_user_func($when_found, '*', $data);
-
-                    return;
-                } else {
-                    return $when_found;
-                }
+            if (isset($block_scheme['cache']['update_handlers']) && is_array($block_scheme['cache']['update_handlers'])) {
+                $handlers = $block_scheme['cache']['update_handlers'];
+            } else {
+                $handlers = array();
             }
 
-            foreach ($schema[$handler_name] as $i => $param_name) {
-                // An array with comparison condition is passed
-                if (is_array($param_name)) {
-                    if (!isset($param_name[0], $param_name[1])) {
-                        throw new \InvalidArgumentException('Incorrect comparison condition format given');
-                    }
-                    list($param_name, list($comparison_operator, $right_operand)) = array($i, $param_name);
-                }
-                $param_name = fn_strtolower(str_replace('%', '', $param_name));
+            $cookie_data = fn_get_session_data();
+            $cookie_data['all'] = $cookie_data;
 
-                if (isset($data[$param_name])) {
-                    $value = $data[$param_name];
-                } elseif (strpos($param_name, '.') !== false) {
-                    $value = fn_dot_syntax_get($param_name, $data);
-                    if ($value === null) {
-                        unset($value);
-                    }
-                }
-                if (isset($value)
-                    && (!isset($comparison_operator, $right_operand)
-                        || fn_compare_values_by_operator(
-                            $value,
-                            $comparison_operator,
-                            $right_operand
-                        )
-                    )
-                ) {
-                    if (is_callable($when_found)) {
-                         call_user_func($when_found, $param_name, $value);
-                    } else {
-                        return $when_found;
-                    }
-                }
-            }
+            $additional_level .= self::_generateAdditionalCacheLevel($block_scheme['cache'], 'request_handlers', $_REQUEST);
+            $additional_level .= self::_generateAdditionalCacheLevel($block_scheme['cache'], 'session_handlers', $_SESSION);
+            $additional_level .= self::_generateAdditionalCacheLevel($block_scheme['cache'], 'cookie_handlers', $cookie_data);
+            $additional_level .= self::_generateAdditionalCacheLevel($block_scheme['cache'], 'auth_handlers', $_SESSION['auth']);
+            $additional_level .= '|path=' . Registry::get('config.current_path');
+            $additional_level = !empty($additional_level) ? md5($additional_level) : '';
+
+            $handlers = array_merge($handlers, $default_handlers['update_handlers']);
+
+            $cache_level = isset($block_scheme['cache']['cache_level']) ? $block_scheme['cache']['cache_level'] : Registry::cacheLevel('html_blocks');
+            Registry::registerCache($cache_name, $handlers, $cache_level . '__' . $additional_level);
         }
-
-        return false;
     }
 
     /**
@@ -933,48 +548,14 @@ class RenderManager
     }
 
     /**
-     * Sorts grids by order parameter
-     *
-     * @param  array $grids Hierarchic builded tree
-     * @return array Sorted grids
-     */
-    public static function sortGrids($grids)
-    {
-        $static_grids = array();
-        foreach ($grids as $id => $grid) {
-            if ($grid['order'] == 0) {
-                $static_grids[] = $id;
-            }
-
-            if (!empty($grid['children'])) {
-                $grid['children'] = self::sortGrids($grid['children']);
-            }
-
-            $grids[$id] = $grid;
-        }
-
-        $grids = fn_sort_array_by_key($grids, 'order', SORT_ASC);
-        $sorted_grids = array();
-
-        foreach ($static_grids as $grid_id) {
-            $sorted_grids += array($grid_id => $grids[$grid_id]);
-            unset($grids[$grid_id]);
-        }
-
-        $sorted_grids += $grids;
-
-        return $sorted_grids;
-    }
-
-    /**
      * Assigns block properties data to template
      * @param array $block Block data
      */
-    private static function _assignBlockSettingsToTemplate($block)
+    private static function _assignBlockSettings($block)
     {
         if (isset($block['properties']) && is_array($block['properties'])) {
             foreach ($block['properties'] as $name => $value) {
-                \Tygh::$app['view']->assign($name, $value);
+                Registry::get('view')->assign($name, $value);
             }
         }
 

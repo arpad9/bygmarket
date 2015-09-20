@@ -76,6 +76,7 @@
 </div>
 
 <script type="text/javascript">
+    //<![CDATA[
     Tygh.$(document).ready(function(){$ldelim}
         {if $wt_settings.type == "T"}
             Tygh.$('#wt_graphic_watermark').switchAvailability(true);
@@ -83,6 +84,7 @@
             Tygh.$('#wt_text_watermark').switchAvailability(true);
         {/if}
     {$rdelim});
+    //]]>
 </script>
 
 <div class="control-group setting-wide">
@@ -129,6 +131,7 @@
 </div>
 
 <script type="text/javascript">
+//<![CDATA[
 Tygh.$(document).ready(function(){$ldelim}
 var $ = Tygh.$;
 {if $settings.Stores.default_state_update_for_all != 'active'}
@@ -153,5 +156,6 @@ var $ = Tygh.$;
     });
 {/literal}
 {$rdelim});
+//]]>
 </script>
 {/if}

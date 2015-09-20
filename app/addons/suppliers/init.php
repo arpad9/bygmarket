@@ -27,8 +27,5 @@ fn_register_hooks(
     'order_notification',
     'get_notification_rules',
     'get_status_params_definition',
-    'get_shipments_info_post',
-    'get_orders_post',
-    'get_order_info',
-    'clone_product'
+    'get_shipments_info_post'
 );

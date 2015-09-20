@@ -18,7 +18,7 @@ if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
 if ($mode == 'view') {
 
-    fn_disable_live_editor_mode();
+    fn_disable_translation_mode();
     if (empty($_REQUEST['display'])) {
         die('Access denied');
     }

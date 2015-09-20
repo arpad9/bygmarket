@@ -81,7 +81,7 @@ $processor_error['order_status'] = array(
 // Gateway parameters
 $post['x_login'] = $processor_data['processor_params']['login'];
 $post['x_tran_key'] = $processor_data['processor_params']['transaction_key'];
-$post['x_version'] = $__version;
+$post['x_version'] = '$__version';
 $post['x_test_request'] = (($processor_data['processor_params']['mode'] == 'test' || $processor_data['processor_params']['mode'] == 'developer') ? 'TRUE' : 'FALSE');
 
 $post['x_delim_data'] = 'TRUE';

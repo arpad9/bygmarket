@@ -40,15 +40,8 @@ function fn_get_reward_points($object_id, $object_type = PRODUCT_REWARD_POINTS, 
     }
 
     if (!empty($usergroup_ids)) {
-        if (Registry::get('addons.reward_points.several_points_action') == 'minimal_absolute') {
-            $order_by = 'amount_type ASC, amount ASC';
-        } elseif (Registry::get('addons.reward_points.several_points_action') == 'minimal_percentage') {
-            $order_by = 'amount_type DESC, amount ASC';
-        } elseif (Registry::get('addons.reward_points.several_points_action') == 'maximal_absolute') {
-            $order_by = 'amount_type ASC, amount DESC';
-        } elseif (Registry::get('addons.reward_points.several_points_action') == 'maximal_percentage') {
-            $order_by = 'amount_type DESC, amount DESC';
-        }
+        $order_by = 'amount_type ' . (POINTS_FOR_USERGROUP_BY_AMOUNT_TYPE == 'A' ? 'ASC' : 'DESC') .
+            ', amount ' . (Registry::get('addons.reward_points.several_points_action') == 'min' ? 'ASC' : 'DESC');
 
         return db_get_row(
             "SELECT *, amount AS pure_amount FROM ?:reward_points"
@@ -82,7 +75,7 @@ function fn_add_reward_points($object_data, $object_id = 0, $object_type = GLOBA
 
     if (fn_allowed_for('ULTIMATE')) {
         if ($object_type == GLOBAL_REWARD_POINTS) {
-            if (!empty($company_id)) {
+            if(!empty($company_id)) {
                 $object_data['company_id'] = $company_id;
             } elseif (Registry::get('runtime.company_id')) {
                 $object_data['company_id'] = Registry::get('runtime.company_id');
@@ -117,36 +110,13 @@ function fn_reward_points_calculate_cart_taxes_pre(&$cart, &$cart_products, &$sh
 {
     fn_set_hook('reward_points_cart_calculation', $cart_products, $cart, $auth);
 
-    if (defined('ORDER_MANAGEMENT')
-        && in_array(Registry::get('runtime.mode'), array('update', 'place_order', 'add'))
-        && !isset($cart['points_info']['in_use']['cost'])
-    ) {
-        if (isset($cart['deleted_points_info']['in_use']['cost'])) {
-            if ($cart['deleted_points_info']['in_use']['cost'] <= $cart['subtotal_discount']) {
-                $cart['subtotal_discount'] -= $cart['deleted_points_info']['in_use']['cost'];
-                unset($cart['deleted_points_info']);
-            }
-        }
-    }
-
     // calculating price in points
-    if (defined('ORDER_MANAGEMENT') && isset($cart['points_info']['in_use']['cost'])) {
-        $cost_covered_by_applied_points = $cart['points_info']['in_use']['cost'];
-    } else {
-        $cost_covered_by_applied_points = 0;
-    }
-
-    $in_use_total_points = false;
     if (isset($cart['points_info']['total_price'])) {
-        if (!empty($cart['points_info']['in_use']['points']) && $cart['points_info']['in_use']['points'] <= $cart['points_info']['total_price']) {
-            $in_use_total_points = true;
-        }
         unset($cart['points_info']['total_price']);
     }
 
     if (Registry::get('addons.reward_points.price_in_points_order_discount') == 'Y' && !empty($cart['subtotal_discount']) && !empty($cart['subtotal'])) {
-        $price_coef =
-            ((1 - (($cart['subtotal_discount'] - $cost_covered_by_applied_points) / $cart['subtotal']))* 100) / 100;
+        $price_coef = 1 - $cart['subtotal_discount'] / $cart['subtotal'];
     } else {
         $price_coef = 1;
     }
@@ -162,35 +132,18 @@ function fn_reward_points_calculate_cart_taxes_pre(&$cart, &$cart_products, &$sh
             fn_gather_reward_points_data($cart_products[$k], $auth);
 
             if (isset($cart_products[$k]['points_info']['raw_price'])) {
-                $product_price_in_points = $price_coef * $cart_products[$k]['points_info']['raw_price'];
-                $cart['products'][$k]['extra']['points_info']['raw_price'] = $product_price_in_points;
-                $cart['products'][$k]['extra']['points_info']['display_price'] = $cart['products'][$k]['extra']['points_info']['price'] = round($product_price_in_points);
-                $cart['points_info']['total_price'] = (isset($cart['points_info']['total_price']) ?  $cart['points_info']['total_price'] : 0) + $product_price_in_points;
+                $product_price = $price_coef * $cart_products[$k]['points_info']['raw_price'];
+                $cart['products'][$k]['extra']['points_info']['raw_price'] = $product_price;
+                $cart['products'][$k]['extra']['points_info']['display_price'] = $cart['products'][$k]['extra']['points_info']['price'] = round($product_price);
+                $cart['points_info']['total_price'] = (isset($cart['points_info']['total_price']) ?  $cart['points_info']['total_price'] : 0) + $product_price;
             }
         }
     }
 
     $cart['points_info']['raw_total_price'] = isset($cart['points_info']['total_price']) ?  $cart['points_info']['total_price'] : 0;
-    $cart['points_info']['total_price'] = ceil((int)($cart['points_info']['raw_total_price'] * 100) / 100);
+    $cart['points_info']['total_price'] = ceil($cart['points_info']['raw_total_price']);
 
-    if (!empty($cart['points_info']['in_use']['points']) && $cart['points_info']['in_use']['points'] > $cart['points_info']['total_price'] && $in_use_total_points) {
-        $cart['points_info']['in_use']['points'] = $cart['points_info']['total_price'];
-    }
-
-    if (!empty($cart['points_info']['in_use'])
-        &&
-        (
-            Registry::get('runtime.controller') == 'checkout'
-            ||
-            (
-                defined('ORDER_MANAGEMENT')
-                && in_array(
-                    Registry::get('runtime.mode'),
-                    array('update', 'place_order', 'add')
-                )
-            )
-        )
-    ) {
+    if (!empty($cart['points_info']['in_use']) && (Registry::get('runtime.controller') == 'checkout' || (defined('ORDER_MANAGEMENT') && in_array(Registry::get('runtime.mode'), array('update', 'place_order', 'add'))))) {
         fn_set_point_payment($cart, $cart_products, $auth);
     }
 
@@ -205,15 +158,9 @@ function fn_reward_points_calculate_cart_taxes_pre(&$cart, &$cart_products, &$sh
     }
 
     $discount = 0;
-    if (Registry::get('addons.reward_points.reward_points_order_discount') == 'Y'
-        && !empty($cart['subtotal_discount'])
-        && !empty($cart['subtotal'])
-    ) {
+    if (Registry::get('addons.reward_points.reward_points_order_discount') == 'Y' && !empty($cart['subtotal_discount']) && !empty($cart['subtotal'])) {
         $discount += $cart['subtotal_discount'];
-    } elseif (!empty($cart['points_info'])
-        && !empty($cart['points_info']['in_use'])
-        && !empty($cart['points_info']['in_use']['cost'])
-    ) {
+    } elseif (!empty($cart['points_info']) && !empty($cart['points_info']['in_use']) && !empty($cart['points_info']['in_use']['cost'])) {
         $discount += $cart['points_info']['in_use']['cost'];
     }
 
@@ -246,16 +193,16 @@ function fn_set_point_payment(&$cart, &$cart_products, &$auth)
     $user_info = Registry::get('user_info');
 
     // pick previously applied points before update
-    $cost_covered_by_applied_points = !empty($cart['points_info']['in_use']['cost']) ? $cart['points_info']['in_use']['cost'] : 0;
+    $applied_cost = !empty($cart['points_info']['in_use']['cost']) ? $cart['points_info']['in_use']['cost'] : 0;
 
-    $point_rate = floatval(Registry::get('addons.reward_points.point_rate'));
+    $per = floatval(Registry::get('addons.reward_points.point_rate'));
     if (defined('ORDER_MANAGEMENT')) {
         $user_points = fn_get_user_additional_data(POINTS, $auth['user_id']) + (!empty($cart['previous_points_info']['in_use']['points']) ? $cart['previous_points_info']['in_use']['points'] : 0);
     } else {
         $user_points = !empty($user_info) ? $user_info['points'] : 0;
     }
 
-    if ($point_rate * $user_points * floatval($cart['subtotal']) > 0) {
+    if ($per * $user_points * floatval($cart['subtotal']) > 0) {
         $points_in_use = $cart['points_info']['in_use']['points'];
         if ($points_in_use > $user_points) {
             $points_in_use = $user_points;
@@ -268,16 +215,13 @@ function fn_set_point_payment(&$cart, &$cart_products, &$auth)
             $points_in_use = $cart['points_info']['total_price'];
             fn_set_notification('W', __('warning'), __('text_points_exceed_points_that_can_be_applied'));
         }
-
         if (!empty($points_in_use)) {
             $cost = 0;
-            $subtotal_discount_coef = (!empty($cart['subtotal_discount']))
-                ? (1 - (($cart['subtotal_discount'] - $cost_covered_by_applied_points) / $cart['subtotal']))
-                : 1;
+            $subtotal_discount_coef = (!empty($cart['subtotal_discount'])) ? (1 - $cart['subtotal_discount'] / $cart['subtotal']) : 1;
 
             foreach ($cart['products'] as $cart_id=>$v) {
                 if (isset($v['extra']['points_info']['price'])) {
-                    $all_points = ($points_in_use == $cart['points_info']['total_price'] || $points_in_use == floor($cart['points_info']['raw_total_price'])) ? $points_in_use : $cart['points_info']['raw_total_price'];
+                    $all_points = ($points_in_use == $cart['points_info']['total_price']) ? $points_in_use : $cart['points_info']['raw_total_price'];
                     $discount = $points_in_use / $all_points * $cart_products[$cart_id]['subtotal'] * $subtotal_discount_coef;
                     $cart['products'][$cart_id]['extra']['points_info']['discount'] = fn_format_price($discount);
                     $cost += $discount;
@@ -285,12 +229,7 @@ function fn_set_point_payment(&$cart, &$cart_products, &$auth)
             }
 
             // check for subtotal discounts
-            $subtotal_odds = $cart['subtotal']
-                - $cost
-                - (!empty($cart['subtotal_discount'])
-                    ? $cart['subtotal_discount'] - $cost_covered_by_applied_points
-                    : 0
-                );
+            $subtotal_odds = $cart['subtotal'] - $cost - (!empty($cart['subtotal_discount']) ? $cart['subtotal_discount'] : 0);
 
             // check for totals discounts, certificates and etc.
             $total_odds = floatval($cart['subtotal']) - $cost;
@@ -302,10 +241,6 @@ function fn_set_point_payment(&$cart, &$cart_products, &$auth)
                 $cost += $odds;
             }
 
-            if ($points_in_use == floor($cart['points_info']['raw_total_price'])) {
-                $points_in_use = (int) (($cart['points_info']['raw_total_price'] * 100) / 100);
-            }
-
             if (fn_format_price($cost) && $cost > 0) {
                 $cost = fn_format_price($cost);
                 $cart['points_info']['in_use'] = array(
@@ -313,9 +248,9 @@ function fn_set_point_payment(&$cart, &$cart_products, &$auth)
                     'cost' => $cost
                 );
 
-                if (!empty($cost_covered_by_applied_points)) {
+                if (!empty($applied_cost)) {
                     // avoid repeated discount applying
-                    $cost -= $cost_covered_by_applied_points;
+                    $cost -= $applied_cost;
                 }
 
                 if (!empty($cost)) {
@@ -367,7 +302,7 @@ function fn_reward_points_place_order(&$order_id, &$fake, &$fake1, &$cart)
 {
 
     if (!empty($order_id)) {
-        if (isset($cart['points_info']['reward'])) {
+        if (!empty($cart['points_info']['reward'])) {
             $order_data = array(
                 'order_id' => $order_id,
                 'type' => POINTS,
@@ -376,7 +311,7 @@ function fn_reward_points_place_order(&$order_id, &$fake, &$fake1, &$cart)
             db_query("REPLACE INTO ?:order_data ?e", $order_data);
         }
 
-        if (isset($cart['points_info']['in_use'])) {
+        if (!empty($cart['points_info']['in_use'])) {
             $order_data = array(
                 'order_id' => $order_id,
                 'type' => POINTS_IN_USE,
@@ -384,17 +319,9 @@ function fn_reward_points_place_order(&$order_id, &$fake, &$fake1, &$cart)
             );
             db_query("REPLACE INTO ?:order_data ?e", $order_data);
 
-        } elseif (isset($cart['previous_points_info']['in_use'])) {
+        } elseif (!empty($cart['previous_points_info']['in_use'])) {
             db_query("DELETE FROM ?:order_data WHERE order_id = ?i AND type = ?s", $order_id, POINTS_IN_USE);
         }
-    }
-}
-
-function fn_reward_points_place_suborders(&$cart, &$_cart)
-{
-    if (!empty($cart['points_info']['in_use']) && !empty($_cart['points_info']['in_use'])) {
-        $cart['points_info']['in_use']['points'] -= $_cart['points_info']['in_use']['points'];
-        $cart['points_info']['in_use']['cost'] -= $_cart['points_info']['in_use']['cost'];
     }
 }
 
@@ -406,11 +333,7 @@ function fn_reward_points_get_order_info(&$order, &$additional_data)
 
     foreach ($order['products'] as $k => $v) {
         if (isset($v['extra']['points_info']['price'])) {
-            $order['points_info']['price'] = (
-                isset($order['points_info']['price'])
-                    ? $order['points_info']['price']
-                    : 0
-                ) + $v['extra']['points_info']['price'];
+            $order['points_info']['price'] = (isset($order['points_info']['price']) ? $order['points_info']['price'] : 0) + $v['extra']['points_info']['price'];
         }
     }
 
@@ -529,12 +452,7 @@ function fn_get_price_in_points($product_id, &$auth)
 
 function fn_reward_points_gather_additional_product_data_post(&$product, &$auth, &$params)
 {
-    $get_point_info = false;
-    if (Registry::get('runtime.controller') == 'products' &&
-        in_array(Registry::get('runtime.mode'), array('view', 'quick_view', 'options'))
-    ) {
-        $get_point_info = !empty($params['get_options']);
-    }
+    $get_point_info = !empty($params['get_options']) ? true : false;
     fn_gather_reward_points_data($product, $auth, $get_point_info);
 }
 
@@ -558,15 +476,10 @@ function fn_gather_reward_points_data(&$product, &$auth, $get_point_info = true)
         return false;
     }
 
-    if (!isset($product['main_category'])) {
-        $product['main_category'] = db_get_field(
-            "SELECT category_id FROM ?:products_categories WHERE product_id = ?i AND link_type = 'M'",
-            $product['product_id']
-        );
-    }
+    $main_category = db_get_field("SELECT category_id FROM ?:products_categories WHERE product_id = ?i AND link_type = 'M'", $product['product_id']);
     $candidates = array(
         PRODUCT_REWARD_POINTS  => $product['product_id'],
-        CATEGORY_REWARD_POINTS => $product['main_category'],
+        CATEGORY_REWARD_POINTS => $main_category,
         GLOBAL_REWARD_POINTS   => 0
     );
 
@@ -594,7 +507,7 @@ function fn_gather_reward_points_data(&$product, &$auth, $get_point_info = true)
                 }
 
                 if (!empty($secondary_categories_points)) {
-                    $sorted_points = fn_sort_array_by_key($secondary_categories_points, 'amount', (Registry::get('addons.reward_points.several_points_action') == 'minimal_absolute' || Registry::get('addons.reward_points.several_points_action') == 'minimal_percentage') ? SORT_ASC : SORT_DESC);
+                    $sorted_points = fn_sort_array_by_key($secondary_categories_points, 'amount', (Registry::get('addons.reward_points.several_points_action') == 'min') ? SORT_ASC : SORT_DESC);
                     $_reward_points = array_shift($sorted_points);
                 }
             }
@@ -803,18 +716,10 @@ function fn_reward_points_get_external_discounts(&$product, &$discounts)
     }
 }
 
-function fn_reward_points_form_cart(&$order_info, &$cart, &$auth)
+function fn_reward_points_form_cart(&$order_info, &$cart)
 {
     if (!empty($order_info['points_info'])) {
         $cart['points_info'] = $cart['previous_points_info'] = $order_info['points_info'];
-    }
-
-    if (!empty($auth['user_id']) && !isset($auth['points'])) {
-        $auth['points'] = unserialize(db_get_field(
-            "SELECT `data` FROM ?:user_data WHERE type=?s AND user_id = ?i",
-            POINTS,
-            $auth['user_id']
-        ));
     }
 }
 
@@ -868,16 +773,7 @@ function fn_reward_points_get_orders(&$params, &$fields, &$sortings, &$condition
 function fn_reward_points_get_product_data(&$product_id, &$field_list, &$join, &$auth)
 {
     $field_list .= ", MIN(point_prices.point_price) as point_price";
-
-    $auth_usergroup_ids = !empty($auth['usergroup_ids']) ? $auth['usergroup_ids'] : array();
-    $usergroup_ids = (AREA == 'C') ? array_merge(array(USERGROUP_ALL), $auth_usergroup_ids) : USERGROUP_ALL;
-    $join .= db_quote(
-        " LEFT JOIN ?:product_point_prices as point_prices"
-        . " ON point_prices.product_id = ?:products.product_id"
-        . " AND point_prices.lower_limit = 1"
-        . " AND point_prices.usergroup_id IN (?n)"
-        , $usergroup_ids
-    );
+    $join .= db_quote(" LEFT JOIN ?:product_point_prices as point_prices ON point_prices.product_id = ?:products.product_id AND point_prices.lower_limit = 1 AND point_prices.usergroup_id IN (?n)", ((AREA == 'C') ? array_merge(array(USERGROUP_ALL), $auth['usergroup_ids']) : USERGROUP_ALL));
 }
 
 function fn_reward_points_update_product_post(&$product_data, &$product_id)
@@ -922,7 +818,7 @@ function fn_reward_points_global_update_products(&$table, &$field, &$value, &$ty
         $value[] = $update_data['price_in_points'];
         $type[] = $update_data['price_in_points_type'];
 
-        $msg .= ($update_data['price_in_points'] > 0 ? __('price_in_points_increased') : __('price_in_points_decreased')) . ' ' . ($update_data['price_in_points_type'] == 'A' ? ' ' . __('points_lowercase', array(abs($update_data['price_in_points']))) : abs($update_data['price_in_points']) . '%') . '.';
+        $msg .= ($update_data['price_in_points'] > 0 ? __('price_in_points_increased') : __('price_in_points_decreased')) . ' ' . abs($update_data['price_in_points']) . ($update_data['price_in_points_type'] == 'A' ? ' ' . __('points_lower') : '%') . '.';
     }
 }
 

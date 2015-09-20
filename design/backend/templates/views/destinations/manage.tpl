@@ -22,21 +22,17 @@
     </td>
     <td class="nowrap" >
         {capture name="tools_list"}
-            {hook name="destinations:manage_tools_list"}
-                <li>{btn type="list" text=__("edit") href="destinations.update?destination_id=`$destination.destination_id`"}</li>
-                {if $destination.destination_id != 1}
-                    <li>{btn type="list" text=__("delete") class="cm-confirm cm-post" href="destinations.delete?destination_id=`$destination.destination_id`"}</li>
-                {/if}
-            {/hook}
+            <li>{btn type="list" text=__("edit") href="destinations.update?destination_id=`$destination.destination_id`"}</li>
+        {if $destination.destination_id != 1}
+            <li>{btn type="list" text=__("delete") class="cm-confirm" href="destinations.delete?destination_id=`$destination.destination_id`"}</li>
+        {/if}
         {/capture}
         <div class="hidden-tools">
         {dropdown content=$smarty.capture.tools_list}
         </div>
     </td>
     <td class="right">
-        {$has_permission = fn_check_permissions("tools", "update_status", "admin", "GET", ["table" => "destinations"])}
-
-        {include file="common/select_popup.tpl" id=$destination.destination_id status=$destination.status hidden="" object_id_name="destination_id" table="destinations" non_editable=!$has_permission}
+        {include file="common/select_popup.tpl" id=$destination.destination_id status=$destination.status hidden="" object_id_name="destination_id" table="destinations"}
     </td>
 </tr>
 {/foreach}

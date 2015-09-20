@@ -47,7 +47,7 @@ if (defined('PAYMENT_NOTIFICATION')) {
         // We are trying to avoid mess with declined and success urls
         $sign = md5($processor_data['processor_params']['product_id'] . '-' . $order_info['total'] . '-' . $processor_data['processor_params']['sharedsec']);
         // Because the callback comes only after return we have to make sure that this redirect is successful
-        if (in_array($order_info['status'], array('D')) || empty($_REQUEST['sign']) || $sign != $_REQUEST['sign']) {
+        if (in_array($order_info['status'], array('N', 'D')) || empty($_REQUEST['sign']) || $sign != $_REQUEST['sign']) {
             $pp_response['order_status'] = 'D';
             $pp_response["reason_text"] = __('text_transaction_declined');
             fn_finish_payment($order_id, $pp_response, false);
@@ -93,30 +93,46 @@ if (defined('PAYMENT_NOTIFICATION')) {
     $sign = md5($processor_data['processor_params']['product_id'] . '-' . $order_info['total'] . '-' . $processor_data['processor_params']['sharedsec']);
 
     fn_update_order_payment_info($order_id, array('awaiting_callback' => true));
+$lang_code = CART_LANGUAGE;
+echo <<<EOT
+<form action="https://payments.chronopay.com/" method="POST" name="process">
+<input type="hidden" name="product_id" value="{$processor_data['processor_params']['product_id']}" />
+<input type="hidden" name="product_name" value="{$product_name}" />
+<input type="hidden" name="product_price" value="{$order_info['total']}" />
+<input type="hidden" name="order_id" value="{$order_id}" />
+<input type="hidden" name="cs1" value="{$order_id}" />
+<input type="hidden" name="language" value="{$lang_code}" />
+<input type="hidden" name="f_name" value="{$order_info['b_firstname']}" />
+<input type="hidden" name="s_name" value="{$order_info['b_lastname']}" />
+<input type="hidden" name="street" value="{$order_info['b_address']}" />
+<input type="hidden" name="city" value="{$order_info['b_city']}" />
+<input type="hidden" name="state" value="{$order_info['b_state']}" />
+<input type="hidden" name="zip" value="{$order_info['b_zipcode']}" />
+<input type="hidden" name="country" value="{$country}" />
+<input type="hidden" name="phone" value="{$order_info['phone']}" />
+<input type="hidden" name="email" value="{$order_info['email']}" />
+<input type="hidden" name="cb_url" value="{$post_url}" />
+<input type="hidden" name="cb_type" value="P" />
+<input type="hidden" name="success_url" value="{$return_url}&sign={$sign}" />
+<input type="hidden" name="decline_url" value="{$return_url}" />
+<input type="hidden" name="sign" value="{$sign}" />
+EOT;
 
-    $post_data = array(
-        'product_id' => $processor_data['processor_params']['product_id'],
-        'product_name' => $product_name,
-        'product_price' => $order_info['total'],
-        'order_id' => $order_id,
-        'cs1' => $order_id,
-        'language' => CART_LANGUAGE,
-        'f_name' => $order_info['b_firstname'],
-        's_name' => $order_info['b_lastname'],
-        'street' => $order_info['b_address'],
-        'city' => $order_info['b_city'],
-        'state' => $order_info['b_state'],
-        'zip' => $order_info['b_zipcode'],
-        'country' => $country,
-        'phone' => $order_info['phone'],
-        'email' => $order_info['email'],
-        'cb_url' => $post_url,
-        'cb_type' => 'P',
-        'success_url' => fn_link_attach($return_url, "sign={$sign}"),
-        'decline_url' => $return_url,
-        'sign' => $sign    
-    );
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'Chronopay server'
+));
 
-    fn_create_payment_form('https://payments.chronopay.com', $post_data, 'ChronoPay');
+echo <<<EOT
+    </form>
+    <p><div align=center>{$msg}</div></p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
+die();
 }
 exit;

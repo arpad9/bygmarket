@@ -40,10 +40,4 @@ return array (
         'links_label' => 'order',
         'show_item_id' => true,
     ),
-    'product_features' => array (
-        'list_mode' => 'view',
-        'view_controller' => 'products',
-        'func' => 'fn_get_products',
-        'item_id' => 'product_id'
-    ),
 );

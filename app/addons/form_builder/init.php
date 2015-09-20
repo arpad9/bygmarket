@@ -49,6 +49,5 @@ fn_register_hooks(
     'get_page_data',
     'page_object_by_type',
     'clone_page',
-    'init_secure_controllers',
-    'settings_variants_image_verification_use_for'
+    'init_secure_controllers'
 );

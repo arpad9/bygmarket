@@ -34,6 +34,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
 
-        Tygh::$app['view']->assign('order_certificates', $order_certificates);
+        Registry::get('view')->assign('order_certificates', $order_certificates);
     }
 }

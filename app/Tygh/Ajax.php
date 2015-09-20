@@ -19,17 +19,12 @@ class Ajax
     private $_result = array();
     private $_progress_coefficient = 0;
     private $_progress_parts = 2;
-    private $_skip_result_ids_check = false;
-    private $_content_type = 'application/json';
-    private $_request_type = NULL;
-    private $_internal_request = false;
-
     public $result_ids = array();
+    public $skip_result_ids_check = false;
+    public $content_type = "application/json";
+    public $request_type = NULL;
     public $redirect_type = NULL;
     public $callback = NULL;
-    public $full_render = false;
-    public $anchor = NULL;
-
     const REQUEST_XML = 1;
     const REQUEST_IFRAME = 2;
     const REQUEST_COMET = 3;
@@ -39,68 +34,38 @@ class Ajax
     /**
      * Create new Ajax backend object and start output buffer (buffer will be catched in destructor)
      */
-    public function __construct($request)
+    public function __construct()
     {
-        $this->result_ids = !empty($request['result_ids']) ? explode(',', str_replace(' ', '', $request['result_ids'])) : array();
-        $this->full_render = !empty($request['full_render']);
-        $this->anchor = !empty($request['anchor']) ? $request['anchor'] : NULL;
-        $this->_skip_result_ids_check = !empty($request['skip_result_ids_check']);
-        $this->_result = !empty($request['_ajax_data']) ? $request['_ajax_data'] : array();
-        $this->_request_type = (!empty($request['is_ajax'])) ? $request['is_ajax'] : self::REQUEST_XML;
-        $this->_internal_request = self::isInternalRequest($request);
+        $this->result_ids = !empty($_REQUEST['result_ids']) ? explode(',', str_replace(' ', '', $_REQUEST['result_ids'])) : array();
+        $this->skip_result_ids_check = !empty($_REQUEST['skip_result_ids_check']);
 
-        if (!$this->_internal_request) {
-            return true;
+        $this->_result = !empty($_REQUEST['_ajax_data']) ? $_REQUEST['_ajax_data'] : array();
+
+        $this->request_type = (!empty($_REQUEST['is_ajax'])) ? $_REQUEST['is_ajax'] : self::REQUEST_XML;
+
+        if (!empty($_REQUEST['callback'])) {
+            $this->request_type = self::REQUEST_JSONP;
+            $this->callback = $_REQUEST['callback'];
         }
 
-        if (!empty($request['callback'])) {
-            $this->_request_type = self::REQUEST_JSONP;
-            $this->callback = $request['callback'];
-        }
-
-        $this->redirect_type = $this->_request_type;
+        $this->redirect_type = $this->request_type;
 
         // Start OB handling early.
-        if ($this->_request_type != self::REQUEST_COMET) {
-            $ajax_obj = &$this;
-
-            ob_start(function($content) use ($ajax_obj) {
-                $ajax_obj->destruct($content);
-            });
+        if ($this->request_type != self::REQUEST_COMET) {
+            ob_start();
         } else {
-            // This is workaround for nginx + php-fpm, as COMET progress won't work if compression on nginx side is used.
-            if (!empty($_SERVER['HTTP_ACCEPT_ENCODING']) && strpos($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip') !== false) {
-                ob_start('ob_gzhandler');
-            }
-
             $this->redirect_type = Ajax::REQUEST_IFRAME;
             Registry::set('runtime.comet', true);
         }
 
-        $_SERVER['HTTP_REFERER'] = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
-        $origin = !empty($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : $_SERVER['HTTP_REFERER'];
-        if (!empty($request['force_embedded']) && !empty($request['init_context'])) {
-            $origin = $request['init_context'];
-        }
-
-        if (!empty($origin)) {
-            $_purl = parse_url($origin);
-            $origin_host = $_purl['host'] . (empty($_purl['port']) ? '' : ':' . $_purl['port']);
+        $origin_host = '';
+        if (!empty($_SERVER['HTTP_REFERER'])) {
+            $_purl = parse_url($_SERVER['HTTP_REFERER']);
+            $origin_host = $_purl['host'];
             $origin_scheme = $_purl['scheme'];
 
-            $_chost = Registry::get('config.current_host');
-            if (empty($_chost) || strpos($_chost, '%') !== false) {
-                $_chost = $_SERVER['HTTP_HOST'];
-            }
-
-            if ($origin_host != $_chost) { // cross-domain request
-
-                Embedded::enable();
-
-                if (!empty($request['init_context'])) {
-                    Embedded::setUrl($request['init_context']);
-                }
-
+            if ($origin_host != Registry::get('config.current_host')) { // cross-domain request
+                fn_define('EMBEDDED', true);
                 header('Access-Control-Allow-Origin: ' . $origin_scheme . '://' . $origin_host);
                 header('Access-Control-Allow-Credentials: true');
             }
@@ -121,17 +86,17 @@ class Ajax
         }
     }
 
-    public function destruct($content = '')
+    /**
+     * Destructor: cache output and display valid javascript code
+     */
+    public function __destruct()
     {
         static $called = false;
 
-        if ($called == false && $this->_internal_request) {
+        if ($called == false) {
             $called = true;
 
-            $text = ($this->_request_type != self::REQUEST_COMET) ? ob_get_clean() : '';
-            if (empty($text) && !empty($content)) {
-                $text = $content;
-            }
+            $text = ($this->request_type != self::REQUEST_COMET) ? ob_get_clean() : '';
 
             if (!empty($this->result_ids)) {
                 $result_ids = array();
@@ -156,21 +121,8 @@ class Ajax
                         $end = strpos($text, '<!--' . $r_id . '--></');
                         $this->assignHtml($r_id, substr($text, $start, $end - $start));
                     // Assume that all data should be put to div with this ID
-                    } elseif ($this->_skip_result_ids_check == true) {
+                    } elseif ($this->skip_result_ids_check == true) {
                         $this->assignHtml($r_id, $text);
-                    }
-                }
-
-                if ($this->full_render && preg_match('/<title>(.*?)<\/title>/s', $text, $m)) {
-                    $this->assign('title', html_entity_decode($m[1], ENT_QUOTES));
-                }
-
-                // Fix for payment processor form, should be removed after payments refactoring
-                if (Embedded::isEnabled() && empty($this->_result['html']) && $this->_skip_result_ids_check == false && !empty($text)) {
-                    foreach ($this->result_ids as $r_id) {
-                        $text .= '<script type="text/javascript">if (document.process) { document.process.target="_parent"; document.process.submit(); }</script>';
-                        $this->assignHtml($r_id, $text);
-                        break;
                     }
                 }
 
@@ -181,15 +133,10 @@ class Ajax
                 $this->assign('notifications', fn_get_notifications());
             }
 
-            if (Embedded::isEnabled()) {
-                $this->assign('session_data', array(
-                    'name' => Session::getName(),
-                    'id' => Session::getId()
-                ));
-            }
-
-            if (!empty($this->anchor)) {
-                $this->assign('anchor', $this->anchor);
+            if (!empty($_SESSION['from_url'])) {
+                $from_url = $_SESSION['from_url'];
+            } elseif (!empty($_REQUEST['from_url'])) {
+                $from_url = $_REQUEST['from_url'];
             }
 
             // we call session saving directly
@@ -200,36 +147,34 @@ class Ajax
             if (fn_string_not_empty($text)) {
                 $response['text'] = trim($text);
             }
-            $response = json_encode($response, JSON_UNESCAPED_UNICODE);
+            $response = json_encode($response);
 
             if (!headers_sent()) {
                 header(' ', true, 200); // force 200 header, because we still need to return content
-                if (Embedded::isEnabled() || $this->_request_type == self::REQUEST_JSONP_POST) {
-                    header('P3P: CP="CURa ADMa DEVa PSAo PSDo OUR BUS UNI PUR INT DEM STA PRE COM NAV OTC NOI DSP COR"'); // for IE cors
-                }
             }
 
-            if ($this->_request_type == self::REQUEST_XML) {
+            if ($this->request_type == self::REQUEST_XML) {
                 // Return json object
-                header('Content-type: ' . $this->_content_type . '; charset=' . CHARSET);
+                header('Content-type: ' . $this->content_type);
 
-            } elseif ($this->_request_type == self::REQUEST_JSONP) {
+            } elseif ($this->request_type == self::REQUEST_JSONP) {
                 // Return jsonp object
-                header('Content-type: ' . $this->_content_type . '; charset=' . CHARSET);
+                header('Content-type: ' . $this->content_type);
                 $response = $this->callback . '(' . $response . ');';
-            } elseif ($this->_request_type == self::REQUEST_JSONP_POST) {
+            } elseif ($this->request_type == self::REQUEST_JSONP_POST) {
                 // Return jsonp object
 
                 header("X-Frame-Options: ", true);
+                header('P3P: CP="CURa ADMa DEVa PSAo PSDo OUR BUS UNI PUR INT DEM STA PRE COM NAV OTC NOI DSP COR"'); // for IE cors
                 $response = '<script type="text/javascript" src="' . Registry::get('config.current_location') . '/js/lib/jquery/jquery.min.js' . '"></script>
-                             <script type="text/javascript" src="' . Registry::get('config.current_location') . '/js/lib/postmessage/jquery.ba-postmessage.js' . '"></script>
                              <script type="text/javascript">
 
                                 var Tygh = {};
                                 Tygh.$ = jQuery.noConflict(true);
                              </script>
+                             <script type="text/javascript" src="' . Registry::get('config.current_location') . '/js/lib/postmessage/jquery.ba-postmessage.js' . '"></script>
                              <script type="text/javascript">Tygh.$.postMessage(
-                                "' . fn_js_escape($response) . '",\'' . Embedded::getUrl() . '\');</script>';
+                                "' . fn_js_escape($response) . '",\'' . $from_url . '\');</script>';
 
             } else {
                 // Return html textarea object
@@ -238,14 +183,6 @@ class Ajax
 
             fn_echo($response);
         }
-    }
-
-    /**
-     * Destructor: cache output and display valid javascript code
-     */
-    public function __destruct()
-    {
-        $this->destruct();
     }
 
     /**
@@ -289,16 +226,12 @@ class Ajax
      */
     public function updateRequest()
     {
-        if ($this->_request_type == self::REQUEST_COMET) {
-            $this->_request_type = self::REQUEST_IFRAME;
+        if ($this->request_type == self::REQUEST_COMET) {
+            $this->request_type = self::REQUEST_IFRAME;
             ob_start();
         }
     }
 
-    /**
-     * Sets progress bar step scale
-     * @param integer $scale scale
-     */
     public function setStepScale($scale)
     {
         $this->_progress_parts--;
@@ -308,10 +241,6 @@ class Ajax
         }
     }
 
-    /**
-     * Sets number of progress bar steps
-     * @param integer $parts number of steps
-     */
     public function setProgressParts($parts)
     {
         $this->_progress_parts = $parts + 1;
@@ -321,11 +250,6 @@ class Ajax
         }
     }
 
-    /**
-     * Updates progress bar
-     * @param string  $text    message text
-     * @param boolean $advance advance progress bar if true
-     */
     public function progressEcho($text = '', $advance = true)
     {
         static $current_position = 0;
@@ -348,39 +272,8 @@ class Ajax
         return fn_echo("<script type=\"text/javascript\">parent.Tygh.$('#comet_container_controller').ceProgress('setValue', " . json_encode(array('text' => $text, 'progress' => $current_position)) . ');</script>');
     }
 
-    /**
-     * Updates progress bar title
-     * @param string $text title text
-     */
     public function changeTitle($text = '')
     {
         return fn_echo("<script type=\"text/javascript\">parent.Tygh.$('#comet_container_controller').ceProgress('setTitle', " . json_encode(array('title' => $text)) . ');</script>');
-    }
-
-    /**
-     * Checks if current request is AJAX
-     * @param  array   $request request vars
-     * @return boolean true if request is AJAX, false - otherwise
-     */
-    public static function validateRequest($request)
-    {
-        if (
-            (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest') ||
-            self::isInternalRequest($request)
-        ) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Checks if AJAX request is internal (made by Tygh core)
-     * @param  array   $request request vars
-     * @return boolean true if request is internal, false - otherwise
-     */
-    public static function isInternalRequest($request)
-    {
-        return (!empty($request['callback']) && !empty($request['result_ids'])) || !empty($request['is_ajax']);
     }
 }

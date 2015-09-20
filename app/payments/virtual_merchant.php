@@ -143,7 +143,7 @@ if (defined('PAYMENT_NOTIFICATION')) {
     $post_data['ssl_avs_address'] = $order_info['b_address'];
     $post_data['ssl_city'] = $order_info['b_city'];
     $post_data['ssl_state'] = $order_info['b_state'] ? $order_info['b_state'] : 'n/a';
-    $post_data['ssl_avs_zip'] = fn_vm_process_zip($order_info['b_zipcode']);
+    $post_data['ssl_avs_zip'] = $order_info['b_zipcode'];
     $post_data['ssl_country'] = $order_info['b_country'];
     $post_data['ssl_phone'] = $order_info['phone'];
     $post_data['ssl_email'] = $order_info['email'];
@@ -154,29 +154,42 @@ if (defined('PAYMENT_NOTIFICATION')) {
     $post_data['ssl_ship_to_city'] = $order_info['s_city'];
     $post_data['ssl_ship_to_state'] = $order_info['s_state'] ? $order_info['s_state'] : 'n/a';
     $post_data['ssl_ship_to_country'] = $order_info['s_country'];
-    $post_data['ssl_ship_to_zip'] = fn_vm_process_zip($order_info['s_zipcode']);
+    $post_data['ssl_ship_to_zip'] = $order_info['s_zipcode'];
     $post_data['ssl_show_form'] = 'FALSE';
 
     if ($processor_data['processor_params']['avs'] == 'Y') {
         $post_data['ssl_avs_address'] = $order_info['b_address'];
-        $post_data['ssl_avs_zip'] = fn_vm_process_zip($order_info['b_zipcode']);
+        $post_data['ssl_avs_zip'] = $order_info['b_zipcode'];
     }
     if ($processor_data['processor_params']['cvv2'] && !empty($order_info['payment_info']['cvv2'])) {
         $post_data['ssl_cvv2cvc2_indicator'] = '1';
         $post_data['ssl_cvv2cvc2'] = $order_info['payment_info']['cvv2'];
     }
 
+    $msg = __('text_cc_processor_connection', array(
+        '[processor]' => 'Virtual Merchant server'
+    ));
+
     $post_url = ($processor_data['processor_params']['mode'] != 'demo')? "https://www.myvirtualmerchant.com/VirtualMerchant/process.do" : "https://demo.myvirtualmerchant.com/VirtualMerchantDemo/process.do";
 
-    fn_create_payment_form($post_url, $post_data, 'Virtual Merchant');
-    exit;
-}
+    echo <<<EOT
+    <form action="$post_url" method="post" name="process">
+EOT;
 
-function fn_vm_process_zip($str)
-{
-    if (!empty($str)) {
-        $str = preg_replace('/[^0-9]/', '', $str);
+    foreach ($post_data as $k => $v) {
+        echo "<input type=\"hidden\" name=\"" . htmlspecialchars($k) . "\" value=\"" . htmlspecialchars($v) . "\">";
     }
 
-    return $str;
+    echo <<<EOT
+    </form>
+    <div align="center">{$msg}</div>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+    </body>
+    </html>
+EOT;
+    exit;
 }

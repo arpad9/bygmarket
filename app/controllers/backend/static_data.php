@@ -61,20 +61,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    if ($mode == 'delete') {
-        fn_delete_static_data($_REQUEST['param_id']);
-
-        return array(CONTROLLER_STATUS_OK, 'static_data.manage?section=' . $_REQUEST['section'] . '&menu_id=' . $_REQUEST['menu_id']);
-    }    
-
     return array(CONTROLLER_STATUS_OK, $redirect_url);
 }
 
-if ($mode == 'update') {
+//
+// Delete
+//
+if ($mode == 'delete') {
+
+    fn_delete_static_data($_REQUEST['param_id']);
+
+    $static_data = db_get_field("SELECT COUNT(*) FROM ?:static_data WHERE ?:static_data.section = ?s", $_REQUEST['section']);
+    if (empty($static_data)) {
+        Registry::get('view')->display('views/static_data/manage.tpl');
+    }
+    exit;
+
+} elseif ($mode == 'update') {
 
     $schema = fn_get_schema('static_data', 'schema');
     $section_data = $schema[$section];
-    Tygh::$app['view']->assign('section_data', $section_data);
+    Registry::get('view')->assign('section_data', $section_data);
 
     $static_data = db_get_row("SELECT sd.*, ?:static_data_descriptions.descr FROM ?:static_data AS sd LEFT JOIN ?:static_data_descriptions ON sd.param_id = ?:static_data_descriptions.param_id AND ?:static_data_descriptions.lang_code = ?s WHERE sd.section = ?s AND sd.param_id = ?i", DESCR_SL, $_REQUEST['section'], $_REQUEST['param_id']);
 
@@ -90,7 +97,7 @@ if ($mode == 'update') {
             'multi_level' => true,
             'plain' => true,
         );
-        Tygh::$app['view']->assign('parent_items', fn_get_static_data($params));
+        Registry::get('view')->assign('parent_items', fn_get_static_data($params));
     }
 
     if (!empty($section_data['owner_object']['check_owner_function']) && function_exists($section_data['owner_object']['check_owner_function'])) {
@@ -99,15 +106,15 @@ if ($mode == 'update') {
         }
     }
 
-    Tygh::$app['view']->assign('static_data', $static_data);
+    Registry::get('view')->assign('static_data', $static_data);
 
-    Tygh::$app['view']->assign('section', $section);
+    Registry::get('view')->assign('section', $section);
 
 } elseif ($mode == 'manage') {
 
     $schema = fn_get_schema('static_data', 'schema');
     $section_data = $schema[$section];
-    Tygh::$app['view']->assign('section_data', $section_data);
+    Registry::get('view')->assign('section_data', $section_data);
 
     $params = array(
         'section' => $_REQUEST['section'],
@@ -126,11 +133,11 @@ if ($mode == 'update') {
             'multi_level' => true,
             'plain' => true,
         );
-        Tygh::$app['view']->assign('parent_items', fn_get_static_data($params));
+        Registry::get('view')->assign('parent_items', fn_get_static_data($params));
     }
 
     if (!empty($section_data['owner_object']['name_function']) && function_exists($section_data['owner_object']['name_function'])) {
-        Tygh::$app['view']->assign('owner_object_name', $section_data['owner_object']['name_function']($_REQUEST[$section_data['owner_object']['key']]));
+        Registry::get('view')->assign('owner_object_name', $section_data['owner_object']['name_function']($_REQUEST[$section_data['owner_object']['key']]));
     }
 
     if (!empty($section_data['owner_object']['check_owner_function']) && function_exists($section_data['owner_object']['check_owner_function'])) {
@@ -139,8 +146,8 @@ if ($mode == 'update') {
         }
     }
 
-    Tygh::$app['view']->assign('static_data', $static_data);
-    Tygh::$app['view']->assign('section', $section);
+    Registry::get('view')->assign('static_data', $static_data);
+    Registry::get('view')->assign('section', $section);
 }
 
 function fn_update_static_data($data, $param_id, $section, $lang_code = DESCR_SL)

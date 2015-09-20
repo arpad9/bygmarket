@@ -18,10 +18,10 @@
     <td width="5%" class="row-status nowrap">{$item.timestamp|date_format:"`$settings.Appearance.date_format`, `$settings.Appearance.time_format`"}</td>
     <td width="5%" class="center nowrap">
         {capture name="tools_list"}
-            <li>{btn type="list" class="cm-confirm cm-post" text=__("delete") href="access_restrictions.delete?item_id=`$item.item_id`&selected_section=`$selected_section`"}</li>
+            <li>{btn type="list" class="cm-confirm" text=__("delete") href="access_restrictions.delete?item_id=`$item.item_id`&selected_section=`$selected_section`"}</li>
         {/capture}
         <div class="hidden-tools">
-            {dropdown content=$smarty.capture.tools_list}
+            {dropdown content=$smarty.capture.tools_list class="dropleft"}
         </div>
     </td>
     <td width="15%" class="right nowrap">

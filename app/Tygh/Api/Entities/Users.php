@@ -16,7 +16,6 @@ namespace Tygh\Api\Entities;
 
 use Tygh\Api\AEntity;
 use Tygh\Api\Response;
-use Tygh\Registry;
 
 class Users extends AEntity
 {
@@ -37,18 +36,12 @@ class Users extends AEntity
             $params['user_id'] = $params['user_ids'];
         }
 
-        $auth = $this->auth;
-        $items_per_page = $this->safeGet($params, 'items_per_page', Registry::get('settings.Appearance.admin_elements_per_page'));
+        $auth = $this->_auth;
 
-        list($data, $params) = fn_get_users($params, $auth, $items_per_page);
+        list($data, ) = fn_get_users($params, $auth);
 
-        if ($id) {
+        if (!empty($id)) {
             $data = reset($data);
-        } else {
-            $data = array(
-                'users' => $data,
-                'params' => $params,
-            );
         }
 
         if (!empty($data) || empty($id)) {
@@ -65,45 +58,21 @@ class Users extends AEntity
 
     public function create($params)
     {
-        $status = Response::STATUS_BAD_REQUEST;
-        $data = array();
-        $valid_params = true;
-
-        $auth = $this->auth;
+        $auth = $this->_auth;
         unset($params['user_id']);
-        $user_id = 0;
+        $user_id = "";
 
-        if (empty($params['email'])) {
-            $data['message'] = __('api_required_field', array(
-                '[field]' => 'email'
-            ));
-            $valid_params = false;
-        }
+        list($user_id, $profile_id) = fn_update_user($user_id, $params, $auth, false, false);
 
-        if (empty($params['user_type'])) {
-            $data['message'] = __('api_required_field', array(
-                '[field]' => 'user_type'
-            ));
-            $valid_params = false;
-        }
-
-        if (!isset($params['company_id'])) {
-            $data['message'] = __('api_required_field', array(
-                '[field]' => 'company_id'
-            ));
-            $valid_params = false;
-        }
-
-        if ($valid_params) {
-            list($user_id, $profile_id) = fn_update_user($user_id, $params, $auth, false, false);
-
-            if ($user_id) {
-                $status = Response::STATUS_CREATED;
-                $data = array(
-                    'user_id' => $user_id,
-                    'profile_id' => $profile_id
-                );
-            }
+        if ($user_id) {
+            $status = Response::STATUS_CREATED;
+            $data = array(
+                'user_id' => $user_id,
+                'profile_id' => $profile_id
+            );
+        } else {
+            $data = array();
+            $status = Response::STATUS_BAD_REQUEST;
         }
 
         return array(
@@ -114,7 +83,7 @@ class Users extends AEntity
 
     public function update($id, $params)
     {
-        $auth = $this->auth;
+        $auth = $this->_auth;
 
         $data = array();
         $status = Response::STATUS_BAD_REQUEST;
@@ -142,9 +111,8 @@ class Users extends AEntity
         $status = Response::STATUS_BAD_REQUEST;
 
         if (fn_delete_user($id)) {
-            $status = Response::STATUS_NO_CONTENT;
-        } elseif (!fn_notification_exists('extra', 'user_delete_no_permissions')) {
-            $status = Response::STATUS_NOT_FOUND;
+            $status = Response::STATUS_OK;
+            $data['message'] = 'Ok';
         }
 
         return array(
@@ -153,20 +121,13 @@ class Users extends AEntity
         );
     }
 
-    public function privileges()
+    public function priveleges()
     {
         return array(
             'create' => 'manage_users',
             'update' => 'manage_users',
             'delete' => 'manage_users',
             'index'  => 'view_users'
-        );
-    }
-
-    public function childEntities()
-    {
-        return array(
-            'usergroups',
         );
     }
 }

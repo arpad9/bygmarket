@@ -4,20 +4,20 @@
 
 {capture name="set"}
 {if $group.set == "any"}
-{assign var="selected_name" value=__("promotions.cond_any")}
+{assign var="selected_name" value=__("any")}
 {else}
-{assign var="selected_name" value=__("promotions.cond_all")}
+{assign var="selected_name" value=__("all")}
 {/if}
-{include file="common/select_object.tpl" style="field" items=["all" => __("promotions.cond_all"), "any" => __("promotions.cond_any")] select_container_name="`$prefix`[set]" selected_key=$group.set selected_name=$selected_name}
+{include file="common/select_object.tpl" style="field" items=["all" => __("all"), "any" => __("any")] select_container_name="`$prefix`[set]" selected_key=$group.set selected_name=$selected_name}
 {/capture}
 
 {capture name="set_value"}
 {if !$group || $group.set_value}
-{assign var="selected_name" value=__("promotions.cond_true")}
+{assign var="selected_name" value=__("true")}
 {else}
-{assign var="selected_name" value=__("promotions.cond_false")}
+{assign var="selected_name" value=__("false")}
 {/if}
-{include file="common/select_object.tpl" style="field" items=["0" => __("promotions.cond_false"), "1" => __("promotions.cond_true")] select_container_name="`$prefix`[set_value]" selected_key=$group.set_value|default:1 selected_name=$selected_name}
+{include file="common/select_object.tpl" style="field" items=["0" => __("false"), "1" => __("true")] select_container_name="`$prefix`[set_value]" selected_key=$group.set_value|default:1 selected_name=$selected_name}
 {/capture}
 
 <ul class="promotion-group cm-row-item">
@@ -33,12 +33,13 @@
                 {include file="common/tools.tpl" hide_tools=true tool_onclick="fn_promotion_add_group(Tygh.$(this).parents('div[id^=add_condition_]').prop('id'), '`$zone`');" prefix="simple" link_text=__("add_group")}
             {/if}
         </div>
+        <strong>{__("group")}</strong>
         {__("text_promotions_group_condition", ["[set]" => $smarty.capture.set, "[set_value]" => $smarty.capture.set_value])}
     </li>
 
     <li class="no-node no-items {if $group.conditions}hidden{/if}">
         <p class="no-items">{__("no_items")}</p>
-    </li>
+    </li>    
 
     {foreach from=$group.conditions key="k" item="condition_data" name="conditions"}
     <li id="container_condition_{$prefix_md5}_{$k}" class="cm-row-item{if $smarty.foreach.conditions.last} cm-last-item{/if}">
@@ -52,7 +53,7 @@
 
     <li id="container_add_condition_{$prefix_md5}" class="hidden cm-row-item">
         <div class="option">
-        <select onchange="Tygh.$.ceAjax('request', '{"promotions.dynamic?zone=`$zone`&promotion_id=`$smarty.request.promotion_id`"|fn_url nofilter}&prefix=' + encodeURIComponent(this.name) + '&condition=' + this.value + '&elm_id=' + this.id, {$ldelim}result_ids: 'container_' + this.id{$rdelim})">
+        <select onchange="Tygh.$.ceAjax('request', '{"promotions.dynamic?zone=`$zone`&promotion_id=`$smarty.request.promotion_id`"|fn_url:'A':'rel' nofilter}&prefix=' + escape(this.name) + '&condition=' + this.value + '&elm_id=' + this.id, {$ldelim}result_ids: 'container_' + this.id{$rdelim})">
             <option value=""> -- </option>
             {foreach from=$schema.conditions key="_k" item="c"}
                 {if $zone|in_array:$c.zones}

@@ -46,7 +46,7 @@
         <table width="100%" class="table table-middle">
         <thead>
         <tr>
-            <th width="100%">{__("person_name")}</th>
+            <th width="100%">{__("name")}</th>
             <th>&nbsp;</th>
         </tr>
         </thead>

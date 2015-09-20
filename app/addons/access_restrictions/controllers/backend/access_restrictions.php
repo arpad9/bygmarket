@@ -53,15 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    if ($mode == 'delete') {
-        if (!empty($_REQUEST['item_id'])) {
-            db_query("DELETE FROM ?:access_restriction WHERE item_id = ?i", $_REQUEST['item_id']);
-        }
-
-        return array(CONTROLLER_STATUS_REDIRECT, 'access_restrictions.manage?selected_section=' . $_REQUEST['selected_section']);
-    }
-
-    return array(CONTROLLER_STATUS_OK, 'access_restrictions.manage');
+    return array(CONTROLLER_STATUS_OK, "access_restrictions.manage");
 }
 
 // ---------------------- GET routines ---------------------------------------
@@ -95,11 +87,18 @@ if ($mode == 'manage') {
     $ip = fn_get_ip(true);
     list($rules, $search) = fn_access_restrictions_get_rules($_REQUEST, Registry::get('settings.Appearance.admin_elements_per_page'));
 
-    Tygh::$app['view']->assign('show_mp', db_get_field("SELECT item_id FROM ?:access_restriction WHERE type = ?s", (($search['selected_section'] == 'ip') ? 'ipb' : 'aab')));
-    Tygh::$app['view']->assign('rules', $rules);
-    Tygh::$app['view']->assign('search', $search);
-    Tygh::$app['view']->assign('selected_section', $search['selected_section']);
-    Tygh::$app['view']->assign('host_ip', $ip['host']);
+    Registry::get('view')->assign('show_mp', db_get_field("SELECT item_id FROM ?:access_restriction WHERE type = ?s", (($search['selected_section'] == 'ip') ? 'ipb' : 'aab')));
+    Registry::get('view')->assign('rules', $rules);
+    Registry::get('view')->assign('search', $search);
+    Registry::get('view')->assign('selected_section', $search['selected_section']);
+    Registry::get('view')->assign('host_ip', $ip['host']);
+
+} elseif ($mode == 'delete') {
+    if (!empty($_REQUEST['item_id'])) {
+        db_query("DELETE FROM ?:access_restriction WHERE item_id = ?i", $_REQUEST['item_id']);
+    }
+
+    return array(CONTROLLER_STATUS_REDIRECT, "access_restrictions.manage?selected_section=$_REQUEST[selected_section]");
 }
 
 function fn_update_access_restriction_rule($rule_data, $rule_id = 0, $lang_code = DESCR_SL)
@@ -150,7 +149,7 @@ function fn_update_access_restriction_rule($rule_data, $rule_id = 0, $lang_code 
     // Add emails
     } elseif ($rule_data['section'] == 'email') {
         if (strstr($rule_data['value'], '@') && strpos($rule_data['value'], '*@') !== 0) {
-            if (fn_validate_email($rule_data['value'], true) && fn_validate_domain_name(substr($rule_data['value'], strpos($rule_data['value'], '@')), true)) {
+            if (fn_validate_email_name($rule_data['value'], true) && fn_validate_domain_name(substr($rule_data['value'], strpos($rule_data['value'], '@')), true)) {
                 $rule_data['type'] = 'es'; // specific E-Mail
                 $rule_data['timestamp'] = TIME;
                 $rule_id = $rule_data['item_id'] = db_query("INSERT INTO ?:access_restriction ?e", $rule_data);
@@ -230,7 +229,7 @@ function fn_access_restrictions_get_rules($params, $items_per_page, $lang_code =
     $limit = '';
     if (!empty($params['items_per_page'])) {
         $params['total_items'] = db_get_field("SELECT COUNT(a.item_id) FROM ?:access_restriction as a WHERE a.type IN (?a)", $types[$params['selected_section']]);
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+        $limit = db_paginate($params['page'], $params['items_per_page']);
     }
 
     $rules = db_get_array("SELECT a.*, b.reason FROM ?:access_restriction as a LEFT JOIN ?:access_restriction_reason_descriptions as b ON a.item_id = b.item_id AND b.type = a.type AND lang_code = ?s WHERE a.type IN (?a) $sorting $limit", $lang_code, $types[$params['selected_section']]);

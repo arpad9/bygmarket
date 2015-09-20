@@ -26,8 +26,8 @@ if ($mode == 'view') {
     exit;
 
 } elseif ($mode == 'add_to_cart') {
-    if (empty($auth['user_id']) && Registry::get('settings.General.allow_anonymous_shopping') != 'allow_shopping') {
-        return array(CONTROLLER_STATUS_REDIRECT, 'auth.login_form?return_url=' . urlencode($_SERVER['HTTP_REFERER']));
+    if (empty($auth['user_id']) && Registry::get('settings.General.allow_anonymous_shopping') != 'Y') {
+        return array(CONTROLLER_STATUS_REDIRECT, "auth.login_form?return_url=" . urlencode($_SERVER['HTTP_REFERER']));
     }
 
     $cart = & $_SESSION['cart'];
@@ -70,7 +70,7 @@ function fn_rssf_get_items($params, $lang_code = CART_LANGUAGE)
             $additional_data['description'] = !empty($block_data['properties']['feed_description']) ? $block_data['properties']['feed_description'] : $additional_data['title'];
             $additional_data['link'] = fn_url('', 'C', 'http', $lang_code);
             $additional_data['language'] = $lang_code;
-            $additional_data['lastBuildDate'] = !empty($products[0]['updated_timestamp']) ? $products[0]['updated_timestamp'] : TIME;
+            $additional_data['lastBuildDate'] = !empty($products[0]['updated_timestamp']) ? $products[0]['updated_timestamp'] : 0;
 
             $items_data = fn_format_products_items($products, $block_data['properties']['filling']['products'], $lang_code);
         }

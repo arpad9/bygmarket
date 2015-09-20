@@ -23,7 +23,7 @@ class Shippings extends AEntity
 
     public function index($id = 0, $params = array())
     {
-        $lang_code = $this->safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
+        $lang_code = $this->_safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
 
         if (!empty($id)) {
             $data = fn_get_shipping_info($id, $lang_code);
@@ -35,23 +35,7 @@ class Shippings extends AEntity
             }
 
         } else {
-            $items_per_page = $this->safeGet($params, 'items_per_page', Registry::get('settings.Appearance.admin_elements_per_page'));
-            $page = $this->safeGet($params, 'page', 1);
-
             $data = fn_get_shippings(false, $lang_code);
-
-            if ($items_per_page) {
-                $data = array_slice($data, ($page - 1) * $items_per_page, $items_per_page);
-            }
-
-            $data = array(
-                'shippings' => $data,
-                'params' => array(
-                    'items_per_page' => $items_per_page,
-                    'page' => $page,
-                    'total_items' => count($data),
-                ),
-            );
             $status = Response::STATUS_OK;
         }
 
@@ -66,11 +50,9 @@ class Shippings extends AEntity
         $status = Response::STATUS_BAD_REQUEST;
         $data = array();
 
-        $this->correctCompanyID($params);
+        $params['company_id'] = Registry::get('runtime.company_id');
 
-        unset($params['shipping_id']);
-
-        if (!empty($params['shipping'])) {
+        if (!empty($params['shipping']) && $params['company_id'] != 0) {
 
             $shipping_id = fn_update_shipping($params, 0);
 
@@ -80,10 +62,6 @@ class Shippings extends AEntity
                     'shipping_id' => $shipping_id,
                 );
             }
-        } else {
-            $data['message'] = __('api_required_field', array(
-                '[field]' => 'shipping'
-            ));
         }
 
         return array(
@@ -97,20 +75,14 @@ class Shippings extends AEntity
         $status = Response::STATUS_BAD_REQUEST;
         $data = array();
 
-        $lang_code = $this->safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
+        $lang_code = $this->_safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
+        $shipping_id = fn_update_shipping($params, $id, $lang_code);
 
-        $this->correctCompanyID($params);
-        unset($params['shipping_id']);
-
-        if (fn_check_company_id('shippings', 'shipping_id', $id)) {
-            $shipping_id = fn_update_shipping($params, $id, $lang_code);
-
-            if ($shipping_id) {
-                $status = Response::STATUS_OK;
-                $data = array(
-                    'shipping_id' => $shipping_id
-                );
-            }
+        if ($shipping_id) {
+            $status = Response::STATUS_OK;
+            $data = array(
+                'shipping_id' => $shipping_id
+            );
         }
 
         return array(
@@ -122,12 +94,11 @@ class Shippings extends AEntity
     public function delete($id)
     {
         $data = array();
-        $status = Response::STATUS_NOT_FOUND;
+        $status = Response::STATUS_BAD_REQUEST;
 
-        if (fn_check_company_id('shippings', 'shipping_id', $id)) {
-            if (fn_delete_shipping($id)) {
-                $status = Response::STATUS_NO_CONTENT;
-            }
+        if (fn_delete_shipping($id)) {
+            $status = Response::STATUS_OK;
+            $data['message'] = 'Ok';
         }
 
         return array(
@@ -136,7 +107,7 @@ class Shippings extends AEntity
         );
     }
 
-    public function privileges()
+    public function priveleges()
     {
         return array(
             'create' => 'manage_shipping',
@@ -146,20 +117,4 @@ class Shippings extends AEntity
         );
     }
 
-    public function correctCompanyID(&$params)
-    {
-        if (fn_allowed_for('ULTIMATE')) {
-            if (empty($params['company_id'])) {
-                $params['company_id'] = fn_get_default_company_id();
-            }
-        } elseif (fn_allowed_for('MULTIVENDOR')) {
-            $runtime_company_id = Registry::get('runtime.company_id');
-
-            // Root admin can set any company ID to the object
-            // Vendor admin can't handle company ID
-            if ($runtime_company_id != 0 || !isset($params['company_id'])) {
-                $params['company_id'] = $runtime_company_id;
-            }
-        }
-    }
 }

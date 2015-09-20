@@ -17,29 +17,22 @@ namespace Tygh\BlockManager;
 use Tygh\CompanySingleton;
 use Tygh\ExSimpleXmlElement;
 use Tygh\Registry;
-use Tygh\BlockManager\Layout;
 
 class Exim extends CompanySingleton
 {
     private $_layout_id = 0;
-
-    /**
-     * Default settings for XML layout
-     */
-    protected $settings = array();
-
     /**
      * Imports blocks from file
      * @param  string $xml_filepath Path to file
      * @param  array  $params
      * @return bool   True on success false otherwise
      */
-    public function importFromFile($xml_filepath, $params = array('override_by_dispatch' => 'Y'))
+    public function importFromFile($xml_filepath, $params = array('override_by_dispatch' => true))
     {
         $result = false;
 
-        $structure = $this->getStructure($xml_filepath);
-        if (!empty($structure)) {
+        if (file_exists($xml_filepath)) {
+            $structure = @simplexml_load_file($xml_filepath, '\\Tygh\\ExSimpleXmlElement', LIBXML_NOCDATA);
             $result = $this->import($structure, $params);
         }
 
@@ -66,57 +59,13 @@ class Exim extends CompanySingleton
             return false;
         }
 
-        $import_style = empty($params['import_style']) ? 'update' : $params['import_style'];
-        $layout_data = empty($structure->layout) ? array() : (array) $structure->layout;
-        unset($layout_data['layout_id'], $layout_data['company_id']);
-
-        // FIXME: Backward compability
-        if (empty($layout_data) && $import_style == 'create') {
-            $layout_data = array(
-                'name' => 'Main',
-                'is_default' => 1,
-                'width' => 16,
-                'layout_width' => 'fixed',
-                'min_width' => 760,
-                'max_width' => 960,
-                'style_id' => ''
-            );
-        }
-
-        if ($import_style == 'create' && empty($layout_data)) {
-            fn_set_notification('E', __('error'), __('text_unable_to_create_layout_empty_data'));
-
-            return false;
-        }
-
-        if (!empty($layout_data['@attributes']['edition'])) {
-            $allowed_editions = explode(',', $layout_data['@attributes']['edition']);
-
-            if (!in_array(PRODUCT_EDITION, $allowed_editions)) {
-                return false;
-            }
-        }
-
-        if ($import_style == 'create') {
-            $layout_data['theme_name'] = $this->_theme_name;
-            $layout_id = Layout::instance($this->_company_id)->update($layout_data);
-            $this->_layout_id = $layout_id;
-
-        } elseif (!empty($layout_data)) {
-            $layout_data['theme_name'] = $this->_theme_name;
-            $layout_id = Layout::instance($this->_company_id)->update($layout_data, $this->_layout_id);
-
-        } else {
-            $layout_id = $this->_layout_id;
-        }
-
         if (!isset($params['override_by_dispatch'])) {
-            $params['override_by_dispatch'] = 'Y';
+            $params['override_by_dispatch'] = true;
         }
 
-        $this->settings = (array) $structure->settings;
+        $settings = (array) $structure->settings;
 
-        if (!empty($params['clean_up']) && $params['clean_up'] == 'Y') {
+        if (!empty($params['clean_up'])) {
             $location_ids = Location::instance($this->_layout_id)->getList(array(), DESCR_SL);
             $location_ids = array_keys($location_ids);
 
@@ -135,7 +84,7 @@ class Exim extends CompanySingleton
             // Check if location already exists
             $_existing = array();
             $location_existing = false;
-            if ($params['override_by_dispatch'] == 'Y') {
+            if (!empty($params['override_by_dispatch'])) {
                 $_existing = Location::instance($this->_layout_id)->get($location_attrs['dispatch']);
                 if (!empty($_existing)) {
                     $location_existing = ($_existing['dispatch'] == $location_attrs['dispatch']) ? true : false;
@@ -195,7 +144,7 @@ class Exim extends CompanySingleton
             }
         }
 
-        return $layout_id;
+        return true;
     }
 
     /**
@@ -206,7 +155,7 @@ class Exim extends CompanySingleton
      * @param  string             $lang_code
      * @return ExSimpleXmlElement
      */
-    public function export($layout_id, $location_ids = array(), $params = array(), $lang_code = DESCR_SL)
+    public function export($location_ids = array(), $params = array(), $lang_code = DESCR_SL)
     {
         /* Exclude unnecessary fields*/
         $except_location_fields = array(
@@ -230,19 +179,9 @@ class Exim extends CompanySingleton
             'order',
             'children'
         );
-        $except_layout_fields = array(
-            'layout_id',
-            'theme_name',
-            'company_id'
-        );
-
         $except_location_fields = array_flip($except_location_fields);
         $except_container_fields = array_flip($except_container_fields);
         $except_grid_fields = array_flip($except_grid_fields);
-        $except_layout_fields = array_flip($except_layout_fields);
-
-        $layout_data = Layout::instance($this->_company_id)->get($layout_id);
-        $layout_data = array_diff_key($layout_data, $except_layout_fields);
 
         $xml_root = new ExSimpleXmlElement('<block_scheme></block_scheme>');
         $xml_root->addAttribute('scheme', '1.0');
@@ -250,18 +189,13 @@ class Exim extends CompanySingleton
         $settings = $xml_root->addChild('settings');
         $settings->addChild('default_language', $lang_code);
 
-        $layout_xml = $xml_root->addChild('layout');
-        foreach ($layout_data as $field_name => $field_value) {
-            $layout_xml->addChild($field_name, $field_value);
-        }
-
         if (empty($location_ids)) {
-            $location_ids = Location::instance($layout_id)->getList(array(), $lang_code);
+            $location_ids = Location::instance($this->_layout_id)->getList(array(), $lang_code);
             $location_ids = array_keys($location_ids);
         }
 
         foreach ($location_ids as $location_id) {
-            $location = Location::instance($layout_id)->getById($location_id, $lang_code);
+            $location = Location::instance($this->_layout_id)->getById($location_id);
             $containers = Container::getList(array(
                 'location_id' => $location_id
             ));
@@ -276,7 +210,8 @@ class Exim extends CompanySingleton
 
             $xml_translations = $xml_location->addChild('translations');
 
-            $translations = Location::instance($layout_id)->getAllDescriptions($location_id);
+            $translations = Location::instance($this->_layout_id)->getAllDescriptions($location_id);
+
             foreach ($translations as $translation) {
                 if ($translation['lang_code'] == $lang_code) {
                     // We do not needed default language
@@ -314,40 +249,7 @@ class Exim extends CompanySingleton
             }
         }
 
-        return $this->formatXml($xml_root);
-    }
-
-    /**
-     * Formats output XML
-     * @param  object $xml simplexml object
-     * @return string formatted XML
-     */
-    protected function formatXml($xml)
-    {
-        // prettify xml output if DOM extension is exist
-        if (function_exists('dom_import_simplexml')) {
-            $dom = dom_import_simplexml($xml)->ownerDocument;
-            $dom->formatOutput = true;
-            $output = $dom->saveXML();
-        } else {
-            $output = $xml->asXML();
-        }
-
-        // Convert &#nnn entities to utf8 symbols
-        return preg_replace_callback("/&#(\\d+);/u", function($matches) {
-            $char = intval(is_array($matches) ? $matches[1] : $matches);
-            if ($char < 0x80) {
-                if ($char >= 0x20) {
-                    return htmlspecialchars(chr($char));
-                } else {
-                    return "&#$char;";
-                }
-            } elseif ($char < 0x8000) {
-                return chr(0xc0 | (0x1f & ($char >> 6))) . chr(0x80 | (0x3f & $char));
-            } else {
-                return chr(0xe0 | (0x0f & ($char >> 12))) . chr(0x80 | (0x3f & ($char >> 6))). chr(0x80 | (0x3f & $char));
-            }
-        }, $output);
+        return $xml_root->asXML();
     }
 
     public function getUniqueBlockKey($type, $properties, $name)
@@ -363,51 +265,6 @@ class Exim extends CompanySingleton
         }
 
         return md5(serialize($key));
-    }
-
-    /**
-     * Get layout data
-     *
-     * @param  array  $xml_filepath
-     * @param  bolean $skip_edition_check
-     * @return array
-     */
-    public function getLayoutData($xml_filepath, $skip_edition_check = true)
-    {
-        $structure = $this->getStructure($xml_filepath);
-        $layout_data = empty($structure->layout) ? array() : (array) $structure->layout;
-
-        if (empty($skip_edition_check)) {
-            if (!empty($layout_data['@attributes']['edition'])) {
-                $allowed_editions = explode(',', $layout_data['@attributes']['edition']);
-
-                if (!in_array(PRODUCT_EDITION, $allowed_editions)) {
-                    $layout_data = array();
-                }
-            }
-        }
-
-        unset($layout_data['@attributes']);
-
-        return $layout_data;
-    }
-
-    /**
-     * Get layout file structure as simpleXML object
-     *
-     * @param array $xml_filepath
-
-     * @return ExSimpleXmlElement|null
-     */
-    public function getStructure($xml_filepath)
-    {
-        $structure = null;
-
-        if (file_exists($xml_filepath)) {
-            $structure = @simplexml_load_file($xml_filepath, '\\Tygh\\ExSimpleXmlElement', LIBXML_NOCDATA);
-        }
-
-        return $structure;
     }
 
     /**
@@ -492,30 +349,19 @@ class Exim extends CompanySingleton
                 $block_data['company_id'] = $this->_company_id;
             }
 
-            // FIXME
-            $default_name = $block_data['name'];
-            if (!empty($block->translations)) {
-                foreach ($block->translations->translation as $translation) {
-                    if ((string) $translation['lang_code'] == CART_LANGUAGE) {
-                        $block_data['name'] = (string) $translation;
-                    }
-                }
-            }
-
             $key = $this->getUniqueBlockKey($block_data['type'], $block_data['properties'], $block_data['name']);
 
             if (isset($unique_blocks[$key])) {
-                $block_id = $block_data['block_id'] = $unique_blocks[$key];
-                $block_data['apply_to_all_langs'] = 'Y';
-            }
-
-            if (isset($block_data['content'])) {
-                $block_data['content_data']['content'] = $block_data['content'];
+                $block_id = $unique_blocks[$key];
             } else {
-                $block_data['content_data']['content'] = array('empty');
-            }
+                if (isset($block_data['content'])) {
+                    $block_data['content_data']['content'] = $block_data['content'];
+                } else {
+                    $block_data['content_data']['content'] = array('empty');
+                }
 
-            $block_id = Block::instance($this->_company_id)->update($block_data, $block_data);
+                $block_id = Block::instance($this->_company_id)->update($block_data, $block_data);
+            }
 
             $snapping_data = array(
                 'block_id' => $block_id,
@@ -531,24 +377,17 @@ class Exim extends CompanySingleton
             $this->_importContent($block_id, $snapping_id, $block);
 
             if (!empty($block->translations)) {
-                $_block_translation = array();
-                if (!empty($this->settings['default_language'])) {
-                    $_block_translation[$this->settings['default_language']] = $default_name;
-                }
 
                 foreach ($block->translations->translation as $translation) {
                     $lang_code = (string) $translation['lang_code'];
-                    $_block_translation[$lang_code] = (string) $translation;
-                }
 
-                foreach ($_block_translation as $lang_code => $translation) {
                     if (isset($langs[$lang_code])) {
                         Block::instance($this->_company_id)->update(
                             array (
                                 'block_id' => $block_id
                             ),
                             array (
-                                'name' => $translation,
+                                'name' => (string) $translation,
                                 'lang_code' => $lang_code
                             )
                         );
@@ -676,7 +515,7 @@ class Exim extends CompanySingleton
 
                 foreach ($blocks as $block_id => $block) {
                     $block_descr = Block::instance($this->_company_id)->getFullDescription($block['block_id']);
-                    $block = array_merge(Block::instance($this->_company_id)->getById($block['block_id'], 0, array(), $lang_code), $block);
+                    $block = array_merge(Block::instance($this->_company_id)->getById($block['block_id']), $block);
                     $block = array_diff_key($block, $except_block_fields);
 
                     $xml_block = $xml_blocks->addChild('block');
@@ -689,7 +528,7 @@ class Exim extends CompanySingleton
                             continue;
                         }
 
-                        $xml_translation = $xml_translations->addChildCData('translation', $data['name']);
+                        $xml_translation = $xml_translations->addChild('translation', $data['name']);
                         $xml_translation->addAttribute('lang_code', $_lang_code);
                         unset($xml_translation);
                     }
@@ -717,20 +556,15 @@ class Exim extends CompanySingleton
      * @param  string $class_name ClassName
      * @return Exim
      */
-    public static function instance($company_id = 0, $layout_id = 0, $theme_name = '')
+    public static function instance($company_id = 0, $layout_id = 0)
     {
         $instance = parent::instance($company_id);
 
         if (empty($layout_id)) {
-            $layout_id = Registry::get('runtime.layout.layout_id');
-        }
-
-        if (empty($theme_name)) {
-            $theme_name = Registry::get('runtime.layout.theme_name');
+            $layout_id = Registry::get('runtime.layout_id');
         }
 
         $instance->_layout_id = $layout_id;
-        $instance->_theme_name = $theme_name;
 
         return $instance;
     }

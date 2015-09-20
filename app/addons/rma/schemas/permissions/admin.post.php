@@ -15,6 +15,6 @@
 $schema['rma'] = array (
     'permissions' => 'manage_rma',
 );
-$schema['tools']['modes']['update_status']['param_permissions']['table']['rma_properties'] = 'manage_rma';
+$schema['tools']['modes']['update_status']['param_permissions']['table_names']['rma_properties'] = 'manage_rma';
 
 return $schema;

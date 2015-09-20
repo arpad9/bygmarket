@@ -38,7 +38,7 @@
                     return false;
 
                 } else if (jelm.hasClass('cm-lang-link') && jelm.parents('.cm-select-list').length) {
-                    methods.change_language(jelm.data('caName'));
+                    methods.change_language(jelm.prop('name'));
                     $.ceAjax('request', jelm.prop('href'), {data: {id: $('#qm_item_id').val()}, caching: false, callback: methods.change_quick_box});
 
                     jelm.parents('.cm-popup-box:first').hide();
@@ -113,7 +113,7 @@
 
     $.ceEvent('on', 'ce.formpost_quick_menu_form', function() {
         $('#quick_box').ceDialog('close');
-        $.ceEvent('trigger', 'ce.quick_menu_content_switch_callback');
+        $ceEvent('trigger', 'ce.quick_menu_content_switch_callback');
     });
 
     $.ceEvent('on', 'ce.quick_menu_content_switch_callback', function() {
@@ -139,5 +139,36 @@
 })(Tygh, Tygh.$);
 
 
+function fn_quick_menu_mouse_action(obj, over)
+{
+    var $ = Tygh.$;
 
+    if (over && !$('#quick_menu_content').is(':visible')) {
+        $(obj).click();
+    }
 
+    if (!over && $('#quick_menu_content').is(':visible')) {
+        if ($('#quick_menu_content').data('over_defined') != true) {
+            $('#quick_menu_content').add($('#quick_menu_content').contents()).mouseover(function() {
+                $('#quick_menu_content').data('over', true);
+            });
+            $('#quick_menu_content').mouseout(function() {
+                $('#quick_menu_content').data('over', false);
+                clearTimeout(this.quick_menu_timer);
+                this.quick_menu_timer = setTimeout(function() {
+                    if ($('#quick_menu_content').data('over') != true) {
+                        $(obj).click();
+                    }
+                }, 100);
+            });
+            $('#quick_menu_content').data('over_defined', true);
+        }
+        if ($('#quick_menu_content').data('over') != true) {
+            setTimeout(function() {
+                if ($('#quick_menu_content').data('over') != true) {
+                    $(obj).click();
+                }
+            }, 100);
+        }
+    }
+}

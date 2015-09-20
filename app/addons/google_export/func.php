@@ -12,7 +12,7 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-use Tygh\Enum\ProductFeatures;
+use Tygh\Registry;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -27,16 +27,16 @@ function fn_google_export_add_features()
             "INSERT INTO ?:product_features"
             . " (feature_type, categories_path, parent_id, display_on_product, display_on_catalog, status, position, comparison, company_id)"
             . " VALUES"
-            . " (?s, '', 0, 0, 0, 'A', 0, 'N', " . $company_id . ")"
-        , ProductFeatures::GROUP);
+            . " ('G', '', 0, 0, 0, 'A', 0, 'N', " . $company_id . ")"
+        );
         fn_share_object_to_all('product_features', $parent_feature_id);
     } else {
         $parent_feature_id = db_query(
             "INSERT INTO ?:product_features"
             . " (feature_type, categories_path, parent_id, display_on_product, display_on_catalog, status, position, comparison)"
             . " VALUES"
-            . " (?s, '', 0, 0, 0, 'A', 0, 'N')"
-        , ProductFeatures::GROUP);
+            . " ('G', '', 0, 0, 0, 'A', 0, 'N')"
+        );
     }
     db_query(
         "INSERT INTO ?:product_features_descriptions"
@@ -133,14 +133,13 @@ function fn_get_google_categories($lang_code = DEFAULT_LANGUAGE)
 function fn_google_export_remove_features()
 {
     $features = fn_google_export_get_new_features_list();
-    $parent_feature_id = db_get_field("SELECT ?:product_features_descriptions.feature_id FROM ?:product_features_descriptions LEFT JOIN ?:product_features ON ?:product_features_descriptions.feature_id = ?:product_features.feature_id WHERE ?:product_features_descriptions.description = 'Google export features' AND ?:product_features_descriptions.lang_code = ?s AND ?:product_features.feature_type = ?s AND ?:product_features.parent_id = 0", DEFAULT_LANGUAGE, ProductFeatures::GROUP);
+    $features['Google export features']['G'] = array();
     foreach ($features as $feature_name => $feature_data) {
-        $f_id = db_get_field("SELECT ?:product_features_descriptions.feature_id FROM ?:product_features_descriptions LEFT JOIN ?:product_features ON ?:product_features_descriptions.feature_id = ?:product_features.feature_id WHERE ?:product_features_descriptions.description = ?s AND ?:product_features_descriptions.lang_code = ?s AND ?:product_features.parent_id = ?i", $feature_name, DEFAULT_LANGUAGE, $parent_feature_id);
+        $f_id = db_get_field("SELECT feature_id FROM ?:product_features_descriptions WHERE description = ?s AND lang_code = ?s", $feature_name, DEFAULT_LANGUAGE);
         if (!empty($f_id)) {
             fn_delete_feature($f_id);
         }
     }
-    fn_delete_feature($parent_feature_id);
     fn_google_export_remove_additional_google_categories();
 }
 
@@ -281,7 +280,7 @@ function fn_google_export_add_feed()
         'csv_delimiter' => 'T',
         'exclude_disabled_products' => 'N',
         'export_options' => serialize($export_options),
-        'save_dir' => '',
+        'save_dir' => Registry::get('config.dir.exim'),
         'status' => 'A'
     );
     $data_feed_id = db_query("INSERT INTO ?:data_feeds ?e", $data);

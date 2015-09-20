@@ -1,5 +1,6 @@
 {if !$smarty.request.extra}
 <script type="text/javascript">
+//<![CDATA[
 (function(_, $) {
 
     _.tr('text_items_added', '{__("text_items_added")|escape:"javascript"}');
@@ -63,21 +64,18 @@
 
     $.ceEvent('on', 'ce.formpost_add_products', function(frm, elm) {
         var products = {};
-        var _display = frm.find("[name=display_type]").val();
 
         if ($('input.cm-item:checked', frm).length > 0) {
             $('input.cm-item:checked', frm).each( function() {
                 var id = $(this).val();
-                
-                if (_display == "options" || _display == "options_amount" || _display == "options_price") {
-
+                {if $smarty.request.display == "options" || $smarty.request.display == "options_amount" || $smarty.request.display == "options_price"}
                     products[id] = {
                         option: _getDescription(frm, id),
                         value: $('#product_' + id).val()
                     };
-                } else {
+                {else}
                     products[id] = $('#product_' + id).val();
-                }
+                {/if}
             });
             
             $.ceEvent('trigger', 'ce.picker_transfer_js_items', [products]);
@@ -95,37 +93,27 @@
         return false;        
     });
 }(Tygh, Tygh.$));
+//]]>
 </script>
 {/if}
 
 {include file="views/products/components/products_search_form.tpl" dispatch="products.picker" picker_selected_companies=$picker_selected_companies extra="<input type=\"hidden\" name=\"result_ids\" value=\"pagination_`$smarty.request.data_id`\">" put_request_vars=true form_meta="cm-ajax" in_popup=true}
 
 <form action="{$smarty.request.extra|fn_url}" method="post" name="add_products" data-ca-result-id="{$smarty.request.data_id}" enctype="multipart/form-data">
-<input type="hidden" name="display_type" value="{$smarty.request.display}">
-
-{$but_text = __("add_products")}
-{$but_close_text = __("add_products_and_close")}
 
 {if $smarty.request.display != "options_amount" && $smarty.request.display != "options_price"}
-    {$hide_amount = true}
+    {assign var="hide_amount" value=true}
 {/if}
 
 {if $smarty.request.display == "options_price"}
-    {$show_price = true}
+    {assign var="show_price" value=true}
 {/if}
 
-{if $smarty.request.display == "radio"}
-    {$show_radio = true}
-    {$hide_options = true}
-    {$but_text = ""}
-    {$but_close_text = __("choose")}
-{/if}
-
-{include file="views/products/components/products_list.tpl" products=$products form_name="add_products" checkbox_id="add_product_checkbox" div_id="pagination_`$smarty.request.data_id`" hide_amount=$hide_amount show_price=$show_price checkbox_name=$smarty.request.checkbox_name show_aoc=$smarty.request.aoc additional_class="option-item" show_radio=$show_radio hide_options=$hide_options}
+{include file="views/products/components/products_list.tpl" products=$products form_name="add_products" checkbox_id="add_product_checkbox" div_id="pagination_`$smarty.request.data_id`" hide_amount=$hide_amount show_price=$show_price checkbox_name=$smarty.request.checkbox_name show_aoc=$smarty.request.aoc additional_class="option-item"}
 
 {if $products}
 <div class="buttons-container">
-    {include file="buttons/add_close.tpl" but_text=$but_text but_close_text=$but_close_text is_js=$smarty.request.extra|fn_is_empty}
+    {include file="buttons/add_close.tpl" but_text=__("add_products") but_close_text=__("add_products_and_close") is_js=$smarty.request.extra|fn_is_empty}
 </div>
 {/if}
 

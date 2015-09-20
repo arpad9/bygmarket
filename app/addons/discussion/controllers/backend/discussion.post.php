@@ -26,15 +26,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    if ($mode == 'delete') {
-        if (!empty($_REQUEST['post_id'])) {
-            fn_discussion_delete_post($_REQUEST['post_id']);
-        }
-    }    
-
     return array(CONTROLLER_STATUS_OK);
 }
 
+if ($mode == 'delete') {
+    if (!empty($_REQUEST['post_id'])) {
+        fn_discussion_delete_post($_REQUEST['post_id']);
+    }
+}
 
 if ($mode == 'update') {
     $discussion = array();
@@ -54,5 +53,5 @@ if ($mode == 'update') {
 
     }
 
-    Tygh::$app['view']->assign('discussion', $discussion);
+    Registry::get('view')->assign('discussion', $discussion);
 }

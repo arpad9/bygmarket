@@ -2,6 +2,7 @@
 {math equation="rand()" assign="rnd"}
 {assign var="data_id" value="`$data_id`_`$rnd`"}
 {assign var="view_mode" value=$view_mode|default:"mixed"}
+{assign var="miltiple" value=$multiple|default:true}
 {assign var="start_pos" value=$start_pos|default:0}
 
 {script src="js/tygh/picker.js"}
@@ -41,8 +42,7 @@
                         {assign var="_but_role" value="icon"}
                     {/if}
         
-                    {$_root = $default_name|escape:'url'}
-                    {include file="buttons/button.tpl" but_id="opener_picker_`$data_id`" but_href="pages.picker?display=`$display`&picker_for=`$picker_for`&extra=`$extra_var`&checkbox_name=`$checkbox_name`&root=`$_root`&except_id=`$except_id`&data_id=`$data_id``$extra_url`&company_id=`$company_id`"|fn_url but_text=$_but_text but_role=$_but_role but_target_id="content_`$data_id`" but_meta="cm-dialog-opener add-on btn"}
+                    {include file="buttons/button.tpl" but_id="opener_picker_`$data_id`" but_href="pages.picker?display=`$display`&picker_for=`$picker_for`&extra=`$extra_var`&checkbox_name=`$checkbox_name`&root=`$default_name`&except_id=`$except_id`&data_id=`$data_id``$extra_url`&company_id=`$company_id`"|fn_url but_text=$_but_text but_role=$_but_role but_target_id="content_`$data_id`" but_meta="cm-dialog-opener add-on"}
         
                 {if !$no_container}</div>{/if}
             </div>
@@ -84,13 +84,7 @@
     {foreach name="items" from=$item_ids item="p_id"}
         <div class="input-append">
             <div class="pull-left">
-                {if $multiple}
-                    {$extra_class = "input-large"}
-                {else}
-                    {$extra_class = ""}
-                {/if}
-
-                {include file="pickers/pages/js.tpl" page_id=$p_id holder=$data_id input_name=$input_name hide_link=$hide_link hide_delete_button=$hide_delete_button hide_input=true first_item=$smarty.foreach.items.first position_field=$positions position=$smarty.foreach.items.iteration+$start_pos}
+                {include file="pickers/pages/js.tpl" page_id=$p_id holder=$data_id input_name=$input_name hide_link=$hide_link hide_delete_button=$hide_delete_button hide_input=true first_item=$smarty.foreach.items.first position_field=$positions position=$smarty.foreach.items.iteration+$start_pos extra_class="input-large"}
             </div>
             {$smarty.capture.add_buttons nofilter}
         </div>

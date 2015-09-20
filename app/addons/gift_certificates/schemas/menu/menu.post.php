@@ -18,6 +18,16 @@ $schema['central']['marketing']['items']['gift_certificates'] = array(
     ),
     'href' => 'gift_certificates.manage',
     'position' => 500,
+    'subitems' => array(
+        'gift_certificates' => array(
+            'href' => 'gift_certificates.manage',
+            'position' => 510
+        ),
+        'gift_certificate_statuses' => array(
+            'href' => 'statuses.manage?type=G',
+            'position' => 520
+        )
+    )
 );
 
 return $schema;

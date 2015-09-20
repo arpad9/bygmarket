@@ -27,12 +27,12 @@ if ($mode == 'results') {
 
     if (!empty($params['compact']) && $params['compact'] = 'Y') {
         list($objects, $search) = fn_search($params, Registry::get('settings.Appearance.products_per_page'));
-        Tygh::$app['view']->assign('found_objects', $objects);
+        Registry::get('view')->assign('found_objects', $objects);
 
         if (count($objects) == 1 && !empty($search['detailed_links'][key($objects)])) {
             list($object, $data) = each($objects);
             if ($data['count'] == 1) {
-                return array(CONTROLLER_STATUS_REDIRECT, str_replace('%id%', $data['id'], $search['detailed_links'][$object]));
+                fn_redirect(str_replace('%id%', $data['id'], $search['detailed_links'][$object]));
             }
         }
 
@@ -51,9 +51,9 @@ if ($mode == 'results') {
     } else {
         list($data, $search) = fn_search($params, Registry::get('settings.Appearance.products_per_page'));
 
-        Tygh::$app['view']->assign('search_results', $data);
+        Registry::get('view')->assign('search_results', $data);
     }
 
-    Tygh::$app['view']->assign('search', $search);
-    Tygh::$app['view']->assign('params', $params);
+    Registry::get('view')->assign('search', $search);
+    Registry::get('view')->assign('params', $params);
 }

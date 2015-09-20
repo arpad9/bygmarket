@@ -517,10 +517,41 @@ if (defined('PAYMENT_NOTIFICATION')) {
         $post["SHASign"] = sha1($ordr.(100 * $order_info["total"]) . $pp_curr . $pp_merch . $pp_secret);
     }
 
-    $post['PSPID'] = $pp_merch;
-    $post['orderID'] = $ordr;
-    $post['currency'] = $pp_curr;
+echo <<<EOT
+    <form action="{$pp_test}" method="POST" name="process">
+        <input type="hidden" name="PSPID" value="{$pp_merch}">
+        <input type="hidden" name="orderID" value="{$ordr}">
+        <input type="hidden" name="amount" value="{$post['amount']}">
+        <input type="hidden" name="currency" value="{$pp_curr}">
+        <input type="hidden" name="language" value="{$post['language']}">
+        <input type="hidden" name="SHASign" value="{$post['SHASign']}">
 
-    fn_create_payment_form($pp_test, $post, 'Ogone');
+        <input type="hidden" name="email" value="{$post['email']}">
+        <input type="hidden" name="owneraddress" value="{$post['owneraddress']}">
+        <input type="hidden" name="ownertown" value="{$post['ownertown']}">
+        <input type="hidden" name="ownercty" value="{$post['ownercty']}">
+        <input type="hidden" name="ownerzip" value="{$post['ownerzip']}">
+        <input type="hidden" name="ownertelno" value="{$post['ownertelno']}">
+
+        <input type="hidden" name="cancelurl" value="{$post['cancelurl']}">
+        <input type="hidden" name="exceptionurl" value="{$post['exceptionurl']}">
+        <input type="hidden" name="declineurl" value="{$post['declineurl']}">
+        <input type="hidden" name="accepturl" value="{$post['accepturl']}">
+EOT;
+
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'Ogone server'
+));
+echo <<<EOT
+    </form>
+    <p><div align=center>{$msg}</div></p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
     exit;
 }

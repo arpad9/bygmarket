@@ -20,9 +20,9 @@ if (!defined('BOOTSTRAP')) { die('Access denied'); }
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     if ($mode == 'update') {
-        if (!empty($_REQUEST['rule_data']) && !empty($_REQUEST['rule_data']['name']) && !empty($_REQUEST['rule_data']['rule_params'])) {
+        if (!empty($_REQUEST['rule_data']) && !empty($_REQUEST['rule_data']['name']) && !empty($_REQUEST['rule_data']['rule_dispatch'])) {
             foreach (fn_get_translation_languages() as $lc => $_v) {
-                fn_create_seo_name(0, 's', $_REQUEST['rule_data']['name'], 0, $_REQUEST['rule_data']['rule_params'], '', $lc);
+                fn_create_seo_name(0, 's', $_REQUEST['rule_data']['name'], 0, $_REQUEST['rule_data']['rule_dispatch'], '', $lc);
             }
         }
     }
@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (!empty($_REQUEST['seo_data'])) {
             foreach ($_REQUEST['seo_data'] as $k => $v) {
                 if (!empty($v['name'])) {
-                    fn_create_seo_name(0, 's', $v['name'], 0, $v['rule_params'], '', fn_get_corrected_seo_lang_code(DESCR_SL));
+                    fn_create_seo_name(0, 's', $v['name'], 0, $v['rule_dispatch'], '', fn_get_corrected_seo_lang_code(DESCR_SL));
                 }
             }
         }
@@ -45,12 +45,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    if ($mode == 'delete') {
-        if (!empty($_REQUEST['rule_params'])) {
-            fn_delete_seo_name(0, 's', $_REQUEST['rule_params']);
-        }
-    }
-
     return array(CONTROLLER_STATUS_OK, "seo_rules.manage");
 }
 
@@ -58,8 +52,15 @@ if ($mode == 'manage') {
 
     list($seo_data, $search) = fn_get_seo_rules($_REQUEST, Registry::get('settings.Appearance.admin_elements_per_page'));
 
-    Tygh::$app['view']->assign('seo_data', $seo_data);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('seo_data', $seo_data);
+    Registry::get('view')->assign('search', $search);
+
+} elseif ($mode == 'delete') {
+    if (!empty($_REQUEST['rule_dispatch'])) {
+        fn_delete_seo_name(0, 's', $_REQUEST['rule_dispatch']);
+    }
+
+    return array(CONTROLLER_STATUS_OK, "seo_rules.manage");
 }
 
 function fn_get_seo_rules($params = array(), $items_per_page = 0, $lang_code = DESCR_SL)
@@ -91,14 +92,14 @@ function fn_get_seo_rules($params = array(), $items_per_page = 0, $lang_code = D
         $condition .= db_quote(" AND name LIKE ?l", "%".trim($params['name'])."%");
     }
 
-    if (isset($params['rule_params']) && fn_string_not_empty($params['rule_params'])) {
-        $condition .= db_quote(" AND dispatch LIKE ?l", "%".trim($params['rule_params'])."%");
+    if (isset($params['rule_dispatch']) && fn_string_not_empty($params['rule_dispatch'])) {
+        $condition .= db_quote(" AND dispatch LIKE ?l", "%".trim($params['rule_dispatch'])."%");
     }
 
     $limit = '';
     if (!empty($params['items_per_page'])) {
         $params['total_items'] = db_get_field("SELECT COUNT(*) FROM ?:seo_names WHERE object_id = '0' AND type = 's' AND lang_code = ?s ?p", $lang_code, $condition);
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+        $limit = db_paginate($params['page'], $params['items_per_page']);
     }
 
     $seo_data = db_get_array("SELECT name, dispatch FROM ?:seo_names WHERE object_id = '0' AND type = 's' AND lang_code = ?s ?p ORDER BY dispatch $limit", $lang_code, $condition);

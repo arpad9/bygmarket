@@ -78,15 +78,13 @@ class Aup implements IService
         if (!empty($response)) {
             $response = explode("\n", $response);
             if (preg_match("/charge=([\d\.]+)/i", $response[0], $matches)) {
-                $shipping_settings = $this->_shipping_info['service_params'];
-
                 if (!empty($matches[1])) {
                     $cost = (double) trim($matches[1]);
                     if ($this->_shipping_info['service_code'] == 'RPI') {
-                        $cost += (double) (!empty($shipping_settings['rpi_fee']) ? $shipping_settings['rpi_fee'] : self::RPI_COEFFICIENT);
+                        $cost += (double) (!empty($shipping_settings['aup']['rpi_fee']) ? $shipping_settings['aup']['rpi_fee'] : self::RPI_COEFFICIENT);
                     }
-                    if (!empty($shipping_settings['use_delivery_confirmation']) && $shipping_settings['use_delivery_confirmation'] == 'Y') {
-                        $cost += ($this->_shipping_info['service_code'] == 'STANDARD' || $this->_shipping_info['service_code'] == 'EXPRESS')? (double) (!empty($shipping_settings['delivery_confirmation_cost']) ? $shipping_settings['delivery_confirmation_cost'] : 0) : (double) (!empty($shipping_settings['delivery_confirmation_international_cost']) ? $shipping_settings['delivery_confirmation_international_cost'] : 0);
+                    if (!empty($shipping_settings['aup']['use_delivery_confirmation']) && $shipping_settings['aup']['use_delivery_confirmation'] == 'Y') {
+                        $cost += ($this->_shipping_info['service_code'] == 'STANDARD' || $this->_shipping_info['service_code'] == 'EXPRESS')? (double) (!empty($shipping_settings['aup']['delivery_confirmation_cost']) ? $shipping_settings['aup']['delivery_confirmation_cost'] : 0) : (double) (!empty($shipping_settings['aup']['delivery_confirmation_international_cost']) ? $shipping_settings['aup']['delivery_confirmation_international_cost'] : 0);
                     }
 
                     $return['cost'] = $cost;

@@ -1,5 +1,5 @@
 {if !"ULTIMATE:FREE"|fn_allowed_for}
-    {assign var="usergroups" value=["type"=>"C", "status"=>["A", "H"]]|fn_get_usergroups}
+    {assign var="usergroups" value="C"|fn_get_usergroups}
 {/if}
 
 <div id="content_qty_discounts" class="hidden">

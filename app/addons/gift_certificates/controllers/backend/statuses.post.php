@@ -24,7 +24,8 @@ if ($mode == 'manage') {
 
     if ($_REQUEST['type'] == STATUSES_GIFT_CERTIFICATE) {
 
-        Tygh::$app['view']->assign('title', __('gift_certificate_statuses'));
+        Registry::get('view')->assign('title', __('gift_certificate_statuses'));
 
+        fn_gift_certificates_generate_sections('statuses');
     }
 }

@@ -12,7 +12,6 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-use Tygh\Enum\ProductTracking;
 use Tygh\Registry;
 use Tygh\Storage;
 
@@ -40,18 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         fn_save_cart_content($wishlist, $auth['user_id'], 'W');
 
-        $product_cnt = 0;
-        $added_products = array();
-        foreach ($wishlist['products'] as $key => $data) {
-            if (empty($prev_wishlist[$key]) || !empty($prev_wishlist[$key]) && $prev_wishlist[$key]['amount'] != $data['amount']) {
-                $added_products[$key] = $data;
-                $added_products[$key]['product_option_data'] = fn_get_selected_product_options_info($data['product_options']);
-                if (!empty($prev_wishlist[$key])) {
-                    $added_products[$key]['amount'] = $data['amount'] - $prev_wishlist[$key]['amount'];
-                }
-                $product_cnt += $added_products[$key]['amount'];
-            }
-        }
+        $added_products = array_diff_assoc($wishlist['products'], $prev_wishlist);
 
         if (defined('AJAX_REQUEST')) {
             if (!empty($added_products)) {
@@ -64,26 +52,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $added_products[$key]['amount'] = empty($data['amount']) ? 1 : $data['amount'];
                     $added_products[$key]['main_pair'] = fn_get_cart_product_icon($data['product_id'], $data);
                 }
-                Tygh::$app['view']->assign('added_products', $added_products);
+                Registry::get('view')->assign('added_products', $added_products);
 
-                if (Registry::get('settings.General.allow_anonymous_shopping') == 'hide_price_and_add_to_cart') {
-                    Tygh::$app['view']->assign('hide_amount', true);
+                if (Registry::get('settings.General.allow_anonymous_shopping') == 'P') {
+                    Registry::get('view')->assign('hide_amount', true);
                 }
 
                 $title = __('product_added_to_wl');
-                $msg = Tygh::$app['view']->fetch('addons/wishlist/views/wishlist/components/product_notification.tpl');
+                $msg = Registry::get('view')->fetch('addons/wishlist/views/wishlist/components/product_notification.tpl');
                 fn_set_notification('I', $title, $msg, 'I');
             } else {
                 if ($product_ids) {
-                    fn_set_notification('W', __('notice'), __('product_in_wishlist'));
+                    fn_set_notification('W', __('notice'), __('product_in_wishlist'));  
+                } else {
+                    exit;
                 }
             }
-        } else {
-            unset($_REQUEST['redirect_url']);
+            exit;
         }
+        unset($_REQUEST['redirect_url']);
     }
 
-    return array(CONTROLLER_STATUS_OK, 'wishlist.view');
+    return array(CONTROLLER_STATUS_OK, "wishlist.view");
 }
 
 if ($mode == 'clear') {
@@ -91,14 +81,14 @@ if ($mode == 'clear') {
 
     fn_save_cart_content($wishlist, $auth['user_id'], 'W');
 
-    return array(CONTROLLER_STATUS_REDIRECT, 'wishlist.view');
+    return array(CONTROLLER_STATUS_REDIRECT, "wishlist.view");
 
 } elseif ($mode == 'delete' && !empty($_REQUEST['cart_id'])) {
     fn_delete_wishlist_product($wishlist, $_REQUEST['cart_id']);
 
     fn_save_cart_content($wishlist, $auth['user_id'], 'W');
 
-    return array(CONTROLLER_STATUS_OK, 'wishlist.view');
+    return array(CONTROLLER_STATUS_OK, "wishlist.view");
 
 } elseif ($mode == 'view') {
 
@@ -106,7 +96,6 @@ if ($mode == 'clear') {
 
     $products = !empty($wishlist['products']) ? $wishlist['products'] : array();
     $extra_products = array();
-    $wishlist_is_empty = fn_cart_is_empty($wishlist);
 
     if (!empty($products)) {
         foreach ($products as $k => $v) {
@@ -115,7 +104,7 @@ if ($mode == 'clear') {
             if (!empty($v['product_options'])) {
                 $_options = $v['product_options'];
             }
-            $products[$k] = fn_get_product_data($v['product_id'], $auth, CART_LANGUAGE, '', true, true, true, false, false, true, false, true);
+            $products[$k] = fn_get_product_data($v['product_id'], $auth);
 
             if (empty($products[$k])) {
                 unset($products[$k], $wishlist['products'][$k]);
@@ -151,15 +140,13 @@ if ($mode == 'clear') {
             }
         }
     }
-
     fn_gather_additional_products_data($products, array('get_icon' => true, 'get_detailed' => true, 'get_options' => true, 'get_discounts' => true));
 
-    Tygh::$app['view']->assign('show_qty', true);
-    Tygh::$app['view']->assign('products', $products);
-    Tygh::$app['view']->assign('wishlist_is_empty', $wishlist_is_empty);
-    Tygh::$app['view']->assign('extra_products', $extra_products);
-    Tygh::$app['view']->assign('wishlist', $wishlist);
-    Tygh::$app['view']->assign('continue_url', $_SESSION['continue_url']);
+    Registry::get('view')->assign('show_qty', true);
+    Registry::get('view')->assign('products', $products);
+    Registry::get('view')->assign('extra_products', $extra_products);
+    Registry::get('view')->assign('wishlist', $wishlist);
+    Registry::get('view')->assign('continue_url', $_SESSION['continue_url']);
 
 } elseif ($mode == 'delete_file' && isset($_REQUEST['cart_id'])) {
     if (isset($wishlist['products'][$_REQUEST['cart_id']]['extra']['custom_files'][$_REQUEST['option_id']][$_REQUEST['file']])) {
@@ -176,7 +163,7 @@ if ($mode == 'clear') {
         }
     }
 
-    return array(CONTROLLER_STATUS_REDIRECT, 'wishlist.view');
+    return array(CONTROLLER_STATUS_REDIRECT, "wishlist.view");
 }
 
 /**
@@ -223,7 +210,7 @@ function fn_add_product_to_wishlist($product_data, &$wishlist, &$auth)
             $data['tracking'] = $_data['tracking'];
 
             // Check the sequential options
-            if (!empty($data['tracking']) && $data['tracking'] == ProductTracking::TRACK_WITH_OPTIONS && $data['options_type'] == 'S') {
+            if (!empty($data['tracking']) && $data['tracking'] == 'O' && $data['options_type'] == 'S') {
                 $inventory_options = db_get_fields("SELECT a.option_id FROM ?:product_options as a LEFT JOIN ?:product_global_option_links as c ON c.option_id = a.option_id WHERE (a.product_id = ?i OR c.product_id = ?i) AND a.status = 'A' AND a.inventory = 'Y'", $product_id, $product_id);
 
                 $sequential_completed = true;

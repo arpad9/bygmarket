@@ -101,6 +101,18 @@ function fn_rma_generate_sections($section)
             'title' => __('return_requests'),
             'href' => "rma.returns",
         ),
+        'reasons' => array (
+            'title' => __('rma_reasons'),
+            'href' => "rma.properties?property_type=R",
+        ),
+        'actions' => array (
+            'title' => __('rma_actions'),
+            'href' => "rma.properties?property_type=A",
+        ),
+        'statuses' => array (
+            'title' => __('rma_request_statuses'),
+            'href' => "statuses.manage?type=R",
+        ),
     ));
 
     Registry::set('navigation.dynamic.active_section', $section);
@@ -113,7 +125,7 @@ function fn_rma_get_order_info(&$order, &$additional_data)
     if (!empty($order)) {
         $status_data = fn_get_status_params($order['status'], STATUSES_ORDER);
 
-        if (!empty($status_data) && (!empty($status_data['allow_return']) && $status_data['allow_return'] == 'Y') && isset($additional_data[ORDER_DATA_PRODUCTS_DELIVERY_DATE])) {
+        if (!empty($status_data) && $status_data['allow_return'] == 'Y' && isset($additional_data[ORDER_DATA_PRODUCTS_DELIVERY_DATE])) {
             $order_returnable_products = fn_get_order_returnable_products($order['products'], $additional_data[ORDER_DATA_PRODUCTS_DELIVERY_DATE]);
             if (!empty($order_returnable_products['items'])) {
                 $order['allow_return'] = 'Y';
@@ -270,6 +282,38 @@ function fn_send_return_mail(& $return_info, & $order_info, $force_notification 
         }
 
         if ($notify_vendor == true) {
+            //FIXME CORE SUPPLIERS
+            /*if (fn_allowed_for('PROFESSIONAL') && Registry::get('settings.Suppliers.enable_suppliers') == 'Y') {
+
+                $suppliers = array();
+                foreach ($order_info['products'] as $k => $v) {
+                    if (isset($v['company_id'])) {
+                        $suppliers[$v['company_id']] = 0;
+                    }
+                }
+
+                if (!empty($suppliers)) {
+                    foreach ($suppliers as $supplier_id => $shipping_cost) {
+                        if ($supplier_id != 0) {
+                            $supplier = fn_get_company_data($supplier_id);
+
+                            Mailer::sendMail(array(
+                                'to' => $supplier['email'],
+                                'from' => 'company_orders_department',
+                                'data' => array(
+                                    'return_info' => $return_info,
+                                    'reasons' => $rma_reasons,
+                                    'actions' => $rma_actions,
+                                    'order_info' => $order_info,
+                                    'return_status' => fn_get_status_data($return_info['status'], STATUSES_RETURN, $return_info['return_id'], $supplier['lang_code'])
+                                ),
+                                'tpl' => 'addons/rma/slip_notification.tpl'
+                            ), 'A', $supplier['lang_code']);
+                        }
+                    }
+                }
+
+            } elseif (fn_allowed_for('MULTIVENDOR') && !empty($order_info['company_id'])) {*/
             if (fn_allowed_for('MULTIVENDOR') && !empty($order_info['company_id'])) {
                 $company_language = fn_get_company_language($order_info['company_id']);
 
@@ -309,71 +353,6 @@ function fn_send_return_mail(& $return_info, & $order_info, $force_notification 
         }
 
     }
-}
-
-function fn_rma_update_details($data)
-{
-    fn_set_hook('rma_update_details_pre', $data);
-    $change_return_status = $data['change_return_status'];
-
-    $_data = array();
-    $show_confirmation_page = false;
-    if (isset($data['comment'])) {
-        $_data['comment'] = $data['comment'];
-    }
-
-    $is_refund = fn_is_refund_action($change_return_status['action']);
-    $confirmed = isset($data['confirmed']) ? $data['confirmed'] : '';
-    $st_inv = fn_get_statuses(STATUSES_RETURN);
-    $show_confirmation = false;
-    if ((
-        ($change_return_status['recalculate_order'] == 'M' && $is_refund == 'Y') ||
-        $change_return_status['recalculate_order'] == 'R'
-    ) &&
-        $change_return_status['status_to'] != $change_return_status['status_from'] &&
-        !($st_inv[$change_return_status['status_from']]['params']['inventory'] == 'D' && $change_return_status['status_to'] == RMA_DEFAULT_STATUS) &&
-        !($st_inv[$change_return_status['status_to']]['params']['inventory'] == 'D' && $change_return_status['status_from'] == RMA_DEFAULT_STATUS)
-    ) {
-        $show_confirmation = true;
-    }
-
-    if ($show_confirmation == true) {
-        if ($confirmed == 'Y') {
-            fn_rma_recalculate_order($change_return_status['order_id'], $change_return_status['recalculate_order'], $change_return_status['return_id'], $is_refund, $change_return_status);
-            $_data['status'] = $change_return_status['status_to'];
-        } else {
-            $change_return_status['inventory_to'] = $st_inv[$change_return_status['status_to']]['params']['inventory'];
-            $change_return_status['inventory_from'] = $st_inv[$change_return_status['status_from']]['params']['inventory'];
-            $_SESSION['change_return_status'] = $change_return_status;
-            $show_confirmation_page = true;
-        }
-    } else {
-        $_data['status'] = $change_return_status['status_to'];
-    }
-
-    if (!empty($_data)) {
-        db_query("UPDATE ?:rma_returns SET ?u WHERE return_id = ?i", $_data, $change_return_status['return_id']);
-    }
-
-    if (($show_confirmation == false || ($show_confirmation == true && $confirmed == 'Y')) && $change_return_status['status_from'] != $change_return_status['status_to']) {
-        $order_items = db_get_hash_single_array("SELECT item_id, extra FROM ?:order_details WHERE ?:order_details.order_id = ?i", array('item_id', 'extra'), $change_return_status['order_id']);
-
-        foreach ($order_items as $item_id => $extra) {
-            $extra = @unserialize($extra);
-            if (isset($extra['returns'][$change_return_status['return_id']])) {
-                $extra['returns'][$change_return_status['return_id']]['status'] = $change_return_status['status_to'];
-                db_query('UPDATE ?:order_details SET ?u WHERE item_id = ?i AND order_id = ?i', array('extra' => serialize($extra)), $item_id, $change_return_status['order_id']);
-            }
-        }
-
-        $return_info = fn_get_return_info($change_return_status['return_id']);
-        $order_info = fn_get_order_info($change_return_status['order_id']);
-        fn_send_return_mail($return_info, $order_info, fn_get_notification_rules($change_return_status));
-    }
-
-    fn_set_hook('rma_update_details_post', $data, $show_confirmation_page, $show_confirmation, $is_refund, $_data, $confirmed);
-
-    return $show_confirmation_page;
 }
 
 function fn_is_refund_action($action)
@@ -439,7 +418,7 @@ function fn_rma_change_order_status(&$status_to, &$status_from, &$order_info)
 
     $status_data = fn_get_status_params($status_to, STATUSES_ORDER);
 
-    if (!empty($status_data) && (!empty($status_data['allow_return']) && $status_data['allow_return'] == 'Y')) {
+    if (!empty($status_data) && $status_data['allow_return'] == 'Y') {
         $_data = array(
             'order_id' => $order_info['order_id'],
             'type' => ORDER_DATA_PRODUCTS_DELIVERY_DATE,
@@ -573,7 +552,7 @@ function fn_rma_recalculate_order($order_id, $recalculate_type, $return_id, $is_
     $status_order = $order['status'];
     unset($order['status']);
     if ($recalculate_type == 'R') {
-        $product_groups = @unserialize(@$additional_data['G']);
+        $shipping_info = @unserialize(@$additional_data['L']);
         if ($is_refund == 'Y') {
             $sign = ($ex_data['inventory_to'] == 'I') ? -1 : 1;
             // What for is this section ???
@@ -652,36 +631,24 @@ function fn_rma_recalculate_order($order_id, $recalculate_type, $return_id, $is_
                 'data'     => $order_return_info
             );
         }
+        if ($shipping_info) {
 
-        $shipping_info = array();
-        if ($product_groups) {
+            foreach ((array) $ex_data['shipping_costs'] as $shipping_id => $cost) {
+                $_total = array_sum($shipping_info[$shipping_id]['rates']);
+                foreach ($shipping_info[$shipping_id]['rates'] as $s_id => $rate) {
+                    $shipping_info[$shipping_id]['rates'][$s_id] = fn_format_price($_total ? (($rate / $_total) * $cost) : ($cost / count($shipping_info[$shipping_id]['rates'])));
+                }
 
-            $_total = 0;
-
-            foreach ($product_groups as $key_group => $group) {
-                if (isset($group['chosen_shippings'])) {
-                    foreach ($group['chosen_shippings'] as $key_shipping => $shipping) {
-                        $_total += $shipping['rate'];
+                // Correct cost FIXME
+                if ($cost != ($new_total = array_sum($shipping_info[$shipping_id]['rates']))) {
+                    $deviation = $new_total - $cost;
+                    foreach ($shipping_info[$shipping_id]['rates'] as $s_id => $rate) {
+                        $shipping_info[$shipping_id]['rates'][$s_id] = fn_format_price($rate + $deviation);
+                        break;
                     }
                 }
             }
-
-            foreach ($product_groups as $key_group => $group) {
-                if (isset($group['chosen_shippings'])) {    
-                    foreach ((array) $ex_data['shipping_costs'] as $shipping_id => $cost) {
-                        foreach ($group['chosen_shippings'] as $key_shipping => $shipping) {
-                            $shipping_id = $shipping['shipping_id'];
-                            $product_groups[$key_group]['chosen_shippings'][$key_shipping]['rate'] = fn_format_price($_total ? (($shipping['rate'] / $_total) * $cost) : ($cost / count($product_groups)));
-                            $product_groups[$key_group]['shippings'][$shipping_id]['rate'] = fn_format_price($_total ? (($shipping['rate'] / $_total) * $cost) : ($cost / count($product_groups)));
-                            if (empty($shipping_info[$shipping_id])) {
-                                $shipping_info[$shipping_id] = $product_groups[$key_group]['shippings'][$shipping_id];
-                            }
-                            $shipping_info[$shipping_id]['rates'][$key_group] = $product_groups[$key_group]['shippings'][$shipping_id]['rate'];
-                        }
-                    }
-                }    
-            }
-            db_query("UPDATE ?:order_data SET ?u WHERE order_id = ?i AND type = 'G'", array('data' => serialize($product_groups)), $order_id);
+            db_query("UPDATE ?:order_data SET ?u WHERE order_id = ?i AND type = 'L'", array('data' => serialize($shipping_info)), $order_id);
 
             fn_update_shipping_taxes($order_tax_info, $shipping_info, $order);
         }
@@ -786,7 +753,7 @@ function fn_rma_delete_order(&$order_id)
 
 function fn_rma_print_packing_slips($return_ids, $auth, $area = AREA)
 {
-    $view = Tygh::$app['view'];
+    $view = Registry::get('view');
     $passed = false;
 
     if (!is_array($return_ids)) {
@@ -813,7 +780,6 @@ function fn_rma_print_packing_slips($return_ids, $auth, $area = AREA)
         $passed = true;
         $view->assign('return_info', $return_info);
         $view->assign('order_info', $order_info);
-        $view->assign('company_data', fn_get_company_placement_info($order_info['company_id']));
         $view->displayMail('addons/rma/print_slip.tpl', true, $area, $order_info['company_id']);
         if ($return_id != end($return_ids)) {
             echo("<div style='page-break-before: always;'>&nbsp;</div>");
@@ -832,16 +798,4 @@ function fn_rma_print_packing_slips($return_ids, $auth, $area = AREA)
 function fn_rma_get_return_name($return_id)
 {
     return $return_id;
-}
-
-function fn_rma_paypal_get_ipn_order_ids(&$data, &$order_ids)
-{
-    if (!isset($data['txn_type']) && fn_allowed_for('MULTIVENDOR')) {
-        //in MVE we should process refund ipn only for those orders, which was requested and approved by admin
-        $child_orders_ids = db_get_fields("SELECT order_id FROM ?:orders WHERE parent_order_id = ?i", $order_ids[0]);
-        if (!empty($child_orders_ids)) {
-            $orders_to_be_canceled = db_get_fields("SELECT order_id FROM ?:rma_returns WHERE status IN (SELECT status FROM ?:status_data WHERE type = ?s AND param = 'inventory' and value = 'I' and status != ?s) and order_id in (?n)", STATUSES_RETURN, RMA_DEFAULT_STATUS, $child_orders_ids);
-            $order_ids = !empty($orders_to_be_canceled) ? $orders_to_be_canceled : $order_ids;
-        }
-    }
 }

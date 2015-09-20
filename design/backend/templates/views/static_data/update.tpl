@@ -12,7 +12,7 @@
 
 <div class="tabs cm-j-tabs">
     <ul class="nav nav-tabs">
-        <li id="tab_general_{$id}" class="cm-js active"><a>{__("general")}</a></li>
+        <li id="tab_general_{$id}" class="cm-js cm-active active"><a>{__("general")}</a></li>
     </ul>
 </div>
 
@@ -85,46 +85,42 @@
         {else}
             <div class="control-group">
                 <label for="param_{$k}_{$id}" class="control-label">{__($p.title)}{if $p.tooltip}{include file="common/tooltip.tpl" tooltip=__($p.tooltip)}{/if}:</label>
-                <div class="controls mixed-controls cm-bs-group">
+                <div class="controls mixed-controls">
                     {if $p.type == "checkbox"}
                         <input type="hidden" name="static_data[{$p.name}]" value="N" />
                         <input type="checkbox" id="param_{$k}_{$id}" name="static_data[{$p.name}]" value="Y" {if $static_data[$p.name] == "Y"}checked="checked"{/if} class="checkbox" />
                     {elseif $p.type == "megabox"}
                         {assign var="_megabox_values" value=$static_data[$p.name]|fn_static_data_megabox}
-                        <div class="cm-bs-container form-inline clearfix">
-                            <label class="radio pull-left">
-                                <input type="radio" class="cm-bs-trigger" name="static_data[megabox][type][{$p.name}]" {if !$_megabox_values}checked="checked"{/if} value="" onclick="Tygh.$('#un_{$id}').prop('disabled', true);">
+                    
+                        <div class="form-inline clearfix">
+                            <label for="rb_{$id}" class="radio pull-left">
+                                <input type="radio" name="static_data[megabox][type][{$p.name}]" id="rb_{$id}" {if !$_megabox_values}checked="checked"{/if} value="" onclick="Tygh.$('#un_{$id}').prop('disabled', true);">
                                 {__("none")}
                             </label>
                         </div>
                         
-                        <div class="cm-bs-container form-inline clearfix">
-                            <label class="radio pull-left">
-                                <input type="radio" class="cm-bs-trigger" name="static_data[megabox][type][{$p.name}]" {if $_megabox_values.types.C}checked="checked"{/if} value="C" onclick="Tygh.$('#un_{$id}').prop('disabled', false);">
-                                {__("category")}:
+                        <div class="form-inline clearfix">
+                            <label for="rb_c_{$id}" class="radio pull-left">
+                                    <input type="radio" name="static_data[megabox][type][{$p.name}]" id="rb_c_{$id}" {if $_megabox_values.types.C}checked="checked"{/if} value="C" onclick="Tygh.$('#un_{$id}').prop('disabled', false);">
+                                    {__("category")}:
                             </label>
-                            <div class="cm-bs-block pull-left disable-overlay-wrap">
-                                {include file="pickers/categories/picker.tpl" data_id="megabox_category_`$id`" input_name="static_data[`$p.name`][C]" item_ids=$_megabox_values.types.C.value hide_link=true hide_delete_button=true default_name=__("all_categories") extra=""}
-                                <div class="disable-overlay cm-bs-off"></div>
-                            </div>
+                            <div id="megabox_container_c_{$id}" class="pull-left">{include file="pickers/categories/picker.tpl" data_id="megabox_category_`$id`" input_name="static_data[`$p.name`][C]" item_ids=$_megabox_values.types.C.value hide_link=true hide_delete_button=true show_root=true default_name=__("all_categories") extra="" prepend=true}</div>
                         </div>
                 
-                        <div class="cm-bs-container form-inline clearfix">
-                            <label class="radio pull-left">
-                                <input type="radio" class="cm-bs-trigger" name="static_data[megabox][type][{$p.name}]" {if $_megabox_values.types.A}checked="checked"{/if} value="A" onclick="Tygh.$('#un_{$id}').prop('disabled', false);">
+                        <div class="form-inline clearfix">
+                            <label for="rb_a_{$id}" class="radio pull-left">
+                                <input type="radio" name="static_data[megabox][type][{$p.name}]" id="rb_a_{$id}" {if $_megabox_values.types.A}checked="checked"{/if} value="A" onclick="Tygh.$('#un_{$id}').prop('disabled', false);">
                                 {__("page")}:
                             </label>
-                            <div class="cm-bs-block pull-left disable-overlay-wrap">
-                                {include file="pickers/pages/picker.tpl" data_id="megabox_page_`$id`" input_name="static_data[`$p.name`][A]" item_ids=$_megabox_values.types.A.value hide_link=true hide_delete_button=true default_name=__("all_pages") extra="" no_container=true prepend=true}
-                                <div class="disable-overlay cm-bs-off"></div>
+                            <div id="megabox_container_a_{$id}" class="pull-left">{include file="pickers/pages/picker.tpl" data_id="megabox_page_`$id`" input_name="static_data[`$p.name`][A]" item_ids=$_megabox_values.types.A.value hide_link=true hide_delete_button=true show_root=true default_name=__("all_pages") extra="" no_container=true prepend=true}
                             </div>
                         </div>
-                        <br />
+                        <br>
                         <label for="un_{$id}" class="checkbox clearfix">
                             <input type="hidden" name="static_data[megabox][use_item][{$p.name}]" value="N" />
                             <input type="checkbox" name="static_data[megabox][use_item][{$p.name}]" id="un_{$id}" {if $_megabox_values.use_item == "Y"}checked="checked"{/if} value="Y" {if !$_megabox_values}disabled="disabled"{/if}>{__("static_data_use_item")}
                         </label>
-
+                    
                     {elseif $p.type == "select"}
                         <select id="param_{$k}_{$id}" name="static_data[{$p.name}]">
                         {foreach from=$p.values key="vk" item="vv"}

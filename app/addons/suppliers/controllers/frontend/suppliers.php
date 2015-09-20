@@ -24,5 +24,5 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 if ($mode == 'view') {
     $supplier = fn_get_supplier_data($_REQUEST['supplier_id']);
-    Tygh::$app['view']->assign('supplier', $supplier);
+    Registry::get('view')->assign('supplier', $supplier);
 }

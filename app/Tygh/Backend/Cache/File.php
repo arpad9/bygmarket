@@ -14,7 +14,6 @@
 
 namespace Tygh\Backend\Cache;
 
-use Tygh\Exceptions\PermissionsException;
 use Tygh\Registry;
 
 class File extends ABackend
@@ -101,13 +100,11 @@ class File extends ABackend
     public function __construct($config)
     {
         $this->_config = array(
-            'store_prefix' => !empty($config['store_prefix']) ? $config['store_prefix'] : null,
+            'saas_uid' => !empty($config['saas_uid']) ? $config['saas_uid'] : null,
             'dir_cache' => $config['dir']['cache_registry']
         );
 
-        if (fn_mkdir($this->_mapTags('')) == false) {
-            throw new PermissionsException('Cache: "' . $this->_mapTags('') . '" directory is not writable');
-        }
+        fn_mkdir($this->_mapTags(''));
 
         parent::__construct($config);
 
@@ -125,7 +122,7 @@ class File extends ABackend
         $suffix = !empty($company_id) ? ('/' . $company_id) : '';
 
         foreach ($tags as $k => $v) {
-            $tags[$k] = $this->_config['dir_cache'] . (!empty($this->_config['store_prefix']) ? $this->_config['store_prefix'] . '/' : '') . $v . $suffix;
+            $tags[$k] = $this->_config['dir_cache'] . (!empty($this->_config['saas_uid']) ? $this->_config['saas_uid'] . '/' : '') . $v . $suffix;
         }
 
         return !empty($return_one) ? array_shift($tags) : $tags;

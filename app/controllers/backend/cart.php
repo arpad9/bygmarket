@@ -13,7 +13,6 @@
 ****************************************************************************/
 
 use Tygh\Registry;
-use Tygh\Session;
 use Tygh\Navigation\LastView;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
@@ -43,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    return array(CONTROLLER_STATUS_OK, 'cart.cart_list');
+    return array(CONTROLLER_STATUS_OK, "cart.cart_list");
 }
 
 if ($mode == 'cart_list') {
@@ -74,15 +73,15 @@ if ($mode == 'cart_list') {
                 $cart_products[$key]['extra'] = unserialize($product['extra']);
             }
         }
-        Tygh::$app['view']->assign('cart_products', $cart_products);
-        Tygh::$app['view']->assign('sl_user_id', $_REQUEST['user_id']);
+        Registry::get('view')->assign('cart_products', $cart_products);
+        Registry::get('view')->assign('sl_user_id', $_REQUEST['user_id']);
     }
     if (!empty($carts_list) && is_array($carts_list)) {
         $all_cart_products = array();
         if (fn_allowed_for('ULTIMATE')) {
             foreach ($carts_list as $key => $cart_data) {
                 $all_cart_products[$key] = db_get_row(
-                    "SELECT SUM(amount) as count, SUM(amount) as sum, SUM(amount * price) as total, ip_address, order_id"
+                    "SELECT SUM(amount) as count, SUM(amount) as sum, SUM(amount * price) as total, ip_address"
                     . " FROM ?:user_session_products"
                     . " WHERE user_id = ?i AND company_id = ?i AND item_type IN (?a) AND type = 'C'"
                     . " GROUP BY ?:user_session_products.user_id, ?:user_session_products.company_id",
@@ -93,15 +92,14 @@ if ($mode == 'cart_list') {
                     $carts_list[$key]['cart_all_products'] = $all_cart_products[$key]['sum'];
                     $carts_list[$key]['total'] = $all_cart_products[$key]['total'];
                     $carts_list[$key]['user_data'] = fn_get_user_info($cart_data['user_id'], true);
-                    $carts_list[$key]['ip_address'] = fn_ip_from_db($all_cart_products[$key]['ip_address']);
-                    $carts_list[$key]['order_id'] = $all_cart_products[$key]['order_id'];
+                    $carts_list[$key]['ip_address'] = $all_cart_products[$key]['ip_address'];
                 }
                 $_SESSION['abandoned_carts'][$cart_data['company_id']][] = $cart_data['user_id'];
             }
         } else {
             foreach ($carts_list as $key => $cart_data) {
                 $all_cart_products[$key] = db_get_row(
-                    "SELECT SUM(amount) as count, SUM(amount) as sum, SUM(amount * price) as total, ip_address, order_id"
+                    "SELECT SUM(amount) as count, SUM(amount) as sum, SUM(amount * price) as total, ip_address"
                     . " FROM ?:user_session_products"
                     . " WHERE user_id = ?i AND item_type IN (?a) AND type = 'C'"
                     . " GROUP BY ?:user_session_products.user_id",
@@ -112,16 +110,15 @@ if ($mode == 'cart_list') {
                     $carts_list[$key]['cart_all_products'] = $all_cart_products[$key]['sum'];
                     $carts_list[$key]['total'] = $all_cart_products[$key]['total'];
                     $carts_list[$key]['user_data'] = fn_get_user_info($cart_data['user_id'], true);
-                    $carts_list[$key]['ip_address'] = fn_ip_from_db($all_cart_products[$key]['ip_address']);
-                    $carts_list[$key]['order_id'] = $all_cart_products[$key]['order_id'];
+                    $carts_list[$key]['ip_address'] = $all_cart_products[$key]['ip_address'];
                 }
                 $_SESSION['abandoned_carts'][] = $cart_data['user_id'];
             }
         }
     }
 
-    Tygh::$app['view']->assign('carts_list', $carts_list);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('carts_list', $carts_list);
+    Registry::get('view')->assign('search', $search);
 }
 
 function fn_delete_user_cart($user_ids, $data = '')
@@ -195,12 +192,8 @@ function fn_get_carts($params, $items_per_page = 0)
     }
 
     if (!empty($params['online_only'])) {
-        $sessions = Session::getOnline('C');
-        if (!empty($sessions)) {
-            $condition .= db_quote(" AND ?:user_session_products.session_id IN (?a)", $sessions);
-        } else {
-            $condition .= db_quote(" AND 0");
-        }
+        $join .= ' LEFT JOIN ?:sessions ON ?:sessions.session_id = ?:user_session_products.session_id';
+        $condition .= db_quote(" AND ?:sessions.expiry > ?i", TIME + SESSION_ALIVE_TIME - 300);
     }
 
     if (!empty($params['with_info_only'])) {

@@ -13,16 +13,14 @@
     {/if}
 
     <form name="store_mode_form" action="{""|fn_url}" method="post">
-    <input type="hidden" name="redirect_url" value="{$config.current_url}">
-    
-        <span class="choice-text">{__("choose_your_store_mode")}:</span>
+        <p class="choice-text">{__("choose_your_store_mode")}:</p>
 
             <ul class="store-mode inline">
                 <li class="clickable {if $store_mode_errors} type-error{/if} item{if $store_mode == "full"} active{/if}">
                     <label for="store_mode_radio_full" class="radio">
                         <input type="radio" id="store_mode_radio_full" name="store_mode" value="full" {if !$store_mode || $store_mode == "full"}checked="checked"{/if} class="cm-switch-class">{__("full")}</label>
                     <p>{__("text_store_mode_full")}</p>
-                    <label>{__("license_number")}:</label>
+                    <label for="">{__("license_number")}:</label>
                     <input type="text" name="license_number" class="{if $store_mode_errors} type-error{/if}" value="{$store_mode_license}" placeholder="{__("please_enter_license_here")}">
                 </li>
 
@@ -49,8 +47,10 @@
                 {/if}
             </ul>
 
-        <div class="buttons-container">            
-            <input name="dispatch[settings.change_store_mode]" type="submit" value="{__("select")}" class="btn btn-primary">
+        <div class="buttons-container">
+            <input type="hidden" name="dispatch" value="settings.change_store_mode">
+            <input type="hidden" name="redirect_url" value="{$config.current_url}">
+            <input type="submit" value="{__("select")}" class="btn btn-primary">
         </div>
     </form>
 </div>

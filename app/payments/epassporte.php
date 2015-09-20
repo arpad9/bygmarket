@@ -56,16 +56,23 @@ if (defined('PAYMENT_NOTIFICATION')) {
             fn_finish_payment($_REQUEST['order_id'], $pp_response);
         }
 
-        $post_data = array(
-            'credit_trans_idx' => $credit_trans_idx,
-            'debit_trans_idx' => $debit_trans_idx,
-            'total_amount' => $total_amount,
-            'action' => 'verify',
-            'msg' => $msg,            
-        );
-
-        fn_create_payment_form('https://www.epassporte.com/secure/eppurchaseverify.cgi', $post_data);
-        exit;
+        echo <<<EOT
+<form method="post" action="https://www.epassporte.com/secure/eppurchaseverify.cgi" name="process">
+<input type="hidden" name="credit_trans_idx" value="{$credit_trans_idx}">
+<input type="hidden" name="debit_trans_idx" value="{$debit_trans_idx}">
+<input type="hidden" name="total_amount" value="{$total_amount}">
+<input type="hidden" name="action" value="verify">
+<input type="hidden" name="msg" value="{$msg}">
+</form>
+<script type="text/javascript">
+window.onload = function(){
+    document.process.submit();
+};
+</script>
+</body>
+</html>
+EOT;
+exit;
     }
 
 } else {
@@ -92,17 +99,32 @@ if (defined('PAYMENT_NOTIFICATION')) {
     $return_url = fn_url("payment_notification.notify?payment=epassporte&order_id=$order_id", AREA, 'current');
     $response_post = fn_url("payment_notification.tvp?payment=epassporte&order_id=$order_id", AREA, 'current');
 
-    $post_data = array(
-        'acct_num' => $processor_data['processor_params']['acct_num'],
-        'pi_code' => $processor_data['processor_params']['pi_code'],
-        'amount' => $order_info['subtotal'],
-        'return_url' => $return_url,
-        'response_post' => $response_post,
-        'product_name' => $product_name,
-        'tax_amount' => $tax_amount,
-        'shipping_amount' => $shipping_amount,
-    );
+echo <<<EOT
+<form method="post" action="https://www.epassporte.com/secure/eppurchase.cgi" name="process">
+<input type="hidden" name="acct_num" value="{$processor_data['processor_params']['acct_num']}">
+<input type="hidden" name="pi_code" value="{$processor_data['processor_params']['pi_code']}">
+<input type="hidden" name="amount" value="{$order_info['subtotal']}">
 
-    fn_create_payment_form('https://www.epassporte.com/secure/eppurchase.cgi', $post_data, 'ePpayment');
+<input type="hidden" name="return_url" value="$return_url">
+<input type="hidden" name="response_post" value="$response_post">
+<input type="hidden" name="product_name" value="{$product_name}">
+<input type="hidden" name="tax_amount" value="{$tax_amount}">
+<input type="hidden" name="shipping_amount" value="{$shipping_amount}">
+EOT;
+
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'ePpayment server'
+));
+echo <<<EOT
+    </form>
+    <p><div align=center>{$msg}</div></p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
 }
 exit;

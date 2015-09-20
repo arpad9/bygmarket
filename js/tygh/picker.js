@@ -29,6 +29,9 @@
                 r_elms = $('#' + obj_id, jdest);
             }
 
+            // hide tooltips for deleting elements
+            $('[data-original-title]', r_elms).tooltip('destroy');
+
             r_elms.remove();
     
             var ids_id = '#' + prefix + root_id + '_ids';
@@ -51,15 +54,12 @@
             }
             $('.cm-js-item:visible:first .cm-comma', jdest).hide();
             $('#opener_inner_' + root_id).text($('.cm-js-item', jdest).length - 1);
-
-            $.ceEvent('trigger', 'ce.picker_delete_js_item', [root_id, delete_id, prefix]);
-
         },
     
         mass_delete_js_item: function(items_str, target_id)
         {
             var items = items_str.split(',');
-            for (var id = 0; id < items.length; id++) {
+            for (var id in items) {
                 var parts = items[id].split(':');
                 methods.delete_js_item(target_id, parts[1], parts[0]);
             }
@@ -70,7 +70,6 @@
             var jroot = $('#' + root_id);
             var ids_obj = $('#' + prefix + root_id + '_ids');
             var ids = (ids_obj.length && ids_obj.val() !== '') ? ids_obj.val().split(',') : [];
-            var added_before = ids;
     
             for(var id in js_items) {
                 if (jroot.hasClass('cm-display-radio')) {
@@ -154,8 +153,7 @@
                             'var_prefix': prefix,
                             'object_html': unescape(append_obj.html()),
                             'var_id': id,
-                            'item_id': js_items[id],
-                            'added_before': ids
+                            'item_id': js_items[id]
                         };
 
                         $.ceEvent('trigger', 'ce.picker_add_js_item', [hook_data]);

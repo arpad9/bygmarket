@@ -3,14 +3,14 @@
 <hr>
 
 <div class="control-group">
-    <label class="control-label" for="cresecureid">{__("cresecureid")}:</label>
+    <label class="control-label" for="cresecureid">{__("CRESecureID")}:</label>
     <div class="controls">
         <input type="text" name="payment_data[processor_params][cresecureid]" id="cresecureid" value="{$processor_params.cresecureid}"  size="60">
     </div>
 </div>
 
 <div class="control-group">
-    <label class="control-label" for="cresecureapitoken">{__("cresecureapitoken")}:</label>
+    <label class="control-label" for="cresecureapitoken">{__("CRESecureAPIToken")}:</label>
     <div class="controls">
         <input type="text" name="payment_data[processor_params][cresecureapitoken]" id="cresecureapitoken" value="{$processor_params.cresecureapitoken}"  size="60">
     </div>

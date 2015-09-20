@@ -16,13 +16,12 @@ namespace Tygh\Api\Entities;
 
 use Tygh\Api\AEntity;
 use Tygh\Api\Response;
-use Tygh\Registry;
 
 class Statuses extends AEntity
 {
     public function index($id = '', $params = array())
     {
-        $lang_code = $this->safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
+        $lang_code = $this->_safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
 
         $type = (!empty($params['type'])) ? $params['type'] : STATUSES_ORDER;
 
@@ -35,24 +34,8 @@ class Statuses extends AEntity
                 $status = Response::STATUS_OK;
             }
         } else {
-            $items_per_page = $this->safeGet($params, 'items_per_page', Registry::get('settings.Appearance.admin_elements_per_page'));
-            $page = $this->safeGet($params, 'page', 1);
-
             $data = fn_get_statuses($type, array(), false, false, $lang_code);
             $data = array_values($data);
-
-            if ($items_per_page) {
-                $data = array_slice($data, ($page - 1) * $items_per_page, $items_per_page);
-            }
-
-            $data = array(
-                'statuses' => $data,
-                'params' => array(
-                    'items_per_page' => $items_per_page,
-                    'page' => $page,
-                    'total_items' => count($data),
-                ),
-            );
             $status = Response::STATUS_OK;
         }
 
@@ -66,20 +49,12 @@ class Statuses extends AEntity
     {
         $status = Response::STATUS_BAD_REQUEST;
         $data = array();
-        $valid_params = true;
 
         if (empty($params['type'])) {
             $params['type'] = STATUSES_ORDER;
         }
 
-        if (empty($params['description'])) {
-            $data['message'] = __('api_required_field', array(
-                '[field]' => 'description'
-            ));
-            $valid_params = false;
-        }
-
-        if ($valid_params == true) {
+        if (empty($status_data) && !empty($params['description'])) {
             unset($params['status_id']);
             unset($params['status']);
             $status_name = fn_update_status('', $params, $params['type']);
@@ -106,11 +81,13 @@ class Statuses extends AEntity
 
         unset($params['status_id']);
 
-        $lang_code = $this->safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
+        $lang_code = $this->_safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
         $status_data = fn_get_status_by_id($id, $lang_code);
 
         if (empty($status_data)) {
             $status = Response::STATUS_NOT_FOUND;
+            fn_set_notification('E', __('error'), __('object_not_found', array('[object]' => __('status'))),'','404');
+
         } else {
 
             $params['status'] = $status_data['status'];
@@ -142,7 +119,8 @@ class Statuses extends AEntity
 
         } else {
             if (fn_delete_status($status_data['status'], $status_data['type'])) {
-                $status = Response::STATUS_NO_CONTENT;
+                $status = Response::STATUS_OK;
+                $data['message'] = 'Ok';
             }
         }
 
@@ -152,7 +130,7 @@ class Statuses extends AEntity
         );
     }
 
-    public function privileges()
+    public function priveleges()
     {
         return array(
             'create' => 'manage_order_statuses',

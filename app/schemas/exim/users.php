@@ -23,10 +23,6 @@ $schema = array(
     'key' => array('user_id'),
     'order' => 0,
     'table' => 'users',
-    'permissions' => array(
-        'import' => 'manage_users',
-        'export' => 'view_users',
-    ),
     'references' => array(
         'user_profiles' => array(
             'reference_fields' => array('user_id' => '#key', 'profile_type' => 'P'),
@@ -42,6 +38,9 @@ $schema = array(
             'db_field' => 'email',
             'alt_key' => true,
             'required' => true,
+        ),
+        'Login' => array(
+            'db_field' => 'user_login'
         ),
         'User type' => array(
             'db_field' => 'user_type'
@@ -80,7 +79,7 @@ $schema = array(
         'Registration date' => array(
             'db_field' => 'timestamp',
             'process_get' => array('fn_timestamp_to_date', '#this'),
-            'convert_put' => array('fn_date_to_timestamp', '#this'),
+            'convert_put' => array('fn_date_to_timestamp'),
             'default' => array('time')
         ),
         'Language' => array(
@@ -174,64 +173,16 @@ if (!fn_allowed_for('ULTIMATE:FREE')) {
     );
 }
 
-if (fn_allowed_for('MULTIVENDOR')) {
-    $schema['export_fields']['Vendor'] = array (
-        'db_field' => 'company_id',
-        'process_get' => array('fn_get_company_name', '#this'),
-    );
-
-    if (!Registry::get('runtime.company_id')) {
-        $schema['export_fields']['Vendor']['required'] = true;
-    }
-
-    $schema['import_process_data'] = array(
-        'check_company_id' => array(
-            'function' => 'fn_import_check_user_company_id',
-            'args' => array('$primary_object_id', '$object', '$processed_data', '$skip_record'),
-            'import_only' => true,
-        ),
-        'check_user_type' => array(
-            'function' => 'fn_import_check_user_type',
-            'args' => array('$object', '$processed_data', '$skip_record'),
-            'import_only' => true,
-        ),
-    );
-
-    $schema['pre_processing'] = array(
-        'set_user_company_id' => array(
-            'function' => 'fn_import_set_user_company_id',
-            'args' => array('$import_data'),
-            'import_only' => true,
-        ),
-        'set_default_value' => array(
-            'function' => 'fn_import_set_default_value',
-            'args' => array('$import_data'),
-            'import_only' => true,
-        ),
-    );
-}
-
 if (fn_allowed_for('ULTIMATE')) {
     $schema['export_fields']['Store'] = array (
         'db_field' => 'company_id',
-        'process_get' => array('fn_get_company_name', '#this'),
+        'process_get' => array('fn_exim_get_company_name', '#this'),
     );
-
-    $schema['key'][] = 'company_id';
-
-    if (!Registry::get('runtime.company_id')) {
-        $schema['export_fields']['Store']['required'] = true;
-    }
 
     $schema['pre_processing'] = array(
         'set_user_company_id' => array(
             'function' => 'fn_import_set_user_company_id',
-            'args' => array('$import_data'),
-            'import_only' => true,
-        ),
-        'set_default_value' => array(
-            'function' => 'fn_import_set_default_value',
-            'args' => array('$import_data'),
+            'args' => array('$import_data', '$pattern'),
             'import_only' => true,
         ),
     );
@@ -239,7 +190,7 @@ if (fn_allowed_for('ULTIMATE')) {
     $schema['pre_export_process'] = array(
         'set_allowed_company_ids' => array(
             'function' => 'fn_set_allowed_company_ids',
-            'args' => array('$conditions'),
+            'args' => array('$pattern', '$export_fields', '$options', '$conditions', '$joins', '$table_fields', '$processes'),
             'export_only' => true,
         ),
     );
@@ -247,18 +198,17 @@ if (fn_allowed_for('ULTIMATE')) {
     $schema['import_process_data'] = array(
         'check_company_id' => array(
             'function' => 'fn_import_check_user_company_id',
-            'args' => array('$primary_object_id', '$object', '$processed_data', '$skip_record'),
-            'import_only' => true,
-        ),
-        'check_user_type' => array(
-            'function' => 'fn_import_check_user_type',
-            'args' => array('$object', '$processed_data', '$skip_record'),
+            'args' => array('$primary_object_id', '$object', '$pattern', '$options', '$processed_data', '$processing_groups', '$skip_record'),
             'import_only' => true,
         ),
     );
 
+    if (!Registry::get('runtime.company_id')) {
+        $schema['export_fields']['Store']['required'] = true;
+    }
+
     //We should add company_id as alt key that $primary_object_id will be filled correctly.
-    if (Registry::get('settings.Stores.share_users') == 'N' && !Registry::get('runtime.simple_ultimate')) {
+    if (Registry::get('settings.Stores.share_users') == 'N') {
         $schema['export_fields']['Store']['alt_key'] = true;
     }
 }

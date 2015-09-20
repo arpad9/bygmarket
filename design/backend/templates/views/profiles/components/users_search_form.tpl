@@ -20,7 +20,11 @@
 {/if}
 
 {if $put_request_vars}
-    {array_to_fields data=$smarty.request skip=["callback"]}
+{foreach from=$smarty.request key="k" item="v"}
+{if $v && $k != "callback"}
+<input type="hidden" name="{$k}" value="{$v}" />
+{/if}
+{/foreach}
 {/if}
 
 {capture name="simple_search"}
@@ -48,6 +52,14 @@
 {capture name="advanced_search"}
     <div class="row-fluid">
         <div class="group span6 form-horizontal">
+            {if $settings.General.use_email_as_login != "Y"}
+            <div class="control-group">
+                <label class="control-label" for="elm_user_login">{__("username")}</label>
+                <div class="controls">
+                <input type="text" name="user_login" id="elm_user_login" value="{$search.user_login}" />
+                </div>
+            </div>
+            {/if}
             {if !"ULTIMATE:FREE"|fn_allowed_for}
                 <div class="control-group">
                     <label class="control-label" for="elm_usergroup_id">{__("usergroup")}</label>

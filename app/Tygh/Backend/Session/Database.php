@@ -16,8 +16,9 @@ namespace Tygh\Backend\Session;
 
 use Tygh\Session;
 
-class Database extends ABackend
+class Database implements IBackend
 {
+
     /**
      * Read session data
      *
@@ -29,17 +30,31 @@ class Database extends ABackend
     {
         $session = db_get_row('SELECT * FROM ?:sessions WHERE session_id = ?s', $sess_id);
 
-        if (!empty($session)) {
+        if (empty($session) || $session['expiry'] < TIME) {
 
-            if ($session['expiry'] > TIME) {
-                return $session['data'];
-            } else {
+            if (!empty($session)) {
                 // the session did not have time to get in "stored_sessions" and got out of date, it is necessary to return only settings
                 db_query('DELETE FROM ?:sessions WHERE session_id = ?s', $sess_id);
                 $session = Session::decode($session['data']);
 
                 return Session::encode(array ('settings' => !empty($session['settings']) ? $session['settings'] : array()));
             }
+
+            $stored_data = db_get_field('SELECT data FROM ?:stored_sessions WHERE session_id = ?s', $sess_id);
+
+            if (!empty($stored_data)) {
+
+                db_query('DELETE FROM ?:stored_sessions WHERE session_id = ?s', $sess_id);
+
+                $current = array();
+                $_stored = Session::decode($stored_data);
+                $_current['settings'] = !empty($_stored['settings']) ? $_stored['settings'] : array();
+
+                return Session::encode($_current);
+            }
+
+        } else {
+            return $session['data'];
         }
 
         return false;
@@ -73,6 +88,7 @@ class Database extends ABackend
     public function regenerate($old_id, $new_id)
     {
         db_query('UPDATE ?:sessions SET session_id = ?s WHERE session_id = ?s', $new_id, $old_id);
+        db_query('UPDATE ?:stored_sessions SET session_id = ?s WHERE session_id = ?s', $new_id, $old_id);
 
         return true;
     }
@@ -100,27 +116,23 @@ class Database extends ABackend
      */
     public function gc($max_lifetime)
     {
+        // Move expired sessions to sessions storage
+        db_query('REPLACE INTO ?:stored_sessions SELECT * FROM ?:sessions WHERE expiry < ?i', TIME);
+
         $sessions = db_get_array('SELECT * FROM ?:sessions WHERE expiry < ?i', TIME);
 
         if ($sessions) {
-            foreach ($sessions as $session) {
-                Session::expire($session['session_id'], $session);
+            foreach ($sessions as $entry) {
+                fn_log_user_logout($entry, Session::decode($entry['data']));
             }
 
             // delete old sessions
             db_query('DELETE FROM ?:sessions WHERE expiry < ?i', TIME);
         }
 
-        return true;
-    }
+        // Cleanup sessions storage
+        db_query('DELETE FROM ?:stored_sessions WHERE expiry < ?i', TIME - SESSIONS_STORAGE_ALIVE_TIME);
 
-    /**
-     * Gets sessions that were used less than number of seconds, defined in ttl_online property of Session class
-     * @param  string $area session area
-     * @return array  list of session IDs
-     */
-    public function getOnline($area)
-    {
-        return db_get_fields("SELECT session_id FROM ?:sessions WHERE expiry > ?i AND SUBSTR(session_id, -1) = ?s", TIME + $this->config['ttl'] - $this->config['ttl_online'], $area);
+        return true;
     }
 }

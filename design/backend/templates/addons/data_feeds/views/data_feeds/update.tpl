@@ -29,28 +29,26 @@
             <input type="text" name="datafeed_data[datafeed_name]" id="elm_datafeed_name" size="55" value="{$datafeed_data.datafeed_name}" class="input-text-large main-input" />
         </div>
     </div>
-
+    
     <div class="control-group">
         <label for="elm_datafeed_file_name" class="control-label cm-required">{__("filename")}:</label>
         <div class="controls">
             <input type="text" name="datafeed_data[file_name]" id="elm_datafeed_file_name" size="55" value="{$datafeed_data.file_name|default:"datafeed_`$date`.csv"}" class="input-text-large" />
         </div>
     </div>
-
+    
     <div class="control-group">
         <label for="elm_datafeed_enclosure" class="control-label">{__("enclosure")}:</label>
         <div class="controls">
             <input type="text" name="datafeed_data[enclosure]" id="elm_datafeed_enclosure" size="55" value="{$datafeed_data.enclosure}" class="input-text-large" />
         </div>
     </div>
-
+    
     {if $pattern.options}
     {foreach from=$pattern.options key=k item=o}
     {if !$o.import_only}
     <div class="control-group">
-        <label for="elm_datafeed_element_{$p_id}_{$k}" class="control-label">
-            {__($o.title)}{if $o.description}{include file="common/tooltip.tpl" tooltip=__($o.description)}{/if}:
-        </label>
+        <label for="elm_datafeed_element_{$p_id}_{$k}" class="control-label">{__($o.title)}:</label>
         <div class="controls">{if $o.type == "checkbox"}
                 <input type="hidden" name="datafeed_data[export_options][{$k}]" value="N" />
                 <input id="elm_datafeed_element_{$p_id}_{$k}" type="checkbox" name="datafeed_data[export_options][{$k}]" value="Y" {if $datafeed_data.export_options.$k == "Y"}checked="checked"{/if} />
@@ -73,27 +71,23 @@
                 {/if}
                 </select>
             {/if}
-
-            {if $o.notes}
-                <p class="muted">{$o.notes nofilter}</p>
-            {/if}
-        </div>
+            {if $o.description}<p><small>{__($o.description)}</small></p>{/if}</div>
     </div>
     {/if}
     {/foreach}
     {/if}
-
+    
     <div class="control-group">
         <label for="elm_datafeed_csv_delimiter" class="control-label">{__("csv_delimiter")}:</label>
         <div class="controls">{include file="views/exim/components/csv_delimiters.tpl" name="datafeed_data[csv_delimiter]" value=$datafeed_data.csv_delimiter id="elm_datafeed_csv_delimiter"}</div>
     </div>
-
+    
     <div class="control-group">
         <label for="elm_datafeed_exclude_disabled_products" class="control-label">{__("exclude_disabled_products")}:</label>
         <div class="controls"><input type="hidden" name="datafeed_data[exclude_disabled_products]" value="N" />
             <input type="checkbox" name="datafeed_data[exclude_disabled_products]" id="elm_datafeed_exclude_disabled_products" value="Y" {if $datafeed_data.exclude_disabled_products == "Y"}checked="checked"{/if} /></div>
     </div>
-
+    
     {include file="common/select_status.tpl" input_name="datafeed_data[status]" id="elm_datafeed_status" obj=$datafeed_data hidden=false}
 </div>
 
@@ -103,10 +97,7 @@
     <div class="control-group">
         <label for="elm_datafeed_save_directory" id="label_save_directory" class="control-label">{__("save_directory")}:</label>
         <div class="controls">
-            <input type="text" name="datafeed_data[save_dir]" id="elm_datafeed_save_directory" size="55" value="{$datafeed_data.save_dir}" class="input-text-large" />
-            <p class="muted">
-            {__("text_file_editor_notice", ["[href]" => "file_editor.manage?path=/"|fn_url])}
-            </p>
+            <input type="text" name="datafeed_data[save_dir]" id="elm_datafeed_save_directory" size="55" value="{$datafeed_data.save_dir|default:$smarty.const.DIR_EXIM}" class="input-text-large" />
         </div>
     </div>
 </div>
@@ -121,14 +112,14 @@
             <p><small>{__("ftp_url_hint")}</small></p>
         </div>
     </div>
-
+    
     <div class="control-group">
         <label for="elm_datafeed_ftp_user" id="label_ftp_user" class="control-label">{__("ftp_user")}:</label>
         <div class="controls">
             <input type="text" name="datafeed_data[ftp_user]" id="elm_datafeed_ftp_user" size="20" value="{$datafeed_data.ftp_user}" class="input-text-medium" />
         </div>
     </div>
-
+    
     <div class="control-group">
         <label for="elm_datafeed_ftp_pass" class="control-label">{__("ftp_pass")}:</label>
         <div class="controls">
@@ -137,7 +128,6 @@
     </div>
 </div>
 
-{hook name="data_feeds:cron_settings"}
 {include file="common/subheader.tpl" title=__("cron_export") target="#data_feed_cron_settings"}
 
 <div id="data_feed_cron_settings" class="in collapse">
@@ -149,13 +139,12 @@
                 <option value="S" {if $datafeed_data.export_location == "S"}selected="selected"{/if}>{__("server")}</option>
                 <option value="F" {if $datafeed_data.export_location == "F"}selected="selected"{/if}>{__("ftp")}</option>
             </select>
-
+            
             <p><small>{__("export_cron_hint")}:<br>php /path/to/cart/{""|fn_url:"A":"rel"} --dispatch=exim.cron_export --cron_password={$addons.data_feeds.cron_password}</small>
             </p>
         </div>
     </div>
 </div>
-{/hook}
 
 </fieldset>
 
@@ -196,5 +185,5 @@
 {if !$id}
     {include file="common/mainbox.tpl" title=__("add_new_datafeed") content=$smarty.capture.mainbox buttons=$smarty.capture.buttons}
 {else}
-    {include file="common/mainbox.tpl" title="{__("update_datafeed")}:&nbsp;`$datafeed_data.datafeed_name`" content=$smarty.capture.mainbox select_languages=true buttons=$smarty.capture.buttons}
+    {include file="common/mainbox.tpl" title="{__("update_datafeed")}:&nbsp;`$datafeed_data.datafeed_name`"|unescape content=$smarty.capture.mainbox select_languages=true buttons=$smarty.capture.buttons}
 {/if}

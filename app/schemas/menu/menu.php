@@ -26,11 +26,10 @@ use \Tygh\Registry;
         'href' => 'addons.manage',
         'position' => 100,
         'attrs' => array(
-            'class' => 'test-addon-class', // Classes for <li>
+            'class' => 'test-addon-class',
             'main' => array( // Attributes for <li>
                 'custom-li-attr' => 'my-li-attr',
             ),
-            'class_href' => 'test-addon-class', // Classes for <a>
             'href' => array( // Attributes for <a>
                 'custom-a-attr' => 'my-a-attr',
             ),
@@ -43,7 +42,7 @@ use \Tygh\Registry;
     </li>
 */
 
-$schema = array(
+$scheme = array(
     'top' => array(
         'addons' => array(
             'items' => array(
@@ -60,11 +59,6 @@ $schema = array(
         ),
         'administration' => array(
             'items' => array(
-
-                'files' => array(
-                    'href' => 'file_editor.manage',
-                    'position' => 100,
-                ),
                 'addons_divider' => array(
                     'type' => 'divider',
                     'position' => 110,
@@ -126,18 +120,7 @@ $schema = array(
                 ),
                 'languages' => array(
                     'href' => 'languages.manage',
-                    'type' => 'title',
                     'position' => 700,
-                    'subitems' => array(
-                        'translations' => array(
-                            'href' => 'languages.translations',
-                            'position' => 100,
-                        ),
-                        'manage_languages' => array(
-                            'href' => 'languages.manage',
-                            'position' => 200,
-                        ),
-                    ),
                 ),
                 'languages_divider' => array(
                     'type' => 'divider',
@@ -151,8 +134,8 @@ $schema = array(
                     'type' => 'divider',
                     'position' => 900,
                 ),
-                'backup_restore' => array(
-                    'href' => 'datakeeper.manage',
+                'database' => array(
+                    'href' => 'database.manage',
                     'position' => 1000,
                 ),
                 'storage' => array(
@@ -160,8 +143,8 @@ $schema = array(
                     'type' => 'title',
                     'position' => 1100,
                     'subitems' => array(
-                        'cdn_settings' => array(
-                            'href' => 'storage.cdn',
+                        'configure' => array(
+                            'href' => 'storage.manage',
                             'position' => 100,
                         ),
                         'configure_divider' => array(
@@ -184,23 +167,19 @@ $schema = array(
                     'subitems' => array(
                         'orders' => array(
                             'href' => 'exim.import?section=orders',
-                            'position' => 200,
+                            'position' => 100,
                         ),
                         'products' => array(
                             'href' => 'exim.import?section=products',
-                            'position' => 300,
-                        ),
-                        'features' => array(
-                            'href' => 'exim.import?section=features',
-                            'position' => 100,
+                            'position' => 200,
                         ),
                         'translations' => array(
                             'href' => 'exim.import?section=translations',
-                            'position' => 400,
+                            'position' => 300,
                         ),
                         'users' => array(
                             'href' => 'exim.import?section=users',
-                            'position' => 500,
+                            'position' => 400,
                         ),
                     ),
                 ),
@@ -210,24 +189,19 @@ $schema = array(
                     'subitems' => array(
                         'orders' => array(
                             'href' => 'exim.export?section=orders',
-                            'position' => 200,
+                            'position' => 100,
                         ),
                         'products' => array(
                             'href' => 'exim.export?section=products',
-                            'position' => 300,
+                            'position' => 200,
                         ),
-                        'features' => array(
-                            'href' => 'exim.export?section=features',
-                            'position' => 100,
-                        ),
-
                         'translations' => array(
                             'href' => 'exim.export?section=translations',
-                            'position' => 400,
+                            'position' => 300,
                         ),
                         'users' => array(
                             'href' => 'exim.export?section=users',
-                            'position' => 500,
+                            'position' => 400,
                         ),
                     ),
                 ),
@@ -252,11 +226,11 @@ $schema = array(
                     'href' => 'block_manager.manage',
                     'position' => 200,
                 ),
-                'templates' => array(
-                    'href' => 'templates.manage',
+                'template_editor' => array(
+                    'href' => 'template_editor.manage',
                     'position' => 300,
                 ),
-                'file_editor_manager_divider' => array(
+                'template_editor_manager_divider' => array(
                     'type' => 'divider',
                     'position' => 310,
                 ),
@@ -297,9 +271,14 @@ $schema = array(
                     'position' => 400,
                     'type' => 'setting',
                 ),
-                'Checkout' => array(
-                    'href' => 'settings.manage?section_id=Checkout',
+                'Company' => array(
+                    'href' => 'settings.manage?section_id=Company',
                     'position' => 500,
+                    'type' => 'setting',
+                ),
+                'Shippings' => array(
+                    'href' => 'settings.manage?section_id=Shippings',
+                    'position' => 600,
                     'type' => 'setting',
                 ),
                 'Emails' => array(
@@ -422,6 +401,11 @@ $schema = array(
                     'alt' => 'profiles.update?user_type=C',
                     'position' => 300,
                 ),
+                'users' => array(
+                    'href' => 'profiles.manage',
+                    'alt' => 'profiles.update',
+                    'position' => 100,
+                ),
                 'usergroups' => array(
                     'href' => 'usergroups.manage',
                     'position' => 800,
@@ -434,16 +418,6 @@ $schema = array(
                 'content' => array(
                     'href' => 'pages.manage?get_tree=multi_level',
                     'position' => 100,
-                ),
-                'seo' => array(
-                    'href' => 'robots.manage',
-                    'position' => 500,
-                    'subitems' => array(
-                        'seo_robots' => array(
-                            'href' => 'robots.manage',
-                            'position' => 600
-                        ),
-                    )
                 ),
                 'sitemap' => array(
                     'href' => 'sitemap.manage',
@@ -469,25 +443,11 @@ $schema = array(
 );
 
 if (Registry::get('config.tweaks.disable_localizations') == true) {
-    unset($schema['top']['administration']['items']['shippings_taxes']['subitems']['localizations']);
+    unset($scheme['top']['administration']['items']['shippings_taxes']['subitems']['localizations']);
 }
 
 if (Registry::get('config.tweaks.disable_localizations') != true && fn_allowed_for('ULTIMATE:FREE')) {
-    $schema['top']['administration']['items']['shippings_taxes']['subitems']['localizations']['is_promo'] = true;
+    $scheme['top']['administration']['items']['shippings_taxes']['subitems']['localizations']['is_promo'] = true;
 }
 
-if ((!Registry::get('runtime.company_id') || Registry::get('runtime.simple_ultimate')) && !defined('RESTRICTED_ADMIN')) {
-    $schema['top']['settings']['items']['store_mode'] = array(
-        'position' => 999999,
-        'type' => 'title',
-        'href' => 'settings.change_store_mode',
-        'attrs' => array(
-            'class_href' => 'cm-dialog-opener cm-dialog-auto-size',
-            'href' => array(
-                'data-ca-target-id' => 'store_mode_dialog',
-            ),
-        ),
-    );
-}
-
-return $schema;
+return $scheme;

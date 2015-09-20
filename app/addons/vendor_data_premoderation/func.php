@@ -19,22 +19,20 @@ function fn_vendor_data_premoderation_get_products(&$params, &$fields, &$sorting
 {
     $sortings['approval'] = 'products.approved';
 
-    // at admin area we allow filtering by approval status
     if (AREA == 'A') {
         if (!empty($params['approval_status']) && $params['approval_status'] != 'all') {
             $condition .= db_quote(' AND products.approved = ?s', $params['approval_status']);
         }
-    }
-    // at customer area we require product to be approved
-    elseif (AREA == 'C') {
-        $condition .= db_quote(' AND products.approved = ?s', 'Y');
-    }
-}
+    } else {
 
-function fn_vendor_data_premoderation_get_preview_url_post(&$uri, &$object_data, &$user_id, &$preview_url)
-{
-    if ($object_data['status'] == 'A' && fn_allowed_for('MULTIVENDOR') && isset($object_data['approved']) && $object_data['approved'] == 'Y' ) {
-        $preview_url = fn_url($uri, 'C', 'http', DESCR_SL);
+        $products_prior_approval = Registry::get('addons.vendor_data_premoderation.products_prior_approval');
+        $products_updates_approval = Registry::get('addons.vendor_data_premoderation.products_updates_approval');
+
+        if ($products_prior_approval == 'all' || $products_updates_approval == 'all') {
+            $condition .= db_quote(' AND products.approved = ?s', 'Y');
+        } elseif ($products_prior_approval == 'custom' || $products_updates_approval == 'custom') {
+            $condition .= " AND IF (companies.pre_moderation = 'Y' || companies.pre_moderation_edit = 'Y', products.approved = 'Y', 1) ";
+        }
     }
 }
 
@@ -115,15 +113,4 @@ function fn_change_approval_status($p_ids, $status)
     }
 
     return true;
-}
-
-function fn_vendor_data_premoderation_clone_product_post(&$product_id, &$pid, &$orig_name, &$new_name)
-{
-    if (!empty($pid) && Registry::get('runtime.company_id')) {
-        $company_data = Registry::get('runtime.company_data');
-        $products_prior_approval = Registry::get('addons.vendor_data_premoderation.products_prior_approval');
-        if ($products_prior_approval == 'all' || ($products_prior_approval == 'custom' && $company_data['pre_moderation'] == 'Y')) {
-            fn_change_approval_status($pid, 'P');
-        }
-    }
 }

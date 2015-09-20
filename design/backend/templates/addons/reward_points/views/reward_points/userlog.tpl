@@ -48,7 +48,7 @@
                 {elseif $ul.action == $smarty.const.CHANGE_DUE_ORDER_PLACE}
                     {assign var="reason" value=$ul.reason|unserialize}
                     {assign var="order_exist" value=$reason.order_id|fn_get_order_name}
-                    {__("order")} {if $order_exist}<a href="{"orders.details?order_id=`$reason.order_id`"|fn_url}" class="underlined">{/if}<span>#{$reason.order_id}</span>{if $order_exist}</a>{/if}: {__("order_placed")}
+                    {__("order")} {if $order_exist}<a href="{"orders.details?order_id=`$reason.order_id`"|fn_url}" class="underlined">{/if}<span>#{$reason.order_id}</span>{if $order_exist}</a>{/if}: {__("placed")}
                 {else}
                     {hook name="reward_points:userlog"}
                         {$ul.reason}
@@ -58,9 +58,9 @@
             <td class="nowrap right">
                 <div class="hidden-tools">
                     {capture name="tools_list"}
-                        <li>{btn type="delete" href="reward_points.delete?user_id=`$smarty.request.user_id`&change_id=`$ul.change_id`" class="cm-confirm cm-post"}</li>
+                        <li>{btn type="delete" href="reward_points.delete?user_id=`$smarty.request.user_id`&change_id=`$ul.change_id`" class="cm-confirm"}</li>
                     {/capture}
-                    {dropdown content=$smarty.capture.tools_list}
+                    {dropdown content=$smarty.capture.tools_list class="dropleft"}
                 </div>
             </td>
         </tr>
@@ -107,7 +107,7 @@
 
             <div class="tabs cm-j-tabs">
                 <ul class="nav nav-tabs">
-                    <li id="tab_general" class="cm-js active"><a>{__("general")}</a></li>
+                    <li id="tab_general" class="cm-js cm-active"><a>{__("general")}</a></li>
                 </ul>
             </div>
 

@@ -5,7 +5,7 @@
     {assign var="extra_mode" value="buy_together"}
 {/if}
 
-{if $item|fn_allow_save_object:"chains" && ($runtime.company_id || $runtime.simple_ultimate)}
+{if $item|fn_allow_save_object:"chains" && $runtime.company_id}
     {assign var="allow_save" value=true}
 {else}
     {assign var="allow_save" value=false}
@@ -30,7 +30,7 @@
 
 <div class="tabs cm-j-tabs">
     <ul class="nav nav-tabs">
-        <li id="tab_general_{$id}" class="cm-js active"><a>{__("general")}</a></li>
+        <li id="tab_general_{$id}" class="cm-js cm-active"><a>{__("general")}</a></li>
         <li id="tab_products_{$id}" class="cm-js"><a>{__("products")}</a></li>
     </ul>
 </div>
@@ -80,7 +80,7 @@
         <div id="content_tab_products_{$id}" {if $no_hide_inputs}class="{$no_hide_inputs}"{/if}>
             {include file="common/subheader.tpl" title=__("combination_products")}
             
-            {include file="pickers/products/picker.tpl" data_id="objects_`$id`_" input_name="item_data[products]" item_ids=$item.products_info type="table" aoc=true colspan="7" placement="right"}
+            {include file="pickers/products/picker.tpl" data_id="objects_`$id`_" input_name="item_data[products]" item_ids=$item.products_info type="table" aoc=true colspan="7"}
             
             <ul class="pull-right unstyled right span6">
             {if $allow_save}

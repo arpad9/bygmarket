@@ -55,15 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    if ($mode == 'delete') {
-
-        if (!empty($_REQUEST['state_id'])) {
-            db_query("DELETE FROM ?:states WHERE state_id = ?i", $_REQUEST['state_id']);
-            db_query("DELETE FROM ?:state_descriptions WHERE state_id = ?i", $_REQUEST['state_id']);
-        }
-    }
-
-    return array(CONTROLLER_STATUS_OK, 'states.manage?country_code=' . $_REQUEST['country_code']);
+    return array(CONTROLLER_STATUS_OK, "states.manage?country_code=$_REQUEST[country_code]");
 }
 
 if ($mode == 'manage') {
@@ -75,11 +67,19 @@ if ($mode == 'manage') {
 
     list($states, $search) = fn_get_states($params, Registry::get('settings.Appearance.admin_elements_per_page'), DESCR_SL);
 
-    Tygh::$app['view']->assign('states', $states);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('states', $states);
+    Registry::get('view')->assign('search', $search);
 
-    Tygh::$app['view']->assign('countries', fn_get_simple_countries(false, DESCR_SL));
+    Registry::get('view')->assign('countries', fn_get_simple_countries(false, DESCR_SL));
 
+} elseif ($mode == 'delete') {
+
+    if (!empty($_REQUEST['state_id'])) {
+        db_query("DELETE FROM ?:states WHERE state_id = ?i", $_REQUEST['state_id']);
+        db_query("DELETE FROM ?:state_descriptions WHERE state_id = ?i", $_REQUEST['state_id']);
+    }
+
+    return array(CONTROLLER_STATUS_REDIRECT, "states.manage?country_code=$_REQUEST[country_code]");
 }
 
 function fn_update_state($state_data, $state_id = 0, $lang_code = DESCR_SL)

@@ -13,7 +13,7 @@
 
 <div class="tabs cm-j-tabs">
     <ul class="nav nav-tabs">
-        <li id="tab_general_{$id}" class="cm-js active"><a>{__("general")}</a></li>
+        <li id="tab_general_{$id}" class="cm-js cm-active"><a>{__("general")}</a></li>
     </ul>
 </div>
 
@@ -33,23 +33,24 @@
         </div>
     </div>
     
-    
-    {if $id}
-    <div class="control-group">
-        <label class="control-label" for="is_primary_currency_{$id}">{__("primary_currency")}:</label>
-        <div class="controls">
-            <input type="hidden" name="currency_data[coefficient]" value="1" />
-            <input type="checkbox" name="currency_data[is_primary]" value="Y" {if $currency.is_primary == "Y"}checked="checked"{/if} onclick="Tygh.$('.cm-coefficient').prop('disabled', Tygh.$(this).prop('checked'))" id="is_primary_currency_{$id}">
+    {if !"ULTIMATE:FREE"|fn_allowed_for}
+        {if $id}
+        <div class="control-group">
+            <label class="control-label" for="is_primary_currency_{$id}">{__("primary_currency")}:</label>
+            <div class="controls">
+                <input type="hidden" name="currency_data[coefficient]" value="1" />
+                <input type="checkbox" name="currency_data[is_primary]" value="Y" {if $currency.is_primary == "Y"}checked="checked"{/if} onclick="Tygh.$('.cm-coefficient').prop('disabled', Tygh.$(this).prop('checked'))" id="is_primary_currency_{$id}">
+            </div>
         </div>
-    </div>
-    {/if}
+        {/if}
 
-    <div class="control-group">
-        <label class="control-label cm-required" for="coefficient_{$id}">{__("currency_rate")}:</label>
-        <div class="controls">
-            <input type="text" name="currency_data[coefficient]" size="7" value="{$currency.coefficient}" id="coefficient_{$id}" class="cm-coefficient" {if $currency.is_primary == "Y"}disabled="disabled"{/if}>
+        <div class="control-group">
+            <label class="control-label cm-required" for="coefficient_{$id}">{__("currency_rate")}:</label>
+            <div class="controls">
+                <input type="text" name="currency_data[coefficient]" size="7" value="{$currency.coefficient}" id="coefficient_{$id}" class="cm-coefficient" {if $currency.is_primary == "Y"}disabled="disabled"{/if}>
+            </div>
         </div>
-    </div>
+    {/if}
 
     <div class="control-group">
         <label class="control-label" for="symbol_{$id}">{__("currency_sign")}:</label>
@@ -58,7 +59,7 @@
         </div>
     </div>
     
-    {hook name="currencies:autoupdate"}{/hook}
+{hook name="currencies:autoupdate"}{/hook}
 
     <div class="control-group">
         <label class="control-label" for="after_{$id}">{__("after_sum")}:</label>
@@ -68,21 +69,21 @@
         </div>
     </div>
 
-    {if !$id && !"ULTIMATE:FREE"|fn_allowed_for}
-        {include file="common/select_status.tpl" input_name="currency_data[status]" id="add_currency" hidden=true}
+    {if !$id}
+        {include file="common/select_status.tpl" input_name="currency_data[status]" id="add_currency"}
     {/if}
 
     <div class="control-group">
         <label class="control-label" for="thousands_separator_{$id}">{__("ths_sign")}:</label>
         <div class="controls">
-            <input type="text" name="currency_data[thousands_separator]" size="6" maxlength="6" value="{$currency.thousands_separator}" id="thousands_separator_{$id}">
+            <input type="text" name="currency_data[thousands_separator]" size="1" maxlength="1" value="{$currency.thousands_separator}" id="thousands_separator_{$id}">
         </div>
     </div>
 
     <div class="control-group">
         <label class="control-label" for="decimal_separator_{$id}">{__("dec_sign")}:</label>
         <div class="controls">
-            <input type="text" name="currency_data[decimals_separator]" size="6" maxlength="6" value="{$currency.decimals_separator}" id="decimal_separator_{$id}">
+            <input type="text" name="currency_data[decimals_separator]" size="1" maxlength="1" value="{$currency.decimals_separator}" id="decimal_separator_{$id}">
         </div>
     </div>
 
@@ -95,9 +96,6 @@
     </fieldset>
 </div>
 
-{hook name="currencies:tabs_content"}
-{/hook}
-
 {if ""|fn_allow_save_object:"":true}
     <div class="buttons-container">
         {include file="buttons/save_cancel.tpl" but_name="dispatch[currencies.update]" cancel_action="close" save=$id}
@@ -105,8 +103,4 @@
 {/if}
 
 </form>
-
-{hook name="currencies:tabs_extra"}
-{/hook}
-
 <!--content_group{$id}--></div>

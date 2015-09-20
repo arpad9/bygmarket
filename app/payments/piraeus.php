@@ -13,6 +13,7 @@
 ****************************************************************************/
 
 use Tygh\Http;
+use Tygh\Registry;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -24,45 +25,46 @@ if (defined('PAYMENT_NOTIFICATION')) {
         $order_info = fn_get_order_info($order_id);
         $processor_data = fn_get_payment_method_data($order_info['payment_id']);
 
-        $pp_response = array();
-        $pp_response['transaction_id'] = $_REQUEST['TransactionId'];
-        $pp_response['transaction_datetime'] = $_REQUEST['TransactionDateTime'];
-        $pp_response['reason_text'] = $_REQUEST['ResponseDescription'];
+        $pp_response['SupportReferenceID'] = $_REQUEST['SupportReferenceID'];
+        $pp_response['ResultCode'] = $_REQUEST['ResultCode'];
+        $pp_response['ResultDescription'] = $_REQUEST['ResultDescription'];
+        $pp_response['StatusFlag'] = $_REQUEST['StatusFlag'];
+        $pp_response['ResponseCode'] = $_REQUEST['ResponseCode'];
+        $pp_response['ResponseDescription'] = $_REQUEST['ResponseDescription'];
+        $pp_response['TransactionDateTime'] = $_REQUEST['TransactionDateTime'];
+        $pp_response['TransactionId'] = $_REQUEST['TransactionId'];
+        $pp_response['CardType'] = $_REQUEST['CardType'];
+        $pp_response['PackageNo'] = $_REQUEST['PackageNo'];
+        $pp_response['ApprovalCode'] = $_REQUEST['ApprovalCode'];
+
+        $pp_response['RetrievalRef'] = $_REQUEST['RetrievalRef'];
+        $pp_response['AuthStatus'] = $_REQUEST['AuthStatus'];
+        $pp_response['Parameters'] = $_REQUEST['Parameters'];
 
         if ($_REQUEST['ResultCode'] == 0) {
             if ( $_REQUEST['StatusFlag'] == 'Success' && in_array($_REQUEST['ResponseCode'], array('00', '08', '10', '11', '16')) ) {
 
-                $tran_ticket = db_get_field("SELECT data FROM ?:order_data WHERE type = 'E' AND order_id = ?i", $order_id);
-
-                $cart_hashkey_str = $tran_ticket . $processor_data['processor_params']['posid']. $processor_data['processor_params']['acquirerid'] . $_REQUEST['MerchantReference'] . $_REQUEST['ApprovalCode'] . $_REQUEST['Parameters'] . $_REQUEST['ResponseCode'] . $_REQUEST['SupportReferenceID'] . $_REQUEST['AuthStatus'] . $_REQUEST['PackageNo'] . $_REQUEST['StatusFlag'];
+                $cart_hashkey_str = $order_info['payment_info']['TranTicket'] . $processor_data['processor_params']['posid']. $processor_data['processor_params']['acquirerid'] . $_REQUEST['MerchantReference'] . $_REQUEST['ApprovalCode'] . $_REQUEST['Parameters'] . $_REQUEST['ResponseCode'] . $_REQUEST['SupportReferenceID'] . $_REQUEST['AuthStatus'] . $_REQUEST['PackageNo'] . $_REQUEST['StatusFlag'];
                 $cart_hashkey = strtoupper(hash( 'sha256', $cart_hashkey_str ));
 
                 if ($cart_hashkey == $_REQUEST['HashKey']) {
                     $pp_response['order_status'] = 'P';
-
-                    db_query("DELETE FROM ?:order_data WHERE type = 'E' AND order_id = ?i", $order_id);
-
-                    if (!empty($_REQUEST['SupportReferenceID'])) {
-                        $pp_response['reason_text'] .= '; SupportReferenceID: ' . $_REQUEST['SupportReferenceID'];
-                    }
-
-                    if (!empty($_REQUEST['ApprovalCode'])) {
-                        $pp_response['reason_text'] .= '; ApprovalCode: ' . $_REQUEST['ApprovalCode'];
-                    }
+                    $pp_response['reason_text'] = 'Processed';
                 } else {
                     $pp_response['order_status'] = 'F';
-                    $pp_response['reason_text'] .= 'Hash value is incorrect';
+                    $pp_response['reason_text'] = 'Hash value is incorrect';
                 }
             } elseif ($_REQUEST['StatusFlag'] == 'Failure') {
                 $pp_response['order_status'] = 'F';
-
+                $pp_response['reason_text'] = 'Failed';
             } elseif ($_REQUEST['StatusFlag'] == 'Asynchronous') {
                 $pp_response['order_status'] = 'O';
-                $pp_response['reason_text'] .= '; Asynchronous';
+                $pp_response['reason_text'] = 'Asynchronous';
             }
 
         } else {
             $pp_response['order_status'] = 'F';
+            $pp_response['reason_text'] = $_REQUEST['ResultDescription'];
         }
 
         if (fn_check_payment_script('piraeus.php', $order_id)) {
@@ -90,6 +92,9 @@ if (defined('PAYMENT_NOTIFICATION')) {
     }
 
 } else {
+
+    $ticketing_url = "https://paycenter.winbank.gr/services/tickets/issuer.asmx?WSDL";
+
     $ticketing_data = Array (
         'AcquirerId' => $processor_data['processor_params']['acquirerid'],
         'MerchantId' => $processor_data['processor_params']['merchantid'],
@@ -101,30 +106,39 @@ if (defined('PAYMENT_NOTIFICATION')) {
         'MerchantReference' => (($order_info['repaid']) ? ($order_id . '_' . $order_info['repaid']) : $order_id),
         'Amount' => $order_info['total'],
         'Installments' => 0,
-        'Bnpl' => 0,
         'ExpirePreauth' => (($processor_data['processor_params']['requesttype'] == '00') ? $processor_data['processor_params']['expirepreauth'] : '0'),
         'Parameters' => ''
     );
 
     $str = <<<EOT
-<?xml version="1.0" encoding="utf-8"?>
-<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-<soap:Body>
-<IssueNewTicket xmlns="http://piraeusbank.gr/paycenter/redirection">
-<Request>
-EOT;
-    $str .= fn_array_to_xml($ticketing_data);
-    $str .= <<<EOT
-</Request>
-</IssueNewTicket>
-</soap:Body>
-</soap:Envelope>
+    <?xml version="1.0" encoding="utf-8"?>
+    <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+        <soap:Body>
+            <IssueNewTicket xmlns="http://piraeusbank.gr/paycenter/redirection">
+                <Request>
+                    <Username>{$ticketing_data['Username']}</Username>
+                    <Password>{$ticketing_data['Password']}</Password>
+                    <PosId>{$ticketing_data['PosId']}</PosId>
+                    <MerchantId>{$ticketing_data['MerchantId']}</MerchantId>
+                    <AcquirerId>{$ticketing_data['AcquirerId']}</AcquirerId>
+                    <MerchantReference>{$ticketing_data['MerchantReference']}</MerchantReference>
+                    <RequestType>{$ticketing_data['RequestType']}</RequestType>
+                    <ExpirePreauth>{$ticketing_data['ExpirePreauth']}</ExpirePreauth>
+                    <Amount>{$ticketing_data['Amount']}</Amount>
+                    <CurrencyCode>{$ticketing_data['CurrencyCode']}</CurrencyCode>
+                    <Installments>{$ticketing_data['Installments']}</Installments>
+                    <Bnpl>0</Bnpl>
+                    <Parameters>{$ticketing_data['Parameters']}</Parameters>
+                </Request>
+            </IssueNewTicket>
+        </soap:Body>
+    </soap:Envelope>
 EOT;
     $str = str_replace(array("\t", "\n", "\r"), '', $str);
 
-    $response_data = Http::post("https://paycenter.piraeusbank.gr/services/tickets/issuer.asmx", $str, array(
+    $response_data = Http::post("https://paycenter.winbank.gr/services/tickets/issuer.asmx", $str, array(
         'headers' => array(
-            'Content-type: text/xml; charset=utf-8',
+            'Content-type: text/xml',
             'SOAPAction: http://piraeusbank.gr/paycenter/redirection/IssueNewTicket'
         )
     ));
@@ -142,16 +156,19 @@ EOT;
 
         if (strpos($response_data, '<TranTicket') !== false) {
             if (preg_match('!<TranTicket[^>]*>([^>]+)</TranTicket>!', $response_data, $matches)) {
-                $data = array (
-                    'order_id' => $order_id,
-                    'type' => 'E',
-                    'data' => $matches[1],
-                );
-                db_query("REPLACE INTO ?:order_data ?e", $data);
+                $pp_response['TranTicket'] = $matches[1];
             }
         }
 
-        $post_url = 'https://paycenter.piraeusbank.gr/redirection/pay.aspx';
+        if (strpos($response_data, '<Timestamp') !== false) {
+            if (preg_match('!<Timestamp[^>]*>([^>]+)</Timestamp>!', $response_data, $matches)) {
+                $pp_response['Timestamp'] = $matches[1];
+            }
+        }
+
+        fn_update_order_payment_info($order_id, $pp_response);
+
+        $post_url = 'https://paycenter.winbank.gr/redirection/pay.aspx';
 
         $post_data = array (
             'AcquirerId' => $processor_data['processor_params']['acquirerid'],

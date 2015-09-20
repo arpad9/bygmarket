@@ -19,38 +19,33 @@ use Tygh\Storage;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    //
-    // Delete image
-    //
-    if ($mode == 'delete_image') {
-        if (AREA == 'A' && !empty($auth['user_id'])) {
-            fn_delete_image($_REQUEST['image_id'], $_REQUEST['pair_id'], $_REQUEST['object_type']);
-            if (defined('AJAX_REQUEST')) {
-                Tygh::$app['ajax']->assign('deleted', true);
-            } elseif (!empty($_SERVER['HTTP_REFERER'])) {
-                return array(CONTROLLER_STATUS_REDIRECT, $_SERVER['HTTP_REFERER']);
-            }
+//
+// Delete image
+//
+if ($mode == 'delete_image') {
+    if (AREA == 'A' && !empty($auth['user_id'])) {
+        fn_delete_image($_REQUEST['image_id'], $_REQUEST['pair_id'], $_REQUEST['object_type']);
+        if (defined('AJAX_REQUEST')) {
+            Registry::get('ajax')->assign('deleted', true);
+        } elseif (!empty($_SERVER['HTTP_REFERER'])) {
+            return array(CONTROLLER_STATUS_REDIRECT, $_SERVER['HTTP_REFERER']);
         }
-        exit;
     }
+    exit;
 
-    //
-    // Delete image pair
-    //
-    if ($mode == 'delete_image_pair') {
-        if (AREA == 'A' && !empty($auth['user_id'])) {
-            fn_delete_image_pair($_REQUEST['pair_id'], $_REQUEST['object_type']);
-            if (defined('AJAX_REQUEST')) {
-                Tygh::$app['ajax']->assign('deleted', true);
-            }
+//
+// Delete image pair
+//
+} elseif ($mode == 'delete_image_pair') {
+    if (AREA == 'A' && !empty($auth['user_id'])) {
+        fn_delete_image_pair($_REQUEST['pair_id'], $_REQUEST['object_type']);
+        if (defined('AJAX_REQUEST')) {
+            Registry::get('ajax')->assign('deleted', true);
         }
-        exit;
     }
-    return;
-}
+    exit;
 
-if ($mode == 'captcha') {
+} elseif ($mode == 'captcha') {
 
     $verification_id = $_REQUEST['verification_id'];
     if (empty($verification_id)) {
@@ -93,7 +88,7 @@ if ($mode == 'captcha') {
     }
 
     if (!empty($verification_settings['background_image'])) {
-        $c->SetBackgroundImages(fn_get_files_dir_path() . $verification_settings['background_image']);
+        $c->SetBackgroundImages(Registry::get('config.dir.root') . '/' . $verification_settings['background_image']);
     }
 
     $c->Create();
@@ -142,7 +137,11 @@ if ($mode == 'captcha') {
 
 } elseif ($mode == 'thumbnail') {
 
+    ignore_user_abort(true);
     $img = fn_generate_thumbnail($_REQUEST['image_path'], $_REQUEST['w'], $_REQUEST['h']);
+
+    // Clear blocks cache to output generated image in <img> source
+    RenderManager::deleteTemplatesCache();
 
     if (!empty($img)) {
         header('Content-type: ' . fn_get_file_type($img));

@@ -19,7 +19,7 @@
 
 <div class="tabs cm-j-tabs">
     <ul class="nav nav-tabs">
-        <li id="details_{$id}" class="cm-js active"><a>{__("general")}</a></li>
+        <li id="details_{$id}" class="cm-js cm-active active"><a>{__("general")}</a></li>
         {if !$question_data || $question_data.type != "T"}
         <li id="conf_{$id}" class="cm-js"><a>{__("answers")}</a></li>
         {/if}
@@ -32,14 +32,14 @@
         <div class="control-group">
             <label for="descr_{$id}" class="cm-required control-label">{__("question_text")}:</label>
             <div class="controls">
-                <input type="text" name="question_data[description]" id="descr_{$id}" value="{$question_data.description}" class="span9">
+                <input type="text" name="question_data[description]" id="descr_{$id}" value="{$question_data.description}">
             </div>
         </div>
 
         <div class="control-group">
             <label for="pos_{$id}" class="control-label">{__("position")}:</label>
             <div class="controls">
-                <input type="text" name="question_data[position]" id="pos_{$id}" value="{$question_data.position}" class="span3">
+                <input type="text" name="question_data[position]" id="pos_{$id}" value="{$question_data.position}">
             </div>
         </div>
 
@@ -61,8 +61,8 @@
         <div class="control-group">
             <label for="req_{$id}" class="control-label">{__("required")}:</label>
             <div class="controls">
+                <label for="" class="checkbox"><input type="checkbox" name="question_data[required]" id="req_{$id}" value="Y" {if $question_data.required == "Y"}checked="checked"{/if}></label>
                 <input type="hidden" name="question_data[required]" value="N">
-                <label for="" class="checkbox"><input type="checkbox" name="question_data[required]" id="req_{$id}" value="Y" {if $question_data.required == "Y"}checked="checked"{/if}></label>                
             </div>
         </div>
 

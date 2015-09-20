@@ -29,5 +29,5 @@ if ($mode == 'update') {
         'js' => true
     ));
 
-    Tygh::$app['view']->assign('attachments', $attachments);
+    Registry::get('view')->assign('attachments', $attachments);
 }

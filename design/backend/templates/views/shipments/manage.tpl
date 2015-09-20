@@ -63,9 +63,8 @@
                 {hook name="shipments:list_extra_links"}
                     <li>{btn type="list" text=__("view") href="shipments.details?shipment_id=`$shipment.shipment_id`"}</li>
                     <li>{btn type="list" text=__("print_slip") class="cm-new-window" href="shipments.packing_slip?shipment_ids[]=`$shipment.shipment_id`"}</li>
-                    <li>{btn type="list" text=__("print_pdf_packing_slip") class="cm-new-window" href="shipments.packing_slip?shipment_ids[]=`$shipment.shipment_id`&format=pdf"}</li>
                     <li class="divider"></li>
-                    <li>{btn type="list" text=__("delete") class="cm-confirm cm-post" href="shipments.delete?shipment_ids[]=`$shipment.shipment_id`&redirect_url=`$return_current_url`"}</li>
+                    <li>{btn type="list" text=__("delete") class="cm-confirm" href="shipments.delete?shipment_ids[]=`$shipment.shipment_id`&redirect_url=`$return_current_url`"}</li>
                 {/hook}
             {/capture}
             {dropdown content=$smarty.capture.tools_list}
@@ -80,14 +79,13 @@
 {/if}
 
 {include file="common/pagination.tpl"}
-</form>
 {/capture}
 
 {capture name="buttons"}
     {capture name="tools_list"}
         {hook name="shipments:list_tools"}
         {if $shipments}
-            <li>{btn type="list" text=__("bulk_print_packing_slip") class="cm-new-window" dispatch="dispatch[shipments.packing_slip]" form="manage_shipments_form"}</li>
+            <li>{btn type="list" text=__("bulk_print") class="cm-new-window" dispatch="dispatch[shipments.packing_slip]" form="manage_shipments_form"}</li>
         {/if}
         {/hook}
         {if $shipments}

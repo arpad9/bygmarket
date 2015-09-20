@@ -10,9 +10,9 @@
     </div>
 </div>
 <div class="control-group">
-    <label class="control-label cm-required" for="rule_params">{__("url_dispatch_part")}</label>
+    <label class="control-label cm-required" for="rule_dispatch">{__("url_dispatch_part")}</label>
     <div class="controls">
-        <input type="text" name="rule_data[rule_params]" id="rule_params" value="" class="span9" />
+        <input type="text" name="rule_data[rule_dispatch]" id="rule_dispatch" value="" class="span9" />
         <p class="muted">{__("controller_description")}</p>
     </div>
 </div>
@@ -47,7 +47,7 @@
     <td>
         <input type="checkbox" name="dispatches[]" value="{$var.dispatch}" class="cm-item" /></td>
     <td>
-        <input type="hidden" name="seo_data[{$key}][rule_params]" value="{$var.dispatch}" />
+        <input type="hidden" name="seo_data[{$key}][rule_dispatch]" value="{$var.dispatch}" />
         <span>{$var.dispatch}</span></td>
     <td>
         <input type="text" name="seo_data[{$key}][name]" value="{$var.name}" class="input-hidden span7" /></td>
@@ -55,7 +55,7 @@
         <div class="hidden-tools">
             {capture name="tools_list"}
                 {assign var="_dispatch" value="`$var.dispatch`"|escape:url}
-                <li>{btn class="cm-confirm cm-post" type="list" text=__("delete") href="seo_rules.delete?rule_params=`$_dispatch`"}</li>
+                <li>{btn type="list" text=__("delete") href="seo_rules.delete?rule_dispatch=`$_dispatch`"}</li>
             {/capture}
             {dropdown content=$smarty.capture.tools_list}
         </div>

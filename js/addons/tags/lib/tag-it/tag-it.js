@@ -24,8 +24,7 @@
 *   jQuery v1.4+
 *   jQuery UI v1.8+
 */
-(function($) {
-
+(function ($) {
     $.widget('ui.tagit', {
         options: {
             allowDuplicates   : false,
@@ -119,7 +118,7 @@
                 this.tagList = $('<ul></ul>').insertAfter(this.element);
                 this.options.singleField = true;
                 this.options.singleFieldNode = this.element;
-                this.element.addClass('tagit-hidden-field');
+                this.element.css('display', 'none');
             } else {
                 this.tagList = this.element.find('ul, ol').andSelf().last();
             }
@@ -144,10 +143,7 @@
                         // (Case insensitive.)
                         return (element.toLowerCase().indexOf(filter) === 0);
                     });
-                    if (!this.options.allowDuplicates) {
-                        choices = this._subtractArray(choices, this.assignedTags());
-                    }
-                    showChoices(choices);
+                    showChoices(this._subtractArray(choices, this.assignedTags()));
                 };
             }
 
@@ -236,11 +232,12 @@
                         that._lastTag().removeClass('remove ui-state-highlight');
                     }
 
-                    // singleFieldDelimiter/Space/Enter are all valid delimiters for new tags,
+                    // Comma/Space/Enter are all valid delimiters for new tags,
                     // except when there is an open quote or if setting allowSpaces = true.
                     // Tab will also create a tag, unless the tag input is empty,
                     // in which case it isn't caught.
                     if (
+                        event.which === $.ui.keyCode.COMMA ||
                         event.which === $.ui.keyCode.ENTER ||
                         (
                             event.which == $.ui.keyCode.TAB &&
@@ -264,20 +261,11 @@
                             event.preventDefault();
                         }
 
-                        // Autocomplete will create its own tag from a selection and close automatically.
-                        if (!(that.options.autocomplete.autoFocus && that.tagInput.data('autocomplete-open'))) {
-                            that.tagInput.autocomplete('close');
-                            that.createTag(that._cleanedInput());
-                        }
-                    }
-                }).keypress(function(event){
-                    if (String.fromCharCode(event.which) === that.options.singleFieldDelimiter) {
-                        event.preventDefault();
-                        // Autocomplete will create its own tag from a selection and close automatically.
-                        if (!(that.options.autocomplete.autoFocus && that.tagInput.data('autocomplete-open'))) {
-                            that.tagInput.autocomplete('close');
-                            that.createTag(that._cleanedInput());
-                        }
+                        that.createTag(that._cleanedInput());
+
+                        // The autocomplete doesn't close automatically when TAB is pressed.
+                        // So let's ensure that it closes.
+                        that.tagInput.autocomplete('close');
                     }
                 }).blur(function(e){
                     // Create a tag when the element loses focus.
@@ -302,61 +290,12 @@
                 // while tagSource is left null by default.
                 autocompleteOptions.source = this.options.tagSource || autocompleteOptions.source;
 
-                this.tagInput.autocomplete(autocompleteOptions).bind('autocompleteopen.tagit', function(event, ui) {
+                this.tagInput.autocomplete(autocompleteOptions).bind('autocompleteopen', function(event, ui) {
                     that.tagInput.data('autocomplete-open', true);
-                }).bind('autocompleteclose.tagit', function(event, ui) {
-                    that.tagInput.data('autocomplete-open', false);
+                }).bind('autocompleteclose', function(event, ui) {
+                    that.tagInput.data('autocomplete-open', false)
                 });
-
-                this.tagInput.autocomplete('widget').addClass('tagit-autocomplete');
             }
-        },
-
-        destroy: function() {
-            $.Widget.prototype.destroy.call(this);
-
-            this.element.unbind('.tagit');
-            this.tagList.unbind('.tagit');
-
-            this.tagInput.removeData('autocomplete-open');
-
-            this.tagList.removeClass([
-                'tagit',
-                'ui-widget',
-                'ui-widget-content',
-                'ui-corner-all',
-                'tagit-hidden-field'
-            ].join(' '));
-
-            if (this.element.is('input')) {
-                this.element.removeClass('tagit-hidden-field');
-                this.tagList.remove();
-            } else {
-                this.element.children('li').each(function() {
-                    if ($(this).hasClass('tagit-new')) {
-                        $(this).remove();
-                    } else {
-                        $(this).removeClass([
-                            'tagit-choice',
-                            'ui-widget-content',
-                            'ui-state-default',
-                            'ui-state-highlight',
-                            'ui-corner-all',
-                            'remove',
-                            'tagit-choice-editable',
-                            'tagit-choice-read-only'
-                        ].join(' '));
-
-                        $(this).text($(this).children('.tagit-label').text());
-                    }
-                });
-
-                if (this.singleFieldNode) {
-                    this.singleFieldNode.remove();
-                }
-            }
-
-            return this;
         },
 
         _cleanedInput: function() {
@@ -503,7 +442,7 @@
             // Unless options.singleField is set, each tag has a hidden input field inline.
             if (!this.options.singleField) {
                 var escapedValue = label.html();
-                tag.append('<input type="hidden" value="' + escapedValue + '" name="' + this.options.fieldName + '" class="tagit-hidden-field" />');
+                tag.append('<input type="hidden" style="display:none;" value="' + escapedValue + '" name="' + this.options.fieldName + '" />');
             }
 
             if (this._trigger('beforeTagAdded', null, {

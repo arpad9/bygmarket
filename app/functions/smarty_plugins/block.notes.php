@@ -9,11 +9,7 @@ function smarty_block_notes($params, $content, &$smarty, $start)
 {
     static $notes = array();
     if (empty($start)) {
-        if (!empty($params['assign'])) {
-            $smarty->assign($params['assign'], $notes, false);
-        } elseif (!empty($params['clear'])) {
-            $notes = array();
-        } else {
+        if (empty($params['assign'])) {
             $key = empty($params['title']) ? '_note_': $params['title'];
 
             if (!empty($params['unique']) && !empty($notes[$key])) {
@@ -24,6 +20,8 @@ function smarty_block_notes($params, $content, &$smarty, $start)
                 $notes[$key] = '';
             }
             $notes[$key] .= $content;
+        } else {
+            $smarty->assign($params['assign'], $notes, false);
         }
     }
 }

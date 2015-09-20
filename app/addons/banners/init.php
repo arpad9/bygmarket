@@ -14,12 +14,6 @@
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
-fn_register_hooks(
-    'delete_image_pre',
-    'update_language_post',
-    'delete_languages_post'
-);
-
 if (!fn_allowed_for('ULTIMATE:FREE')) {
     fn_register_hooks(
         'localization_objects'

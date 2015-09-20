@@ -13,17 +13,8 @@
 ****************************************************************************/
 
 use Tygh\Mailer;
-use Tygh\Tools\SecurityHelper;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
-
-function fn_form_builder_demo_install()
-{
-    // Get admin account information and update "Email to" field in the "Contact us" page
-    $admin_email = db_get_field('SELECT email FROM ?:users WHERE user_id = ?i', 1);
-
-    db_query('UPDATE ?:form_options SET value = ?s WHERE element_id = ?i', $admin_email, 5);
-}
 
 function fn_form_builder_delete_page(&$page_id)
 {
@@ -103,7 +94,6 @@ function fn_form_builder_update_page_post(&$page_data, &$page_id, &$lang_code)
 
         // update or insert general form data
         if (!empty($general_data)) {
-            SecurityHelper::sanitizeObjectData('form_general_data', $general_data);
             //$gdata = fn_trusted_vars('general_data', true);
             foreach ($general_data as $type => $data) {
 
@@ -327,11 +317,6 @@ function fn_form_builder_page_object_by_type(&$types)
 function fn_form_builder_init_secure_controllers(&$controllers)
 {
     $controllers['pages'] = 'passive';
-}
-
-function fn_form_builder_settings_variants_image_verification_use_for(&$objects)
-{
-    $objects['form_builder'] = __('use_for_form_builder');
 }
 
 function fn_form_builder_selectable_elements()

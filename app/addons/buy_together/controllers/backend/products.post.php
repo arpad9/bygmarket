@@ -34,6 +34,6 @@ if ($mode == 'update') {
 
         $chains = fn_buy_together_get_chains($params, array(), DESCR_SL);
 
-        Tygh::$app['view']->assign('chains', $chains);
+        Registry::get('view')->assign('chains', $chains);
     }
 }

@@ -23,16 +23,11 @@ return array(
     'key' => array('item_id', 'order_id'),
     'order' => 1,
     'table' => 'order_details',
-    'permissions' => array(
-        'import' => 'edit_order',
-        'export' => 'view_orders',
-    ),
     'references' => array(
         'orders' => array(
             'reference_fields' => array('order_id' => '&order_id'),
             'join_type' => 'LEFT',
-            'alt_key' => array('order_id'),
-            'import_skip_db_processing' => true
+            'alt_key' => array('order_id')
         ),
     ),
     'condition' => array(
@@ -41,13 +36,6 @@ return array(
     'range_options' => array(
         'selector_url' => 'orders.manage',
         'object_name' => __('orders'),
-    ),
-    'import_process_data' => array(
-        'check_order_existence' => array(
-            'function' => 'fn_check_order_existence',
-            'args' => array('$primary_object_id', '$object', '$pattern', '$options', '$processed_data', '$processing_groups', '$skip_record'),
-            'import_only' => true,
-        ),
     ),
     'export_fields' => array(
         'Order ID' => array(
@@ -73,10 +61,9 @@ return array(
             'db_field' => 'amount'
         ),
         'Extra' => array(
-            'db_field' => 'extra',
             'linked' => true,
             'process_get' => array('fn_exim_orders_get_extra', '#this'),
-            'convert_put' => array('fn_exim_orders_set_extra', '#this')
+            'process_put' => array('fn_exim_orders_set_extra', '#key', '#this')
         ),
     ),
 );

@@ -12,7 +12,7 @@
 
 <div class="tabs cm-j-tabs">
     <ul class="nav nav-tabs">
-        <li id="tab_details_{$id}" class="cm-js active"><a>{__("general")}</a></li>
+        <li id="tab_details_{$id}" class="cm-js cm-active"><a>{__("general")}</a></li>
     </ul>
 </div>
 
@@ -60,9 +60,6 @@
             <div class="controls">
                 {if $product_file.preview_path}
                     <a href="{"products.get_file?file_id=`$id`&file_type=preview"|fn_url}">{$product_file.preview_path}</a> ({$product_file.preview_size|formatfilesize nofilter})
-                    <div>
-                        <label class="checkbox inline" for="elm_file_delete_preview_{$id}"><input type="checkbox" id="elm_file_delete_preview_{$id}" name="product_file[delete_preview]" value="Y">{__("delete")}</label>
-                    </div>
                 {elseif $product_file}
                     {__("none")}
                 {/if}

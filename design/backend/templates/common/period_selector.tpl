@@ -62,10 +62,12 @@
 
 {script src="js/tygh/period_selector.js"}
 <script type="text/javascript">
+//<![CDATA[
 Tygh.$(document).ready(function() {$ldelim}
     Tygh.$('#{$prefix}period_selects').cePeriodSelector({$ldelim}
         from: '{$prefix}f_date',
         to: '{$prefix}t_date'
     {$rdelim});
 {$rdelim});
+//]]>
 </script>

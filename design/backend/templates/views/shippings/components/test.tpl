@@ -56,21 +56,15 @@
     <td>{$weight}&nbsp;{$settings.General.weight_symbol}</td>
 </tr>
 {if $data.price}
-    <tr>
-        <td><strong>{__("cost")}:</strong></td>
-        <td>{include file="common/price.tpl" value=$data.price}</td>
-    </tr>
-    {if $data.delivery_time|trim}
-        <tr>
-            <td><strong>{__("delivery_time")}:</strong></td>
-            <td>{$data.delivery_time}</td>
-        </tr>
-    {/if}
+<tr>
+    <td><strong>{__("cost")}:</strong></td>
+    <td>{include file="common/price.tpl" value=$data.price}</td>
+</tr>
 {else}
-    <tr>
-        <td width="150px"><strong>{__("error")}:</strong></td>
-        <td width="300px"><span>{$data.error|default:"n/a"}</span></td>
-    </tr>
+<tr>
+    <td width="150px"><strong>{__("error")}:</strong></td>
+    <td width="300px"><span>{$data.error|default:"n/a"}</span></td>
+</tr>
 {/if}
 </tbody>
 </table>

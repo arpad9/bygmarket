@@ -1,6 +1,10 @@
 {assign var="first_id" value=$first_name|md5}
 {assign var="second_id" value=$second_name|md5}
 
+{notes unique=true}
+    {__("multiple_selectbox_notice")}
+{/notes}
+
 {include file="common/subheader.tpl" title=$title}
 <table class="{$class_name}" width="100%">
 <tr>
@@ -32,4 +36,3 @@
     </td>
 </tr>
 </table>
-<div class="muted">{__("multiple_selectbox_notice")}</div>

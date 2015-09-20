@@ -53,6 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         db_query("DELETE FROM ?:reward_point_changes WHERE user_id = ?i", $_REQUEST['user_id']);
     }
 
+    // Add/Update wholesale prices info
     if ($mode == 'add' || $mode == 'update') {
         if (isset($_REQUEST['reward_points'])) {
             foreach ($_REQUEST['reward_points'] as $k => $v) {
@@ -72,15 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    if ($mode == 'delete') {
-        if (!empty($_REQUEST['change_id'])) {
-            db_query("DELETE FROM ?:reward_point_changes WHERE change_id = ?i", $_REQUEST['change_id']);
-        }
-
-        return array(CONTROLLER_STATUS_REDIRECT, 'reward_points.userlog?user_id=' . $_REQUEST['user_id']);
-    }
-
-    return array(CONTROLLER_STATUS_OK, 'reward_points.manage');
+    return array(CONTROLLER_STATUS_OK, "reward_points.manage");
 }
 
 if ($mode == 'manage') {
@@ -91,8 +84,8 @@ if ($mode == 'manage') {
         'js' => true
     ));
 
-    Tygh::$app['view']->assign('reward_points', fn_get_reward_points(0, GLOBAL_REWARD_POINTS));
-    Tygh::$app['view']->assign('object_type', GLOBAL_REWARD_POINTS);
+    Registry::get('view')->assign('reward_points', fn_get_reward_points(0, GLOBAL_REWARD_POINTS));
+    Registry::get('view')->assign('object_type', GLOBAL_REWARD_POINTS);
 
 } elseif ($mode == 'add') {
 
@@ -103,18 +96,16 @@ if ($mode == 'manage') {
         'js' => true
     ));
 
-    Tygh::$app['view']->assign('object_type', GLOBAL_REWARD_POINTS);
+    Registry::get('view')->assign('object_type', GLOBAL_REWARD_POINTS);
+
+} elseif ($mode == 'delete') {
+    if (!empty($_REQUEST['change_id'])) {
+        db_query("DELETE FROM ?:reward_point_changes WHERE change_id = ?i", $_REQUEST['change_id']);
+    }
+
+    return array(CONTROLLER_STATUS_REDIRECT, "reward_points.userlog?user_id=$_REQUEST[user_id]");
 }
 
-Tygh::$app['view']->assign(
-    'reward_usergroups',
-    fn_get_usergroups(
-        array(
-            'type'            => 'C',
-            'status'          => array('A', 'H'),
-            'include_default' => true
-        )
-    )
-);
+Registry::get('view')->assign('reward_usergroups', fn_array_merge(fn_get_default_usergroups(), fn_get_usergroups('C')));
 
 /** /Body **/

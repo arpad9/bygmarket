@@ -95,7 +95,7 @@ if ($mode == 'view') {
                 foreach ($func_data as $func_name => $args) {
                     $args = fn_settings_wizard_prepare_args($args, $_REQUEST);
 
-                    Tygh::$app['view']->assign($variable_name, call_user_func_array($func_name, $args));
+                    Registry::get('view')->assign($variable_name, call_user_func_array($func_name, $args));
                 }
             }
         }
@@ -105,31 +105,31 @@ if ($mode == 'view') {
 
     // Set navigation menu
     $sections = Registry::get('navigation.static.top.settings.items');
-    fn_update_lang_objects('sections', $sections);
+    fn_update_lang_objects('sections', Registry::get('navigation.static.top.settings.items'));
 
     Registry::set('navigation.dynamic.sections', $sections);
     Registry::set('navigation.dynamic.active_section', 'settings_wizard');
 
-    Tygh::$app['view']->assign('wizard_addons', Registry::get('wizard_addons'));
-    Tygh::$app['view']->assign('step_data', $steps[$current_step]);
-    Tygh::$app['view']->assign('current_step', $current_step);
-    Tygh::$app['view']->assign('popup_title', __('settings_wizard_title', array(
+    Registry::get('view')->assign('wizard_addons', Registry::get('wizard_addons'));
+    Registry::get('view')->assign('step_data', $steps[$current_step]);
+    Registry::get('view')->assign('current_step', $current_step);
+    Registry::get('view')->assign('popup_title', __('settings_wizard_title', array(
         '[current_step]' => $current_step_position,
         '[total_steps]' => count($steps)
     )));
 
-    Tygh::$app['view']->assign('return_url', empty($_REQUEST['return_url']) ? fn_url() : $_REQUEST['return_url']);
+    Registry::get('view')->assign('return_url', empty($_REQUEST['return_url']) ? fn_url() : $_REQUEST['return_url']);
 
 } elseif ($mode == 'check_ssl') {
     $content = Http::get(fn_url('index.index?check_https=Y', 'A', 'https'));
 
     if (empty($content) || $content != 'OK') {
-        Tygh::$app['view']->assign('checking_result', 'fail');
+        Registry::get('view')->assign('checking_result', 'fail');
     } else {
-        Tygh::$app['view']->assign('checking_result', 'ok');
+        Registry::get('view')->assign('checking_result', 'ok');
     }
 
-    Tygh::$app['view']->display('views/settings_wizard/components/ssl_checking.tpl');
+    Registry::get('view')->display('views/settings_wizard/components/ssl_checking.tpl');
 
     exit();
 
@@ -158,7 +158,7 @@ function fn_settings_wizard_update_password($new_password)
 function fn_settings_wizard_set_default_currency($default_currency)
 {
     db_query('UPDATE ?:currencies SET is_primary = ?s', 'N');
-    db_query('UPDATE ?:currencies SET is_primary = ?s, coefficient = 1 WHERE currency_code = ?s', 'Y', $default_currency);
+    db_query('UPDATE ?:currencies SET is_primary = ?s WHERE currency_code = ?s', 'Y', $default_currency);
 }
 
 /**
@@ -188,6 +188,18 @@ function fn_settings_wizard_prepare_args($args, $haystack)
     }
 
     return $args;
+}
+
+/**
+ * Returns current store license number
+ *
+ * @return string License number
+ */
+function fn_settings_wizard_get_license_number()
+{
+    $license_number = Settings::instance()->getValue('license_number', 'Upgrade_center');
+
+    return $license_number;
 }
 
 /**

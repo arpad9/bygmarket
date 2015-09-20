@@ -48,21 +48,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    if ($mode == 'delete') {
-        fn_delete_attachments(array($_REQUEST['attachment_id']), $_REQUEST['object_type'], $_REQUEST['object_id']);
-        $attachments = fn_get_attachments($_REQUEST['object_type'], $_REQUEST['object_id']);
-        if (empty($attachments)) {
-            Tygh::$app['view']->display('addons/attachments/views/attachments/manage.tpl');
-        }
-        exit;
-    }
-
     return array(CONTROLLER_STATUS_OK); // redirect should be performed via redirect_url always
 }
 
 if ($mode == 'getfile') {
     if (!empty($_REQUEST['attachment_id'])) {
         fn_get_attachment($_REQUEST['attachment_id']);
+    }
+    exit;
+
+} elseif ($mode == 'delete') {
+    fn_delete_attachments(array($_REQUEST['attachment_id']), $_REQUEST['object_type'], $_REQUEST['object_id']);
+    $attachments = fn_get_attachments($_REQUEST['object_type'], $_REQUEST['object_id']);
+    if (empty($attachments)) {
+        Registry::get('view')->display('addons/attachments/views/attachments/manage.tpl');
     }
     exit;
 
@@ -75,5 +74,5 @@ if ($mode == 'getfile') {
         'js' => true
     ));
 
-    Tygh::$app['view']->assign('attachments', $attachments);
+    Registry::get('view')->assign('attachments', $attachments);
 }

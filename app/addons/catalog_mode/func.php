@@ -16,18 +16,46 @@ use Tygh\Registry;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
-function fn_catalog_mode_enabled()
+function fn_catalog_mode_enabled($company_id)
 {
-    return Registry::get('addons.catalog_mode.main_store_mode') == 'catalog' ?  'Y' : 'N';
+    if (fn_allowed_for('MULTIVENDOR')) {
+        if (empty($company_id)) {
+            return Registry::get('addons.catalog_mode.main_store_mode') == 'catalog' ?  'Y' : 'N';
+        } else {
+            // check if the current vendor is running in the catalog mode
+            static $vendors_cache = array();
+
+            if (isset($vendors_cache[$company_id])) {
+                return $vendors_cache[$company_id];
+            } else {
+                $vendors_cache[$company_id] = db_get_field("SELECT catalog_mode FROM ?:companies WHERE company_id = ?s", $company_id);
+
+                return $vendors_cache[$company_id];
+            }
+        }
+    } elseif (fn_allowed_for('ULTIMATE')) {
+        return Registry::get('addons.catalog_mode.main_store_mode') == 'catalog' ?  'Y' : 'N';
+    }
+
+    return 'Y';
 }
 
 function fn_catalog_mode_may_disable_minicart()
 {
-    if (Registry::get('addons.catalog_mode.main_store_mode') == 'store' || Registry::get('addons.catalog_mode.add_to_cart_empty_buy_now_url') == 'Y') {
-        return 'N';
+    if (fn_allowed_for('MULTIVENDOR')) {
+        if (Registry::get('addons.catalog_mode.main_store_mode') == 'store' || Registry::get('addons.catalog_mode.add_to_cart_empty_buy_now_url') == 'Y') {
+            return 'N';
+        }
+        if (db_get_field("SELECT COUNT(*) FROM ?:companies WHERE catalog_mode = 'N'")) {
+            return 'N';
+        }
+    } elseif (fn_allowed_for('ULTIMATE')) {
+        if (Registry::get('addons.catalog_mode.main_store_mode') == 'store' || Registry::get('addons.catalog_mode.add_to_cart_empty_buy_now_url') == 'Y') {
+            return 'N';
+        }
     }
 
-    return 'Y';
+    return Registry::get('addons.catalog_mode.add_to_cart_empty_buy_now_url') == 'Y' ? 'N' : 'Y';
 }
 
 function fn_is_add_to_cart_allowed($product_id)
@@ -46,8 +74,13 @@ function fn_catalog_mode_pre_add_to_cart(&$product_data, &$cart, &$auth, &$updat
         // Firebug protection
         foreach ($product_data as $key => &$product) {
             $product_id = (!empty($product['product_id'])) ? $product['product_id'] : $key;
+            $company = fn_get_company_by_product_id($product_id);
 
-            if (fn_catalog_mode_enabled() == 'Y' && !fn_is_add_to_cart_allowed($product_id)) {
+            if (!isset($company['company_id'])) {
+                $company['company_id'] = 0;
+            }
+
+            if (fn_catalog_mode_enabled($company['company_id']) == 'Y' && !fn_is_add_to_cart_allowed($product_id)) {
                 $product = array();
             }
         }

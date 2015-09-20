@@ -197,6 +197,7 @@ class Text_Diff_Renderer_inline extends Text_Diff_Renderer {
 
 		if ($count = preg_match_all("/(?:<del>([\s\S]+)<\/del><ins>([\s\S]+)<\/ins>)|(?:<ins>([\s\S]+)<\/ins>)|(?:<del>([\s\S]+)<\/del>)/iU", $string, $array)) {
 			$data = preg_split("/(?:<del>[\s\S]+<\/del><ins>[\s\S]+<\/ins>)|(?:<ins>[\s\S]+<\/ins>)|(?:<del>[\s\S]+<\/del>)/iU", $string);
+			fn_print_die($data, $array);
 		}
 
 	}

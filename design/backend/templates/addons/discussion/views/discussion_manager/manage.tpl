@@ -24,7 +24,7 @@
 {/foreach}
 </div>
 {else}
-<p class="no-items">{__("no_data")}</p>
+<p>{__("no_data")}</p>
 {/if}
 
 {include file="common/pagination.tpl" div_id="pagination_contents_`$discussion_object_type`"}

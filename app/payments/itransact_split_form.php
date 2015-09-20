@@ -115,7 +115,30 @@ if (defined('PAYMENT_NOTIFICATION')) {
     } elseif (CART_LANGUAGE == 'fr') {
         $lang_postfix = '_french';
     }
+    $form_tag = '<form method="post" action="https://secure.paymentclearing.com/cgi-bin/mas/split' . $lang_postfix . '.cgi" name="process">';
 
-    fn_create_payment_form('https://secure.paymentclearing.com/cgi-bin/mas/split' . $lang_postfix . '.cgi', $post, 'iTransact');
+    echo <<<EOT
+{$form_tag}
+EOT;
+
+foreach ($post as $name => $value) {
+    echo "<input type=\"hidden\" name=\"$name\" value=\"$value\" />\n";
+}
+
+    $msg = __('text_cc_processor_connection', array(
+        '[processor]' => 'iTransact'
+    ));
+    echo <<<EOT
+</form>
+<p><div align=center>{$msg}</div></p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+</body>
+</html>
+EOT;
+
     exit;
 }

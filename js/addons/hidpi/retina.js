@@ -54,13 +54,13 @@
 
   function RetinaImagePath(path) {
     this.path = path;
-    this.at_2x_path = path.replace(/\.\w+(\?t=\d+)?$/, function(match) { return "@2x" + match; });
+    this.at_2x_path = path.replace(/\.\w+$/, function(match) { return "@2x" + match; });
   }
 
   RetinaImagePath.confirmed_paths = [];
 
   RetinaImagePath.prototype.is_external = function() {
-    return !!(this.path.match(/^https?\:/i) && !this.path.match('//' + document.domain) && !this.path.match(config.image_host) );
+    return !!(this.path.match(/^https?\:/i) && !this.path.match('//' + document.domain) );
   };
 
   RetinaImagePath.prototype.check_2x_variant = function(callback) {
@@ -98,17 +98,7 @@
   function RetinaImage(el, force_load) {
     force_load = force_load || false;
     this.el = el;
-
-    var src;
-    if (this.el.hasAttribute('src')) {
-      src = this.el.getAttribute('src');
-    } else if (this.el.hasAttribute('data-src')) {
-      src = this.el.getAttribute('data-src');
-    } else {
-        return;
-    }
-
-    this.path = new RetinaImagePath(src);
+    this.path = new RetinaImagePath(this.el.getAttribute('src'));
     var that = this;
     this.path.check_2x_variant(function(hasVariant) {
       if (hasVariant) that.swap(force_load);
@@ -149,11 +139,7 @@
         if (force_load ||! hidden) {
           that.el.setAttribute('width', width);
           that.el.setAttribute('height', height);
-          if (that.el.hasAttribute('src')) {
-            that.el.setAttribute('src', path);
-          } else if (that.el.hasAttribute('data-src')) {
-            that.el.setAttribute('data-src', path);
-          }
+          that.el.setAttribute('src', path);
         }
       }
     }

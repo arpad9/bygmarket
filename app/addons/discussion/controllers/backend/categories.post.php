@@ -36,7 +36,7 @@ if ($mode == 'update') {
                 'js' => true
             ));
 
-            Tygh::$app['view']->assign('discussion', $discussion);
+            Registry::get('view')->assign('discussion', $discussion);
         }
     }
 
@@ -45,13 +45,13 @@ if ($mode == 'update') {
 
     if (!empty($selected_fields['extra']) && in_array('discussion_type', $selected_fields['extra'])) {
 
-        $field_names = Tygh::$app['view']->getTemplateVars('field_names');
-        $fields2update = Tygh::$app['view']->getTemplateVars('fields2update');
+        $field_names = Registry::get('view')->getTemplateVars('field_names');
+        $fields2update = Registry::get('view')->getTemplateVars('fields2update');
 
         $field_names['discussion_type'] = __('discussion_title_category');
         $fields2update[] = 'discussion_type';
 
-        Tygh::$app['view']->assign('field_names', $field_names);
-        Tygh::$app['view']->assign('fields2update', $fields2update);
+        Registry::get('view')->assign('field_names', $field_names);
+        Registry::get('view')->assign('fields2update', $fields2update);
     }
 }

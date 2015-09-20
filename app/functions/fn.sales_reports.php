@@ -61,9 +61,6 @@ function fn_get_order_reports($view = false, $report_id = 0)
 function fn_check_intervals($interval, $time_from, $time_to, $limit = 0)
 {
     $intervals['0'] = db_get_row("SELECT a.* FROM ?:sales_reports_intervals as a WHERE a.interval_id = ?i", $interval);
-    if (empty($time_from) && Registry::get('settings.Company.company_start_year')) {
-       $time_from = mktime(0, 0, 0, 1, 1, Registry::get('settings.Company.company_start_year'));
-    }
 
     if ($intervals['0']['value'] != 0) {
         $num = 0;
@@ -74,14 +71,6 @@ function fn_check_intervals($interval, $time_from, $time_to, $limit = 0)
             $temp['interval_id'] = $temp['interval_id'] . $num;
             $temp['time_from'] = $time_end;
             $time_end += ($intervals['0']['interval_id'] == '7') ? (mktime(0, 0, 0, date("m", $time_end) + 1, 1, date("Y", $time_end)) - $time_end) : $temp['value'];
-
-            /**
-             * If a year is leap, we should add 1 day.
-             */
-            if (date('L', $temp['time_from'])) {
-                $time_end += 86400;
-            }
-
             $temp['time_to'] =  $time_end;
             $num++;
             $temp['description'] = fn_date_format($temp['time_from'], Registry::get('settings.Reports.' . $temp['interval_code']));
@@ -190,11 +179,11 @@ function fn_check_elements($elements, $time_from, $time_to, $table)
             elseif ($v['code'] == 'category') {
                 if ($v['dependence'] == 'max_n') {
                     // Get categories with max number of products bought from it
-                    $categories = db_get_array("SELECT c.category_id, SUM(b.amount) as category_amount, d.category FROM ?:order_details as b LEFT JOIN ?:orders as a ON b.order_id = a.order_id RIGHT JOIN ?:products_categories as c ON b.product_id = c.product_id AND c.link_type = 'M' LEFT JOIN ?:category_descriptions as d ON c.category_id = d.category_id AND d.lang_code = ?s WHERE a.timestamp BETWEEN ?i AND ?i ?p GROUP BY c.category_id ORDER BY category_amount DESC LIMIT $limit", CART_LANGUAGE, $time_from, $time_to, $order_ids);
+                    $categories = db_get_array("SELECT c.category_id, SUM(b.amount) as category_amount, d.category FROM ?:order_details as b LEFT JOIN ?:orders as a ON b.order_id = a.order_id LEFT JOIN ?:products_categories as c ON b.product_id = c.product_id AND c.link_type = 'M' LEFT JOIN ?:category_descriptions as d ON c.category_id = d.category_id AND d.lang_code = ?s WHERE a.timestamp BETWEEN ?i AND ?i ?p GROUP BY c.category_id ORDER BY category_amount DESC LIMIT $limit", CART_LANGUAGE, $time_from, $time_to, $order_ids);
 
                 } elseif ($v['dependence'] == 'max_p') {
                     // Get categories with max amount paid for products from it
-                    $categories = db_get_array("SELECT c.category_id, SUM(b.price * b.amount) as category_amount, d.category FROM ?:order_details as b LEFT JOIN ?:orders as a ON b.order_id = a.order_id RIGHT JOIN ?:products_categories as c ON b.product_id = c.product_id AND c.link_type = 'M' LEFT JOIN ?:category_descriptions as d ON c.category_id = d.category_id AND d.lang_code = ?s WHERE a.timestamp BETWEEN ?i AND ?i ?p GROUP BY c.category_id ORDER BY category_amount DESC LIMIT $limit", CART_LANGUAGE, $time_from, $time_to, $order_ids);
+                    $categories = db_get_array("SELECT c.category_id, SUM(b.price * b.amount) as category_amount, d.category FROM ?:order_details as b LEFT JOIN ?:orders as a ON b.order_id = a.order_id LEFT JOIN ?:products_categories as c ON b.product_id = c.product_id AND c.link_type = 'M' LEFT JOIN ?:category_descriptions as d ON c.category_id = d.category_id AND d.lang_code = ?s WHERE a.timestamp BETWEEN ?i AND ?i ?p GROUP BY c.category_id ORDER BY category_amount DESC LIMIT $limit", CART_LANGUAGE, $time_from, $time_to, $order_ids);
                 }
             }
             // ************************* GET AUTO PRODUCTS ***************************** //
@@ -221,7 +210,7 @@ function fn_check_elements($elements, $time_from, $time_to, $table)
             while ($i < $limit) {
                 $i ++;
                 $_desc_id = ($table['type'] == 'P' || $table['type'] == 'C') ? "" : "$i. ";
-                $new_element['description'] = $new_element['full_description'] = " $i." . __("reports_parameter_" . $v['element_id']);
+                $new_element['description'] = " $i." . __("reports_parameter_" . $v['element_id']);
                 $new_element['element_hash'] = $v['element_hash'] . "_$i";
                 $new_element['position'] = $i;
                 $new_element['auto_generated'] = 'Y';
@@ -233,8 +222,7 @@ function fn_check_elements($elements, $time_from, $time_to, $table)
                     }
                     $o_id = $orders[$i - 1]['order_id'];
                     $new_element['description'] = ($table['type'] != 'T') ? ($_desc_id . __('order') . '#' . $o_id) : ('<a href="' . fn_url("orders.details?order_id=$o_id") . '">'.$i.'. ' . __('order') . ' #' . $o_id . "</a>");
-                    $new_element['full_description'] = $_desc_id . __('order') . '#' . $o_id;
-                    $new_element['request'] = "?:orders.order_id IN ('$o_id')";
+                    $new_element['request'] = "order_id IN ('$o_id')";
                 }
                 // ************************* GET AUTO STATUSES ***************************** //
                 elseif ($new_element['code'] == 'status') {
@@ -242,12 +230,12 @@ function fn_check_elements($elements, $time_from, $time_to, $table)
                         return $elements;
                     }
                     $status = $satuses[$i - 1]['status'];
+                    $new_element['description'] = $_desc_id . $order_status_descr[$status];
                     if ($table['type'] == 'T') {
                         $time_link = '&from_Year=' . date('Y', $time_from) . '&from_Month=' . date('m', $time_from) . '&from_Day=' . date('j', $time_from) . '&to_Year=' . date('Y', $time_to) . '&to_Month=' . date('m', $time_to) . '&to_Day=' . date('j', $time_to);
                     }
                     $new_element['description'] = ($table['type'] != 'T') ? ("$i. $order_status_descr[$status]") : ('<a href="' . fn_url("orders.manage?search_orders=Y&status=$status&period=C&$time_link") . "\">$i. $order_status_descr[$status]</a>");
-                    $new_element['full_description'] = $_desc_id . $order_status_descr[$status];
-                    $new_element['request'] = "?:orders.order_id IN ('" . implode("', '", db_get_fields("SELECT order_id FROM ?:orders WHERE status = ?s", $status)) . "')";
+                    $new_element['request'] = "order_id IN ('" . implode("', '", db_get_fields("SELECT order_id FROM ?:orders WHERE status = ?s", $status)) . "')";
                 }
                 // ************************* GET AUTO PAYMENTS ***************************** //
                 elseif ($new_element['code'] == 'payment') {
@@ -258,11 +246,10 @@ function fn_check_elements($elements, $time_from, $time_to, $table)
                     $pay_name = $payments[$i - 1]['payment'];
                     $_descr = fn_sales_repors_format_description($pay_name, $l_l, $_desc_id);
                     $new_element['description'] = ($table['type'] != 'T') ? $_descr : ('<a href="' . fn_url("payments.manage#group$pay_id") . '">' . "$_descr</a>");
-                    $new_element['full_description'] = $pay_name;
                     if (!db_get_field("SELECT payment_id FROM ?:payments WHERE payment_id = ?i", $pay_id)) {
                         $new_element['description'] = "$i. " . __('deleted');
                     }
-                    $new_element['request'] = "?:orders.order_id IN ('" . implode("', '", db_get_fields("SELECT order_id FROM ?:orders WHERE payment_id = ?i", $pay_id)) . "')";
+                    $new_element['request'] = "order_id IN ('" . implode("', '", db_get_fields("SELECT order_id FROM ?:orders WHERE payment_id = ?i", $pay_id)) . "')";
                 }
                 // ************************* GET AUTO LOCATIONS **************************** //
                 elseif ($new_element['code'] == 'location') {
@@ -275,8 +262,7 @@ function fn_check_elements($elements, $time_from, $time_to, $table)
                     $c_name = $countries[$i - 1]['country'] . (empty($sate) ? '' : ' [' . $sate . ']');
                     $_descr = fn_sales_repors_format_description($c_name, $l_l, $_desc_id);
                     $new_element['description'] =  $_descr;
-                    $new_element['full_description'] = $c_name;
-                    $new_element['request'] = "?:orders.order_id IN ('" . implode("', '", db_get_fields("SELECT order_id FROM ?:orders WHERE s_country = ?s AND s_state = ?s", $c_id, $st_id)) . "')";
+                    $new_element['request'] = "order_id IN ('" . implode("', '", db_get_fields("SELECT order_id FROM ?:orders WHERE s_country = ?s AND s_state = ?s", $c_id, $st_id)) . "')";
                 }
                 // *************************** GET AUTO USERS ****************************** //
                 elseif ($new_element['code'] == 'user') {
@@ -287,11 +273,10 @@ function fn_check_elements($elements, $time_from, $time_to, $table)
                     $u_name = $users[$i - 1]['firstname'] . ' ' . $users[$i - 1]['lastname'];
                     $_descr = fn_sales_repors_format_description($u_name, $l_l, $_desc_id);
                     $new_element['description'] = ($table['type'] != 'T') ? $_descr : ('<a href="' . fn_url("profiles.update?user_id=$u_id") . '">' . "$_descr</a>");
-                    $new_element['full_description'] = $u_name;
                     if (!db_get_field("SELECT user_id FROM ?:users WHERE user_id = ?i", $u_id)) {
                         $new_element['description'] = "$i. " . __('anonymous');
                     }
-                    $new_element['request'] = "?:orders.order_id IN ('" . implode("', '", db_get_fields("SELECT order_id FROM ?:orders WHERE user_id = ?i", $u_id)) . "')";
+                    $new_element['request'] = "order_id IN ('" . implode("', '", db_get_fields("SELECT order_id FROM ?:orders WHERE user_id = ?i", $u_id)) . "')";
                 }
                 // ************************* GET AUTO CATEGORIES ***************************** //
                 elseif ($new_element['code'] == 'category') {
@@ -300,21 +285,22 @@ function fn_check_elements($elements, $time_from, $time_to, $table)
                     }
                     $c_name = $categories[$i - 1]['category'];
                     $c_id = $categories[$i - 1]['category_id'];
-                    $request_table = in_array($table['display'], array('order_amount')) ? '?:order_details' : '?:orders';
                     if (empty($c_id)) {
-                        $new_element['description'] = $new_element['full_description'] = "$i. " . __('unknown');
+                        $new_element['description'] = "$i. " . __('unknown');
                         $new_element['product_ids'] = db_get_fields("SELECT a.product_id FROM ?:order_details as a LEFT JOIN ?:products_categories as b ON a.product_id = b.product_id WHERE b.category_id is NULL");
-                        $new_element['request'] = "$request_table.order_id IN ('" . implode("', '", db_get_fields("SELECT a.order_id FROM ?:order_details as a LEFT JOIN ?:products_categories as b ON a.product_id = b.product_id WHERE b.category_id is NULL")) . "')";
+                        $new_element['request'] = "order_id IN ('" . implode("', '", db_get_fields("SELECT a.order_id FROM ?:order_details as a LEFT JOIN ?:products_categories as b ON a.product_id = b.product_id WHERE b.category_id is NULL")) . "')";
                     } else {
                         $_descr = fn_sales_repors_format_description($c_name, $l_l, $_desc_id);
                         $new_element['description'] = ($table['type'] != 'T') ? $_descr : ('<a href="' . fn_url("categories.update?category_id=$c_id") . '">' . "$_descr</a>");
-                        $new_element['full_description'] = $c_name;
                         $new_element['product_ids'] = db_get_fields("SELECT product_id FROM ?:products_categories WHERE category_id = ?i", $c_id);
-                        $new_element['request'] = "$request_table.order_id IN ('" . implode("', '", db_get_fields("SELECT a.order_id FROM ?:order_details as a LEFT JOIN ?:products_categories as b ON a.product_id = b.product_id WHERE b.category_id = ?i", $c_id)) . "')";
 
                         if ($table['display'] == 'order_amount') {
                             $new_element['fields'] = 'SUM(price * amount)';
                             $new_element['tables'] = '?:order_details LEFT JOIN ?:orders ON (?:order_details.order_id = ?:orders.order_id)';
+
+                            $new_element['request'] = "?:order_details.order_id IN ('" . implode("', '", db_get_fields("SELECT a.order_id FROM ?:order_details as a LEFT JOIN ?:products_categories as b ON a.product_id = b.product_id WHERE b.category_id = ?i", $c_id)) . "')" . db_quote('AND product_id IN (?a)', $new_element['product_ids']);
+                        } else {
+                            $new_element['request'] = "order_id IN ('" . implode("', '", db_get_fields("SELECT a.order_id FROM ?:order_details as a LEFT JOIN ?:products_categories as b ON a.product_id = b.product_id WHERE b.category_id = ?i", $c_id)) . "')";
                         }
                     }
                 }
@@ -328,18 +314,16 @@ function fn_check_elements($elements, $time_from, $time_to, $table)
                     $new_element['product_ids'] = array($p_id);
                     $_descr = fn_sales_repors_format_description($p_name, $l_l, $_desc_id);
                     $new_element['description'] = ($table['type'] != 'T') ? $_descr : ('<a href="' . fn_url("products.update?product_id=$p_id") . '">' . "$_descr</a>");
-                    $new_element['full_description'] = $p_name;
                     if (!db_get_field("SELECT product_id FROM ?:products WHERE product_id = ?i", $p_id)) {
                         $new_element['description'] = "$i. " . __('deleted');
                         if ($extra = db_get_field("SELECT extra FROM ?:order_details WHERE product_id = ?i ORDER BY order_id DESC", $p_id)) {
                             $extra = unserialize($extra);
                             if (!empty($extra['product'])) {
                                 $new_element['description'] = fn_sales_repors_format_description($extra['product'], $l_l, $_desc_id);
-                                $new_element['full_description'] = $extra['product'];
                             }
                         }
                     }
-                    $new_element['request'] = "?:orders.order_id IN ('" . implode("', '", db_get_fields("SELECT order_id FROM ?:order_details WHERE product_id = ?i", $p_id)) . "')";
+                    $new_element['request'] = "order_id IN ('" . implode("', '", db_get_fields("SELECT order_id FROM ?:order_details WHERE product_id = ?i", $p_id)) . "')";
                 }
                 $elements[] = $new_element;
             }
@@ -472,100 +456,66 @@ function fn_get_report_statistics(&$table)
     $table_condition = fn_get_table_condition($table['table_id'], true);
     $order_ids = fn_proceed_table_conditions($table_condition);
 
-    $last_elm = end($table['intervals']);
-    $first_elm = reset($table['intervals']);
-
-    $interval_code = $first_elm['interval_code'];
-    $time_start = $first_elm['time_from'];
-    $time_end = $last_elm['time_to'];
-    $new_data = array();
-
-    foreach ($table['elements'] as $element) {
-
-        $a = $element['element_hash'];
-        if (empty($element['auto_generated'])) {
-            $element['request'] = fn_get_parameter_request($table['table_id'], $element['element_hash']);
-        }
-        $time_condition = db_quote(" timestamp BETWEEN ?i AND ?i", $time_start, $time_end);
-        $group_condition = ' GROUP BY `interval`';
-
-        if ($interval_code == 'year') {
-            $add_field = db_quote(", DATE_FORMAT(FROM_UNIXTIME(timestamp), '%Y') as `interval`, timestamp");
-        } elseif ($interval_code == 'month') {
-            $add_field = db_quote(", DATE_FORMAT(FROM_UNIXTIME(timestamp), '%Y-%m') as `interval`, timestamp");
-        } elseif ($interval_code == 'week') {
-            $add_field = db_quote(", DATE_FORMAT(FROM_UNIXTIME(timestamp), '%Y-%m-%u') as `interval`, timestamp");
-        } elseif ($interval_code == 'day') {
-            $add_field = db_quote(", DATE_FORMAT(FROM_UNIXTIME(timestamp), '%Y-%m-%d') as `interval`, timestamp");
-        } else {
-            $add_field = db_quote(", 1 as `interval`, timestamp");
-            $group_condition = '';
-        }
-
-        if ($table['display'] == 'order_amount') {
-            $fields = !empty($element['fields']) ? $element['fields'] : 'SUM(total)';
-            $tables = !empty($element['tables']) ? $element['tables'] : '?:orders';
-
-            $data[$a] = db_get_hash_array("SELECT $fields as total $add_field FROM $tables WHERE $element[request] AND $time_condition $order_ids $group_condition", 'interval');
-        } elseif ($table['display'] == 'order_number') {
-            $data[$a] = db_get_hash_array("SELECT COUNT(total) as total $add_field FROM ?:orders WHERE $element[request] AND $time_condition $order_ids $group_condition", 'interval');
-        } elseif ($table['display'] == 'shipping') {
-            $data[$a] = db_get_hash_array("SELECT SUM(shipping_cost) as total $add_field FROM ?:orders WHERE $element[request] AND $time_condition $order_ids $group_condition", 'interval');
-        } elseif ($table['display'] == 'discount') {
-            $data[$a] = db_get_hash_array("SELECT SUM(subtotal_discount) as total, ?:order_details.extra $add_field FROM ?:order_details LEFT JOIN ?:orders ON ?:orders.order_id = ?:order_details.order_id WHERE $element[request] AND $time_condition $order_ids $group_condition", 'interval');
-
-            foreach ($data[$a] as $int => $interval_data) {
-                $extra = @unserialize($interval_data['extra']);
-                if (!empty($extra['discount'])) {
-                    $data[$a][$int]['total'] += $extra['discount'];
-                }
-                unset($interval_data['extra']);
-                $data[$a][$int]['total'] = fn_format_price($data[$a][$int]['total']);
+    foreach ($table['elements'] as $key => $element) {
+        foreach ($table['intervals'] as $interval) {
+            $a = $element['element_hash'];
+            $b = $interval['interval_id'];
+            if (empty($element['auto_generated'])) {
+                $element['request'] = fn_get_parameter_request($table['table_id'], $element['element_hash']);
             }
+            $interval['request'] = db_quote(" timestamp BETWEEN ?i AND ?i", $interval['time_from'], $interval['time_to']);
 
-        } elseif ($table['display'] == 'tax') {
-             $all_taxes = db_get_hash_array("SELECT ?:order_data.data $add_field FROM ?:order_data LEFT JOIN ?:orders ON ?:orders.order_id = ?:order_data.order_id WHERE ?:order_data.type = 'T' AND $element[request] AND $time_condition $order_ids $group_condition", 'interval');
+            if ($table['display'] == 'order_amount') {
+                $fields = !empty($element['fields']) ? $element['fields'] : 'SUM(total)';
+                $tables = !empty($element['tables']) ? $element['tables'] : '?:orders';
 
-             foreach ($all_taxes as $int => $interval_data) {
-                $data[$a][$int] = $interval_data;
-                $data[$a][$int]['total'] = 0;
-                $taxes = @unserialize($interval_data['data']);
-                if (is_array($taxes)) {
-                    foreach ($taxes as $tax_data) {
-                        if (!empty($tax_data['tax_subtotal'])) {
-                            $data[$a][$int]['total'] += $tax_data['tax_subtotal'];
+                $data[$a][$b] = db_get_field("SELECT $fields FROM $tables WHERE $element[request] AND $interval[request] $order_ids");
+            } elseif ($table['display'] == 'order_number') {
+                $data[$a][$b] = db_get_field("SELECT COUNT(total) FROM ?:orders WHERE $element[request] AND $interval[request] $order_ids");
+            } elseif ($table['display'] == 'shipping') {
+                $data[$a][$b] = db_get_field("SELECT SUM(shipping_cost) FROM ?:orders WHERE $element[request] AND $interval[request] $order_ids");
+            } elseif ($table['display'] == 'discount') {
+                 $data[$a][$b] = db_get_field("SELECT SUM(subtotal_discount) FROM ?:orders WHERE $element[request] AND $interval[request] $order_ids");
+                 $_orders = db_get_fields("SELECT order_id FROM ?:orders WHERE $element[request] AND $interval[request] $order_ids");
+                 $discounts = db_get_fields("SELECT b.extra FROM ?:orders as a LEFT JOIN ?:order_details as b ON a.order_id = b.order_id WHERE a.order_id IN (?n)", $_orders);
+                 foreach ($discounts as $key => $value) {
+                    $extra = @unserialize($value);
+                    if (!empty($extra['discount'])) {
+                        $data[$a][$b] += $extra['discount'];
+                    }
+                 }
+                 $data[$a][$b] = fn_format_price($data[$a][$b]);
+            } elseif ($table['display'] == 'tax') {
+                 $data[$a][$b] = 0;
+                 $_orders = db_get_fields("SELECT order_id FROM ?:orders WHERE $element[request] AND $interval[request] $order_ids");
+                 $all_taxes = db_get_fields("SELECT data FROM ?:order_data WHERE order_id IN (?n) AND type = 'T'", $_orders);
+                 foreach ($all_taxes as $key => $value) {
+                    $taxes = @unserialize($value);
+                    if (is_array($taxes)) {
+                        foreach ($taxes as $v) {
+                            if (!empty($v['tax_subtotal'])) {
+                                $data[$a][$b] += $v['tax_subtotal'];
+                            }
                         }
                     }
+                    $data[$a][$b] = fn_format_price($data[$a][$b]);
                 }
-                unset($data[$a][$int]['data']);
-                $data[$a][$int]['total'] = fn_format_price($data[$a][$int]['total']);
+            } elseif ($table['display'] == 'product_cost') {
+                $product_cost = (empty($element['product_ids'])) ? '' : db_quote(" AND product_id IN (?n)", $element['product_ids']);
+                $_orders = db_get_fields("SELECT order_id FROM ?:orders WHERE $element[request] AND $interval[request] $order_ids");
+                $data[$a][$b] = db_get_field("SELECT SUM(amount * price) FROM ?:order_details WHERE order_id IN (?n) ?p", $_orders, $product_cost);
+            } elseif ($table['display'] == 'product_number') {
+                $product_count = (empty($element['product_ids'])) ? '' : " AND product_id IN ('" . implode("', '", $element['product_ids']) . "')";
+                $_orders = db_get_fields("SELECT order_id FROM ?:orders WHERE $element[request] AND $interval[request] $order_ids ");
+                $data[$a][$b] = db_get_field("SELECT SUM(amount) FROM ?:order_details WHERE order_id IN (?n) ?p", $_orders, $product_count);
             }
-        } elseif ($table['display'] == 'product_cost') {
-            $product_cost = (empty($element['product_ids'])) ? '' : db_quote(" AND product_id IN (?n)", $element['product_ids']);
-            $data[$a] = db_get_hash_array("SELECT SUM(amount * price) as total $add_field FROM ?:order_details LEFT JOIN ?:orders ON ?:orders.order_id = ?:order_details.order_id WHERE $element[request] AND $time_condition $order_ids ?p $group_condition", 'interval', $product_cost);
-        } elseif ($table['display'] == 'product_number') {
-            $product_count = (empty($element['product_ids'])) ? '' : db_quote(" AND product_id IN (?n)", $element['product_ids']);
-            $data[$a] = db_get_hash_array("SELECT SUM(amount) as total $add_field FROM ?:order_details LEFT JOIN ?:orders ON ?:orders.order_id = ?:order_details.order_id WHERE $element[request] AND $time_condition $order_ids ?p $group_condition", 'interval', $product_count);
-        }
+            $data[$a][$b] = (empty($data[$a][$b])) ? 0 : $data[$a][$b];
+            $data[$a][$b] = (@$data[$a][$b] == '0.00') ? 0 : $data[$a][$b];
 
-        foreach ($table['intervals'] as $interval) {
-            $b = $interval['interval_id'];
-            if (isset($data[$a])) {
-                foreach ($data[$a] as $interval_data) {
-                    if ($interval_data['timestamp'] >= $interval['time_from'] && $interval_data['timestamp'] <= $interval['time_to']) {
-                        $new_data[$a][$b] = $interval_data['total'];
-                        break;
-                    }
-                }
-            }
-
-            if (!isset($new_data[$a][$b])) {
-                $new_data[$a][$b] = 0;
-            }
         }
     }
 
-    return $new_data;
+    return @$data;
 }
 
 //

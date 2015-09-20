@@ -11,23 +11,25 @@
 {/if}
 
 <form action="{""|fn_url}{$_page_part}" name="{$product_search_form_prefix}search_form" method="get" class="cm-disable-empty {$form_meta}">
-<input type="hidden" name="type" value="{$search_type|default:"simple"}" autofocus="autofocus" />
+<input type="hidden" name="type" value="{$search_type|default:"simple"}" />
 {if $smarty.request.redirect_url}
     <input type="hidden" name="redirect_url" value="{$smarty.request.redirect_url}" />
 {/if}
 {if $selected_section != ""}
     <input type="hidden" id="selected_section" name="selected_section" value="{$selected_section}" />
 {/if}
-<input type="hidden" name="pcode_from_q" value="Y" />
 
 {if $put_request_vars}
-    {array_to_fields data=$smarty.request skip=["callback"]}
+{foreach from=$smarty.request key="k" item="v"}
+{if $v && $k != "callback"}
+<input type="hidden" name="{$k}" value="{$v}" />
+{/if}
+{/foreach}
 {/if}
 
 {$extra nofilter}
 
 {capture name="simple_search"}
-    {hook name="products:simple_search"}
     <div class="sidebar-field">
         <label>{__("find_results_with")}</label>
         <input type="text" name="q" size="20" value="{$search.q}" />
@@ -46,12 +48,12 @@
             {else}
                 {assign var="s_cid" value="0"}
             {/if}
-            {include file="pickers/categories/picker.tpl" company_ids=$picker_selected_companies data_id="location_category" input_name="cid" item_ids=$s_cid hide_link=true hide_delete_button=true default_name=__("all_categories") extra=""}
+            {include file="pickers/categories/picker.tpl" company_ids=$picker_selected_companies data_id="location_category" input_name="cid" item_ids=$s_cid hide_link=true hide_delete_button=true show_root=true default_name=__("all_categories") extra=""}
         {else}
             {if $runtime.mode == "picker"}
                 {assign var="trunc" value="38"}
             {else}
-                {assign var="trunc" value="25"}
+                {assign var="trunc" value="70"}
             {/if}
             <select name="cid">
                 <option value="0" {if $category_data.parent_id == "0"}selected="selected"{/if}>- {__("all_categories")} -</option>
@@ -73,7 +75,6 @@
             </select>
         {/if}
     </div>
-    {/hook}
 {/capture}
 
 {capture name="advanced_search"}
@@ -97,14 +98,14 @@
 {if !"ULTIMATE:FREE"|fn_allowed_for && $filter_items}
 <div class="control-group">
 
-    <a href="#" class="search-link cm-combination open cm-save-state" id="sw_filter">
+    <a href="#" class="search-link cm-combination cm-combo-off cm-save-state" id="sw_filter">
     <span id="on_filter" class="exicon-expand cm-save-state {if $smarty.cookies.filter}hidden{/if}"> </span>
     <span id="off_filter" class="exicon-collapse cm-save-state {if !$smarty.cookies.filter}hidden{/if}"></span>
     {__("search_by_product_filters")}</a>
 
     <div class="controls">
         <div id="filter"{if !$smarty.cookies.filter} class="hidden"{/if}>
-            {include file="views/products/components/advanced_search_form.tpl" filter_features=$filter_items prefix="filter_" data_name="filter_variants"}
+            {include file="views/products/components/advanced_search_form.tpl" filter_features=$filter_items prefix="filter_"}
         </div>
     </div>
 </div>
@@ -115,18 +116,15 @@
 <div class="group form-horizontal">
     <div class="control-group">
 
-        <a class="search-link cm-combination nowrap open cm-save-state" id="sw_feature"><span id="on_feature" class="cm-combination cm-save-state {if $smarty.cookies.feature}hidden{/if}"><span class="exicon-expand"></span></span><span id="off_feature" class="cm-combination cm-save-state {if !$smarty.cookies.feature}hidden{/if}"><span class="exicon-collapse"></span></span>{__("search_by_product_features")}</a>
+        <a class="search-link cm-combination nowrap cm-combo-off cm-save-state" id="sw_feature"><span id="on_feature" class="cm-combination cm-save-state {if $smarty.cookies.feature}hidden{/if}"><span class="exicon-expand"></span></span><span id="off_feature" class="cm-combination cm-save-state {if !$smarty.cookies.feature}hidden{/if}"><span class="exicon-collapse"></span></span>{__("search_by_product_features")}</a>
 
         <div class="controls">
         <div id="feature"{if !$smarty.cookies.feature} class="hidden"{/if}>
-            {include file="views/products/components/advanced_search_form.tpl" filter_features=$feature_items prefix="feature_" data_name="feature_variants"}
+            <input type="hidden" name="advanced_filter" value="Y" />
+            {include file="views/products/components/advanced_search_form.tpl" filter_features=$feature_items prefix="feature_"}
         </div>
         </div>
     </div>
-</div>
-{elseif $feature_items_too_many}
-<div class="group form-horizontal">
-    {__("error_features_too_many_variants")}
 </div>
 {/if}
 
@@ -140,17 +138,15 @@
             </div>
         </div>
         <div class="control-group">
-            <label class="control-label" for="popularity_from">{__("popularity")}</label>
-            <div class="controls">
-                <input type="text" name="popularity_from" id="popularity_from" value="{$search.popularity_from}" onfocus="this.select();" class="input-mini" /> - <input type="text" name="popularity_to" value="{$search.popularity_to}" onfocus="this.select();" class="input-mini" />
-            </div>
+        <label class="control-label" for="popularity_from">{__("popularity")}</label>
+        <div class="controls">
+            <input type="text" name="popularity_from" id="popularity_from" value="{$search.popularity_from}" onfocus="this.select();" class="input-mini" /> - <input type="text" name="popularity_to" value="{$search.popularity_to}" onfocus="this.select();" class="input-mini" />
         </div>
-        <div class="control-group">
-            <label class="control-label" for="subcats">{__("subcategories")}</label>
-            <div class="controls">
-                <input type="hidden" name="subcats" value="N" />
-                <input type="checkbox" value="Y"{if $search.subcats == "Y" || !$search.subcats} checked="checked"{/if} name="subcats"  id="subcats" />
-            </div>
+        </div>
+    <div class="control-group">
+        <label class="control-label" for="subcats">{__("subcategories")}</label>
+        <div class="controls">
+            <input type="checkbox" value="Y" {if $search.subcats == "Y"}checked="checked"{/if} name="subcats"  id="subcats" /></div>
         </div>
     </div>
 </div>

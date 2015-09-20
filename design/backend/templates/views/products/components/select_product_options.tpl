@@ -14,7 +14,7 @@
 <div id="option_{$id}_AOC" class="cm-picker-product-options form-horizontal product-options">
 {foreach from=$product_options item="po"}
 <div id="opt_{$id}_{$po.option_id}" class="control-group {if $additional_class}{$additional_class}{/if}">
-    <label for="option_{$id}_{$po.option_id}" id="option_description_{$id}_{$po.option_id}" class="control-label {if $po.required == "Y"}cm-required{/if} {if $po.regexp}cm-regexp{/if}" {if $po.regexp}data-ca-regexp="{$po.regexp}" data-ca-message="{$po.incorrect_message}"{/if}>{$po.option_name}:</label>
+    <label for="option_{$id}_{$po.option_id}" id="option_description_{$id}_{$po.option_id}" class="control-label {if $po.required == "Y"}cm-required{/if} {if $po.regexp}cm-regexp{/if}">{$po.option_name}:</label>
 <div class="controls">
     {if $po.option_type == "S"} {*Selectbox*}
         {if $po.variants}
@@ -68,6 +68,23 @@
         </div>
     {/if}
 </div>
+
+    {if $po.regexp}
+        <script type="text/javascript">
+        //<![CDATA[
+        (function(_, $) {
+            $(document).ready(function() {
+                $.ceFormValidator('setRegexp', {
+                    'option_{$id}_{$po.option_id}': {
+                        regexp: "{$po.regexp|escape:javascript nofilter}",
+                        message: "{$po.incorrect_message|escape:javascript}"
+                    }
+                });
+            });
+        }(Tygh, Tygh.$));
+        //]]>
+        </script>
+    {/if}
 </div>
 {/foreach}
 </div>

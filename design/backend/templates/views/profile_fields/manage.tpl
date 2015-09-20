@@ -1,7 +1,6 @@
 
 {capture name="mainbox"}
 
-{assign var="update_link_text" value=__("edit")}
 {if ""|fn_check_form_permissions}
     {assign var="update_link_text" value=__("view")}
     {assign var="hide_inputs" value="cm-hide-inputs"}
@@ -52,7 +51,7 @@
         </td>
         <td><input class="input-micro input-hidden" type="text" size="3" name="fields_data[{$field.field_id}][position]" value="{$field.position}" /></td>
         <td>
-            <a href="{"profile_fields.update?field_id=`$field.field_id`"|fn_url}"  data-ct-field-section="{$section}">{$field.description}</a>
+            <a href="{"profile_fields.update?field_id=`$field.field_id`"|fn_url}">{$field.description}</a>
         </td>
         <td class="nowrap">
             {if $field.field_type == "C"}{__("checkbox")}
@@ -64,8 +63,8 @@
             {elseif $field.field_type == "E"}{__("email")}
             {elseif $field.field_type == "Z"}{__("zip_postal_code")}
             {elseif $field.field_type == "P"}{__("phone")}
-            {elseif $field.field_type == "O"}<a href="{"countries.manage"|fn_url}" class="underlined">{__("country")}&nbsp;&rsaquo;&rsaquo;</a>
-            {elseif $field.field_type == "A"}<a href="{"states.manage"|fn_url}" class="underlined">{__("state")}&nbsp;&rsaquo;&rsaquo;</a>
+            {elseif $field.field_type == "O"}<a href="{"countries.manage"|fn_url}" class="underlined">{__("country")}&nbsp;&#155;&#155;</a>
+            {elseif $field.field_type == "A"}<a href="{"states.manage"|fn_url}" class="underlined">{__("state")}&nbsp;&#155;&#155;</a>
             {elseif $field.field_type == "N"}{__("address_type")}
             {/if}
             <input type="hidden" name="fields_data[{$field.field_id}][field_id]" value="{$field.field_id}" />
@@ -96,9 +95,9 @@
         <td class="nowrap">
             {capture name="tools_list"}
                 {if $custom_fields}
-                    <li>{btn type="list" text=__("delete") class="cm-confirm cm-post" href="profile_fields.delete?field_id=`$field.field_id`"}</li>
+                    <li>{btn type="list" text=__("delete") class="cm-confirm" href="profile_fields.delete?field_id=`$field.field_id`"}</li>
                 {/if}
-                <li>{btn type="list" text=$update_link_text href="profile_fields.update?field_id=`$field.field_id`"|fn_url}</li>
+                <li>{btn type="list" text=__("edit") href="profile_fields.update?field_id=`$field.field_id`"}</li>
             {/capture}
             <div class="hidden-tools">
                 {dropdown content=$smarty.capture.tools_list}

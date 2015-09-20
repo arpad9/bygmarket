@@ -21,7 +21,7 @@ if (!defined('BOOTSTRAP')) { die('Access denied'); }
 if (!empty($_REQUEST['order_id']) && $mode != 'search') {
     // If user is not logged in and trying to see the order, redirect him to login form
     if (empty($auth['user_id']) && empty($auth['order_ids'])) {
-        return array(CONTROLLER_STATUS_REDIRECT, 'auth.login_form?return_url=' . urlencode(Registry::get('config.current_url')));
+        return array(CONTROLLER_STATUS_REDIRECT, "auth.login_form?return_url=" . urlencode(Registry::get('config.current_url')));
     }
 
     $orders_company_condition = '';
@@ -55,6 +55,10 @@ if (!empty($_REQUEST['order_id']) && $mode != 'search') {
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     if ($mode == 'repay') {
+        Registry::get('view')->assign('order_action', __('processing'));
+        Registry::get('view')->display('views/orders/components/placing_order.tpl');
+        fn_flush();
+
         $order_info = fn_get_order_info($_REQUEST['order_id']);
 
         $payment_info = empty($_REQUEST['payment_info']) ? array() : $_REQUEST['payment_info'];
@@ -111,23 +115,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $update_order['payment_surcharge'] = 0;
         }
 
-        //Default change order status back to Open
-        $change_order_status = STATUSES_ORDER;
-
-        /**
-         * Data change for a repayed order
-         * @param array     $order_info Order information
-         * @param array     $update_order New order data
-         * @param array     $payment  Payment information
-         * @param array     $payment_info Payment information received from a user
-         * @param string    $change_order_status New order status
-         */
-        fn_set_hook('repay_order', $order_info, $update_order, $payment, $payment_info, $change_order_status);
+        fn_set_hook('repay_order', $order_info, $update_order, $payment, $payment_info);
 
         db_query('UPDATE ?:orders SET ?u WHERE order_id = ?i', $update_order, $_REQUEST['order_id']);
 
-        // Change order status and restore amount.
-        fn_change_order_status($order_info['order_id'], $change_order_status, $order_info['status'], fn_get_notification_rules(array(), false));
+        // Change order status back to Open and restore amount.
+        fn_change_order_status($order_info['order_id'], STATUSES_ORDER, $order_info['status'], fn_get_notification_rules(array(), false));
 
         $_SESSION['cart']['placement_action'] = 'repay';
 
@@ -137,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         fn_order_placement_routines('repay', $order_info['order_id'], array(), true);
     }
 
-    return array(CONTROLLER_STATUS_OK, 'orders.details?order_id=' . $_REQUEST['order_id']);
+    return array(CONTROLLER_STATUS_OK, "orders.details?order_id=$_REQUEST[order_id]");
 }
 
 fn_add_breadcrumb(__('orders'), $mode == 'search' ? '' : "orders.search");
@@ -149,7 +142,7 @@ if ($mode == 'invoice') {
     fn_add_breadcrumb(__('order') . ' #' . $_REQUEST['order_id'], "orders.details?order_id=$_REQUEST[order_id]");
     fn_add_breadcrumb(__('invoice'));
 
-    Tygh::$app['view']->assign('order_info', fn_get_order_info($_REQUEST['order_id']));
+    Registry::get('view')->assign('order_info', fn_get_order_info($_REQUEST['order_id']));
 
 //
 // Show invoice on separate page
@@ -166,7 +159,10 @@ if ($mode == 'invoice') {
 //
 } elseif ($mode == 'track') {
     if (!empty($_REQUEST['ekey'])) {
-        $email = fn_get_object_by_ekey($_REQUEST['ekey'], 'T');
+        $email = db_get_field("SELECT object_string FROM ?:ekeys WHERE object_type = 'T' AND ekey = ?s AND ttl > ?i", $_REQUEST['ekey'], TIME);
+
+        // Cleanup keys
+        db_query("DELETE FROM ?:ekeys WHERE object_type = 'T' AND ttl < ?i", TIME);
 
         if (empty($email)) {
             return array(CONTROLLER_STATUS_DENIED);
@@ -175,9 +171,9 @@ if ($mode == 'invoice') {
         $auth['order_ids'] = db_get_fields("SELECT order_id FROM ?:orders WHERE email = ?s", $email);
 
         if (!empty($_REQUEST['o_id']) && in_array($_REQUEST['o_id'], $auth['order_ids'])) {
-            return array(CONTROLLER_STATUS_REDIRECT, 'orders.details?order_id=' . $_REQUEST['o_id']);
+            return array(CONTROLLER_STATUS_REDIRECT, "orders.details?order_id=$_REQUEST[o_id]");
         } else {
-            return array(CONTROLLER_STATUS_REDIRECT, 'orders.search');
+            return array(CONTROLLER_STATUS_REDIRECT, "orders.search");
         }
     } else {
         return array(CONTROLLER_STATUS_DENIED);
@@ -190,7 +186,7 @@ if ($mode == 'invoice') {
 //
 } elseif ($mode == 'track_request') {
 
-    if (fn_image_verification('track_orders', $_REQUEST) == false) {
+    if (fn_image_verification('use_for_track_orders', $_REQUEST) == false) {
         exit;
     }
 
@@ -206,7 +202,7 @@ if ($mode == 'invoice') {
         );
 
         if (!empty($allowed_id)) {
-            Tygh::$app['ajax']->assign('force_redirection', fn_url('orders.details?order_id=' . $_REQUEST['track_data']));
+            Registry::get('ajax')->assign('force_redirection', fn_url('orders.details?order_id=' . $_REQUEST['track_data']));
             exit;
         } else {
             fn_set_notification('E', __('error'), __('warning_track_orders_not_allowed'));
@@ -227,15 +223,22 @@ if ($mode == 'invoice') {
 
         if (!empty($order_info['email'])) {
             // Create access key
-            $ekey = fn_generate_ekey($order_info['email'], 'T', SECONDS_IN_HOUR);
+            $ekey_data = array (
+                'object_string' => $order_info['email'],
+                'object_type' => 'T',
+                'ekey' => md5(uniqid(rand())),
+                'ttl' => strtotime("+1 hour"), // FIXME!!! hardcoded
+            );
 
-            $company_id = fn_get_company_id('orders', 'order_id', $order_info['order_id']);
+            db_query("REPLACE INTO ?:ekeys ?e", $ekey_data);
+
+               $company_id = fn_get_company_id('orders', 'order_id', $order_info['order_id']);
 
             $result = Mailer::sendMail(array(
                 'to' => $order_info['email'],
                 'from' => 'company_orders_department',
                 'data' => array(
-                    'access_key' => $ekey,
+                    'access_key' => $ekey_data['ekey'],
                     'o_id' => $order_info['order_id'],
                 ),
                 'tpl' => 'orders/track.tpl',
@@ -266,17 +269,16 @@ if ($mode == 'invoice') {
 
     if ($order_info['is_parent_order'] == 'Y') {
         $child_ids = db_get_fields("SELECT order_id FROM ?:orders WHERE parent_order_id = ?i", $_REQUEST['order_id']);
-
-        return array(CONTROLLER_STATUS_REDIRECT, 'orders.search?period=A&order_id=' . implode(',', $child_ids));
+        fn_redirect(fn_url("orders.search?period=A&order_id=" . implode(',', $child_ids)));
     }
 
     if (fn_allowed_for('MULTIVENDOR')) {
-        Tygh::$app['view']->assign('take_surcharge_from_vendor', fn_take_payment_surcharge_from_vendor($order_info['products']));
+        Registry::get('view')->assign('take_surcharge_from_vendor', fn_take_payment_surcharge_from_vendor($order_info['products']));
     }
     // Repay functionality
     $statuses = fn_get_statuses(STATUSES_ORDER, array(), true);
 
-    if (Registry::get('settings.Checkout.repay') == 'Y' && (!empty($statuses[$order_info['status']]['params']['repay']) && $statuses[$order_info['status']]['params']['repay'] == 'Y')) {
+    if (Registry::get('settings.General.repay') == 'Y' && (!empty($statuses[$order_info['status']]['params']['repay']) && $statuses[$order_info['status']]['params']['repay'] == 'Y')) {
         fn_prepare_repay_data(empty($_REQUEST['payment_id']) ? 0 : $_REQUEST['payment_id'], $order_info, $auth);
     }
 
@@ -302,19 +304,15 @@ if ($mode == 'invoice') {
         }
     }
 
-    Tygh::$app['view']->assign('shipments', $shipments);
-    Tygh::$app['view']->assign('use_shipments', $use_shipments);
+    Registry::get('view')->assign('shipments', $shipments);
+    Registry::get('view')->assign('use_shipments', $use_shipments);
 
     Registry::set('navigation.tabs', $navigation_tabs);
-    Tygh::$app['view']->assign('order_info', $order_info);
-    Tygh::$app['view']->assign('status_settings', $statuses[$order_info['status']]['params']);
+    Registry::get('view')->assign('order_info', $order_info);
+    Registry::get('view')->assign('status_settings', $statuses[$order_info['status']]['params']);
 
     if (!empty($_REQUEST['selected_section'])) {
-        Tygh::$app['view']->assign('selected_section', $_REQUEST['selected_section']);
-    }
-
-    if (!empty($_REQUEST['active_tab'])) {
-        Tygh::$app['view']->assign('active_tab', $_REQUEST['active_tab']);
+        Registry::get('view')->assign('selected_section', $_REQUEST['selected_section']);
     }
 
 //
@@ -335,13 +333,13 @@ if ($mode == 'invoice') {
         }
 
     } else {
-        return array(CONTROLLER_STATUS_REDIRECT, 'auth.login_form?return_url=' . urlencode(Registry::get('config.current_url')));
+        return array(CONTROLLER_STATUS_REDIRECT, "auth.login_form?return_url=" . urlencode(Registry::get('config.current_url')));
     }
 
     list($orders, $search) = fn_get_orders($params, Registry::get('settings.Appearance.orders_per_page'));
 
-    Tygh::$app['view']->assign('orders', $orders);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('orders', $orders);
+    Registry::get('view')->assign('search', $search);
 
 //
 // Reorder order
@@ -350,7 +348,7 @@ if ($mode == 'invoice') {
 
     fn_reorder($_REQUEST['order_id'], $_SESSION['cart'], $auth);
 
-    return array(CONTROLLER_STATUS_REDIRECT, 'checkout.cart');
+    return array(CONTROLLER_STATUS_REDIRECT, "checkout.cart");
 
 } elseif ($mode == 'downloads') {
 
@@ -366,8 +364,8 @@ if ($mode == 'invoice') {
 
     list($products, $search) = fn_get_user_edp($params, Registry::get('settings.Appearance.elements_per_page'));
 
-    Tygh::$app['view']->assign('products', $products);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('products', $products);
+    Registry::get('view')->assign('search', $search);
 
 } elseif ($mode == 'order_downloads') {
 
@@ -395,11 +393,11 @@ if ($mode == 'invoice') {
 
         $params = array(
             'user_id' => $order['user_id'],
-            'order_ids' => $order['order_id']
+            'order_id' => $order['order_id']
         );
         list($products) = fn_get_user_edp($params);
 
-        Tygh::$app['view']->assign('products', $products);
+        Registry::get('view')->assign('products', $products);
     } else {
         return array(CONTROLLER_STATUS_NO_PAGE);
     }
@@ -410,8 +408,7 @@ if ($mode == 'invoice') {
         return array(CONTROLLER_STATUS_NO_PAGE);
     }
 
-    $ekey = !empty($_REQUEST['ekey']) ? $_REQUEST['ekey'] : '';
-    if (fn_get_product_file($_REQUEST['file_id'], !empty($_REQUEST['preview']), $ekey) == false) {
+    if (fn_get_product_file($_REQUEST['file_id'], !empty($_REQUEST['preview']), $_REQUEST['ekey']) == false) {
         return array(CONTROLLER_STATUS_DENIED);
     }
     exit;
@@ -451,7 +448,7 @@ if ($mode == 'invoice') {
     fn_add_breadcrumb(__('download'));
 
     if (!empty($product['files'])) {
-        Tygh::$app['view']->assign('product', $product);
+        Registry::get('view')->assign('product', $product);
     } else {
         return array(CONTROLLER_STATUS_DENIED);
     }
@@ -527,7 +524,6 @@ function fn_reorder($order_id, &$cart, &$auth)
     $cart['payment_updated'] = true;
 
     fn_save_cart_content($cart, $auth['user_id']);
-    unset($cart['product_groups']);
 }
 
 function fn_prepare_repay_data($payment_id, $order_info, $auth)
@@ -537,7 +533,7 @@ function fn_prepare_repay_data($payment_id, $order_info, $auth)
     }
 
     //Get payment methods
-    $payment_methods = fn_get_payments(array('usergroup_ids' => $auth['usergroup_ids']));
+    $payment_methods = fn_get_payment_methods($auth);
 
     fn_set_hook('prepare_repay_data', $payment_id, $order_info, $auth, $payment_methods);
 
@@ -566,8 +562,8 @@ function fn_prepare_repay_data($payment_id, $order_info, $auth)
             }
         }
 
-        Tygh::$app['view']->assign('payment_methods', $payment_groups);
-        Tygh::$app['view']->assign('order_payment_id', $order_payment_id);
-        Tygh::$app['view']->assign('payment_method', $payment_data);
+        Registry::get('view')->assign('payment_methods', $payment_groups);
+        Registry::get('view')->assign('order_payment_id', $order_payment_id);
+        Registry::get('view')->assign('payment_method', $payment_data);
     }
 }

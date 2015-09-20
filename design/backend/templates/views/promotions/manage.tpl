@@ -9,10 +9,10 @@
 {assign var="c_dummy" value="<i class=\"exicon-dummy\"></i>"}
 
 {if $promotions}
-<table class="table table-middle">
+<table width="100%" class="table table-middle">
 <thead>
 <tr>
-    <th width="1%">
+    <th width="1%" class="left">
         {include file="common/check_items.tpl"}
     </th>
     <th width="30%">
@@ -21,9 +21,6 @@
         <a class="cm-ajax" href="{"`$c_url`&sort_by=priority&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("priority")}{if $search.sort_by == "priority"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
     <th width="10%">
         <a class="cm-ajax" href="{"`$c_url`&sort_by=zone&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("zone")}{if $search.sort_by == "zone"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
-
-    {hook name="promotions:manage_header"}{/hook}
-
     <th width="10%">&nbsp;</th>
     <th width="10%" class="right"><a class="cm-ajax" href="{"`$c_url`&sort_by=status&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("status")}{if $search.sort_by == "status"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
 </tr>
@@ -44,8 +41,8 @@
     {/if}
 
 <tr class="cm-row-status-{$promotion.status|lower} {$additional_class}">
-    <td>
-        <input name="promotion_ids[]" type="checkbox" value="{$promotion.promotion_id}" class="cm-item" /></td>
+    <td class="center">
+        <input name="promotion_ids[]" type="checkbox" value="{$promotion.promotion_id}" class="cm-item input-hidden" /></td>
     <td>
         <a class="row-status" href="{"promotions.update?promotion_id=`$promotion.promotion_id`"|fn_url}">{$promotion.name}</a>
         {include file="views/companies/components/company_name.tpl" object=$promotion}
@@ -55,18 +52,13 @@
     <td>
         <span class="row-status">{__($promotion.zone)}</span>
     </td>
-
-    {hook name="promotions:manage_data"}{/hook}
-
     <td class="right">
         <div class="hidden-tools">
         {capture name="tools_list"}
-            {hook name="promotions:list_extra_links"}
             <li>{btn type="list" text=$link_text href="promotions.update?promotion_id=`$promotion.promotion_id`"}</li>
             {if $allow_save}
-                <li>{btn type="list" text=__("delete") class="cm-confirm cm-post" href="promotions.delete?promotion_id=`$promotion.promotion_id`"}</li>
+                <li>{btn type="list" text=__("delete") class="cm-confirm" href="promotions.delete?promotion_id=`$promotion.promotion_id`"}</li>
             {/if}
-            {/hook}
         {/capture}
         {dropdown content=$smarty.capture.tools_list}
         </div>
@@ -85,11 +77,9 @@
 
 {capture name="buttons"}
     {capture name="tools_list"}
-        {hook name="promotions:manage_tools_list"}
-            {if $promotions}
-                <li>{btn type="delete_selected" dispatch="dispatch[promotions.m_delete]" form="promotion_form"}</li>
-            {/if}
-        {/hook}
+        {if $promotions}
+            <li>{btn type="delete_selected" dispatch="dispatch[promotions.m_delete]" form="promotion_form"}</li>
+        {/if}
     {/capture}
     {dropdown content=$smarty.capture.tools_list}
 {/capture}
@@ -103,7 +93,7 @@
             <li>{btn type="list" text=__("add_cart_promotion") class="cm-promo-popup"}</li>
         {/if}
     {/capture}
-    {dropdown content=$smarty.capture.tools_list icon="icon-plus" no_caret=true placement="right"}
+    {dropdown content=$smarty.capture.tools_list icon="icon-plus" no_caret=true title="{__('add_promotions')}"}
     {** Hook for the actions menu on the products manage page *}
 {/capture}
 

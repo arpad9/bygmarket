@@ -1,8 +1,8 @@
 {* Amazon general settings *}
-{assign var="callback_url" value="https"|fn_payment_url:"amazon_checkout.php"}
+{assign var="callback_url" value="https"|fn_payment_url:"amazon/amazon_callback.php"}
 <p>{__("text_amazon_callback_url", ["[callback_url]" => $callback_url])}</p>
 <p>{__("text_amazon_link_message")}</p>
-<p>{__("text_amazon_surcharge")}</p>
+<p>{__("text_amazon_uk_warning")}</p>
 <hr>
 
 <fieldset>
@@ -28,9 +28,7 @@
         <label class="control-label" for="test">{__("currency")}:</label>
         <div class="controls">
             <select name="payment_data[processor_params][currency]" id="currency">
-                <option value="EUR" {if $processor_params.currency == "EUR"}selected="selected"{/if}>{__("currency_code_eur")}</option>
-                <option value="GBP" {if $processor_params.currency == "GBP"}selected="selected"{/if}>{__("currency_code_gbp")}</option>
-                <option value="USD" {if $processor_params.currency == "USD"}selected="selected"{/if}>{__("currency_code_usd")}</option>
+                <option value="USD" selected="selected">USD</option>
             </select>
         </div>
     </div>

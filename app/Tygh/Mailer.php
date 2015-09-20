@@ -14,10 +14,35 @@
 
 namespace Tygh;
 
-class Mailer extends \PHPMailer
+class Mailer extends \phpmailer
 {
     private static $_mailer;
-    private static $default_settings;
+
+    public function SetLanguage($lang_type = 'en', $lang_path = "language/")
+    {
+        $lang_path = Registry::get('config.dir.lib') . 'other/phpmailer/' . $lang_path;
+
+        return parent::SetLanguage($lang_type, $lang_path);
+    }
+
+    public function AddImageStringAttachment($string, $filename, $encoding = "base64", $type = "application/octet-stream")
+    {
+        // Append to $attachment array
+        $cur = count($this->attachment);
+        $this->attachment[$cur][0] = $string;
+        $this->attachment[$cur][1] = $filename;
+        $this->attachment[$cur][2] = $filename;
+        $this->attachment[$cur][3] = $encoding;
+        $this->attachment[$cur][4] = $type;
+        $this->attachment[$cur][5] = true; // isString
+        $this->attachment[$cur][6] = "inline";
+        $this->attachment[$cur][7] = $filename;
+    }
+
+    public function RFCDate()
+    {
+        return date('r');
+    }
 
     public static function sendMail($params, $area = AREA, $lang_code = CART_LANGUAGE)
     {
@@ -25,7 +50,7 @@ class Mailer extends \PHPMailer
             return false;
         }
 
-        fn_disable_live_editor_mode();
+        fn_disable_translation_mode();
 
         $from = array(
             'email' => '',
@@ -33,21 +58,19 @@ class Mailer extends \PHPMailer
         );
         $to = array();
         $reply_to = array();
-        $cc = array();
 
         $mailer = self::instance(!empty($params['mailer_settings']) ? $params['mailer_settings'] : array());
 
         fn_set_hook('send_mail_pre', $mailer, $params, $area, $lang_code);
 
         $mailer->ClearReplyTos();
-        $mailer->ClearCCs();
         $mailer->ClearAttachments();
         $mailer->Sender = '';
 
         $params['company_id'] = !empty($params['company_id']) ? $params['company_id'] : 0;
-        $company_data = fn_get_company_placement_info($params['company_id'], $lang_code);
+        $company_data = fn_get_company_placement_info($params['company_id']);
 
-        foreach (array('reply_to', 'to', 'cc') as $way) {
+        foreach (array('reply_to', 'to') as $way) {
             if (!empty($params[$way])) {
                 if (!is_array($params[$way])) {
                     ${$way}[] = !empty($company_data[$params[$way]]) ? $company_data[$params[$way]] : $params[$way];
@@ -67,18 +90,11 @@ class Mailer extends \PHPMailer
             }
         }
 
-        if (!empty($cc)) {
-            $cc = $mailer->formatEmails($cc);
-            foreach ($cc as $c) {
-                $mailer->AddCC($c);
-            }
-        }
-
         if (!is_array($params['from'])) {
             if (!empty($company_data[$params['from']])) {
                 $from['email'] =  $company_data[$params['from']];
                 $from['name'] = strstr($params['from'], 'default_') ? $company_data['default_company_name'] : $company_data['company_name'];
-            } elseif (self::ValidateAddress($params['from'])) {
+            } else {
                 $from['email'] = $params['from'];
             }
         } else {
@@ -106,9 +122,9 @@ class Mailer extends \PHPMailer
 
         // Pass data to template
         foreach ($params['data'] as $k => $v) {
-            \Tygh::$app['view']->assign($k, $v);
+            Registry::get('view')->assign($k, $v);
         }
-        \Tygh::$app['view']->assign('company_data', $company_data);
+        Registry::get('view')->assign('company_data', $company_data);
 
         $company_id = isset($params['company_id']) ? $params['company_id'] : null;
 
@@ -116,10 +132,10 @@ class Mailer extends \PHPMailer
             // Get template name for subject and render it
             $tpl_ext = fn_get_file_ext($params['tpl']);
             $subj_tpl = str_replace('.' . $tpl_ext, '_subj.' . $tpl_ext, $params['tpl']);
-            $subject = \Tygh::$app['view']->displayMail($subj_tpl, false, $area, $company_id, $lang_code);
+            $subject = Registry::get('view')->displayMail($subj_tpl, false, $area, $company_id, $lang_code);
 
             // Render template for body
-            $body = \Tygh::$app['view']->displayMail($params['tpl'], false, $area, $company_id, $lang_code);
+            $body = Registry::get('view')->displayMail($params['tpl'], false, $area, $company_id, $lang_code);
 
         } else {
             $subject = $params['subj'];
@@ -153,18 +169,19 @@ class Mailer extends \PHPMailer
 
     private static function instance($mailer_settings = array())
     {
-        if (empty(self::$default_settings)) {
-            self::$default_settings = Settings::instance()->getValues('Emails');
+        static $default_settings;
+        if (empty($default_settings)) {
+            $default_settings = Settings::instance()->getValues('Emails');
         }
 
         if (empty($mailer_settings)) {
-            $mailer_settings = self::$default_settings;
+            $mailer_settings = $default_settings;
         }
 
         if (empty(self::$_mailer)) {
             self::$_mailer = new Mailer();
             self::$_mailer->LE = (defined('IS_WINDOWS')) ? "\r\n" : "\n";
-            self::$_mailer->PluginDir = Registry::get('config.dir.lib') . 'vendor/phpmailer/phpmailer';
+            self::$_mailer->PluginDir = Registry::get('config.dir.lib') . 'other/phpmailer/';
         }
 
         if ($mailer_settings['mailer_send_method'] == 'smtp') {
@@ -173,7 +190,6 @@ class Mailer extends \PHPMailer
             self::$_mailer->Host = $mailer_settings['mailer_smtp_host'];
             self::$_mailer->Username = $mailer_settings['mailer_smtp_username'];
             self::$_mailer->Password = $mailer_settings['mailer_smtp_password'];
-            self::$_mailer->SMTPSecure = $mailer_settings['mailer_smtp_ecrypted_connection'];
 
         } elseif ($mailer_settings['mailer_send_method'] == 'sendmail') {
             self::$_mailer->IsSendmail();
@@ -234,8 +250,7 @@ class Mailer extends \PHPMailer
                 if (!empty($width)) {
                     $cid .= '.' . fn_get_image_extension($mime_type);
                     $content = fn_get_contents($real_path);
-                    $this->addStringEmbeddedImage($content, $cid, $cid, 'base64', $mime_type);
-
+                    $this->AddImageStringAttachment($content, $cid, 'base64', $mime_type);
                     $body = preg_replace("/(['\"])" . str_replace("/", "\/", preg_quote($_path)) . "(['\"])/Ss", "\\1cid:" . $cid . "\\2", $body);
                 }
             }
@@ -260,10 +275,5 @@ class Mailer extends \PHPMailer
         }
 
         return array_unique($result);
-    }
-
-    public static function ValidateAddress($email, $method = 'auto')
-    {
-        return fn_validate_email($email, false);
     }
 }

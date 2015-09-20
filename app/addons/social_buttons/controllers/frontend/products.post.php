@@ -20,7 +20,7 @@ if ($mode == 'view') {
 
     $restored_send_data = fn_restore_post_data('send_data');
     if (!empty($restored_send_data)) {
-        Tygh::$app['view']->assign('send_data', $restored_send_data);
+        Registry::get('view')->assign('send_data', $restored_send_data);
     }
 
     $params = array(
@@ -29,9 +29,6 @@ if ($mode == 'view') {
         'lang_code' => CART_LANGUAGE,
     );
 
-    $provider_settings = fn_get_sb_provider_settings($params);
-
-    Tygh::$app['view']->assign('display_button_block', fn_sb_display_block($provider_settings));
-    Tygh::$app['view']->assign('provider_settings', $provider_settings);
-    Tygh::$app['view']->assign('provider_meta_data', fn_get_sb_providers_meta_data($params));
+    Registry::get('view')->assign('provider_settings', fn_get_sb_provider_settings($params));
+    Registry::get('view')->assign('provider_meta_data', fn_get_sb_providers_meta_data($params));
 }

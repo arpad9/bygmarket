@@ -39,33 +39,53 @@ if (defined('PAYMENT_NOTIFICATION')) {
 
     $response_url = fn_url("payment_notification&payment=firstdata_connect&order_id=$order_id", AREA, 'http');
 
-    $post_data = array(
-        'responseURL' => $response_url,
-        'storename' => $processor_data['processor_params']['store'],
-        'chargetotal' => $order_info['total'],
-        'txnorg' => 'eci',
-        'mode' => 'fullpay',
-        'txntype' => $processor_data['processor_params']['transaction_type'],
-        'bname' => $order_info['firstname'] . ' ' . $order_info['lastname'],
-        'oid' => $processor_data['processor_params']['prefix'] . $_order_id,
-        'baddr1' => $order_info['b_address'],
-        'baddr2' => $order_info['b_address_2'],
-        'bcity' => $order_info['b_city'],
-        'bstate' => $order_info['b_state'],
-        'bcountry' => $order_info['b_country'],
-        'bzip' => $order_info['b_zipcode'],
-        'sname' => $order_info['firstname'] . ' ' . $order_info['lastname'],
-        'saddr1' => $order_info['s_address'],
-        'saddr2' => $order_info['s_address_2'],
-        'scity' => $order_info['s_city'],
-        'sstate' => $order_info['s_state'],
-        'scountry' => $order_info['s_country'],
-        'szip' => $order_info['s_zipcode'],
-        'phone' => $order_info['phone'],
-        'fax' => $order_info['fax'],
-        'email' => $order_info['email']
-    );
+echo <<<EOT
+    <form action="$post_address" method="post" name="process">
+    <input type="hidden" name="responseURL" value="$response_url">
 
-    fn_create_payment_form($post_address, $post_data, 'FirstData');
+
+    <input type="hidden" name="storename" value="{$processor_data['processor_params']['store']}">
+    <input type="hidden" name="chargetotal" value="{$order_info['total']}">
+    <input type="hidden" name="txnorg" value="eci">
+    <input type="hidden" name="mode" value="fullpay">
+    <input type="hidden" name="txntype" value="{$processor_data['processor_params']['transaction_type']}">
+    <input type="hidden" name="bname" value="{$order_info['firstname']} {$order_info['lastname']}">
+    <input type="hidden" name="oid" value="{$processor_data['processor_params']['prefix']}{$_order_id}">
+
+    <input type="hidden" name="baddr1" value="{$order_info['b_address']}">
+    <input type="hidden" name="baddr2" value="{$order_info['b_address_2']}">
+    <input type="hidden" name="bcity" value="{$order_info['b_city']}">
+    <input type="hidden" name="bstate" value="{$order_info['b_state']}">
+    <input type="hidden" name="bcountry" value="{$order_info['b_country']}">
+    <input type="hidden" name="bzip" value="{$order_info['b_zipcode']}">
+
+    <input type="hidden" name="sname" value="{$order_info['firstname']} {$order_info['lastname']}">
+    <input type="hidden" name="saddr1" value="{$order_info['s_address']}">
+    <input type="hidden" name="saddr2" value="{$order_info['s_address_2']}">
+    <input type="hidden" name="scity" value="{$order_info['s_city']}">
+    <input type="hidden" name="sstate" value="{$order_info['s_state']}">
+    <input type="hidden" name="scountry" value="{$order_info['s_country']}">
+    <input type="hidden" name="szip" value="{$order_info['s_zipcode']}">
+
+    <input type="hidden" name="phone" value="{$order_info['phone']}">
+    <input type="hidden" name="fax" value="{$order_info['fax']}">
+    <input type="hidden" name="email" value="{$order_info['email']}">
+    </form>
+EOT;
+
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'Linkpoint server'
+));
+echo <<<EOT
+    <p><div align=center>{$msg}</div></p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
+
 }
 exit;

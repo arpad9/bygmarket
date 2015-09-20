@@ -25,9 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $users[$k] = fn_get_user_info($v);
         }
 
-        Tygh::$app['view']->assign('users', $users);
+        Registry::get('view')->assign('users', $users);
 
-        Tygh::$app['view']->display('addons/myob/views/users/components/export_to_myob.tpl');
+        Registry::get('view')->display('addons/myob/views/users/components/export_to_myob.tpl');
         exit;
     }
 
@@ -40,11 +40,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $orders[$k]['order_date'] = date('j/n/Y', $orders[$k]['timestamp']);
             $orders[$k]['paid_amount'] = 0;	//TODO: Update this!
 
-            foreach ($orders[$k]['products'] as $ik => $iv) {
+            foreach ($orders[$k]['items'] as $ik => $iv) {
                 $option_desc = "";
                 $desc_count = 0;
-                if (!empty($orders[$k]['products'][$ik]['product_options'])) {
-                    foreach ($orders[$k]['products'][$ik]['product_options'] as $option_key => $option_value) {
+                if (!empty($orders[$k]['items'][$ik]['product_options'])) {
+                    foreach ($orders[$k]['items'][$ik]['product_options'] as $option_key => $option_value) {
                         if ($desc_count > 0) {
                             $option_desc .= ", ";
                         } else {
@@ -57,13 +57,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($option_desc != '') {
                     $option_desc .= ' )';
                 }
-                $orders[$k]['products'][$ik]['prod_opts_description'] = $orders[$k]['products'][$ik]['product'] . $option_desc;
+                $orders[$k]['items'][$ik]['prod_opts_description'] = $orders[$k]['items'][$ik]['product'] . $option_desc;
             }
         }
 
-        Tygh::$app['view']->assign('orders', $orders);
+        Registry::get('view')->assign('orders', $orders);
 
-        Tygh::$app['view']->display('addons/myob/views/orders/components/export_to_myob.tpl');
+        Registry::get('view')->display('addons/myob/views/orders/components/export_to_myob.tpl');
         exit;
     }
 }

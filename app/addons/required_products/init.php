@@ -20,6 +20,5 @@ fn_register_hooks(
     'delete_cart_product',
     'get_products',
     'calculate_cart_items',
-    'delete_product_post',
-    'form_cart_pre_fill'
+    'delete_product_post'
 );

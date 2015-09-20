@@ -21,13 +21,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 }
 
 if ($mode == 'view' && Registry::get('addons.tags.tags_for_products') == 'Y') {
-    $product = Tygh::$app['view']->getTemplateVars('product');
-    list($tags) = fn_get_tags(array(
-        'object_type' => 'P', 
-        'object_id' => $product['product_id']
-    ));
+    $product = Registry::get('view')->getTemplateVars('product');
+    $product['tags']['popular'] = $product['tags']['user'] = array();
+    list($tags) = fn_get_tags(array('object_type' => 'P', 'object_id' => $product['product_id'], 'user_and_popular' => $auth['user_id']));
 
-    $product['tags'] = $tags;
-
-    Tygh::$app['view']->assign('product', $product);
+    foreach ($tags as $k => $v) {
+        if (!empty($v['my_tag'])) {
+            $product['tags']['user'][$v['tag_id']] = $v;
+        }
+        if ($v['status'] == 'A') {
+            $product['tags']['popular'][$v['tag_id']] = $v;
+        }
+    }
+    Registry::get('view')->assign('product', $product);
 }

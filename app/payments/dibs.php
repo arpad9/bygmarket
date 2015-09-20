@@ -95,32 +95,43 @@ if (defined('PAYMENT_NOTIFICATION')) {
     $lang_code = Registry::get('settings.Appearance.backend_default_language');
 
     $post = array();
+
     $post['order_id'] = $processor_data['processor_params']['order_prefix'].(($order_info['repaid']) ? ($order_id .'_'. $order_info['repaid']) : $order_id);
     $post['currency'] = $processor_data['processor_params']['currency'];
     $post['amount'] = $order_info['total'] * 100;
 
-    $md5key = md5($processor_data['processor_params']['key2'] . md5($processor_data['processor_params']['key1'] . 'merchant=' . $processor_data['processor_params']['merchant'] . '&orderid=' . $post['order_id'] . '&currency=' . $post['currency'] . '&amount=' . $post['amount']));
+    $post['accepturl'] = fn_url("payment_notification.accept?payment=dibs&order_id=$order_id", AREA, 'current');
+    $post['cancelurl'] = fn_url("payment_notification.cancel?payment=dibs&order_id=$order_id", AREA, 'current');
 
-    $post_data = array(
-        'merchant' => $processor_data['processor_params']['merchant'],
-        'orderid' => $post['order_id'],
-        'currency' => $post['currency'],
-        'amount' => $post['amount'],
-        'accepturl' => fn_url("payment_notification.accept?payment=dibs&order_id=$order_id", AREA, 'current'),
-        'cancelurl' => fn_url("payment_notification.cancel?payment=dibs&order_id=$order_id", AREA, 'current'),
-        'uniqueoid' =>'yes',
-        'ip' => $order_info['ip_address'],
-        'paytype' => 'ACCEPT,ACK,AMEX,AMEX(DK),BHBC,CCK,CKN,COBK,DIN,DIN(DK),DK,ELEC,VISA,EWORLD,FCC,FCK,FFK,FSC,FSBK,FSSBK,GSC,GRA,HBSBK,HMK,ICASBK,IBC,IKEA,JPSBK,JCB,LIC(DK),LIC(SE),MC,MC(DK),MC(SE),MTRO,MTRO(DK),MTRO(UK),MTRO(SOLO),MEDM,MERLIN(DK),MOCA,NSBK,OESBK,PGSBK,Q8SK,Q8LIC,RK,SLV,SBSBK,S/T,SBC,SBK,SEBSBK,TKTD,TUBC,TLK,VSC,V-DK,VEKO,VISA,VISA(DK),VISA(SE),ELEC,WOCO,AAK',
-        'calcfee' => 'no',
-        'skiplastpage' => $processor_data['processor_params']['skiplastpage'],
-        'lang' => in_array(CART_LANGUAGE, $languages) ? CART_LANGUAGE : $processor_data['processor_params']['lang'],
-        'color' => $processor_data['processor_params']['color'],
-        'decorator' => $processor_data['processor_params']['decorator'],
-        'md5key' => $md5key
-    );
-        
+    $post['lang'] = (in_array(CART_LANGUAGE, $languages)) ? CART_LANGUAGE : $processor_data['processor_params']['lang'];
+
+    $post['calcfee'] = 'no';
+    $post['skiplastpage'] = $processor_data['processor_params']['skiplastpage'];
+
+    $post['md5key'] = md5($processor_data['processor_params']['key2'] . md5($processor_data['processor_params']['key1'] . 'merchant=' . $processor_data['processor_params']['merchant'] . '&orderid=' . $post['order_id'] . '&currency=' . $post['currency'] . '&amount=' . $post['amount']));
+
+    echo <<<EOT
+        <form action="{$post_address}" method="POST" name="process">
+        <input type="hidden" name="merchant" value="{$processor_data['processor_params']['merchant']}" />
+        <input type="hidden" name="orderid" value="{$post['order_id']}" />
+        <input type="hidden" name="currency" value="{$post['currency']}" />
+        <input type="hidden" name="amount" value="{$post['amount']}" />
+        <input type="hidden" name="accepturl" value="{$post['accepturl']}" />
+        <input type="hidden" name="cancelurl" value="{$post['cancelurl']}" />
+        <input type="hidden" name="uniqueoid" value="yes" />
+        <input type="hidden" name="ip" value="{$order_info['ip_address']}" />
+        <input type="hidden" name="paytype" value="ACCEPT,ACK,AMEX,AMEX(DK),BHBC,CCK,CKN,COBK,DIN,DIN(DK),DK,ELEC,VISA,EWORLD,FCC,FCK,FFK,FSC,FSBK,FSSBK,GSC,GRA,HBSBK,HMK,ICASBK,IBC,IKEA,JPSBK,JCB,LIC(DK),LIC(SE),MC,MC(DK),MC(SE),MTRO,MTRO(DK),MTRO(UK),MTRO(SOLO),MEDM,MERLIN(DK),MOCA,NSBK,OESBK,PGSBK,Q8SK,Q8LIC,RK,SLV,SBSBK,S/T,SBC,SBK,SEBSBK,TKTD,TUBC,TLK,VSC,V-DK,VEKO,VISA,VISA(DK),VISA(SE),ELEC,WOCO,AAK" />
+        <input type="hidden" name="calcfee" value="{$post['calcfee']}" />
+        <input type="hidden" name="skiplastpage" value="{$post['skiplastpage']}" />
+        <input type="hidden" name="lang" value="{$post['lang']}" />
+        <input type="hidden" name="color" value="{$processor_data['processor_params']['color']}" />
+        <input type="hidden" name="decorator" value="{$processor_data['processor_params']['decorator']}" />
+
+EOT;
     if ($processor_data['processor_params']['test'] == 'test') {
-        $post_data['test'] = 'yes';
+    echo <<<EOT
+        <input type="hidden" name="test" value="yes" />
+EOT;
     }
 
     $all_fields = fn_get_profile_fields('O');
@@ -133,47 +144,72 @@ if (defined('PAYMENT_NOTIFICATION')) {
         } elseif ($k == 'S') {
             $name = __('shipping_address', '', $lang_code);
         }
-
-        $post_data['delivery' . $i . '.' . $name] = ' ';
+        echo '<input type="hidden" name="delivery'. $i .'.' .htmlspecialchars($name). "\" value=\" \" />\n";
         $i++;
         foreach ($fields as $kf => $field) {
-            $post_data['delivery' . $i . '.' . $field['description']] = $order_info[$field['field_name']];
+            echo '<input type="hidden" name="delivery' . $i . '.' . htmlspecialchars($field['description']).'" value="' . $order_info[$field['field_name']] . "\" />\n";
             $i++;
         }
     }
 
-    $post_data['ordline0-1'] = __('product_id', '', $lang_code);
-    $post_data['ordline0-2'] = __('sku', '', $lang_code);
-    $post_data['ordline0-3'] = __('product_name', '', $lang_code);
-    $post_data['ordline0-4'] = __('amount', '', $lang_code);
-    $post_data['ordline0-5'] = __('price', '', $lang_code);
+    $post['ordline0-1'] = __('product_id', '', $lang_code);
+    $post['ordline0-2'] = __('sku', '', $lang_code);
+    $post['ordline0-3'] = __('product_name', '', $lang_code);
+    $post['ordline0-4'] = __('amount', '', $lang_code);
+    $post['ordline0-5'] = __('price', '', $lang_code);
 
+    echo <<<EOT
+        <input type="hidden" name="ordline0-1" value="{$post['ordline0-1']}" />
+        <input type="hidden" name="ordline0-2" value="{$post['ordline0-2']}" />
+        <input type="hidden" name="ordline0-3" value="{$post['ordline0-3']}" />
+        <input type="hidden" name="ordline0-4" value="{$post['ordline0-4']}" />
+        <input type="hidden" name="ordline0-5" value="{$post['ordline0-5']}" />
+
+EOT;
     $i = 1;
     foreach ($order_info['products'] as $k => $item) {
-        $post_data['ordline' . $i . '-1'] = $item['product_id'];
-        $post_data['ordline' . $i . '-2'] = $item['product_code'];
-        $post_data['ordline' . $i . '-3'] = $item['product'];
-        $post_data['ordline' . $i . '-4'] = $item['amount'];
-        $post_data['ordline' . $i . '-5'] = $item['price'];
-        $i++;
+    echo <<<EOT
+        <input type="hidden" name="ordline{$i}-1" value="{$item['product_id']}" />
+        <input type="hidden" name="ordline{$i}-2" value="{$item['product_code']}" />
+        <input type="hidden" name="ordline{$i}-3" value="{$item['product']}" />
+        <input type="hidden" name="ordline{$i}-4" value="{$item['amount']}" />
+        <input type="hidden" name="ordline{$i}-5" value="{$item['price']}" />
+
+EOT;
+    $i++;
     }
 
     if (!empty($order_info['taxes']) && Registry::get('settings.General.tax_calculation') == 'subtotal') {
         foreach ($order_info['taxes'] as $tax_id => $tax) {
-            if ($tax['price_includes_tax'] == 'N') {
-                continue;
-            }
+        if ($tax['price_includes_tax'] == 'N') {
+            continue;
+        }
+        echo <<<EOT
+            <input type="hidden" name="ordline{$i}-1" value="{$tax_id}" />
+            <input type="hidden" name="ordline{$i}-2" value="{$tax['regnumber']}" />
+            <input type="hidden" name="ordline{$i}-3" value="{$tax['description']}" />
+            <input type="hidden" name="ordline{$i}-4" value="1" />
+            <input type="hidden" name="ordline{$i}-5" value="{$tax['tax_subtotal']}" />
 
-            $post_data['ordline' . $i . '-1'] = $tax_id;
-            $post_data['ordline' . $i . '-2'] = $tax['regnumber'];
-            $post_data['ordline' . $i . '-3'] = $tax['description'];
-            $post_data['ordline' . $i . '-4'] = 1;
-            $post_data['ordline' . $i . '-5'] = $tax['tax_subtotal'];
-            $i++;
+EOT;
+        $i++;
         }
     }
 
-    fn_create_payment_form($post_address, $post_data, 'Dibs', false);
+    echo <<<EOT
+        <input type="hidden" name="md5key" value="{$post['md5key']}" />
+    </form>
+    <p>
+    <div align=center>{$msg}</div>
+    </p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+</body>
+</html>
+EOT;
 }
 
 exit;

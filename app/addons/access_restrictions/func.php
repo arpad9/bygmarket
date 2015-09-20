@@ -34,6 +34,25 @@ function fn_validate_ip($ip, $show_error = false)
     return false;
 }
 
+function fn_validate_email_name($email, $show_error = false)
+{
+    if (empty($email)) {
+        return false;
+    }
+
+    $email_name = (strpos($email, '@')) ? substr($email, 0, strpos($email, '@')) : $email;
+    if (preg_match('/^([?*-\d\w][?*-.\d\w]*)$/', $email_name)) {
+        return true;
+    } elseif ($show_error) {
+        fn_set_notification('E', __('error'), __('text_not_valid_email', array(
+            '[email]' => $email
+        )));
+    }
+
+    return false;
+
+}
+
 function fn_validate_domain_name($name, $show_error = false)
 {
     if (empty($name)) {

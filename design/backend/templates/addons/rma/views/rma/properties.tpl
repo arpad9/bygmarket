@@ -38,7 +38,7 @@
         {capture name="tools_list"}
         {if $smarty.request.property_type == $smarty.const.RMA_REASON}
             {assign var="property_type" value=$smarty.request.property_type|default:$smarty.const.RMA_REASON}
-            <li>{btn type="list" class="cm-confirm cm-post" text=__("delete") href="rma.delete_property?property_id=`$property.property_id`&property_type=`$property_type`"}</li>
+            <li>{btn type="list" class="cm-confirm" text=__("delete") href="rma.delete_property?property_id=`$property.property_id`&property_type=`$property_type`"}</li>
         {else}
             <li class="disabled"><a class="undeleted-element cm-tooltip" title="{__("delete")}">{__("delete")}</a></li>
         {/if}
@@ -61,11 +61,7 @@
     {capture name="tools_list"}
         {if $properties && $smarty.request.property_type == $smarty.const.RMA_REASON}
             <li>{btn type="delete_selected" dispatch="dispatch[rma.m_delete_properties]" form="rma_properties_form"}</li>
-            <li class="divider"></li>
         {/if}
-        <li>{btn type="list" text=__("rma_reasons") href="rma.properties?property_type=R"}</li>
-        <li>{btn type="list" text=__("rma_actions") href="rma.properties?property_type=A"}</li>
-        <li>{btn type="list" text=__("rma_request_statuses") href="statuses.manage?type=R"}</li>
     {/capture}
     {dropdown content=$smarty.capture.tools_list}
 

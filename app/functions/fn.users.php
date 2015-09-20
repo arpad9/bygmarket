@@ -15,8 +15,6 @@
 use Tygh\Registry;
 use Tygh\Mailer;
 use Tygh\Navigation\LastView;
-use Tygh\Session;
-use Tygh\Http;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -40,11 +38,27 @@ function fn_get_user_info($user_id, $get_profile = true, &$profile_id = NULL)
     fn_set_hook('get_user_info_pre', $user_id, $get_profile, $profile_id);
 
     $user_fields = array (
-        '?:users.*',
+        'user_id',
+        'user_type',
+        'status',
+        'user_login',
+        'is_root',
+        'company_id',
+        'firstname',
+        'lastname',
+        'company',
+        'email',
+        'phone',
+        'fax',
+        'url',
+        'tax_exempt',
+        'lang_code',
+        'password_change_timestamp',
+        'api_key'
     );
 
+    $user_fields = implode(',', $user_fields);
     $condition = ($user_id != $_SESSION['auth']['user_id']) ? fn_get_company_condition('?:users.company_id') : '';
-    $join = '';
 
     /**
      * Prepare params for getting user info query
@@ -53,10 +67,9 @@ function fn_get_user_info($user_id, $get_profile = true, &$profile_id = NULL)
      * @param int    $user_id     User identifier
      * @param array  $user_fields Array of table column names to be returned
      */
-    fn_set_hook('get_user_info_before', $condition, $user_id, $user_fields, $join);
+    fn_set_hook('get_user_info_before', $condition, $user_id, $user_fields);
 
-    $user_fields = implode(',', $user_fields);
-    $user_data = db_get_row("SELECT $user_fields FROM ?:users $join WHERE user_id = ?i $condition", $user_id);
+    $user_data = db_get_row("SELECT $user_fields FROM ?:users WHERE user_id = ?i $condition", $user_id);
 
     if (empty($user_data)) {
         return array();
@@ -103,25 +116,7 @@ function fn_get_user_info($user_id, $get_profile = true, &$profile_id = NULL)
 //
 function fn_get_user_short_info($user_id)
 {
-    $condition = db_quote(' user_id = ?i', $user_id);
-    $join = '';
-    $group_by = '';
-    $fields = array('user_id', 'user_login', 'company_id', 'firstname', 'lastname', 'email', 'user_type');
-
-    /**
-     * Actions before getting short user data
-     *
-     * @param int    $user_id   User identifier
-     * @param array  $fields    Fields to be retrieved
-     * @param string $condition Conditions
-     * @param string $join      Joins
-     * @param string $group_by  Group by condition
-     */
-    fn_set_hook('get_user_short_info_pre', $user_id, $fields, $condition, $join, $group_by);
-
-    $result = db_get_row("SELECT " . implode(', ', $fields) . " FROM ?:users WHERE $condition $join $group_by");
-
-    return $result;
+    return db_get_row("SELECT user_id, user_login, company_id, firstname, lastname, email, user_type FROM ?:users WHERE user_id = ?i", $user_id);
 }
 
 //
@@ -137,18 +132,6 @@ function fn_get_user_name($user_id)
     }
 
     return false;
-}
-
-/**
- * Get user data for API.
- *
- * @param string $email
- * @param string $api_key
- * @return array
- */
-function fn_get_api_user($email, $api_key)
-{
-    return db_get_row('SELECT * FROM ?:users WHERE email = ?s AND api_key = ?s', $email, $api_key);
 }
 
 //
@@ -176,12 +159,12 @@ function fn_check_shipping_billing($user_data, $profile_fields)
         return false;
     }
 
-    if (Registry::get('settings.Checkout.address_position') == 'billing_first') {
-        $first = 'B';
-        $second = 'S';
-    } else {
+    if (Registry::get('settings.General.address_position') == 'billing_first') {
         $first = 'S';
         $second = 'B';
+    } else {
+        $first = 'B';
+        $second = 'S';
     }
 
     if (!empty($profile_fields[$second])) {
@@ -219,7 +202,7 @@ function fn_check_shipping_billing($user_data, $profile_fields)
 function fn_compare_shipping_billing($profile_fields)
 {
 
-    if (Registry::get('settings.Checkout.address_position') == 'billing_first') {
+    if (Registry::get('settings.General.address_position') == 'billing_first') {
         $from_section = 'B';
         $to_section = 'S';
     } else {
@@ -247,90 +230,12 @@ function fn_compare_shipping_billing($profile_fields)
 /**
  * Get all usergroups list
  *
- * @param array $params Query criteria params, for example: array('status'=>'A', 'type'=>'C')
- * @param string $lang_code
- * @return array Usergroups list
+ * @param string $type Type of usergroup (C - Customers, A - administrators)
+ * @param string $lang_code Language for usergroup name
+ * @return array of usergroups
  */
-function fn_get_usergroups($params = array(), $lang_code = CART_LANGUAGE)
+function fn_get_usergroups($type, $lang_code = CART_LANGUAGE)
 {
-    if (!is_array($params)) {
-        return fn_get_usergroups_deprecated($params, $lang_code);
-    }
-    $usergroups = array();
-
-    if (!fn_allowed_for('ULTIMATE:FREE')) {
-        fn_set_hook('get_usergroups_pre', $params, $lang_code);
-
-        $where = 'WHERE 1';
-        if (!empty($params['usergroup_id'])) {
-            $where .= is_array($params['usergroup_id'])
-                ? db_quote(' AND a.usergroup_id IN (?n)', $params['usergroup_id'])
-                : db_quote(' AND a.usergroup_id = ?i', $params['usergroup_id']);
-        }
-        if (!empty($params['status'])) {
-            $where .= is_array($params['status'])
-                ? db_quote(' AND a.status IN (?a)', $params['status'])
-                : db_quote(' AND a.status = ?s', $params['status']);
-        }
-        if (!empty($params['type'])) {
-            $where .= db_quote(' AND a.type = ?s', $params['type']);
-        }
-
-        $usergroups += db_get_hash_array(
-            "SELECT a.usergroup_id, a.status, a.type, b.usergroup"
-            . " FROM ?:usergroups as a"
-            . " LEFT JOIN ?:usergroup_descriptions as b ON b.usergroup_id = a.usergroup_id AND b.lang_code = ?s"
-            . " $where ORDER BY usergroup",
-            'usergroup_id',
-            $lang_code
-        );
-
-        if (!empty($params['with_privileges']) && !empty($usergroups)) {
-            $privileges = db_get_hash_multi_array(
-                'SELECT usergroup_id, privilege FROM ?:usergroup_privileges WHERE usergroup_id IN (?n)',
-                array('usergroup_id','privilege','privilege'),
-                array_keys($usergroups)
-            );
-
-            foreach ($usergroups as $usergroup_id => $usergroup) {
-                if ($usergroup['type'] == 'A') {
-                    $usergroups[$usergroup_id]['privileges'] = isset($privileges[$usergroup_id])
-                        ? array_values($privileges[$usergroup_id])
-                        : array();
-                }
-            }
-        }
-
-        if (!empty($params['include_default'])
-            && (empty($params['type']) || $params['type'] == 'C')      // All default usergroups have type = C
-            && (empty($params['status']) || in_array('A', (array) $params['status']))  // and status = A
-        ) {
-            foreach (fn_get_default_usergroups($lang_code) as $group) {
-                if (empty($params['usergroup_id']) || in_array($group['usergroup_id'], (array) $params['usergroup_id'])) {
-                    $usergroups[$group['usergroup_id']] = $group;
-                }
-            }
-        }
-
-        fn_set_hook('get_usergroups_post', $usergroups, $params, $lang_code);
-    }
-
-    return $usergroups;
-}
-
-/**
- * @deprecated
- * @since 4.3.0
- * @param $type $type Type of usergroup (C - Customers, A - administrators)
- * @param $lang_code $lang_code Language for usergroup name
- * @return array Usergroups list
- */
-function fn_get_usergroups_deprecated($type, $lang_code = CART_LANGUAGE)
-{
-    /**
-     * @deprecated
-     * @since 4.3.0
-     */
     fn_set_hook('pre_get_usergroups', $type, $lang_code);
 
     $usergroups = array();
@@ -357,10 +262,6 @@ function fn_get_usergroups_deprecated($type, $lang_code = CART_LANGUAGE)
         );
     }
 
-    /**
-     * @deprecated
-     * @since 4.3.0
-     */
     fn_set_hook('post_get_usergroups', $usergroups, $type, $lang_code);
 
     return $usergroups;
@@ -385,7 +286,7 @@ function fn_get_default_usergroups($lang_code = CART_LANGUAGE)
             'usergroup_id' => USERGROUP_REGISTERED,
             'status' => 'A',
             'type' => 'C',
-            'usergroup' => __('usergroup_registered', '', $lang_code)
+            'usergroup' => __('registered', '', $lang_code)
         )
     );
 
@@ -479,7 +380,7 @@ function fn_add_user_data_descriptions(&$user_data, $lang_code = CART_LANGUAGE)
 
 function fn_fill_address(&$user_data, &$profile_fields, $use_default = false)
 {
-    if (Registry::get('settings.Checkout.address_position') == 'billing_first' || $use_default) {
+    if (Registry::get('settings.General.address_position') == 'billing_first' || $use_default) {
         $from = 'B';
         $to = 'S';
     } else {
@@ -589,7 +490,6 @@ function fn_fill_user_fields(&$user_data)
 function fn_get_profile_fields($location = 'C', $_auth = array(), $lang_code = CART_LANGUAGE, $params = array())
 {
     $auth = & $_SESSION['auth'];
-    $select = '';
 
     if (empty($_auth)) {
         $_auth = $auth;
@@ -605,17 +505,11 @@ function fn_get_profile_fields($location = 'C', $_auth = array(), $lang_code = C
         $condition .= "AND ?:profile_fields.profile_required = 'Y' ";
     }
 
-    if (!empty($params['get_checkout_required'])) {
-        $condition .= "AND ?:profile_fields.checkout_required = 'Y' ";
-    }
-
-    fn_set_hook('change_location', $location, $select, $condition, $params);
-
     if ($location == 'A' || $location == 'V' || $location == 'C') {
-        $select .= ", ?:profile_fields.profile_required as required";
+        $select = ", ?:profile_fields.profile_required as required";
         $condition .= " AND ?:profile_fields.profile_show = 'Y'";
     } elseif ($location == 'O' || $location == 'I') {
-        $select .= ", ?:profile_fields.checkout_required as required";
+        $select = ", ?:profile_fields.checkout_required as required";
         $condition .= " AND ?:profile_fields.checkout_show = 'Y'";
     }
 
@@ -629,17 +523,21 @@ function fn_get_profile_fields($location = 'C', $_auth = array(), $lang_code = C
     $skip_email_field = false;
 
     if ($location != 'I') {
-        if ($location == 'O' && Registry::get('settings.Checkout.disable_anonymous_checkout') == 'Y' && empty($_auth['user_id'])) {
-            $skip_email_field = true;
-        } elseif (strpos('APVC', $location) !== false) {
-            $skip_email_field = true;
+        if (Registry::get('settings.General.use_email_as_login') == 'Y') {
+            if ($location == 'O' && Registry::get('settings.General.disable_anonymous_checkout') == 'Y' && empty($_auth['user_id'])) {
+                $skip_email_field = true;
+            } elseif (strpos('APVC', $location) !== false) {
+                $skip_email_field = true;
+            }
         }
     }
 
     if ($skip_email_field) {
         $condition .= " AND ?:profile_fields.field_type != 'E'";
     }
+
     $profile_fields = db_get_hash_multi_array("SELECT ?:profile_fields.*, ?:profile_field_descriptions.description $select FROM ?:profile_fields LEFT JOIN ?:profile_field_descriptions ON ?:profile_field_descriptions.object_id = ?:profile_fields.field_id AND ?:profile_field_descriptions.object_type = 'F' AND lang_code = ?s $condition ORDER BY ?:profile_fields.position", array('section', 'field_id'), $lang_code);
+
     $matches = array();
 
     // Collect matching IDs
@@ -731,36 +629,29 @@ function fn_store_profile_fields($user_data, $object_id, $object_type)
 //
 // Fill auth array
 //
-function fn_fill_auth($user_data = array(), $original_auth = array(), $act_as_user = false, $area = AREA)
+function fn_fill_auth($user_data = array(), $order_ids = array(), $act_as_user = false, $area = AREA)
 {
     $active_usergroups = fn_define_usergroups($user_data, $area);
-    $ip = fn_get_ip();
 
-    $auth = array (
+    $_auth = array (
         'area' => !fn_check_user_type_admin_area($user_data) ? 'C' : 'A',
         'user_id' => empty($user_data['user_id']) ? 0 : $user_data['user_id'],
         'user_type' => !empty($user_data['user_type']) ? $user_data['user_type'] : 'C',
         'tax_exempt' => empty($user_data['tax_exempt']) ? 'N' : $user_data['tax_exempt'],
         'last_login' => empty($user_data['last_login']) ? 0 : $user_data['last_login'],
-        'order_ids' => !empty($original_auth['order_ids']) ? $original_auth['order_ids'] : array(),
+        'usergroup_ids' => $active_usergroups,
+        'order_ids' => $order_ids,
+        'act_as_user' => $act_as_user,
+        'this_login' => TIME,
         'password_change_timestamp' => empty($user_data['password_change_timestamp']) ? 0 : $user_data['password_change_timestamp'],
         'company_id' => empty($user_data['company_id']) ? 0 : $user_data['company_id'],
         'is_root' => empty($user_data['is_root']) ? 'N' : $user_data['is_root'],
-
-        'usergroup_ids' => $active_usergroups,
-        'act_as_user' => $act_as_user,
-        'this_login' => !empty($original_auth['this_login']) ? $original_auth['this_login'] : TIME,
-        'referer' => !empty($original_auth['referer']) ? $original_auth['referer'] : (!empty($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : ''),
-        'ip' => $ip['host']
+        'referer' => !empty($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '',
     );
 
-    if (Registry::get('runtime.simple_ultimate')) {
-        unset($auth['company_id']);
-    }
+    fn_set_hook('fill_auth', $_auth, $user_data, $area);
 
-    fn_set_hook('fill_auth', $auth, $user_data, $area, $original_auth);
-
-    return $auth;
+    return $_auth;
 }
 
 function fn_define_usergroups($user_data = array(), $area = AREA)
@@ -1069,7 +960,7 @@ function fn_get_users($params, &$auth, $items_per_page = 0, $custom_view = '')
     $limit = '';
     if (!empty($params['items_per_page'])) {
         $params['total_items'] = db_get_field("SELECT COUNT(DISTINCT(?:users.user_id)) FROM ?:users $join WHERE 1 ". implode(' ', $condition));
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+        $limit = db_paginate($params['page'], $params['items_per_page']);
     }
 
     $users = db_get_array("SELECT " . implode(', ', $fields) . " FROM ?:users $join WHERE 1" . implode('', $condition) . " $group $sorting $limit");
@@ -1127,10 +1018,6 @@ function fn_get_user_edp($params, $items_per_page = 0)
     }
 
     if (!empty($params['order_ids'])) {
-        if (!is_array($params['order_ids'])) {
-            $params['order_ids'] = array($params['order_ids']);
-        }
-
         $where = db_quote(" AND ?:orders.order_id IN (?n)", $params['order_ids']);
     } elseif (!empty($params['items_per_page'])) {
         $params['total_items'] = count(db_get_fields(
@@ -1143,7 +1030,7 @@ function fn_get_user_edp($params, $items_per_page = 0)
             . " GROUP BY ?:order_details.product_id, ?:order_details.order_id",
             $params['user_id']
         ));
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+        $limit = db_paginate($params['page'], $params['items_per_page']);
     }
 
     $products = db_get_array(
@@ -1163,12 +1050,12 @@ function fn_get_user_edp($params, $items_per_page = 0)
 
     if (!empty($products)) {
         foreach ($products as $k => $v) {
-            $_params = array (
+            $params = array (
                 'product_id' => $v['product_id'],
                 'order_id' => $v['order_id']
             );
-            list($product_file_folders) = fn_get_product_file_folders($_params);
-            list($product_files) = fn_get_product_files($_params);
+            list($product_file_folders) = fn_get_product_file_folders($params);
+            list($product_files) = fn_get_product_files($params);
             $products[$k]['files_tree'] = fn_build_files_tree($product_file_folders, $product_files);
         }
     }
@@ -1219,7 +1106,7 @@ function fn_is_restricted_admin($params)
  * @return true
  */
 
-function fn_init_user_session_data(&$sess_data, $user_id, $skip_cart_saving = false)
+function fn_init_user_session_data(&$sess_data, $user_id)
 {
     // Restore cart content
     $sess_data['cart'] = empty($sess_data['cart']) ? array() : $sess_data['cart'];
@@ -1235,9 +1122,7 @@ function fn_init_user_session_data(&$sess_data, $user_id, $skip_cart_saving = fa
         'product_ids' => db_get_fields("SELECT product_id FROM ?:product_subscriptions WHERE user_id = ?i", $user_id)
     );
 
-    if (!$skip_cart_saving) {
-        fn_save_cart_content($sess_data['cart'], $user_id);
-    }
+    fn_save_cart_content($sess_data['cart'], $user_id);
 
     fn_set_hook('init_user_session_data', $sess_data, $user_id);
 
@@ -1273,28 +1158,6 @@ function fn_generate_password($length = USER_PASSWORD_LENGTH)
 }
 
 /**
- * Restores password, password1 and password2 with clear POST data.
- * Example: password1 = "Some<secret>password"
- *     Processed before $_REQUEST['user_data']['password1'] = 'Somepassword'
- *     Returned value $_REQUEST['user_data']['password1'] = 'Some<secret>password'
- *
- * @param array &$destination $_REQUEST
- * @param array &$source $_POST
- */
-function fn_restore_processed_user_password(&$destination, &$source)
-{
-    $fields = array(
-        'password', 'password1', 'password2'
-    );
-
-    foreach ($fields as $field) {
-        if (isset($source[$field])) {
-            $destination[$field] = $source[$field];
-        }
-    }
-}
-
-/**
  * Add/update user
  *
  * @param int $user_id - user ID to update (empty for new user)
@@ -1302,9 +1165,10 @@ function fn_restore_processed_user_password(&$destination, &$source)
  * @param array $auth - authentication information
  * @param bool $ship_to_another - flag indicates that shipping and billing fields are different
  * @param bool $notify_user - flag indicates that user should be notified
+ * @param bool $send_password - TRUE if the password should be included into the e-mail
  * @return array with user ID and profile ID if success, false otherwise
  */
-function fn_update_user($user_id, $user_data, &$auth, $ship_to_another, $notify_user)
+function fn_update_user($user_id, $user_data, &$auth, $ship_to_another, $notify_user, $send_password = false)
 {
     /**
      * Actions before updating user
@@ -1314,14 +1178,14 @@ function fn_update_user($user_id, $user_data, &$auth, $ship_to_another, $notify_
      * @param array $auth            Authentication information
      * @param bool  $ship_to_another Flag indicates that shipping and billing fields are different
      * @param bool  $notify_user     Flag indicates that user should be notified
+     * @param bool  $send_password   TRUE if the password should be included into the e-mail
      */
-    fn_set_hook('update_user_pre', $user_id, $user_data, $auth, $ship_to_another, $notify_user);
+    fn_set_hook('update_user_pre', $user_id, $user_data, $auth, $ship_to_another, $notify_user, $send_password);
 
-    array_walk($user_data, 'fn_trim_helper');
     $register_at_checkout = isset($user_data['register_at_checkout']) && $user_data['register_at_checkout'] == 'Y' ? true : false;
 
     if (fn_allowed_for('ULTIMATE')) {
-        if (AREA == 'A' && !empty($user_data['user_type']) && $user_data['user_type'] == 'C' && (empty($user_data['company_id']) || (Registry::get('runtime.company_id') &&  $user_data['company_id'] != Registry::get('runtime.company_id')))) {
+        if (AREA == 'A' && $user_data['user_type'] == 'C' && (empty($user_data['company_id']) || (Registry::get('runtime.company_id') &&  $user_data['company_id'] != Registry::get('runtime.company_id')))) {
             fn_set_notification('W', __('warning'), __('access_denied'));
 
             return false;
@@ -1329,20 +1193,10 @@ function fn_update_user($user_id, $user_data, &$auth, $ship_to_another, $notify_
     }
 
     if (!empty($user_id)) {
-        $current_user_data = db_get_row(
-            "SELECT user_id, company_id, is_root, status, user_type, email, user_login, lang_code, password, salt, last_passwords"
-            . " FROM ?:users WHERE user_id = ?i",
-            $user_id
-        );
+        $current_user_data = db_get_row("SELECT user_id, company_id, is_root, status, user_type, user_login, lang_code, password, salt, last_passwords FROM ?:users WHERE user_id = ?i", $user_id);
 
         if (empty($current_user_data)) {
             fn_set_notification('E', __('error'), __('object_not_found', array('[object]' => __('user'))),'','404');
-
-            return false;
-        }
-
-        if (!fn_check_editable_permissions($auth, $current_user_data)) {
-            fn_set_notification('E', __('error'), __('access_denied'));
 
             return false;
         }
@@ -1356,26 +1210,10 @@ function fn_update_user($user_id, $user_data, &$auth, $ship_to_another, $notify_
             }
         }
 
-        if ($current_user_data['user_type'] == 'A' && AREA != 'A') {
-            if (
-                isset($user_data['email']) && $user_data['email'] != $current_user_data['email'] // Change email
-                || !empty($user_data['password1']) || !empty($user_data['password2']) // Change password
-            ) {
-                fn_set_notification('E', __('error'), __('error_change_admin_data_in_frontend'));
-
-                return false;
-            }
-        }
-
         if (fn_allowed_for('ULTIMATE')) {
-            if (AREA != 'A' || empty($user_data['company_id'])) {
+            if (AREA != 'A') {
                 //we should set company_id for the frontdend, in the backend company_id received from form
-                if ($current_user_data['user_type'] == 'A') {
-                    if (!isset($user_data['company_id']) || AREA != 'A' || Registry::get('runtime.company_id')) {
-                        // reset administrator's company if it was not set to root
-                        $user_data['company_id'] = $current_user_data['company_id'];
-                    }
-                } elseif (Registry::get('settings.Stores.share_users') == 'Y') {
+                if ($current_user_data['user_type'] == 'A' || Registry::get('settings.Stores.share_users') == 'Y') {
                     $user_data['company_id'] = $current_user_data['company_id'];
                 } else {
                     $user_data['company_id'] = Registry::ifGet('runtime.company_id', 1);
@@ -1539,15 +1377,20 @@ function fn_update_user($user_id, $user_data, &$auth, $ship_to_another, $notify_
     $user_data['status'] = (AREA != 'A' || empty($user_data['status'])) ? $current_user_data['status'] : $user_data['status']; // only administrator can change user status
 
     // Fill the firstname, lastname and phone from the billing address if the profile was created or updated through the admin area.
-    if (AREA == 'A' || Registry::get('settings.Checkout.address_position') == 'billing_first') {
-        $main_address_zone = BILLING_ADDRESS_PREFIX;
-        $alt_address_zone = SHIPPING_ADDRESS_PREFIX;
+    if (AREA != 'A') {
+        Registry::get('settings.General.address_position') == 'billing_first' ? $address_zone = 'b' : $address_zone = 's';
     } else {
-        $main_address_zone = SHIPPING_ADDRESS_PREFIX;
-        $alt_address_zone = BILLING_ADDRESS_PREFIX;
+        $address_zone = 'b';
     }
-
-    $user_data = fn_fill_contact_info_from_address($user_data, $main_address_zone, $alt_address_zone);
+    if (!empty($user_data['firstname']) || !empty($user_data[$address_zone . '_firstname'])) {
+        $user_data['firstname'] = empty($user_data['firstname']) && !empty($user_data[$address_zone . '_firstname']) ? $user_data[$address_zone . '_firstname'] : $user_data['firstname'];
+    }
+    if (!empty($user_data['lastname']) || !empty($user_data[$address_zone . '_lastname'])) {
+        $user_data['lastname'] = empty($user_data['lastname']) && !empty($user_data[$address_zone . '_lastname']) ? $user_data[$address_zone . '_lastname'] : $user_data['lastname'];
+    }
+    if (!empty($user_data['phone']) || !empty($user_data[$address_zone . '_phone'])) {
+        $user_data['phone'] = empty($user_data['phone']) && !empty($user_data[$address_zone . '_phone']) ? $user_data[$address_zone . '_phone'] : $user_data['phone'];
+    }
 
     if (!fn_allowed_for('ULTIMATE')) {
         //for ult company_id was set before
@@ -1576,6 +1419,7 @@ function fn_update_user($user_id, $user_data, &$auth, $ship_to_another, $notify_
 
         fn_log_event('users', 'update', array(
             'user_id' => $user_id,
+            'company_id' => fn_get_company_id('users', 'user_id', $user_id),
         ));
     } else {
         if (!isset($user_data['password_change_timestamp'])) {
@@ -1586,6 +1430,7 @@ function fn_update_user($user_id, $user_data, &$auth, $ship_to_another, $notify_
 
         fn_log_event('users', 'create', array(
             'user_id' => $user_id,
+            'company_id' => fn_get_company_id('users', 'user_id', $user_id),
         ));
     }
     $user_data['user_id'] = $user_id;
@@ -1595,7 +1440,11 @@ function fn_update_user($user_id, $user_data, &$auth, $ship_to_another, $notify_
         if (!fn_compare_login_password($user_data, $user_data['password1'])) {
             fn_delete_notification('insecure_password');
         } else {
-            $lang_var = 'warning_insecure_password_email';
+
+            $lang_var = 'warning_insecure_password';
+            if (Registry::get('settings.General.use_email_as_login') == 'Y') {
+                $lang_var = 'warning_insecure_password_email';
+            }
 
             fn_set_notification('E', __('warning'), __($lang_var, array(
                 '[link]' => fn_url("profiles.update?user_id=" . $user_id)
@@ -1636,22 +1485,15 @@ function fn_update_user($user_id, $user_data, &$auth, $ship_to_another, $notify_
 
     // Send notifications to customer
     if (!empty($notify_user)) {
-        $from = 'company_users_department';
-
-        if (fn_allowed_for('MULTIVENDOR')) {
-            // Vendor administrator's notification
-            // is sent from root users department
-            if ($user_data['user_type'] == 'V') {
-                $from = 'default_company_users_department';
-            }
-        }
 
         // Notify customer about profile activation (when update profile only)
         if ($action == 'update' && $current_user_data['status'] === 'D' && $user_data['status'] === 'A') {
             Mailer::sendMail(array(
                 'to' => $user_data['email'],
-                'from' => $from,
+                'from' => 'company_users_department',
                 'data' => array(
+                    'password' => $original_password,
+                    'send_password' => $send_password,
                     'user_data' => $user_data
                 ),
                 'tpl' => 'profiles/profile_activated.tpl',
@@ -1662,18 +1504,12 @@ function fn_update_user($user_id, $user_data, &$auth, $ship_to_another, $notify_
         // Notify customer about profile add/update
         $prefix = ($action == 'add') ? 'create' : 'update';
 
-        // Send password to user only if it was created by admin or vendor
-        if (AREA != 'C' && $auth['user_id'] != $user_id) {
-            $password = $original_password;
-        } else {
-            $password = null;
-        }
-
         Mailer::sendMail(array(
             'to' => $user_data['email'],
-            'from' => $from,
+            'from' => 'company_users_department',
             'data' => array(
-                'password' => $password,
+                'password' => $original_password,
+                'send_password' => $send_password,
                 'user_data' => $user_data,
             ),
             'tpl' => 'profiles/' . $prefix . '_profile.tpl',
@@ -1682,6 +1518,8 @@ function fn_update_user($user_id, $user_data, &$auth, $ship_to_another, $notify_
     }
 
     if ($action == 'add') {
+
+        $skip_auth = false;
         if (AREA != 'A') {
             if (Registry::get('settings.General.approve_user_profiles') == 'Y') {
                 fn_set_notification('W', __('important'), __('text_profile_should_be_approved'));
@@ -1698,6 +1536,7 @@ function fn_update_user($user_id, $user_data, &$auth, $ship_to_another, $notify_
                     'company_id' => $user_data['company_id']
                 ), 'A', Registry::get('settings.Appearance.backend_default_language'));
 
+                $skip_auth = true;
             } else {
                 fn_set_notification('N', __('information'), __('text_profile_is_created'));
             }
@@ -1706,6 +1545,10 @@ function fn_update_user($user_id, $user_data, &$auth, $ship_to_another, $notify_
         if (!is_null($auth)) {
             if (!empty($auth['order_ids'])) {
                 db_query("UPDATE ?:orders SET user_id = ?i WHERE order_id IN (?n)", $user_id, $auth['order_ids']);
+            }
+
+            if (empty($skip_auth)) {
+                $auth = fn_fill_auth($user_data);
             }
         }
     } else {
@@ -1807,33 +1650,28 @@ function fn_update_user_profile($user_id, $user_data, $action = '')
 }
 
 /**
- * Deletes user profile
+ * Deletes secondary user profile
  *
  * @param int $user_id User identifier
  * @param int $profile_id User profile identifier
- * @param bool $allow_delete_main Denie/Allow to delete main profile
  * @return bool True on success, false otherwise
  */
-function fn_delete_user_profile($user_id, $profile_id, $allow_delete_main = false)
+function fn_delete_user_profile($user_id, $profile_id)
 {
-    // Allows to delete only secondary profiles
-    $profile_condition = $allow_delete_main ? '' : db_quote(' AND profile_type = ?s', 'S');
-
     $can_delete = db_get_field(
-        'SELECT profile_id FROM ?:user_profiles WHERE user_id = ?i AND profile_id = ?i ?p',
-        $user_id, $profile_id, $profile_condition
+        "SELECT profile_id FROM ?:user_profiles WHERE user_id = ?i AND profile_id = ?i AND profile_type = 'S'",
+        $user_id, $profile_id
     );
 
     if (!empty($can_delete)) {
-        db_query('DELETE FROM ?:user_profiles WHERE profile_id = ?i', $profile_id);
-        db_query('DELETE FROM ?:profile_fields_data WHERE object_id = ?i AND object_type = ?s', $profile_id, 'P');
+        db_query("DELETE FROM ?:user_profiles WHERE profile_id = ?i", $profile_id);
     }
 
     return !empty($can_delete);
 }
 
 /**
- * Check if user email equal to customer password
+ * Check if user login/email equal to customer password
  *
  * @param array $user_data user data
  * @param string $password user password
@@ -1849,16 +1687,20 @@ function fn_compare_login_password($user_data, $password)
      */
     fn_set_hook('compare_login_password_pre', $user_data, $password);
 
-    $account = !empty($user_data['email']) ? $user_data['email'] : '';
+    if (Registry::get('settings.General.use_email_as_login') == 'Y') {
+        $account = !empty($user_data['email']) ? $user_data['email'] : '';
+    } else {
+        $account = !empty($user_data['user_login']) ? $user_data['user_login'] : '';
+    }
 
-    $result = $password == $account;
+    $result = $password == $account ? true : false;
 
     /**
      * Change user data and checking result
      *
      * @param array   $user_data user data
      * @param string  $password  user password
-     * @param string  $account   Contains customer email
+     * @param string  $account   depends on use_email_as_login setting. Contains customer email ot customer login
      * @param boolean $result    checking result
      */
     fn_set_hook('compare_login_password_post', $user_data, $password, $account, $result);
@@ -1992,7 +1834,6 @@ function fn_check_user_access($user_id, $mode)
 /**
  * Get available usergroups for user
  *
- * @TODO rename to fn_get_user_available_usergroups
  * @param int $user_id User ID
  * @return array with available usergroups
  */
@@ -2005,154 +1846,6 @@ function fn_get_user_usergroups($user_id)
     }
 
     return $usergroups;
-}
-
-/**
- * Get all usergroups that have link with user
- *
- * @param int $user_id
- * @param array $criteria
- *
- * @return array
- */
-function fn_get_user_usergroup_links($user_id, $criteria = array())
-{
-    $usergroups = array();
-
-    if (!fn_allowed_for('ULTIMATE:FREE')) {
-        $where = '';
-
-        if (!empty($criteria['status'])) {
-            $where .= db_quote(' AND lnk.status IN (?n)', (array) $criteria['status']);
-        } elseif (empty($criteria['all'])) {
-            $where .= db_quote(' AND lnk.status != ?s', 'F');
-        }
-
-        $usergroups = db_get_hash_array(
-            "SELECT lnk.link_id, lnk.usergroup_id, lnk.status"
-            . " FROM ?:usergroup_links as lnk"
-            . " INNER JOIN ?:usergroups"
-            . " ON ?:usergroups.usergroup_id = lnk.usergroup_id"
-            . " AND ?:usergroups.status != 'D'"
-            . " WHERE lnk.user_id = ?i $where",
-            'usergroup_id',
-            $user_id
-        );
-    }
-
-    return $usergroups;
-}
-
-function fn_update_usergroup($usergroup_data, $usergroup_id = 0, $lang_code = DESCR_SL)
-{
-    if (defined('RESTRICTED_ADMIN')) {
-        $user_privileges = db_get_hash_single_array("SELECT privilege FROM ?:usergroup_privileges WHERE usergroup_id IN (?n)", array('privilege', 'privilege'), $_SESSION['auth']['usergroup_ids']);
-
-        if ($usergroup_data['type'] == 'A' || !in_array('manage_usergroups', $user_privileges)) {
-            fn_set_notification('E', __('error'), __('access_denied'));
-
-            return false;
-        }
-    }
-
-    if (empty($usergroup_id)) {
-        $create = true;
-        $usergroup_id = db_query("INSERT INTO ?:usergroups ?e", $usergroup_data);
-
-        if ($usergroup_id < ALLOW_USERGROUP_ID_FROM) {
-            db_query("UPDATE ?:usergroups SET usergroup_id = ?i WHERE usergroup_id = ?i", ALLOW_USERGROUP_ID_FROM, $usergroup_id);
-            $usergroup_id = ALLOW_USERGROUP_ID_FROM;
-        }
-
-        $usergroup_data['usergroup_id'] = $usergroup_id;
-
-        foreach (Tygh\Languages\Languages::getAll() as $usergroup_data['lang_code'] => $_v) {
-            db_query("INSERT INTO ?:usergroup_descriptions ?e", $usergroup_data);
-        }
-    } else {
-        $create = false;
-        db_query("UPDATE ?:usergroups SET ?u WHERE usergroup_id = ?i", $usergroup_data, $usergroup_id);
-        db_query("UPDATE ?:usergroup_descriptions SET ?u WHERE usergroup_id = ?i AND lang_code = ?s", $usergroup_data, $usergroup_id, $lang_code);
-    }
-
-    if (isset($usergroup_data['privileges']) && $usergroup_data['type'] == 'A') {
-        db_query("DELETE FROM ?:usergroup_privileges WHERE usergroup_id = ?i", $usergroup_id);
-
-        if (is_array($usergroup_data['privileges'])) {
-            $data = array(
-                'usergroup_id' => $usergroup_id
-            );
-            foreach ($usergroup_data['privileges'] as $data['privilege'] => $v) {
-                db_query("INSERT INTO ?:usergroup_privileges ?e", $data);
-            }
-        }
-    }
-
-    /**
-     * Update user group data
-     *
-     * @param array   $usergroup_data User group data
-     * @param int     $usergroup_id   User group integer identifier
-     * @param boolean $create         Flag determines if user group was created (true) or just updated (false).
-     */
-    fn_set_hook('update_usergroup', $usergroup_data, $usergroup_id, $create);
-
-    return $usergroup_id;
-}
-
-function fn_change_usergroup_status($status, $user_id, $usergroup_id, $force_notification = array())
-{
-    $data = array(
-        'user_id' => $user_id,
-        'usergroup_id' => $usergroup_id,
-        'status' => $status
-    );
-    $result = db_query("REPLACE INTO ?:usergroup_links SET ?u", $data);
-
-    if (!empty($force_notification['C'])) {
-        fn_send_usergroup_status_notification($user_id, (array) $usergroup_id, $status);
-    }
-
-    return $result;
-}
-
-function fn_send_usergroup_status_notification($user_id, $usergroup_ids, $status)
-{
-    $user_data = fn_get_user_info($user_id);
-    $prefix = ($status == 'A') ? 'activation' : 'disactivation';
-
-    Mailer::sendMail(array(
-        'to' => $user_data['email'],
-        'from' => 'company_users_department',
-        'data' => array(
-            'user_data' => $user_data,
-            'usergroups' => fn_get_usergroups(array('status' => array('A', 'H')), $user_data['lang_code']),
-            'usergroup_ids' => $usergroup_ids
-        ),
-        'tpl' => 'profiles/usergroup_' . $prefix . '.tpl',
-        'company_id' => $user_data['company_id'],
-    ), fn_check_user_type_admin_area($user_data['user_type']) ? 'A' : 'C', $user_data['lang_code']);
-}
-
-function fn_is_usergroup_exists($usergroup_id)
-{
-    return db_get_field('SELECT COUNT(usergroup_id) FROM ?:usergroups WHERE usergroup_id = ?i', $usergroup_id) > 0;
-}
-
-function fn_delete_usergroups($usergroup_ids)
-{
-    db_query("DELETE FROM ?:usergroups WHERE usergroup_id IN (?n)", $usergroup_ids);
-    db_query("DELETE FROM ?:usergroup_descriptions WHERE usergroup_id IN (?n)", $usergroup_ids);
-    db_query("DELETE FROM ?:usergroup_privileges WHERE usergroup_id IN (?n)", $usergroup_ids);
-    db_query("DELETE FROM ?:usergroup_links WHERE usergroup_id IN (?n)", $usergroup_ids);
-    db_query("DELETE FROM ?:product_prices WHERE usergroup_id IN (?n)", $usergroup_ids);
-
-    /**
-     * Process user groups delete
-     *
-     * @param int $usergroup_ids User group identifiers
-     */
-    fn_set_hook('delete_usergroups', $usergroup_ids);
 }
 
 /**
@@ -2200,16 +1893,12 @@ function fn_delete_user($user_id)
     $condition = fn_get_company_condition('?:users.company_id');
     $user_data = db_get_row("SELECT user_id, is_root, company_id FROM ?:users WHERE user_id = ?i $condition", $user_id);
 
-    if (empty($user_data)) {
-        return false;
-    }
-
     $auth = $_SESSION['auth'];
 
-    if (!fn_check_rights_delete_user($user_data, $auth)) {
+    if (empty($user_data) || !fn_check_rights_delete_user($user_data, $auth)) {
         fn_set_notification('W', __('warning'), __('user_cannot_be_deleted', array(
             '[user_id]' => $user_id
-        )), '', 'user_delete_no_permissions');
+        )));
 
         return false;
     }
@@ -2217,23 +1906,19 @@ function fn_delete_user($user_id)
     // Log user deletion
     fn_log_event('users', 'delete', array (
         'user_id' => $user_id,
+        'company_id' => fn_get_company_id('users', 'user_id', $user_id),
     ));
 
     fn_set_hook('delete_user', $user_id, $user_data);
 
-    $result = db_query("DELETE FROM ?:users WHERE user_id = ?i", $user_id);
-    db_query('DELETE FROM ?:profile_fields_data WHERE object_id = ?i AND object_type = ?s', $user_id, 'U');
-    db_query('DELETE FROM ?:user_session_products WHERE user_id = ?i', $user_id);
-    db_query('DELETE FROM ?:user_data WHERE user_id = ?i', $user_id);
-    db_query('UPDATE ?:orders SET user_id = 0 WHERE user_id = ?i', $user_id);
-
-    $profile_ids = db_get_fields('SELECT profile_id FROM ?:user_profiles WHERE user_id = ?i', $user_id);
-    foreach ($profile_ids as $profile_id) {
-        fn_delete_user_profile($user_id, $profile_id, true);
-    }
+    db_query("DELETE FROM ?:users WHERE user_id = ?i", $user_id);
+    db_query("DELETE FROM ?:user_profiles WHERE user_id = ?i", $user_id);
+    db_query("DELETE FROM ?:user_session_products WHERE user_id = ?i", $user_id);
+    db_query("DELETE FROM ?:user_data WHERE user_id = ?i", $user_id);
+    db_query("UPDATE ?:orders SET user_id = 0 WHERE user_id = ?i", $user_id);
 
     if (!fn_allowed_for('ULTIMATE:FREE')) {
-        db_query('DELETE FROM ?:usergroup_links WHERE user_id = ?i', $user_id);
+        db_query("DELETE FROM ?:usergroup_links WHERE user_id = ?i", $user_id);
     }
 
     /**
@@ -2241,11 +1926,10 @@ function fn_delete_user($user_id)
      *
      * @param int   $user_id   User identificator
      * @param array $user_data Array with user data (contains user_id, is_root and company_id fields)
-     * @param int count of affected rows
      */
-    fn_set_hook('post_delete_user', $user_id, $user_data, $result);
+    fn_set_hook('post_delete_user', $user_id, $user_data);
 
-    return $result;
+    return true;
 }
 
 /**
@@ -2261,10 +1945,6 @@ function fn_login_user($user_id = '')
     $udata = array();
     $auth = & $_SESSION['auth'];
     $condition = '';
-    $result = LOGIN_STATUS_USER_NOT_FOUND;
-
-    fn_set_hook('login_user_pre', $user_id, $udata, $auth, $condition);
-
     if (!empty($user_id)) {
         if (fn_allowed_for('ULTIMATE')) {
             if (Registry::get('settings.Stores.share_users') == 'N' && AREA != 'A') {
@@ -2279,9 +1959,8 @@ function fn_login_user($user_id = '')
 
         unset($_SESSION['status']);
 
-        $auth = fn_fill_auth($udata, $auth);
+        $auth = fn_fill_auth($udata, isset($auth['order_ids']) ? $auth['order_ids'] : array());
         if (!empty($udata)) {
-            fn_set_hook('sucess_user_login', $udata, $auth);
             if (AREA == 'C') {
                 if ($cu_id = fn_get_session_data('cu_id')) {
                     fn_clear_cart($cart);
@@ -2291,29 +1970,15 @@ function fn_login_user($user_id = '')
                 fn_init_user_session_data($_SESSION, $udata['user_id']);
             }
 
-            // Set last login time
-            db_query("UPDATE ?:users SET ?u WHERE user_id = ?i", array('last_login' => TIME), $user_id);
-
-            // Log user successful login
-            fn_log_event('users', 'session', array(
-                'user_id' => $user_id,
-            ));
-
-            $result = LOGIN_STATUS_OK;
+            return LOGIN_STATUS_OK;
         } else {
-            $result = LOGIN_STATUS_USER_DISABLED;
+            return LOGIN_STATUS_USER_DISABLED;
         }
     } else {
-        $auth = fn_fill_auth($udata, $auth);
+        $auth = fn_fill_auth($udata, isset($auth['order_ids']) ? $auth['order_ids'] : array());
 
-        $result = LOGIN_STATUS_USER_NOT_FOUND;
+        return LOGIN_STATUS_USER_NOT_FOUND;
     }
-
-    fn_init_user();
-
-    fn_set_hook('login_user_post', $user_id, $cu_id, $udata, $auth, $condition, $result);
-
-    return $result;
 }
 
 function fn_check_permission_act_as_user()
@@ -2385,6 +2050,7 @@ function fn_get_my_account_title_class()
 {
     return !empty($_SESSION['auth']['user_id']) ? 'logged' : 'unlogged';
 }
+
 
 /**
  * Check if user already registered in store
@@ -2519,9 +2185,9 @@ function fn_auth_routines($request, $auth)
 {
     $status = true;
 
-    $user_login = (!empty($request['user_login'])) ? trim($request['user_login']) : '';
-    $password = (!empty($request['password'])) ? $request['password']: '';
-    $field = 'email';
+    $user_login = (!empty($request['user_login'])) ? $request['user_login'] : '';
+    $password = (!empty($_POST['password'])) ? $_POST['password']: '';
+    $field = (Registry::get('settings.General.use_email_as_login') == 'Y') ? 'email' : 'user_login';
 
     $condition = '';
 
@@ -2556,50 +2222,23 @@ function fn_auth_routines($request, $auth)
     return array($status, $user_data, $user_login, $password, $salt);
 }
 
-/**
- * Fills empty contact information fields from billing/shipping addresses.
- * Useful when some profile fields were disabled.
- *
- * @param array       $data                 User data to be modified
- * @param string|null $main_address_zone    Address zone which will be used as data source
- * @param string|null $alt_address_zone     Address zone which will be used as secondary data
- *                                          source (when main zone doesn't contain required data)
- *
- * @return array User data with filled contact information fields
- */
-function fn_fill_contact_info_from_address($data, $main_address_zone = null, $alt_address_zone = null)
+
+function fn_fill_contact_info_from_address($data)
 {
-    if ($main_address_zone === null && $alt_address_zone === null) {
-        $main_address_zone = SHIPPING_ADDRESS_PREFIX;
-        $alt_address_zone = BILLING_ADDRESS_PREFIX;
-        $profile_fields = fn_get_profile_fields('O');
+    $profile_fields = fn_get_profile_fields('O');
 
-        if (Registry::get('settings.Checkout.address_position') == 'billing_first' && !empty($profile_fields['B'])) {
-            $main_address_zone = BILLING_ADDRESS_PREFIX;
-            $alt_address_zone = SHIPPING_ADDRESS_PREFIX;
-        }
+    Registry::get('settings.General.address_position') == 'billing_first' && !empty($profile_fields['B']) ? $address_zone = 'b' : $address_zone = 's';
+
+    if (!empty($data['firstname']) || !empty($data[$address_zone . '_firstname'])) {
+        $data['firstname'] = empty($data['firstname']) && !empty($data[$address_zone . '_firstname']) ? $data[$address_zone . '_firstname'] : $data['firstname'];
     }
 
-    if (empty($data['firstname'])) {
-        if (!empty($data[$main_address_zone . '_firstname'])) {
-            $data['firstname'] = $data[$main_address_zone . '_firstname'];
-        } elseif (!empty($data[$alt_address_zone . '_firstname'])) {
-            $data['firstname'] = $data[$alt_address_zone . '_firstname'];
-        }
+    if (!empty($data['lastname']) || !empty($data[$address_zone . '_lastname'])) {
+        $data['lastname'] = empty($data['lastname']) && !empty($data[$address_zone . '_lastname']) ? $data[$address_zone . '_lastname'] : $data['lastname'];
     }
-    if (empty($data['lastname'])) {
-        if (!empty($data[$main_address_zone . '_lastname'])) {
-            $data['lastname'] = $data[$main_address_zone . '_lastname'];
-        } elseif (!empty($data[$alt_address_zone . '_lastname'])) {
-            $data['lastname'] = $data[$alt_address_zone . '_lastname'];
-        }
-    }
-    if (empty($data['phone'])) {
-        if (!empty($data[$main_address_zone . '_phone'])) {
-            $data['phone'] = $data[$main_address_zone . '_phone'];
-        } elseif (!empty($data[$alt_address_zone . '_phone'])) {
-            $data['phone'] = $data[$alt_address_zone . '_phone'];
-        }
+
+    if (!empty($data['phone']) || !empty($data[$address_zone . '_phone'])) {
+        $data['phone'] = empty($data['phone']) && !empty($data[$address_zone . '_phone']) ? $data[$address_zone . '_phone'] : $data['phone'];
     }
 
     return $data;
@@ -2723,206 +2362,4 @@ function fn_update_profile_field($field_data, $field_id, $lang_code = DESCR_SL)
     }
 
     return $field_id;
-}
-
-/**
- * Authorize user by ekey
- * and delete expired ekeys.
- *
- * @param string $ekey
- * @return bool|string
- */
-function fn_recover_password_login($ekey = null)
-{
-    if ($ekey) {
-        $u_id = fn_get_object_by_ekey($ekey, 'U');
-
-        if ($u_id) {
-            $user_status = fn_login_user($u_id);
-
-            if ($user_status == LOGIN_STATUS_OK) {
-                fn_set_notification('N', __('notice'), __('text_change_password'), 'I', 'notice_text_change_password');
-
-                return $u_id;
-            } else {
-                fn_set_notification('E', __('error'), __('error_login_not_exists'));
-
-                return $user_status;
-            }
-        } else {
-            fn_set_notification('E', __('error'), __('text_ekey_not_valid'));
-
-            return false;
-        }
-    }
-
-    return null;
-}
-
-/**
- * Generate ekey.
- *
- * @param string $user_email
- * @return bool
- */
-function fn_recover_password_generate_key($user_email, $notify = true)
-{
-    $result = true;
-
-    if ($user_email) {
-        $condition = '';
-
-        if (fn_allowed_for('ULTIMATE')) {
-            if (Registry::get('settings.Stores.share_users') == 'N' && AREA != 'A') {
-                $condition = fn_get_company_condition('?:users.company_id');
-            }
-        }
-
-        $uid = db_get_field("SELECT user_id FROM ?:users WHERE email = ?s" . $condition, $user_email);
-
-        $u_data = fn_get_user_info($uid, false);
-        if (isset($u_data['status']) && $u_data['status'] == 'D') {
-            fn_set_notification('E', __('error'), __('error_account_disabled'));
-
-            return false;
-        }
-        if (!empty($u_data['email'])) {
-
-            $ekey = fn_generate_ekey($u_data['user_id'], 'U', SECONDS_IN_DAY);
-
-            if ($notify) {
-                Mailer::sendMail(array(
-                    'to' => $u_data['email'],
-                    'from' => 'default_company_users_department',
-                    'data' => array(
-                        'ekey' => $ekey,
-                        'zone' => $u_data['user_type'],
-                    ),
-                    'tpl' => 'profiles/recover_password.tpl',
-                ), fn_check_user_type_admin_area($u_data['user_type']) ? 'A' : 'C', $u_data['lang_code']);
-
-                fn_set_notification('N', __('information'), __('text_password_recovery_instructions_sent'));
-            } else {
-                $result = array('company_id' => $u_data['company_id'], 'key' => $ekey, 'user_type' => $u_data['user_type']);
-            }
-
-        } else {
-            fn_set_notification('E', __('error'), __('error_login_not_exists'));
-            $result = false;
-        }
-    } else {
-        fn_set_notification('E', __('error'), __('error_login_not_exists'));
-        $result = false;
-    }
-
-    return $result;
-}
-
-/**
- * @param array $auth
- */
-function fn_user_logout($auth)
-{
-    // Regenerate session_id for security reasons
-
-    fn_save_cart_content($_SESSION['cart'], $auth['user_id']);
-
-    Session::regenerateId();
-    fn_init_user();
-    $auth = $_SESSION['auth'];
-
-    if (!empty($auth['user_id'])) {
-        fn_log_user_logout($auth);
-    }
-
-    unset($_SESSION['auth']);
-    fn_clear_cart($_SESSION['cart'], false, true);
-
-    fn_delete_session_data(AREA . '_user_id', AREA . '_password');
-
-    unset($_SESSION['product_notifications']);
-
-    fn_login_user(); // need to fill $_SESSION['auth'] array for anonymous user
-}
-
-/**
- * Checks if current user can edit specified profile
- *
- * @param array $auth authentication information
- * @param array $user_data Edited profile
- * @return bool true if authenticated user can edit specified profile, false otherwise
- */
-function fn_check_editable_permissions($auth, $user_data)
-{
-    $has_permissions = true;
-
-    if ($auth['is_root'] == 'Y' && $auth['user_type'] == 'A') {
-        $has_permissions = true;
-
-    } elseif (isset($user_data['is_root'])) {
-        if ($user_data['is_root'] == 'Y' && $auth['is_root'] != 'Y' && $user_data['user_type'] == 'A') {
-            $has_permissions = false;
-
-        } elseif ($auth['user_type'] == 'V' && $user_data['is_root'] == 'Y') {
-            if ($auth['user_id'] != $user_data['user_id']) {
-                $has_permissions = false;
-            }
-        }
-    }
-
-    /**
-     * Modifies the result of permission checking to modify profile
-     *
-     * @param array $auth            authentication information
-     * @param array $user_data       Edited profile
-     * @param bool  $has_permissions checking result
-     */
-    fn_set_hook('check_editable_permissions_post', $auth, $user_data, $has_permissions);
-
-    return $has_permissions;
-}
-
-/**
- * Adds email to global news
- *
- * @param string $email User email
- * @param int $mail_list Global mail list ID
- */
-function fn_subscribe_admin($email = '', $mail_list = MAILING_LIST_ID)
-{
-    if (empty($email)) {
-        $email = db_get_field('SELECT email FROM ?:users WHERE is_root = ?s ORDER BY user_id ASC', 'Y');
-    }
-
-    Http::post(Registry::get('config.resources.product_url') . '/index.php', array(
-        'mailing_lists[' . $mail_list . ']' => true,
-        'subscribe_email' => $email,
-        'console' => true,
-        'dispatch' => 'newsletters.add_subscriber',
-    ));
-}
-
-/**
- * Add a record to the log if the user session is expired
- *
- * @param array $auth - user auth data
- * @param integer $expiry - expiration time
- * @return bool Always true
- */
-function fn_log_user_logout($auth, $expiry = TIME)
-{
-    if (!empty($auth) && $auth['user_id']) {
-        $this_login = empty($auth['this_login']) ? 0 : $auth['this_login'];
-
-        // Log user logout
-        fn_log_event('users', 'session', array (
-            'user_id' => $auth['user_id'],
-            'ip' => empty($auth['ip']) ? '' : $auth['ip'],
-            'time' => ($expiry - $this_login),
-            'timeout' => true,
-            'expiry' => $expiry,
-        ));
-    }
-
-    return true;
 }

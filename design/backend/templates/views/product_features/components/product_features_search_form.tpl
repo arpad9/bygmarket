@@ -13,7 +13,7 @@
         {else}
             {assign var="s_cid" value="0"}
         {/if}
-        {include file="pickers/categories/picker.tpl" data_id="location_category" input_name="category_ids" item_ids=$s_cid hide_link=true hide_delete_button=true default_name=__("all_categories") extra=""}
+        {include file="pickers/categories/picker.tpl" data_id="location_category" input_name="category_ids" item_ids=$s_cid hide_link=true hide_delete_button=true show_root=true default_name=__("all_categories") extra=""}
     {else}
         {include file="common/select_category.tpl" name="category_ids" id=$search.category_ids}
     {/if}
@@ -31,16 +31,16 @@
     
         <table width="100%">
             <tr class="nowrap">
-                <td><label for="elm_checkbox_single" class="checkbox"><input id="elm_checkbox_single"  type="checkbox" name="feature_types[]" {if "ProductFeatures::SINGLE_CHECKBOX"|enum|in_array:$search.feature_types}checked="checked"{/if} value="{"ProductFeatures::SINGLE_CHECKBOX"|enum}"/>{__("checkbox")}:&nbsp;{__("single")}</label></td>
-                <td><label for="elm_checkbox_multiple" class="checkbox"><input id="elm_checkbox_multiple" type="checkbox" name="feature_types[]" {if "ProductFeatures::MULTIPLE_CHECKBOX"|enum|in_array:$search.feature_types}checked="checked"{/if} value="{"ProductFeatures::MULTIPLE_CHECKBOX"|enum}"/>{__("checkbox")}:&nbsp;{__("multiple")}</label></td>
-                <td><label for="elm_selectbox_text" class="checkbox"><input id="elm_selectbox_text"  type="checkbox" name="feature_types[]" {if "ProductFeatures::TEXT_SELECTBOX"|enum|in_array:$search.feature_types}checked="checked"{/if} value="{"ProductFeatures::TEXT_SELECTBOX"|enum}"/>{__("selectbox")}:&nbsp;{__("text")}</label></td>
-                <td><label for="elm_selectbox_number" class="checkbox"><input id="elm_selectbox_number"  type="checkbox" name="feature_types[]" {if "ProductFeatures::NUMBER_SELECTBOX"|enum|in_array:$search.feature_types}checked="checked"{/if} value="{"ProductFeatures::NUMBER_SELECTBOX"|enum}"/>{__("selectbox")}:&nbsp;{__("number")}</label></td>
+                <td><label for="elm_checkbox_single" class="checkbox"><input id="elm_checkbox_single"  type="checkbox" name="feature_types[]" {if "C"|in_array:$search.feature_types}checked="checked"{/if} value="C"/>{__("checkbox")}:&nbsp;{__("single")}</label></td>
+                <td><label for="elm_checkbox_multiple" class="checkbox"><input id="elm_checkbox_multiple" type="checkbox" name="feature_types[]" {if "M"|in_array:$search.feature_types}checked="checked"{/if} value="M"/>{__("checkbox")}:&nbsp;{__("multiple")}</label></td>
+                <td><label for="elm_selectbox_text" class="checkbox"><input id="elm_selectbox_text"  type="checkbox" name="feature_types[]" {if "S"|in_array:$search.feature_types}checked="checked"{/if} value="S"/>{__("selectbox")}:&nbsp;{__("text")}</label></td>
+                <td><label for="elm_selectbox_number" class="checkbox"><input id="elm_selectbox_number"  type="checkbox" name="feature_types[]" {if "N"|in_array:$search.feature_types}checked="checked"{/if} value="N"/>{__("selectbox")}:&nbsp;{__("number")}</label></td>
             </tr>
             <tr>
-            <td><label for="elm_selectbox_brand_type" class="checkbox"><input id="elm_selectbox_brand_type"  type="checkbox" name="feature_types[]" {if "ProductFeatures::EXTENDED"|enum|in_array:$search.feature_types}checked="checked"{/if} value="{"ProductFeatures::EXTENDED"|enum}"/>{__("selectbox")}:&nbsp;{__("brand_type")}</label></td>
-                <td><label for="elm_others_text" class="checkbox"><input id="elm_others_text"  type="checkbox" name="feature_types[]" {if "ProductFeatures::TEXT_FIELD"|enum|in_array:$search.feature_types}checked="checked"{/if} value="{"ProductFeatures::TEXT_FIELD"|enum}"/>{__("others")}:&nbsp;{__("text")}</label></td>
-                <td><label for="elm_others_number" class="checkbox"><input id="elm_others_number"  type="checkbox" name="feature_types[]" {if "ProductFeatures::NUMBER_FIELD"|enum|in_array:$search.feature_types}checked="checked"{/if} value="{"ProductFeatures::NUMBER_FIELD"|enum}"/>{__("others")}:&nbsp;{__("number")}</label></td>
-                <td><label for="elm_others_date" class="checkbox"><input id="elm_others_date"  type="checkbox" name="feature_types[]" {if "ProductFeatures::DATE"|enum|in_array:$search.feature_types}checked="checked"{/if} value="{"ProductFeatures::DATE"|enum}"/>{__("others")}:&nbsp;{__("date")}</label></td>
+            <td><label for="elm_selectbox_brand_type" class="checkbox"><input id="elm_selectbox_brand_type"  type="checkbox" name="feature_types[]" {if "E"|in_array:$search.feature_types}checked="checked"{/if} value="E"/>{__("selectbox")}:&nbsp;{__("brand_type")}</label></td>
+                <td><label for="elm_others_text" class="checkbox"><input id="elm_others_text"  type="checkbox" name="feature_types[]" {if "T"|in_array:$search.feature_types}checked="checked"{/if} value="T"/>{__("others")}:&nbsp;{__("text")}</label></td>
+                <td><label for="elm_others_number" class="checkbox"><input id="elm_others_number"  type="checkbox" name="feature_types[]" {if "O"|in_array:$search.feature_types}checked="checked"{/if} value="O"/>{__("others")}:&nbsp;{__("number")}</label></td>
+                <td><label for="elm_others_date" class="checkbox"><input id="elm_others_date"  type="checkbox" name="feature_types[]" {if "D"|in_array:$search.feature_types}checked="checked"{/if} value="D"/>{__("others")}:&nbsp;{__("date")}</label></td>
             </tr>
         </table>
     

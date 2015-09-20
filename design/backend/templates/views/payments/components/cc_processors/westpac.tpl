@@ -1,4 +1,4 @@
-{assign var="prepayment" value=""|fn_url:"C"}
+{assign var="prepayment" value="`$config.http_location`/"}
 {assign var="return" value="http"|fn_payment_url:"westpac.php"}
 {assign var="notify" value="https"|fn_payment_url:"westpac.php"}
 <p>{__("text_payway_notice", ["[prepayment]" => $prepayment, "[return]" => $return, "[notify]" => $notify])}</p>

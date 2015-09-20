@@ -4,7 +4,6 @@
     <input type="hidden" name="selected_section" value="" />
         {include file="addons/discussion/views/discussion_manager/components/discussion.tpl"}
     </form>
-    {include file="addons/discussion/views/discussion_manager/components/new_discussion_popup.tpl"}
 {/capture}
 
 {capture name="buttons"}
@@ -18,4 +17,4 @@
     {$smarty.capture.adv_buttons nofilter}
 {/capture}
 
-{include file="common/mainbox.tpl" title=__("discussion_title_home_page") content=$smarty.capture.mainbox adv_buttons=$smarty.capture.adv_buttons buttons=$smarty.capture.buttons}
+{include file="common/mainbox.tpl" title=__("discussion_title_home_page") content=$smarty.capture.mainbox select_languages=true adv_buttons=$smarty.capture.adv_buttons buttons=$smarty.capture.buttons}

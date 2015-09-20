@@ -1,17 +1,22 @@
-{if "tools.show_quick_menu"|fn_check_view_permissions}
+{script src="js/tygh/quick_menu.js"}
 
 <script type="text/javascript">
+    //<![CDATA[
     Tygh.tr('editing_quick_menu_section', '{__("editing_quick_menu_section")|escape:"javascript"}');
     Tygh.tr('new_section', '{__("new_section")|escape:"javascript"}');
     Tygh.tr('editing_quick_menu_link', '{__("editing_quick_menu_link")|escape:"javascript"}');
     Tygh.tr('new_link', '{__("new_link")|escape:"javascript"}');
+    //]]>
 </script>
 
 <div class="quick-menu-container" id="quick_menu">
-    <div class="quick-menu {if $settings.show_menu_mouseover == "Y"} quick-menu-show-on-hover{/if}">
-        <a id="sw_quick_menu_content" class="quick-menu-link {if $edit_quick_menu || $expand_quick_menu}open{/if} cm-combination">{__("quick_menu")}</a>
+    <div class="quick-menu">
+        <a id="sw_quick_menu_content"
+           class="cm-combo-{if $edit_quick_menu || $expand_quick_menu}off{else}on{/if} cm-combination"{if $settings.show_menu_mouseover == "Y"} onmouseover="fn_quick_menu_mouse_action(this, true);" onmouseout="fn_quick_menu_mouse_action(this, false);"{/if}>{__("quick_menu")}</a>
+    </div>
 
-        <div id="quick_menu_content" class="quick-menu-content cm-popup-box{if !$edit_quick_menu && !$expand_quick_menu} hidden{/if}">
+    <div id="quick_menu_content"
+         class="quick-menu-content cm-popup-box{if !$edit_quick_menu && !$expand_quick_menu} hidden{/if}">
         {if $edit_quick_menu}
             <div class="menu-container">
                 <table width="100%">
@@ -81,10 +86,9 @@
             {/if}
             <div class="quick-menu-actions right">
                 <a class="edit cm-ajax" href="{"tools.show_quick_menu.edit"|fn_url}" data-ca-target-id="quick_menu"
-                   data-ca-event="ce.quick_menu_content_switch_callback" title="{__("edit")}"><i class="icon-edit hand"></i></a>
+                   data-ca-event="ce.quick_menu_content_switch_callback">{__("edit")}</a>
             </div>
         {/if}
-    </div>
     </div>
 
     {if $show_quick_popup}
@@ -141,4 +145,3 @@
         </div>
     {/if}
     <!--quick_menu--></div>
-{/if}

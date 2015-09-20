@@ -35,11 +35,12 @@
                 {if $search.product_type_c != "Y" && $search.product_type_w != "Y"}
                     {assign var="check_all" value=true}
                 {/if}
-                {hook name="cart:search_form"}
-                <label for="cb_product_type_c">
+                {hook name="cart:search_form"}<label for="cb_product_type_c">
                     <input type="checkbox" value="Y" {if $search.product_type_c == "Y" || $check_all}checked="checked"{/if} name="product_type_c" id="cb_product_type_c" onclick="if (!this.checked) document.getElementById('cb_product_type_w').checked = true;" disabled="disabled" />
-                    {__("cart")}
-                </label>
+                    {__("cart")}</label>
+
+                    <label for="cb_product_type_w"><input type="checkbox" value="Y" name="product_type_w" {if $search.product_type_w == "Y" || $check_all}checked="checked"{/if} id="cb_product_type_w" onclick="if (!this.checked) document.getElementById('cb_product_type_c').checked = true;" disabled="disabled"/>
+                        {__("wishlist")}</label>
                 {/hook}
             </div>
         </div>
@@ -63,11 +64,11 @@
 
     <div class="group span6 form-horizontal">
         <div class="control-group">
-            <label class="control-label" for="users_type">{__("user_type")}</label>
+            <label class="control-label" for="users_type">{__("users_type")}</label>
             <div class="controls">
                 <select name="users_type" id="users_type">
                     <option value="A" {if $search.users_type == "A"}selected="selected"{/if}>{__("any")}</option>
-                    <option value="R" {if $search.users_type == "R"}selected="selected"{/if}>{__("usergroup_registered")}</option>
+                    <option value="R" {if $search.users_type == "R"}selected="selected"{/if}>{__("registered")}</option>
                     <option value="G" {if $search.users_type == "G"}selected="selected"{/if}>{__("guest")}</option>
                 </select>
             </div>

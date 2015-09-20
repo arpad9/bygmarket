@@ -16,10 +16,10 @@
             allowSpaces: true,
             placeholderText: _.tr('addons_tags_add_a_tag'),
             allowDuplicates: true,
-            fieldName: $("#object_name").val(),
+            fieldName: 'product_data[tags][]',
             autocomplete: {
                 source: function( request, response ) {
-                    $.ceAjax('request', fn_url('tags.list?q=' + encodeURIComponent(extractLast(request.term))), {callback: function(data) {
+                    $.ceAjax('request', fn_url('tags.list?q=' + extractLast(request.term)), {callback: function(data) {
                         response(data.autocomplete);
                     }});
                 }
@@ -27,7 +27,6 @@
             afterTagAdded: function(event, ui) {
                 if (!ui.duringInitialization) {
                     var params = {
-                        method: 'post',
                         callback: function(data) {
                             var tag = data.tag_name.toString().toLowerCase();
                             if (tag.indexOf(ui.tagLabel.toLowerCase()) == -1) {
@@ -35,32 +34,31 @@
                             }
                         }
                     };
-                    var t_name = encodeURIComponent(ui.tagLabel);
+                    var t_name = ui.tagLabel;
                     var o_id = $("#object_id").val();
                     var o_type = $("#object_type").val();
                     if (Tygh.area == 'C') {
-                        $.ceAjax('request', fn_url('tags.update?tag=' + t_name + '&object_id=' + o_id + '&object_type=' + o_type), params);
+                        $.ceAjax('request', fn_url('tags.update?tag='+t_name+'&object_id='+o_id+'&object_type='+o_type), params);
                     }
                 }
             },
             beforeTagRemoved: function(event, ui) {
                 var params = {
-                    method: 'post',
                     callback: function(data) {
                         if (Tygh.area == 'C') {
                             var tag = data.tag_name.toString().toLowerCase();
-                            if (typeof(ui.tagLabel) != 'undefined' && tag.indexOf(ui.tagLabel.toLowerCase()) == -1) {
+                            if (tag.indexOf(ui.tagLabel.toLowerCase()) == -1) {
                                 ui.tag.remove();
                             }
                         }
                     }
                 };
-                var t_name = encodeURIComponent(ui.tagLabel);
+                var t_name = ui.tagLabel;
                 var o_id = $("#object_id").val();
                 var o_type = $("#object_type").val();
 
                 if (Tygh.area == 'C') {
-                    $.ceAjax('request', fn_url('tags.delete?tag=' + t_name + '&object_id=' + o_id + '&object_type=' + o_type), params);
+                    $.ceAjax('request', fn_url('tags.delete?tag='+t_name+'&object_id='+o_id+'&object_type='+o_type), params);
                 } else {
                     ui.tag.remove();
                 }

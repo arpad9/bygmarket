@@ -13,7 +13,6 @@
 ****************************************************************************/
 
 use Tygh\Registry;
-use Tygh\Enum\ProductFeatures;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -22,94 +21,50 @@ fn_define('NEW_FEATURE_GROUP_ID', 'OG');
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     fn_trusted_vars ('feature_data');
-    $return_url = 'product_features.manage';
 
     // Update features
     if ($mode == 'update') {
-        $feature_id = fn_update_product_feature($_REQUEST['feature_data'], $_REQUEST['feature_id'], DESCR_SL);
-
-        if ($_REQUEST['feature_data']['feature_type'] == ProductFeatures::EXTENDED) {
-            return array(CONTROLLER_STATUS_OK, 'product_features.update?feature_id=' . $feature_id);
-        }
+        fn_update_product_feature($_REQUEST['feature_data'], $_REQUEST['feature_id'], DESCR_SL);
     }
 
-    if ($mode == 'update_status') {
-
-        fn_tools_update_status($_REQUEST);
-
-        if (!empty($_REQUEST['status']) && $_REQUEST['status'] == 'D') {
-            $filter_ids = db_get_fields("SELECT filter_id FROM ?:product_filters WHERE feature_id = ?i AND status = 'A'", $_REQUEST['id']);
-            if (!empty($filter_ids)) {
-                db_query("UPDATE ?:product_filters SET status = 'D' WHERE filter_id IN (?n)", $filter_ids);
-                $filter_names_array = db_get_fields("SELECT filter FROM ?:product_filter_descriptions WHERE filter_id IN (?n) AND lang_code = ?s", $filter_ids, DESCR_SL);
-
-                fn_set_notification('W', __('warning'), __('text_product_filters_were_disabled', array(
-                    '[url]' => fn_url('product_filters.manage'),
-                    '[filters_list]' => implode(', ', $filter_names_array)
-                )));
-            }
-        }
-
-        exit;
-    }
-
-    if ($mode == 'delete') {
-
-        if (!empty($_REQUEST['feature_id'])) {
-            fn_delete_feature($_REQUEST['feature_id']);
-        }
-
-        if(!empty($_REQUEST['return_url'])) {
-            $return_url = $_REQUEST['return_url'];
-        }
-    }
-
-    return array(CONTROLLER_STATUS_OK, $return_url);
+    return array(CONTROLLER_STATUS_OK, "product_features.manage");
 }
 
 if ($mode == 'update') {
 
-    $selected_section = (empty($_REQUEST['selected_section']) ? 'detailed' : $_REQUEST['selected_section']);
-
-    $feature = fn_get_product_feature_data($_REQUEST['feature_id'], false, false, DESCR_SL);
-    Tygh::$app['view']->assign('feature', $feature);
-    list($group_features) = fn_get_product_features(array('feature_types' => ProductFeatures::GROUP), 0, DESCR_SL);
-    Tygh::$app['view']->assign('group_features', $group_features);
+    Registry::get('view')->assign('feature', fn_get_product_feature_data($_REQUEST['feature_id'], false, false, DESCR_SL));
+    list($group_features) = fn_get_product_features(array('feature_types' => 'G'), 0, DESCR_SL);
+    Registry::get('view')->assign('group_features', $group_features);
 
     if (fn_allowed_for('ULTIMATE') && !Registry::get('runtime.company_id')) {
-        Tygh::$app['view']->assign('picker_selected_companies', fn_ult_get_controller_shared_companies($_REQUEST['feature_id']));
+        Registry::get('view')->assign('picker_selected_companies', fn_ult_get_controller_shared_companies($_REQUEST['feature_id']));
     }
 
-    $params = array(
-        'feature_id' => $feature['feature_id'],
-        'feature_type' => $feature['feature_type'],
-        'get_images' => true,
-        'page' => !empty($_REQUEST['page']) ? $_REQUEST['page'] : 1,
-        'items_per_page' => !empty($_REQUEST['items_per_page']) ? $_REQUEST['items_per_page'] : Registry::get('settings.Appearance.admin_elements_per_page'),
-    );
+} elseif ($mode == 'delete') {
 
-    list($variants, $search) = fn_get_product_feature_variants($params, Registry::get('settings.Appearance.admin_elements_per_page'), DESCR_SL);
+    if (!empty($_REQUEST['feature_id'])) {
+        fn_delete_feature($_REQUEST['feature_id']);
+    }
 
-    Tygh::$app['view']->assign('feature_variants', $variants);
-    Tygh::$app['view']->assign('search', $search);
+    return array(CONTROLLER_STATUS_REDIRECT, "product_features.manage");
 
 } elseif ($mode == 'manage') {
 
     $params = $_REQUEST;
+    $params['exclude_group'] = true;
     $params['get_descriptions'] = true;
-    $params['search_in_subcats'] = true;
     list($features, $search, $has_ungroupped) = fn_get_product_features($params, Registry::get('settings.Appearance.admin_elements_per_page'), DESCR_SL);
 
-    Tygh::$app['view']->assign('features', $features);
-    Tygh::$app['view']->assign('search', $search);
-    Tygh::$app['view']->assign('has_ungroupped', $has_ungroupped);
+    Registry::get('view')->assign('features', $features);
+    Registry::get('view')->assign('search', $search);
+    Registry::get('view')->assign('has_ungroupped', $has_ungroupped);
 
     if (empty($features) && defined('AJAX_REQUEST')) {
-        Tygh::$app['ajax']->assign('force_redirection', fn_url('product_features.manage'));
+        Registry::get('ajax')->assign('force_redirection', fn_url('product_features.manage'));
     }
 
-    list($group_features) = fn_get_product_features(array('feature_types' => ProductFeatures::GROUP), 0, DESCR_SL);
-    Tygh::$app['view']->assign('group_features', $group_features);
+    list($group_features) = fn_get_product_features(array('feature_types' => 'G'), 0, DESCR_SL);
+    Registry::get('view')->assign('group_features', $group_features);
 
 } elseif ($mode == 'get_feature_variants_list') {
     if (empty($_REQUEST['feature_id'])) {
@@ -129,17 +84,15 @@ if ($mode == 'update') {
     $objects = db_get_hash_array("SELECT SQL_CALC_FOUND_ROWS ?:product_feature_variants.variant_id AS value, ?:product_feature_variant_descriptions.variant AS name FROM ?:product_feature_variants $join WHERE 1 $condition AND ?:product_feature_variant_descriptions.variant LIKE ?l ORDER BY ?p LIMIT ?i, ?i", 'value', '%' . $pattern . '%', $sorting, $start, $limit);
 
     if (defined('AJAX_REQUEST') && sizeof($objects) < $limit) {
-        Tygh::$app['ajax']->assign('completed', true);
+        Registry::get('ajax')->assign('completed', true);
     } else {
         array_pop($objects);
     }
 
-    if (empty($_REQUEST['enter_other']) || $_REQUEST['enter_other'] != 'N') {
+    if (!Registry::get('runtime.company_id') && (empty($_REQUEST['enter_other']) || !empty($_REQUEST['enter_other']) && $_REQUEST['enter_other'] != 'N')) {
         $total = db_get_found_rows();
-        if (!Registry::get('runtime.company_id') || (fn_allowed_for('ULTIMATE') && fn_check_company_id('product_features', 'feature_id', $_REQUEST['feature_id']))) {
-            if ($start + $limit >= $total + 1) {
-                $objects[] = array('value' => 'disable_select', 'name' => '-' . __('enter_other') . '-');
-            }
+        if ($start + $limit >= $total + 1) {
+            $objects[] = array('value' => 'disable_select', 'name' => '-' . __('enter_other') . '-');
         }
     }
 
@@ -147,60 +100,40 @@ if ($mode == 'update') {
         array_unshift($objects, array('value' => '', 'name' => '-' . __('none') . '-'));
     }
 
-    Tygh::$app['view']->assign('objects', $objects);
+    Registry::get('view')->assign('objects', $objects);
 
-    Tygh::$app['view']->assign('id', $_REQUEST['result_ids']);
-    Tygh::$app['view']->display('common/ajax_select_object.tpl');
-
+    Registry::get('view')->assign('id', $_REQUEST['result_ids']);
+    Registry::get('view')->display('common/ajax_select_object.tpl');
     exit;
-} elseif ($mode == 'get_variants_list') {
-    if (isset($_REQUEST['feature_id'])) {
-        $feature_id = (int) $_REQUEST['feature_id'];
-    } else {
-        exit;
-    }
 
-    $page_number = isset($_REQUEST['page']) ? (int) $_REQUEST['page'] : 1;
-    $page_size = isset($_REQUEST['page_size']) ? (int) $_REQUEST['page_size'] : 3;
-    $search_query = isset($_REQUEST['q']) ? $_REQUEST['q'] : null;
-    $lang_code = isset($_REQUEST['lang_code']) ? $_REQUEST['lang_code'] : CART_LANGUAGE;
+} elseif ($mode == 'get_variants') {
 
-    $search = array(
-        'page' => $page_number,
-        'feature_id' => $feature_id,
-        'search_query' => $search_query,
-        'get_images' => true
-    );
+    $params = $_REQUEST;
+    $params['get_images'] = true;
+    list($variants, $search) = fn_get_product_feature_variants($params, Registry::get('settings.Appearance.admin_elements_per_page'), DESCR_SL);
 
-    if (isset($_REQUEST['product_id'])) {
-        $search['product_id'] = (int) $_REQUEST['product_id'];
-    }
+    Registry::get('view')->assign('feature_variants', $variants);
+    Registry::get('view')->assign('search', $search);
+    Registry::get('view')->assign('feature_type', $_REQUEST['feature_type']);
+    Registry::get('view')->assign('id', $_REQUEST['feature_id']);
+    Registry::get('view')->display('views/product_features/components/variants_list.tpl');
+    exit;
+} elseif ($mode == 'update_status') {
 
-    list($variants, $search) = fn_get_product_feature_variants($search, $page_size, $lang_code);
+    fn_tools_update_status($_REQUEST);
 
-    $objects = array_values(array_map(function ($feature_variant) {
-        $image_url = null;
+    if (!empty($_REQUEST['status']) && $_REQUEST['status'] == 'D') {
+        $filter_ids = db_get_fields("SELECT filter_id FROM ?:product_filters WHERE feature_id = ?i AND status = 'A'", $_REQUEST['id']);
+        if (!empty($filter_ids)) {
+            db_query("UPDATE ?:product_filters SET status = 'D' WHERE filter_id IN (?n)", $filter_ids);
+            $filter_names_array = db_get_fields("SELECT filter FROM ?:product_filter_descriptions WHERE filter_id IN (?n) AND lang_code = ?s", $filter_ids, DESCR_SL);
 
-        if (isset($feature_variant['image_pair'])) {
-            $image_data = fn_image_to_display(
-                $feature_variant['image_pair'],
-                isset($_REQUEST['image_width']) ? (int)$_REQUEST['image_width'] : 50,
-                isset($_REQUEST['image_height']) ? (int)$_REQUEST['image_height'] : 50
-            );
-            if (!empty($image_data['image_path'])) {
-                $image_url = $image_data['image_path'];
-            }
+            fn_set_notification('W', __('warning'), __('text_product_filters_were_disabled', array(
+                '[url]' => fn_url('product_filters.manage'),
+                '[filters_list]' => implode(', ', $filter_names_array)
+            )));
         }
-
-        return array(
-            'id' => $feature_variant['variant_id'],
-            'text' => $feature_variant['variant'],
-            'image_url' => $image_url
-        );
-    }, $variants));
-
-    Tygh::$app['ajax']->assign('objects', $objects);
-    Tygh::$app['ajax']->assign('total_objects', $search['total_items']);
+    }
 
     exit;
 }

@@ -27,15 +27,14 @@
         <input type="text" name="states[{$state.state_id}][state]" size="55" value="{$state.state}" class="input-hidden span8"/></td>
     <td class="nowrap">
         {capture name="tools_list"}
-            <li>{btn type="list" class="cm-confirm cm-post" text=__("delete") href="states.delete?state_id=`$state.state_id`&country_code=`$search.country`"}</li>
+            <li>{btn type="list" class="cm-confirm" text=__("delete") href="states.delete?state_id=`$state.state_id`&country_code=`$search.country`"}</li>
         {/capture}
         <div class="hidden-tools">
             {dropdown content=$smarty.capture.tools_list}
         </div>
     </td>
     <td class="right">
-        {$has_permission = fn_check_permissions("tools", "update_status", "admin", "GET", ["table" => "states"])}
-        {include file="common/select_popup.tpl" id=$state.state_id status=$state.status hidden="" object_id_name="state_id" table="states" non_editable=!$has_permission}
+        {include file="common/select_popup.tpl" id=$state.state_id status=$state.status hidden="" object_id_name="state_id" table="states"}
     </td>
 </tr>
 {/foreach}
@@ -64,7 +63,7 @@
 
     <div class="cm-j-tabs">
         <ul class="nav nav-tabs">
-            <li id="tab_new_states" class="cm-js active"><a>{__("general")}</a></li>
+            <li id="tab_new_states" class="cm-js active cm-active"><a>{__("general")}</a></li>
         </ul>
     </div>
 
@@ -99,11 +98,9 @@
 
 {capture name="buttons"}
     {capture name="tools_list"}
-        {hook name="states:manage_tools_list"}
-            {if $states}
-                <li>{btn type="delete_selected" dispatch="dispatch[states.m_delete]" form="states_form"}</li>
-            {/if}
-        {/hook}
+        {if $states}
+            <li>{btn type="delete_selected" dispatch="dispatch[states.m_delete]" form="states_form"}</li>
+        {/if}
     {/capture}
     {dropdown content=$smarty.capture.tools_list}
 

@@ -12,8 +12,6 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-use Tygh\Registry;
-
 /**
  * The function checks if an entered percentage discount for the lower limit value equal to 1 to be greater than 0
  *
@@ -36,11 +34,13 @@ function fn_exim_check_discount($product_info, $lang_code, $skip_record)
         if (!isset($product_info['usergroup_id'])) {
             $skip_record = true;
         }
+
+        $usergroup_id = fn_get_usergroup_id($product_info['usergroup_id'], $lang_code);
     }
 
     if ($product_info['lower_limit'] == 1 && $product_info['percentage_discount'] > 0) {
         if (!fn_allowed_for('ULTIMATE:FREE')) {
-            if ($product_info['usergroup_id'] == 0) {
+            if ($usergroup_id == 0) {
                 $skip_record = true;
             }
         }
@@ -51,22 +51,6 @@ function fn_exim_check_discount($product_info, $lang_code, $skip_record)
     }
 
     return ($skip_record) ? false : $product_info['lower_limit'];
-}
-
-function fn_qty_update_prices($product_id, $data)
-{
-    $company_id = Registry::get('runtime.company_id');
-    $prod_company_id = db_get_field("SELECT company_id FROM ?:products WHERE product_id = ?i", $product_id);
-    if (fn_allowed_for('ULTIMATE')) {
-        if (empty($company_id) || (!empty($company_id) && $company_id == $prod_company_id)) {
-            unset($data['product_code']);
-            unset($data['Language']);
-            unset($data['lang_code']);
-            $data['company_id'] = $prod_company_id;
-            $data['product_id'] = $product_id;
-            db_query("REPLACE INTO ?:ult_product_prices ?e", $data);
-        }
-    }
 }
 
 if (!fn_allowed_for('ULTIMATE:FREE')) {
@@ -106,20 +90,24 @@ function fn_exim_get_usergroup($usergroup_id, $lang_code = '')
 /**
  * The function converts a user group name into a user group ID or creates a new user group if a user group specified in the import file does not exist
  *
- * @param string $usergroup Usergroup name presented in the file
+ * @param string $data Usergroup name presented in the file
  * @param string $lang_code 2-letter language code
  * @return int usergroup id
  */
-function fn_exim_put_usergroup($usergroup, $lang_code)
+function fn_exim_put_usergroup($data)
 {
-    $default_usergroups = fn_get_default_usergroups($lang_code);
+
+    $multi_lang = array_keys($data);
+    $main_lang = reset($multi_lang);
+
+    $default_usergroups = fn_get_default_usergroups($main_lang);
     foreach ($default_usergroups as $usergroup_id => $ug) {
-        if ($ug['usergroup'] == $usergroup) {
+        if ($ug['usergroup'] == $data[$main_lang]) {
             return $usergroup_id;
         }
     }
 
-    $usergroup_id = fn_get_usergroup_id($usergroup, $lang_code);
+    $usergroup_id = fn_get_usergroup_id($data[$main_lang], $main_lang);
 
     // Create new usergroup
     if (empty($usergroup_id)) {
@@ -130,12 +118,18 @@ function fn_exim_put_usergroup($usergroup, $lang_code)
 
         $usergroup_id = db_query("INSERT INTO ?:usergroups ?e", $_data);
 
+        /*foreach (fn_get_translation_languages() as $_data['lang_code'] => $v) {
+            db_query("INSERT INTO ?:usergroup_descriptions ?e", $_data);
+        }*/
+
         $_data = array(
             'usergroup_id' => $usergroup_id,
-            'usergroup' => $usergroup,
         );
 
-        foreach (fn_get_translation_languages() as $_data['lang_code'] => $v) {
+        foreach ($multi_lang as $lang_code) {
+            $_data['usergroup'] = $data[$lang_code];
+            $_data['lang_code'] = $lang_code;
+
             db_query("INSERT INTO ?:usergroup_descriptions ?e", $_data);
         }
     }

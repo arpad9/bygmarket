@@ -31,11 +31,11 @@ function fn_settings_variants_appearance_backend_default_language()
 }
 
 /**
- * Get available formats, supported by currently used image manipulation library
+ * Get available formats, supported by GD library
  */
 function fn_settings_variants_thumbnails_convert_to()
 {
-    return fn_get_supported_image_format_variants();
+    return fn_check_gd_formats();
 }
 
 /**
@@ -51,17 +51,17 @@ function fn_settings_variants_appearance_default_products_sorting()
     return fn_settings_variants_appearance_available_product_list_sortings();
 }
 
-function fn_settings_variants_appearance_default_products_view()
+function fn_settings_variants_appearance_default_products_layout()
 {
     return fn_get_products_views(true, true);
 }
 
-function fn_settings_variants_appearance_default_products_view_templates()
+function fn_settings_variants_appearance_default_products_layout_templates()
 {
     return fn_get_products_views(true);
 }
 
-function fn_settings_variants_appearance_default_product_details_view()
+function fn_settings_variants_appearance_default_product_details_layout()
 {
     return fn_get_product_details_views();
 }
@@ -106,7 +106,7 @@ function fn_settings_variants_appearance_default_image_previewer()
  */
 function fn_settings_variants_appearance_available_product_list_sortings()
 {
-    $sortings = fn_get_products_sorting();
+    $sortings = fn_get_products_sorting(false);
     $orders = fn_get_products_sorting_orders();
 
     $return = array();
@@ -121,28 +121,4 @@ function fn_settings_variants_appearance_available_product_list_sortings()
     }
 
     return $return;
-}
-
-/**
- * Gets settings variants for the option 'Image verification: Use for'
- *
- * @return array Available objects
- */
-function fn_settings_variants_image_verification_use_for()
-{
-    $objects = array(
-        'login' => __('use_for_login'),
-        'register' => __('use_for_register'),
-        'checkout' => __('use_for_checkout'),
-        'track_orders' => __('use_for_track_orders'),
-    );
-
-    /**
-     * Add objects that should use 'Image verification'
-     *
-     * @param array $objects Available objects
-     */
-    fn_set_hook('settings_variants_image_verification_use_for', $objects);
-
-    return $objects;
 }

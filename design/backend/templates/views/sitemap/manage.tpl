@@ -37,4 +37,17 @@
     {include file="common/popupbox.tpl" id="add_new_site_map_section" text=__("new_site_map_section") content=$smarty.capture.add_new_picker title=__("add_site_map_section") act="general" icon="icon-plus"}
 {/capture}
 
-{include file="common/mainbox.tpl" title=__("sitemap") content=$smarty.capture.mainbox adv_buttons=$smarty.capture.adv_buttons select_languages=true}
+{capture name="sidebar"}
+<div class="sidebar-row">
+    <ul class="nav nav-list">
+        <li>
+            <a href="{"settings.manage?section_id=Sitemap"|fn_url}">
+                <i class="icon-book"></i>
+                {__("sitemap_settings")}
+            </a>
+        </li>
+    </ul>
+</div>
+{/capture}
+
+{include file="common/mainbox.tpl" title=__("sitemap") content=$smarty.capture.mainbox adv_buttons=$smarty.capture.adv_buttons select_languages=true sidebar=$smarty.capture.sidebar}

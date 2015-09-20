@@ -57,10 +57,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             fn_gather_additional_products_data($products, array('get_icon' => true, 'get_detailed' => true, 'get_options' => true, 'get_discounts' => true));
 
-            Tygh::$app['view']->assign('products', $products);
-            Tygh::$app['view']->assign('wishlist', $wishlist);
+            Registry::get('view')->assign('products', $products);
+            Registry::get('view')->assign('wishlist', $wishlist);
 
-            Tygh::$app['view']->display('addons/wishlist/views/wishlist/view.tpl');
+            Registry::get('view')->display('addons/wishlist/views/wishlist/view.tpl');
             exit;
         }
     }

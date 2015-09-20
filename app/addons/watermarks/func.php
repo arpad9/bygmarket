@@ -15,7 +15,6 @@
 use Tygh\Settings;
 use Tygh\Storage;
 use Tygh\Registry;
-use Tygh\Tools\ImageHelper;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -40,7 +39,7 @@ function fn_get_watermark_settings($company_id = null)
 {
     static $cache;
 
-    if (!isset($cache['settings_' . $company_id])) {
+    if (empty($cache['settings_' . $company_id])) {
         $settings = Settings::instance()->getValue('watermark', '', $company_id);
         $settings = unserialize($settings);
 
@@ -123,13 +122,7 @@ function fn_get_apply_watermark_options()
     return $res;
 }
 
-/**
- * Clear generated watermarks
- *
- * @param array $images_types Images types to be cleared, clear all if empty
- * @return boolean Always true
- */
-function fn_delete_watermarks($images_types)
+function fn_delete_watermarks($images_types, $watermarks_path = '')
 {
     $path_types = array(
         'icons' => array (
@@ -144,25 +137,15 @@ function fn_delete_watermarks($images_types)
 
     $delete_paths = array();
     foreach ($path_types as $k => $v) {
-        if (empty($images_types) || !empty($images_types[$k])) {
+        if (!empty($images_types[$k])) {
             $delete_paths = array_merge($delete_paths, $path_types[$k]);
         }
     }
 
-    $wt_paths = array(WATERMARKS_DIR_NAME);
-
-    if (fn_allowed_for('ULTIMATE') && !Registry::get('runtime.company_id')) {
-        $wt_paths = array();
-        $companies = fn_get_short_companies();
-        foreach ($companies as $company_id => $name) {
-            $wt_paths[] = 'watermarked/' . $company_id . '/';
-        }
-    }
+    $watermarks_path = !empty($watermarks_path) ? $watermarks_path : WATERMARKS_DIR_NAME;
 
     foreach ($delete_paths as $path) {
-        foreach ($wt_paths as $wt_path) {
-            Storage::instance('images')->deleteDir($wt_path . $path);
-        }
+        Storage::instance('images')->deleteDir($watermarks_path . $path);
     }
 
     fn_clear_cache();
@@ -172,41 +155,31 @@ function fn_delete_watermarks($images_types)
 
 function fn_is_need_watermark($object_type, $is_detailed = true, $company_id = null)
 {
-    static $cache;
     if ($object_type == 'watermark') {
         return false;
     }
 
-    if ($object_type == 'product_option' || $object_type == 'variant_image') {
-        $object_type = 'product';
-    }
+    $result = fn_is_watermarks_enabled($company_id);
 
-    if (!isset($cache[$object_type . $company_id . '_' . $is_detailed])) {
-
-        $result = fn_is_watermarks_enabled($company_id);
-
-        if ($result == true) {
-
-            $image_type = $is_detailed ? 'detailed' : 'icons';
-            $option = 'use_for_' . $object_type . '_' . $image_type;
-
-            if (!empty($company_id)) {
-                $result = Settings::instance()->getValue($option, 'watermarks', $company_id) == 'Y';
-            } else {
-                $result = Registry::get('addons.watermarks.' . $option) == 'Y';
-            }
+    if ($result == true) {
+        if ($object_type == 'product_option' || $object_type == 'variant_image') {
+            $object_type = 'product';
         }
 
-        $cache[$object_type . $company_id . '_' .$is_detailed] = $result;
+        $image_type = $is_detailed ? 'detailed' : 'icons';
+        $option = 'use_for_' . $object_type . '_' . $image_type;
 
-    } else {
-        $result = $cache[$object_type . $company_id . '_' . $is_detailed];
+        if (!empty($company_id)) {
+            $result = Settings::instance()->getValue($option, 'watermarks', $company_id) == 'Y';
+        } else {
+            $result = Registry::get('addons.watermarks.' . $option) == 'Y';
+        }
     }
 
     return $result;
 }
 
-function fn_watermarks_generate_thumbnail_file_pre(&$image_path, &$lazy)
+function fn_watermarks_generate_thumbnail_file_pre(&$real_path, &$lazy)
 {
     if ($lazy == true) {
         return true;
@@ -218,44 +191,11 @@ function fn_watermarks_generate_thumbnail_file_pre(&$image_path, &$lazy)
         $pattern = '/^(.*)' . preg_quote(WATERMARKS_DIR_NAME, '/') . '(.*)$/';
     }
 
-    if (preg_match($pattern, $image_path, $matches)) {
-        $image_path = $matches[1] . $matches[2];
+    if (preg_match($pattern, $real_path, $matches)) {
+        $real_path = $matches[1] . $matches[2];
     }
 
     return true;
-}
-
-function fn_watermarks_update_company(&$company_data, &$company_id, &$lang_code, &$action)
-{
-    if ($action == 'add') {
-        // Clone watermark images
-        $clone_from = !empty($company_data['clone_from']) && $company_data['clone_from'] != 'all' ? $company_data['clone_from'] : null;
-
-        if (!is_null($clone_from)) {
-            if (!empty($company_id)) {
-                $clone_to = $company_id;
-                $image_pair = fn_get_image_pairs($clone_from, 'watermark', 'M');
-            } else {
-                $clone_to = WATERMARK_IMAGE_ID;
-                $image_pair = fn_get_image_pairs(WATERMARK_IMAGE_ID, 'watermark', 'M');
-            }
-
-            if (!empty($image_pair)) {
-                fn_clone_image_pairs($clone_to, $clone_from, 'watermark');
-            }
-        } else {
-            // check if company options are valid
-            $option_types = fn_get_apply_watermark_options();
-
-            foreach ($option_types as $type => $options) {
-                foreach ($options as $name => $option_id) {
-                    $image_name = ($type == 'icons') ? 'icon' : 'detailed';
-
-                    Settings::instance($company_id)->updateValueById($option_id, 'N', $company_id);
-                }
-            }
-        }
-    }
 }
 
 function fn_is_watermarks_enabled($company_id = null)
@@ -274,30 +214,26 @@ function fn_is_watermarks_enabled($company_id = null)
 
 function fn_watermarks_generate_thumbnail_post(&$relative_path, &$lazy)
 {
-    static $init_cache = false;
-
     $image_path_info = fn_pathinfo($relative_path);
     $image_name = $image_path_info['filename'];
 
-    $key =  'wt_data_' . fn_crc32($image_name);
+    $company_id = null;
+
+    $prefix = WATERMARKS_DIR_NAME;
+
+    $key =  'wt_data_' . md5($image_name);
 
     $condition = array('images', 'images_links');
+
     if (fn_allowed_for('ULTIMATE')) {
         $condition[] = 'products';
         $condition[] = 'categories';
     }
 
-    $cache_name = 'watermarks_cache_static';
+    Registry::registerCache($key, $condition, Registry::cacheLevel('static'));
 
-    if (!$init_cache) {
-        Registry::registerCache($cache_name, $condition, Registry::cacheLevel('static'), true);
-        $init_cache = true;
-    }
-
-    $image_data = Registry::get($cache_name . '.' . $key);
-
-    if (empty($image_data)) {
-        $image_data = db_get_row("SELECT l.* FROM ?:images AS i, ?:images_links AS l WHERE (l.image_id = i.image_id OR detailed_id = i.image_id) AND image_path LIKE ?l", $image_name . '.%');
+    if (Registry::isExist($key) == false) {
+        $image_data = db_get_row("SELECT l.* FROM ?:images AS i, ?:images_links AS l WHERE image_path LIKE ?l AND (l.image_id = i.image_id OR detailed_id = i.image_id)", $image_name . '.%');
 
         if (empty($image_data)) {
             return true;
@@ -307,25 +243,22 @@ function fn_watermarks_generate_thumbnail_post(&$relative_path, &$lazy)
             $image_data['company_id'] = fn_wt_get_image_company_id($image_data);
         }
 
-        Registry::set($cache_name . '.' . $key, $image_data);
+        Registry::set($key, $image_data);
+    } else {
+        $image_data = Registry::get($key);
     }
 
-    $company_id = null;
     if (fn_allowed_for('ULTIMATE')) {
-        $company_id = Registry::get('runtime.company_id');
-        if ($company_id == null) {
-            $company_id = $image_data['company_id'];
-        }
+        $company_id = $image_data['company_id'];
     }
 
     if (!empty($image_data['object_type']) && fn_is_need_watermark($image_data['object_type'], $image_data['object_type'] == 'detailed', $company_id)) {
 
-        $prefix = WATERMARKS_DIR_NAME;
         if (fn_allowed_for('ULTIMATE') && !Registry::get('runtime.company_id')) {
             $prefix = WATERMARKS_DIR_NAME . $company_id . '/';
         }
 
-        if (!$lazy && !Storage::instance('images')->isExist($prefix . $relative_path)) {
+        if (!Storage::instance('images')->isExist($prefix . $relative_path)) {
             fn_watermark_create($relative_path, $prefix . $relative_path, false, $company_id);
         }
 
@@ -342,9 +275,9 @@ function fn_wt_get_image_company_id($image_data)
         $company_id = db_get_field("SELECT company_id FROM ?:categories WHERE category_id = ?i", $image_data['object_id']);
     } elseif ($image_data['object_type'] == 'product') {
         $company_id = db_get_field("SELECT company_id FROM ?:products WHERE product_id = ?i", $image_data['object_id']);
-    } elseif ($image_data['object_type'] == 'variant_image') {
+    } elseif($image_data['object_type'] == 'variant_image') {
         $company_id = db_get_field("SELECT company_id FROM ?:product_option_variants AS ov LEFT JOIN ?:product_options AS po ON ov.option_id = po.option_id WHERE ov.variant_id = ?i", $image_data['object_id']);
-    } elseif ($image_data['object_type'] == 'product_option') {
+    } elseif($image_data['object_type'] == 'product_option') {
         $company_id = db_get_field("SELECT company_id FROM ?:product_options_inventory AS pi LEFT JOIN ?:products AS p ON pi.product_id = p.product_id WHERE pi.combination_hash = ?i", $image_data['object_id']);
     } else {
         // take any company_id
@@ -395,207 +328,161 @@ function fn_watermarks_attach_absolute_image_paths(&$image_data, &$object_type, 
  */
 function fn_watermarks_delete_image(&$image_id, &$pair_id, &$object_type, &$image_file)
 {
-    $dir = WATERMARKS_DIR_NAME;
-    if (fn_allowed_for('ULTIMATE')) {
-        $dir = 'watermarked/*/';
-    }
-
-    fn_delete_image_thumbnails($image_file, $dir);
+    fn_delete_image_thumbnails(fn_basename($image_file), WATERMARKS_DIR_NAME);
 
     return true;
 }
 
-function fn_watermarks_get_route(&$req, &$result, &$area, &$is_allowed_url)
+function fn_watermark_create($original_image, $watermarked_image, $is_detailed = false, $company_id = null)
 {
-    if (!empty($req['dispatch']) && $req['dispatch'] == 'watermark.create') {
-        $is_allowed_url = true;
-    }
-}
+    $w_settings = fn_get_watermark_settings($company_id);
 
-function fn_watermark_create(
-    $source_filepath,
-    $target_filepath,
-    $is_detailed = false,
-    $company_id = null,
-    $generate_watermark = true
-) {
-    $original_abs_path = Storage::instance('images')->getAbsolutePath($source_filepath);
-
-    list(, , , $original_abs_path) = fn_get_image_size($original_abs_path);
-
-    if (!$generate_watermark) {
-        Storage::instance('images')->put($target_filepath, array(
-            'file' => $original_abs_path,
-            'keep_origins' => true
-        ));
-
-        return true;
-    }
-
-    $settings = fn_get_watermark_settings($company_id);
-
-    if (empty($settings)) {
+    if (empty($w_settings)) {
         return false;
     }
 
-    list($settings['horizontal_position'], $settings['vertical_position']) = explode('_', $settings['position']);
+    $original_abs_path = Storage::instance('images')->getAbsolutePath($original_image);
+    list($w_settings['horizontal_position'], $w_settings['vertical_position']) = explode('_', $w_settings['position']);
+    list($original_width, $original_height, $original_mime_type) = fn_get_image_size($original_abs_path);
 
-    gc_collect_cycles();
+    if (empty($original_width) || empty($original_height)) {
+        return false;
+    }
 
-    /** @var \Imagine\Image\ImagineInterface $imagine */
-    $imagine = Tygh::$app['image'];
+    if (!$image = fn_create_image_from_file($original_abs_path, $original_mime_type)) {
+        return false;
+    }
 
-    try {
-        $image = $imagine->open($original_abs_path);
+    $dest_x = $dest_y = $watermark_width = $watermark_height = 0;
 
-        fn_catch_exception(function() use ($image) {
-            $image->usePalette(new \Imagine\Image\Palette\RGB());
-        });
+    if ($w_settings['type'] == 'G') {
 
-        $filter = ($imagine instanceof \Imagine\Gd\Imagine)
-            ? \Imagine\Image\ImageInterface::FILTER_UNDEFINED
-            : \Imagine\Image\ImageInterface::FILTER_LANCZOS;
-
-        if ($settings['type'] == WATERMARK_TYPE_GRAPHIC) {
-            $watermark_image_file_path = false;
-            if ($is_detailed) {
-                if (!empty($settings['image_pair']['detailed']['absolute_path'])) {
-                    $watermark_image_file_path = $settings['image_pair']['detailed']['absolute_path'];
-                }
-            } elseif (!empty($settings['image_pair']['icon']['absolute_path'])) {
-                $watermark_image_file_path = $settings['image_pair']['icon']['absolute_path'];
+        $watermark_image = false;
+        if ($is_detailed) {
+            if (!empty($w_settings['image_pair']['detailed']['absolute_path'])) {
+                $watermark_image = $w_settings['image_pair']['detailed']['absolute_path'];
             }
-
-            if (!$watermark_image_file_path) {
-                return false;
-            }
-
-            list(, , , $watermark_image_file_path) = fn_get_image_size($watermark_image_file_path);
-
-            $watermark_image = $imagine->open($watermark_image_file_path);
-
-            fn_catch_exception(function() use ($watermark_image) {
-                $watermark_image->usePalette(new \Imagine\Image\Palette\RGB());
-            });
-
-            // Watermark image > canvas image
-            $watermark_size = $watermark_image->getSize()->increase(WATERMARK_PADDING * 2);
-
-            if (!$image->getSize()->contains($watermark_size)) {
-                $ratio = min(array(
-                    $image->getSize()->getWidth() / $watermark_size->getWidth(),
-                    $image->getSize()->getHeight() / $watermark_size->getHeight(),
-                ));
-                $watermark_size = $watermark_size->scale($ratio);
-                $watermark_size = $watermark_size->increase(-WATERMARK_PADDING * 2);
-                $watermark_image->resize($watermark_size, $filter);
-            }
-
-            $watermark_position = ImageHelper::positionLayerOnCanvas(
-                $image->getSize(),
-                $watermark_image->getSize(),
-                $settings['horizontal_position'],
-                $settings['vertical_position'],
-                new \Imagine\Image\Box(WATERMARK_PADDING, WATERMARK_PADDING)
-            );
-
-            $image->paste($watermark_image, $watermark_position);
-
-            unset($watermark_image);
-
-        } elseif ($settings['type'] == WATERMARK_TYPE_TEXT) {
-            $font_path = Registry::get('config.dir.lib') . 'other/fonts/' . $settings['font'] . '.ttf';
-            $font_size = $is_detailed ? $settings['font_size_detailed'] : $settings['font_size_icon'];
-            $font_alpha_blend = null;
-
-            switch ($settings['font_color']) {
-                case 'white':
-                    $font_color = array(255, 255, 255);
-                    break;
-                case 'black':
-                    $font_color = array(0, 0, 0);
-                    break;
-                case 'gray':
-                    $font_color = array(120, 120, 120);
-                    break;
-                case 'clear_gray':
-                default:
-                    $font_color = array(120, 120, 120);
-                    $font_alpha_blend = WATERMARK_FONT_ALPHA;
-                    break;
-            }
-
-            // For example CMYK palette doesn't support alphachannel
-            if (!$image->palette()->supportsAlpha()) {
-                $font_alpha_blend = null;
-            }
-
-            $font = $imagine->font(
-                $font_path,
-                $font_size,
-                $image->palette()->color($font_color, $font_alpha_blend)
-            );
-
-            $text_layer_size = ImageHelper::calculateTextSize(
-                $settings['text'],
-                $font
-            );
-
-            $watermark_position = ImageHelper::positionLayerOnCanvas(
-                $image->getSize(),
-                $text_layer_size,
-                $settings['horizontal_position'],
-                $settings['vertical_position'],
-                new \Imagine\Image\Box(WATERMARK_PADDING, WATERMARK_PADDING)
-            );
-
-            $image->draw()->text($settings['text'], $font, $watermark_position);
-
-            unset($font);
+        } elseif (!empty($w_settings['image_pair']['icon']['absolute_path'])) {
+            $watermark_image = $w_settings['image_pair']['icon']['absolute_path'];
         }
 
-        $settings = Settings::instance()->getValues('Thumbnails');
-        $options = array(
-            'jpeg_quality' => $settings['jpeg_quality'],
-            'png_compression_level' => 9,
-            'filter' => $filter
-        );
+        list($watermark_width, $watermark_height, $watermark_mime_type) = fn_get_image_size($watermark_image);
 
-        if ($original_file_type = fn_get_image_extension(fn_get_mime_content_type($original_abs_path, false))) {
-            $format = $original_file_type;
+        if (empty($watermark_image) || !$watermark = fn_create_image_from_file($watermark_image, $watermark_mime_type)) {
+            return false;
+        }
+
+    } else {
+        $font_path = Registry::get('config.dir.lib') . 'other/fonts/' . $w_settings['font'] . '.ttf';
+
+        if (!is_file($font_path) || empty($w_settings['text'])) {
+            return false;
+        }
+
+        if ($is_detailed) {
+            $font_size = $w_settings['font_size_detailed'];
         } else {
-            $format = 'png';
+            $font_size = $w_settings['font_size_icon'];
         }
 
-        Storage::instance('images')->put($target_filepath, array(
-            'contents' => $image->get($format, $options)
-        ));
-
-        unset($image);
-
-        gc_collect_cycles();
-
-        return true;
-    } catch (\Exception $e) {
-        $error_message = __('error_unable_to_create_thumbnail', array(
-            '[error]' => $e->getMessage(),
-            '[file]' => $source_filepath
-        ));
-
-        if (AREA == 'A') {
-            fn_set_notification('E', __('error'), $error_message);
+        if (empty($font_size)) {
+            return false;
         }
 
-        gc_collect_cycles();
+        $ttfbbox = imagettfbbox($font_size, 0, $font_path, $w_settings['text']);
+        $watermark_height = abs($ttfbbox[7]);
+        $watermark_width = abs($ttfbbox[2]);
+    }
 
+    if (empty($watermark_width) || empty($watermark_height)) {
         return false;
     }
+
+    // Paddings
+    $delta_x = 3;
+    $delta_y = 3;
+
+    $new_wt_width = $watermark_width;
+    $new_wt_height = $watermark_height;
+
+    if ($new_wt_width + $delta_x > $original_width) {
+        $new_wt_height = $new_wt_height * ($original_width - $delta_x)/ $new_wt_width;
+        $new_wt_width = $original_width - $delta_x;
+    }
+
+    if ($new_wt_height > $original_height) {
+        $new_wt_width = $new_wt_width * ($original_height - $delta_y)/ $new_wt_height;
+        $new_wt_height = $original_height - $delta_y;
+    }
+
+    if ($w_settings['vertical_position'] == 'top') {
+        $dest_y = $delta_y;
+    } elseif ($w_settings['vertical_position'] == 'center') {
+        $dest_y = (int) (($original_height - $new_wt_height)/ 2);
+    } elseif ($w_settings['vertical_position'] == 'bottom') {
+        $dest_y = $original_height - $new_wt_height - $delta_y;
+    }
+
+    if ($w_settings['horizontal_position'] == 'left') {
+        $dest_x =  $delta_x;
+    } elseif ($w_settings['horizontal_position'] == 'center') {
+        $dest_x = (int) (($original_width - $new_wt_width)/ 2);
+    } elseif ($w_settings['horizontal_position'] == 'right') {
+        $dest_x = $original_width - $new_wt_width - $delta_x;
+    }
+
+    if ($dest_x < 1) {
+        $dest_x = 1;
+    }
+
+    if ($dest_y < 1) {
+        $dest_y = 1;
+    }
+
+    if ($w_settings['type'] == 'G') {
+        imagecolortransparent($watermark, imagecolorat($watermark, 0, 0));
+        if (function_exists('imageantialias')) {
+            imageantialias($image, true);
+        }
+        $result = imagecopyresampled($image, $watermark, $dest_x, $dest_y, 0, 0, $new_wt_width, $new_wt_height, $watermark_width, $watermark_height);
+        imagedestroy($watermark);
+    } else {
+        if ($w_settings['font_color'] == 'white') {
+            $font_color = imagecolorallocate($image, 255, 255, 255);
+        } elseif ($w_settings['font_color'] == 'black') {
+            $font_color = imagecolorallocate($image, 0, 0, 0);
+        } elseif ($w_settings['font_color'] == 'gray') {
+            $font_color = imagecolorallocate($image, 120, 120, 120);
+        } elseif ($w_settings['font_color'] == 'clear_gray') {
+            $font_color = imagecolorallocatealpha($image, 120, 120, 120, WATERMARK_FONT_ALPHA);
+        }
+
+        $result = imagettftext($image, $font_size, 0, $dest_x, $dest_y + $font_size, $font_color, $font_path, $w_settings['text']);
+    }
+
+    if ($result === false) {
+        return false;
+    }
+
+    $ext = fn_get_image_extension($original_mime_type);
+
+    ob_start();
+    if ($ext == 'gif') {
+        $result = imagegif($image);
+    } elseif ($ext == 'jpg') {
+        $result = imagejpeg($image, null, 85);
+    } elseif ($ext == 'png') {
+        $result = imagepng($image, null, 8);
+    }
+    $content = ob_get_clean();
+    imagedestroy($image);
+    Storage::instance('images')->put($watermarked_image, array(
+        'contents' => $content
+    ));
+
+    return $result;
 }
 
-/**
- * @deprecated
- * @since 4.3.1
- */
 function fn_create_image_from_file($path, $mime_type)
 {
     $ext = fn_get_image_extension($mime_type);
@@ -634,7 +521,7 @@ function fn_watermarks_images_access_info()
                 "RewriteEngine on\n" .
                 "RewriteCond %{REQUEST_URI} \/images\/(product|category|detailed|thumbnails)\/*\n" .
                 "RewriteCond %{REQUEST_FILENAME} -f\n" .
-                "RewriteRule .(gif|jpeg|jpg|png)$ " . DIR_ROOT . fn_url('watermark.create', 'C', 'rel') . " [NC]\n" .
+                "RewriteRule .(gif|jpeg|jpg|png)$ " . DIR_ROOT . "/" . fn_url('watermark.create', 'C', 'rel') . " [NC]\n" .
                 "</IfModule>\n" .
                 "# /Rewrite watermarks rules";
         } else {
@@ -654,7 +541,7 @@ function fn_watermarks_images_access_info()
             "<IfModule mod_rewrite.c>\n" .
             "RewriteEngine on\n" .
             "RewriteCond %{REQUEST_FILENAME} !-f\n" .
-            "RewriteRule .(gif|jpeg|jpg|png)$ " . DIR_ROOT . fn_url('watermark.create', 'C', 'rel') . " [NC]\n" .
+            "RewriteRule .(gif|jpeg|jpg|png)$ " . DIR_ROOT . "/" . fn_url('watermark.create', 'C', 'rel') . " [NC]\n" .
             "</IfModule>\n" .
             "# /Generate watermarks rules";
         $wt_instr = nl2br(htmlentities($wt_instr));

@@ -16,17 +16,13 @@ use Tygh\Registry;
 
 include_once(Registry::get('config.dir.schemas') . 'exim/qty_discounts.functions.php');
 
-$schema = array(
+$scheme = array(
     'section' => 'products',
     'name' => __('qty_discounts'),
     'pattern_id' => 'qty_discounts',
     'key' => array('product_id'),
     'order' => 3,
     'table' => 'products',
-    'permissions' => array(
-        'import' => 'manage_catalog',
-        'export' => 'view_catalog',
-    ),
     'references' => array(
         'product_prices' => array(
             'reference_fields' => array('product_id' => '#key'),
@@ -68,9 +64,8 @@ $schema = array(
             'table' => 'product_prices',
             'db_field' => 'price',
             'required' => true,
-            'convert_put' => array('fn_exim_import_price', '#this', '@price_dec_sign_delimiter'),
+            'convert_put' => array('fn_exim_import_price', '@price_dec_sign_delimiter'),
             'process_get' => array('fn_exim_export_price', '#this', '@price_dec_sign_delimiter'),
-            'process_put' => array('fn_qty_update_prices', '#key', '#row'),
         ),
         'Percentage discount' => array(
             'table' => 'product_prices',
@@ -88,7 +83,7 @@ $schema = array(
 );
 
 if (fn_allowed_for('ULTIMATE')) {
-    $schema['import_process_data'] = array(
+    $scheme['import_process_data'] = array(
         'check_product_company_id' => array(
             'function' => 'fn_import_check_product_company_id',
             'args' => array('$primary_object_id', '$object', '$pattern', '$options', '$processed_data', '$processing_groups', '$skip_record'),
@@ -97,17 +92,17 @@ if (fn_allowed_for('ULTIMATE')) {
     );
 }
 
-if (!fn_allowed_for('ULTIMATE:FREE')) {
-    $schema['export_fields']['User group'] = array(
+if (!fn_allowed_for('ULTIMATE"FREE')) {
+    $scheme['export_fields']['User group'] = array(
         'db_field' => 'usergroup_id',
         'table' => 'product_prices',
         'key_component' => true,
         'process_get' => array('fn_exim_get_usergroup', '#this', '#lang_code'),
-        'convert_put' => array('fn_exim_put_usergroup', '#this', '#lang_code'),
+        'process_put' => array('fn_exim_put_usergroup', '#this', '#lang_code'),
         'return_result' => true,
         'required' => true,
         'multilang' => true
     );
 }
 
-return $schema;
+return $scheme;

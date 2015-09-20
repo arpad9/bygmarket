@@ -16,7 +16,15 @@ namespace Tygh\Backend\Database;
 
 class Mysqli implements IBackend
 {
-    private $conn;
+    private $_conn;
+    private $_reconnects = 0;
+    private $_max_reconnects = 3;
+    private $_skip_error_codes = array (
+        1091, // column exists/does not exist during alter table
+        1176, // key does not exist during alter table
+        1050, // table already exist
+        1060  // column exists
+    );
 
     /**
      * Connects to database server
@@ -28,19 +36,16 @@ class Mysqli implements IBackend
      */
     public function connect($user, $passwd, $host, $database)
     {
-        if (!$host || !$user) {
+        if (empty($host) || empty($user)) {
             return false;
         }
 
         @list($host, $port) = explode(':', $host);
 
-        $this->conn = @ new \mysqli($host, $user, $passwd, $database, $port);
+        $this->_reconnects = 0;
+        $this->_conn = @ new \mysqli($host, $user, $passwd, $database, $port);
 
-        if (!empty($this->conn) && empty($this->conn->connect_errno)) {
-            return true;
-        }
-
-        return false;
+        return !empty($this->_conn) && empty($this->_conn->connect_errno);
     }
 
     /**
@@ -48,8 +53,8 @@ class Mysqli implements IBackend
      */
     public function disconnect()
     {
-        $this->conn->close();
-        $this->conn = null;
+        $this->_conn->close();
+        $this->_conn = null;
     }
 
     /**
@@ -59,7 +64,7 @@ class Mysqli implements IBackend
      */
     public function changeDb($database)
     {
-        if ($this->conn->select_db($database)) {
+        if ($this->_conn->select_db($database)) {
             return true;
         }
 
@@ -73,7 +78,25 @@ class Mysqli implements IBackend
      */
     public function query($query)
     {
-        return $this->conn->query($query);
+        $result = $this->_conn->query($query);
+
+        if (empty($result)) {
+            // Lost connection, try to reconnect
+            if (($this->errorCode() == 2013 || $this->errorCode() == 2006) && $this->_reconnects < $this->_max_reconnects) {
+                $this->disconnect();
+                $this->_connect(Registry::get('config.db_host'), Registry::get('config.db_user'), Registry::get('config.db_password'), Registry::get('config.db_name'));
+                $this->_reconnects++;
+                $result = $this->query($query);
+
+            // Assume that the table is broken
+            // Try to repair
+            } elseif (preg_match("/'(\S+)\.(MYI|MYD)/", $this->errorCode(), $matches)) {
+                $this->_conn->query("REPAIR TABLE $matches[1]");
+                $result = $this->query($query);
+            }
+        }
+
+        return $result;
     }
 
     /**
@@ -107,7 +130,7 @@ class Mysqli implements IBackend
      */
     public function affectedRows($result)
     {
-        return $this->conn->affected_rows;
+        return $this->_conn->affected_rows;
     }
 
     /**
@@ -116,7 +139,7 @@ class Mysqli implements IBackend
      */
     public function insertId()
     {
-        return $this->conn->insert_id;
+        return $this->_conn->insert_id;
     }
 
     /**
@@ -125,7 +148,9 @@ class Mysqli implements IBackend
      */
     public function errorCode()
     {
-        return $this->conn->errno;
+        $errno = $this->_conn->errno;
+
+        return in_array($errno, $this->_skip_error_codes) ? 0 : $errno;
     }
 
     /**
@@ -134,7 +159,7 @@ class Mysqli implements IBackend
      */
     public function error()
     {
-        return $this->conn->error;
+        return $this->_conn->error;
     }
 
     /**
@@ -144,18 +169,6 @@ class Mysqli implements IBackend
      */
     public function escape($value)
     {
-        return $this->conn->real_escape_string($value);
-    }
-
-    /**
-     * Executes Command after when connecting to MySQL server
-     * @param string $command Command to execute
-     */
-    public function initCommand($command)
-    {
-        if (!empty($command)) {
-            $this->query($command);
-            $this->conn->options(MYSQLI_INIT_COMMAND, $command);
-        }
+        return $this->_conn->real_escape_string($value);
     }
 }

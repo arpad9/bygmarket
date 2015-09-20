@@ -60,38 +60,53 @@ if (defined('PAYMENT_NOTIFICATION')) {
     $return_url = fn_url("payment_notification.notify?payment=p21_simple_api&order_id=$order_id", AREA, 'current');
     $birth_date = date("m/d/Y", fn_parse_date($order_info['payment_info']['date_of_birth']));
 
-    $post_data = array(
-        'mm_userid' => $processor_data['processor_params']['merchant_id'],
-        'mm_pwd' => $processor_data['processor_params']['password'],
-        'mm_ip_address' => $processor_data['processor_params']['ip_address'],
-        'mm_company' => $processor_data['processor_params']['company'],
-        'mm_redirecturl' => $return_url,
-        'mm_errorurl' => $return_url,
-        'mm_updatedby' => 'xxxx',
-        'mm_merchantcustomerid' => $order_info['user_id'],
-        'mm_merchanttransid' => $_order_id,
-        'mm_firstname' => $order_info['b_firstname'],
-        'mm_lastname' => $order_info['b_lastname'],
-        'mm_dateofbirth' => $birth_date,
-        'mm_address' => $order_info['b_address'],
-        'mm_address2' => $order_info['b_address_2'],
-        'mm_last4ssn' => $order_info['payment_info']['last4ssn'],
-        'mm_city' => $order_info['b_city'],
-        'mm_state' => $order_info['b_state'],
-        'mm_zipcode' => $order_info['b_zipcode'],
-        'mm_country' => $order_info['b_country'],
-        'mm_phone' => $order_info['payment_info']['phone'],
-        'mm_email' => $order_info['email'],
-        'mm_amount' => $order_info['total'],
-        'mm_routingcode' => $order_info['payment_info']['routing_code'],
-        'mm_accountnr' => $order_info['payment_info']['account_number'],
-        'mm_checknr' => $order_info['payment_info']['check_number'],
-        'mm_passportnr' => $order_info['payment_info']['passport_number'],
-        'mm_driverlicensenr' => $order_info['payment_info']['drlicense_number'],
-        'mm_agree' => $order_info['payment_info']['mm_agree'],
-        'mm_TOC' => '1'        
-    );
+echo <<<EOT
+<form action="https://www.payment21.com/interfaces/mmltdonline/p21paybycheck/default.aspx" method="POST" name="process">
+    <input type="hidden" name="mm_userid" value="{$processor_data['processor_params']['merchant_id']}" />
+    <input type="hidden" name="mm_pwd" value="{$processor_data['processor_params']['password']}" />
+    <input type="hidden" name="mm_ip_address" value="{$processor_data['processor_params']['ip_address']}" />
+    <input type="hidden" name="mm_company" value="{$processor_data['processor_params']['company']}" />
+    <input type="hidden" name="mm_redirecturl" value="{$return_url}" />
+    <input type="hidden" name="mm_errorurl" value="{$return_url}" />
+    <input type="hidden" name="mm_updatedby" value="xxxx" />
+    <input type="hidden" name="mm_merchantcustomerid" value="{$order_info['user_id']}" />
+    <input type="hidden" name="mm_merchanttransid" value="{$_order_id}" />
+    <input type="hidden" name="mm_firstname" value="{$order_info['b_firstname']}" />
+    <input type="hidden" name="mm_lastname" value="{$order_info['b_lastname']}" />
+    <input type="hidden" name="mm_dateofbirth" value="{$birth_date}" />
+    <input type="hidden" name="mm_address" value="{$order_info['b_address']}" />
+    <input type="hidden" name="mm_address2" value="{$order_info['b_address_2']}" />
+    <input type="hidden" name="mm_last4ssn" value="{$order_info['payment_info']['last4ssn']}" />
+    <input type="hidden" name="mm_city" value="{$order_info['b_city']}" />
+    <input type="hidden" name="mm_state" value="{$order_info['b_state']}" />
+    <input type="hidden" name="mm_zipcode" value="{$order_info['b_zipcode']}" />
+    <input type="hidden" name="mm_country" value="{$order_info['b_country']}" />
+    <input type="hidden" name="mm_phone" value="{$order_info['payment_info']['phone']}" />
+    <input type="hidden" name="mm_email" value="{$order_info['email']}" />
+    <input type="hidden" name="mm_amount" value="{$order_info['total']}" />
+    <input type="hidden" name="mm_routingcode" value="{$order_info['payment_info']['routing_code']}" />
+    <input type="hidden" name="mm_accountnr" value="{$order_info['payment_info']['account_number']}" />
+    <input type="hidden" name="mm_checknr" value="{$order_info['payment_info']['check_number']}" />
+    <input type="hidden" name="mm_passportnr" value="{$order_info['payment_info']['passport_number']}" />
+    <input type="hidden" name="mm_driverlicensenr" value="{$order_info['payment_info']['drlicense_number']}" />
+    <input type="hidden" name="mm_agree" value="{$order_info['payment_info']['mm_agree']}" />
+    <input type="hidden" name="mm_TOC" value="1" />
+EOT;
 
-    fn_create_payment_form('https://www.payment21.com/interfaces/mmltdonline/p21paybycheck/default.aspx', $post_data, 'Payment21');
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'Payment21 server'
+));
+echo <<<EOT
+    </form>
+    <p><div align=center>{$msg}</div></p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
+die();
 }
 exit;

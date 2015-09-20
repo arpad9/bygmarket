@@ -7,7 +7,6 @@ function BlockManager_Class()
     var _init_params = {};
     var _self = this;
     var $ = Tygh.$;
-    var _ = Tygh;
 
     var _params = {
         draggable_width: 250,
@@ -91,7 +90,7 @@ function BlockManager_Class()
     var _executeAction = function(action)
     {
         // Init local variables
-        var container_title, container, prop_container, href, max_width, container_id;
+        var container_title, contanier, prop_container, href, max_width, container_id;
 
         // Determine element (container, grid, block)
         var element_type = _determineElementType().type;
@@ -122,7 +121,7 @@ function BlockManager_Class()
                             container_title = Tygh.tr('editing_block');
                         }
                         
-                        container = $('<div id="' + prop_container + '" title="' + _escape(container_title) + '"></div>').appendTo('body');
+                        contanier = $('<div id="' + prop_container + '" title="' + _escape(container_title) + '"></div>').appendTo('body');
                     }
 
                 } else if (element_type == 'grid') {
@@ -139,7 +138,7 @@ function BlockManager_Class()
                     if ($('#' + prop_container).length == 0) {
                         // Create properties container
 
-                        container = $('<div id="' + prop_container + '" title="' + _escape(Tygh.tr('editing_grid')) + '"></div>').appendTo('body');
+                        contanier = $('<div id="' + prop_container + '" title="' + _escape(Tygh.tr('editing_grid')) + '"></div>').appendTo('body');
                     }
 
                 } else if (element_type == 'container') {
@@ -153,7 +152,7 @@ function BlockManager_Class()
                     if ($('#' + prop_container).length == 0) {
                         // Create properties container
 
-                        container = $('<div id="' + prop_container + '" title="' + _escape(Tygh.tr('editing_container')) + ': ' + container_title + '"></div>').appendTo('body');
+                        contanier = $('<div id="' + prop_container + '" title="' + _escape(Tygh.tr('editing_container')) + ': ' + container_title + '"></div>').appendTo('body');
                     }
                 }
 
@@ -190,7 +189,7 @@ function BlockManager_Class()
                 if ($('#' + prop_container).length == 0) {
                     // Create properties container
 
-                    container = $('<div id="' + prop_container + '" title="' + _escape(Tygh.tr('adding_grid')) + '"></div>').appendTo('body');
+                    contanier = $('<div id="' + prop_container + '" title="' + _escape(Tygh.tr('adding_grid')) + '"></div>').appendTo('body');
                 }
                 
                 $('#' + prop_container).ceDialog('open', {href: fn_url(href)});
@@ -201,12 +200,12 @@ function BlockManager_Class()
                 href += '&grid_id=' + _hover_element.prop('id').replace('grid_', '');
                 href += '&selected_location=' + (typeof(selected_location) == 'undefined' ? 0 : selected_location);
 
-                container = $('#block_selection');
-                if (!container.length) {
-                    container = $('<div id="block_selection" title="' + _escape(Tygh.tr('adding_block_to_grid')) + '"></div>').appendTo('body');
+                contanier = $('#block_selection');
+                if (!contanier.length) {
+                    contanier = $('<div id="block_selection" title="' + _escape(Tygh.tr('adding_block_to_grid')) + '"></div>').appendTo('body');
                 }
 
-                container.ceDialog('open', {href: fn_url(href)});
+                contanier.ceDialog('open', {href: fn_url(href)});
                 break;
 
             case 'delete':
@@ -235,11 +234,7 @@ function BlockManager_Class()
             case 'manage-blocks':
                 href = 'block_manager.block_selection?manage=Y';
 
-                container = $('#block_managing');
-
-                if (!container.length) {
-                    container = $('<div id="block_managing" title="' + _escape(Tygh.tr('manage_blocks')) + '"></div>').appendTo('body');
-                }
+                contanier = $('<div id="block_managing" title="' + _escape(Tygh.tr('manage_blocks')) + '"></div>').appendTo('body');
 
                 $('#block_managing').ceDialog('open', {href: fn_url(href)});
                 break;
@@ -275,7 +270,7 @@ function BlockManager_Class()
                     $.ceAjax('request', fn_url('block_manager.update_status'), {
                         data: data,
                         callback: _parseResponse,
-                        method: 'post'
+                        method: 'get'
                     });
 
                     if (status == 'A') {
@@ -302,7 +297,7 @@ function BlockManager_Class()
                     $.ceAjax('request', fn_url('block_manager.update_status'), {
                         data: data,
                         callback: _parseResponse,
-                        method: 'post'
+                        method: 'get'
                     });
 
                     if (status == 'A') {
@@ -328,7 +323,7 @@ function BlockManager_Class()
                     $.ceAjax('request', fn_url('block_manager.update_status'), {
                         data: data,
                         callback: _parseResponse,
-                        method: 'post'
+                        method: 'get'
                     });
 
                     if (status == 'A') {
@@ -377,9 +372,6 @@ function BlockManager_Class()
         this.inited = true;
         $(containers).disableSelection();
         
-        params.connectWith = '.cm-sortable-grid';
-        params.tolerance = 'pointer';
-
         params.update = function(event, ui)
         {
             if (ui.sender == null) {
@@ -423,6 +415,7 @@ function BlockManager_Class()
         {
             ui.item.addClass('ui-draggable-block');
 
+            ui.item.css('max-width', _params.draggable_width + 'px');
             ui.item.css('width', _params.draggable_width + 'px');
             ui.item.find('.block-header-title').css('width','auto');
 
@@ -505,7 +498,7 @@ function BlockManager_Class()
                 
                 if ($('#' + prop_container).length == 0) {
                     // Create properties container
-                    var container = $('<div id="' + prop_container + '"></div>').appendTo('body');
+                    var contanier = $('<div id="' + prop_container + '"></div>').appendTo('body');
                 }
 
                 $('#' + prop_container).ceDialog('open', {href: fn_url(href), title: Tygh.tr('add_block') + ': ' + $(this).find('strong').text()});
@@ -527,39 +520,14 @@ function BlockManager_Class()
                     
                     if ($('#' + prop_container).length == 0) {
                         // Create properties container
-                        var container = $('<div id="' + prop_container + '"></div>').appendTo('body');
+                        var contanier = $('<div id="' + prop_container + '"></div>').appendTo('body');
                     }
 
                     $('#' + prop_container).ceDialog('open', {href: fn_url(href), title: Tygh.tr('editing_block') + ': ' + $(this).find('strong').text()});
 
                 } else {
-                    var elm = $('<div class="block base-block" data-block-id="' + block_id + '" id="block_' + block_id + '" title="' + block_title + '">' + $('.base-block').html() + '</div>');
+                    var elm = $('<div class="block base-block" id="block_' + block_id + '" title="' + block_title + '">' + $('.base-block').html() + '</div>');
                     $('.block-header-title', elm).text(block_title);
-                    $('.block-header-icon', elm).addClass('bmicon-' + block_type.replace('_', '-'));
-                    $('.block-header', elm).prop('title', block_title);
-
-                    // Check if the same block already exists in the grid
-                    var blocks = _hover_element.find('.' + _init_params.block_class);
-                    var exists = false;
-
-                    blocks.each(function(){
-                        if ($(this).data('block-id') == block_id) {
-                            exists = true;
-
-                            return false;
-                        }
-                    });
-
-                    if (exists) {
-                        $.ceNotification('show', {
-                            type: 'E',
-                            title: _.tr('error'),
-                            message: _.tr('block_already_exists_in_grid')
-                        });
-
-                        return false;
-                    }
-
 
                     if (_hover_element.find('.' + _init_params.block_class + ':last').length) {
                         elm.insertAfter(_hover_element.find('>.' + _init_params.block_class + ':last'));
@@ -597,9 +565,9 @@ function BlockManager_Class()
         _self.calculateLevels();
 
         // Correct control menues
-        _self.checkMenuItems($('.' + params.grid_class, params.parent));
+        _self.checkMenuItems($('.' + params.grid_class));
 
-        $('.' + _init_params.block_class, _init_params.parent).each(function(){
+        $('.' + _init_params.block_class).each(function(){
             _self.setBlockHeaderWidth($(this));
         });
 
@@ -610,83 +578,79 @@ function BlockManager_Class()
         
     };
     
-    this.recalculateClearLines = function(parent)
-    {
-        // Re-create "clearfix" divs to make correct grid lines
-        var clears_data = {
-            containers: {},
-            grids: {}
-        };
-
-        // Remove all "clear" div's
-        $('.' + _init_params.container_class + ' div.clearfix', parent || _init_params.parent).remove();
-
-        // We need only first element of each grid blocks
-        $('.' + _init_params.grid_class + ':first-child', parent || _init_params.parent).each(function(){
-            var jelm = $(this);
-            var parent_type = _determineElementType(jelm.parent());
-
-            if (parent_type.type == 'container') {
-                var max_width = parseInt(jelm.parent().prop('class').match(/container_([0-9]+)/i)[1]);
-            } else {
-                var max_width = parseInt(jelm.parent().prop('class').match(/grid_([0-9]+)/i)[1]);
-            }
-
-            var current_width = 0;
-            var last_grid = {};
-
-            jelm.parent().find('>.' + _init_params.grid_class).each(function(){
-                var grid = $(this);
-                var grid_width = parseInt(grid.prop('class').match(/grid_([0-9]+)/i)[1]);
-                var grid_prefix = grid.prop('class').match(/prefix_([0-9]+)/i);
-                var grid_suffix = grid.prop('class').match(/suffix_([0-9]+)/i);
-                
-                grid_prefix = (grid_prefix == null) ? 0 : parseInt(grid_prefix[1]);
-                grid_suffix = (grid_suffix == null) ? 0 : parseInt(grid_suffix[1]);
-
-                grid_width += grid_prefix + grid_suffix;
-                
-                if (current_width + grid_width > max_width) {
-                    if (grid.prev().length > 0) {
-                        var clear_id = grid.prev().prop('id').replace('grid_', '');
-
-                        if (clear_id != '') {
-                            clears_data.grids[clear_id] = true;
-                        }
-                        $('<div class="clearfix"></div>').insertBefore(grid);
-                    }
-
-                    current_width = grid_width;
-
-                } else {
-                    current_width += grid_width;
-                }
-
-                last_grid = grid;
-            });
-
-            if (last_grid.length > 0) {
-                var clear_id = last_grid.prop('id').replace('grid_', '');
-                if (typeof(clears_data.grids[clear_id]) == 'undefined') {
-                    clears_data.grids[clear_id] = true;
-                    $('<div class="clearfix"></div>').insertAfter(last_grid);
-                }
-            }
-            
-        });
-
-        $('.' + _init_params.container_class, _init_params.parent).each(function(){
-            var container_id = $(this).prop('id').replace('container_', '');
-            clears_data.containers[container_id] = true;
-        });
-
-        return clears_data;
-    };
-
     this.sendRequest = function(mode, action, data)
     {
         if (mode == 'grid') {
-            data.clears_data = _self.recalculateClearLines();
+            // Re-create "clearfix" divs to make correct grid lines
+            var clears_data = {
+                containers: {},
+                grids: {}
+            };
+
+            // Remove all "clear" div's
+            $('.' + _init_params.container_class + ' > div.clearfix').remove();
+
+            // We need only first element of each grid blocks
+            $('.' + _init_params.grid_class + ':first-child').each(function(){
+                var jelm = $(this);
+                var parent_type = _determineElementType(jelm.parent());
+
+                if (parent_type.type == 'container') {
+                    var max_width = parseInt(jelm.parent().prop('class').match(/container_([0-9]+)/i)[1]);
+                } else {
+                    var max_width = parseInt(jelm.parent().prop('class').match(/grid_([0-9]+)/i)[1]);
+                }
+
+                var current_width = 0;
+                var last_grid = {};
+
+                jelm.parent().find('>.' + _init_params.grid_class).each(function(){
+                    var grid = $(this);
+                    var grid_width = parseInt(grid.prop('class').match(/grid_([0-9]+)/i)[1]);
+                    var grid_prefix = grid.prop('class').match(/prefix_([0-9]+)/i);
+                    var grid_suffix = grid.prop('class').match(/suffix_([0-9]+)/i);
+                    
+                    grid_prefix = (grid_prefix == null) ? 0 : parseInt(grid_prefix[1]);
+                    grid_suffix = (grid_suffix == null) ? 0 : parseInt(grid_suffix[1]);
+
+                    grid_width += grid_prefix + grid_suffix;
+                    
+                    if (current_width + grid_width > max_width) {
+                        if (grid.prev().length > 0) {
+                            var clear_id = grid.prev().prop('id').replace('grid_', '');
+
+                            if (clear_id != '') {
+                                clears_data.grids[clear_id] = true;
+                            }
+                            $('<div class="clearfix"></div>').insertBefore(grid);
+                        }
+
+                        current_width = grid_width;
+
+                    } else {
+                        current_width += grid_width;
+                    }
+
+                    last_grid = grid;
+                });
+
+                if (last_grid.length > 0) {
+                    var clear_id = last_grid.prop('id').replace('grid_', '');
+                    if (typeof(clears_data.grids[clear_id]) == 'undefined') {
+                        clears_data.grids[clear_id] = true;
+                        $('<div class="clearfix"></div>').insertAfter(last_grid);
+                    }
+                }
+                
+            });
+
+            $('.' + _init_params.container_class).each(function(){
+                var container_id = $(this).prop('id').replace('container_', '');
+                clears_data.containers[container_id] = true;
+            });
+
+            //$('<div class="clear"></div>').insertBefore($('.grid-control-menu, .block-control-menu'));
+            data.clears_data = clears_data;
         }
         
         var controller = typeof(data['controller']) == 'undefined' ? 'block_manager.' : data['controller'] + '.';
@@ -701,13 +665,13 @@ function BlockManager_Class()
     this.calculateLevels = function()
     {
         // Re-init sortable zones
-        $(_init_params.containers + ',.cm-sortable-container').each(function(){
+        $(_init_params.containers).each(function(){
             if ($(this).hasClass('ui-sortable')) { //is inited
                 $(this).sortable('destroy');
             }
         });
 
-        $('.' + _init_params.grid_class, _init_params.parent).each(function(){
+        $('.' + _init_params.grid_class).each(function(){
             var jelm = $(this);
             var level = _self.getLevel($(this));
 
@@ -721,7 +685,7 @@ function BlockManager_Class()
             }
         });
 
-        $('.' + _init_params.container_class + ',.' + _init_params.grid_class, _init_params.parent).each(function(){
+        $('.' + _init_params.container_class + ',.' + _init_params.grid_class).each(function(){
             var jelm = $(this);
 
             _self.calculateAlphaOmega(jelm);
@@ -730,57 +694,6 @@ function BlockManager_Class()
         // Re-init droppable zone
         _init_params.cursorAt= { left: _params.draggable_cursor_pos };
         $('.cm-sortable-grid').sortable(_init_params);
-
-        if (_init_params.grid_items !== null) {
-            $('.' + _init_params.container_class + ',' + _init_params.grid_items + ':not(.cm-sortable-grid)').sortable({
-                items: '>' + _init_params.grid_items,
-                handle: ".bm-control-menu",
-                tolerance: 'pointer',
-                update: function(event, ui) {
-                    var grid = $(ui.item);
-                    var parent_container = $(ui.item).parent();
-                    var grid_id = grid.prop('id').replace('grid_', '');
-
-                    _self.calculateAlphaOmega(parent_container);
-
-                    var grids_snapping = BlockManager.snapGrid({grid_id: grid_id});
-                    _self.sendRequest('grid', 'update', grids_snapping);
-                },
-                start: function(event, ui) {
-                    var grid = $(ui.item);
-
-                    if (grid.hasClass('alpha')) {
-                        grid.data('alpha', true);
-                    }
-                    if (grid.hasClass('omega')) {
-                        grid.data('omega', true);
-                    }
-                    grid.removeClass('alpha').removeClass('omega');
-                    $('div.clearfix', grid.parent()).remove();
-                },
-                stop: function(event, ui) {
-                    var grid = $(ui.item);
-
-                    if (grid.data('alpha')) {
-                        grid.addClass('alpha');
-                        grid.data('alpha', false);
-                    }
-                    if (grid.data('omega')) {
-                        grid.addClass('omega');
-                        grid.data('omega', false);
-                    }
-                    
-                    var parent_container = grid.parent();
-                    _self.calculateAlphaOmega(parent_container);
-                },
-                change: function(event, ui) {
-                    var grid = $(ui.item);
-                    var parent_container = grid.parent();
-
-                    _self.calculateAlphaOmega(parent_container);
-                }
-            });
-        }
     };
     
     this.getLevel = function(elm)
@@ -808,14 +721,9 @@ function BlockManager_Class()
         var index = 1;
         var alpha = false;
         var omega = false;
-        var prev_elm = null;
 
         items.each(function(){
             var jelm = $(this);
-
-            if (jelm.hasClass('ui-sortable-helper')) {
-                return jelm;
-            }
 
             var elm_width = parseInt(jelm.prop('class').match(/grid_([0-9]+)/i)[1]);
             var elm_prefix = jelm.prop('class').match(/prefix_([0-9]+)/i);
@@ -842,10 +750,6 @@ function BlockManager_Class()
             } else if ((line_width + elm_width) > width) {
                 jelm.addClass('alpha');
 
-                if (prev_elm != null) {
-                    prev_elm.addClass('omega');
-                }
-
                 if (elm_width != width) {
                     alpha = true;
                 } else {
@@ -863,7 +767,6 @@ function BlockManager_Class()
             }
 
             index++;
-            prev_elm = jelm;
         });
     };
     
@@ -1141,7 +1044,6 @@ function BlockManager_Class()
             
             snapping[id].grid_data.alpha = _self.getPropertyValue('alpha', _grid);
             snapping[id].grid_data.omega = _self.getPropertyValue('omega', _grid);
-            snapping[id].grid_data.order = id;
         });
 
         return {snappings: snapping};
@@ -1171,11 +1073,11 @@ function BlockManager_Class()
         if (width >= 1 && width <= 2) {
             $('> .bm-full-menu', element).hide();
             $('> .bm-compact-menu', element).show();
-            $('> .grid-control-menu > .grid-control-title', element).hide();
+            $('> .grid-control-title', element).hide();
         } else if (width > 0) {
             $('> .bm-full-menu', element).show();
             $('> .bm-compact-menu', element).hide();
-            $('> .grid-control-menu > .grid-control-title', element).show();
+            $('> .grid-control-title', element).show();
         }
         
         return true;
@@ -1224,7 +1126,6 @@ function BlockManager_Class()
     $.ceEvent('on', 'ce.formpost_grid_update_form', function(frm, c_elm) {
         var form_data = frm.serializeObject();
         form_data = BlockManager.saveProperties('grid', form_data);
-        
         var grids_snapping = BlockManager.snapGrid(form_data);
 
         BlockManager.sendRequest('grid', 'update', grids_snapping);

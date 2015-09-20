@@ -1,4 +1,5 @@
-<p>{__("text_proxypay_notice", ["[validation_url]" => "current"|fn_payment_url:"proxypay3_validation.php", "[confirmation_url]" => "current"|fn_payment_url:"proxypay3_confirmation.php", "[ok_url]" => "current"|fn_payment_url:"proxypay3_ok.php", "[nok_url]" => "current"|fn_payment_url:"proxypay3_nok.php"])}</p>
+{assign var="url" value="`$config.http_location`"}
+<p>{__("text_proxypay_notice", ["[cart_url]" => $url])}</p>
 <hr>
 
 <div class="control-group">

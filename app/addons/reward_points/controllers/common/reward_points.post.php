@@ -28,7 +28,7 @@ if ($mode == 'userlog') {
 
     if (empty($params['user_id'])) {
         if (AREA == 'C') {
-            return array(CONTROLLER_STATUS_REDIRECT, 'auth.login_form?return_url=' . urlencode(Registry::get('config.current_url')));
+            return array(CONTROLLER_STATUS_REDIRECT, "auth.login_form?return_url=" . urlencode(Registry::get('config.current_url')));
         } else {
             return array(CONTROLLER_STATUS_NO_PAGE);
         }
@@ -50,15 +50,15 @@ if ($mode == 'userlog') {
             }
         }
 
-        Tygh::$app['view']->assign('user', $user);
+        Registry::get('view')->assign('user', $user);
     } else {
         fn_add_breadcrumb(__('reward_points_log'));
     }
 
     list($userlog, $search) = fn_gift_registry_get_userlog($params, Registry::get('addons.reward_points.log_per_page'));
 
-    Tygh::$app['view']->assign('userlog', $userlog);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('userlog', $userlog);
+    Registry::get('view')->assign('search', $search);
 }
 
 function fn_gift_registry_get_userlog($params, $items_per_page = 0)
@@ -81,7 +81,7 @@ function fn_gift_registry_get_userlog($params, $items_per_page = 0)
     $limit = '';
     if (!empty($params['items_per_page'])) {
         $params['total_items'] = db_get_field("SELECT COUNT(*) FROM ?:reward_point_changes WHERE user_id = ?i", $params['user_id']);
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+        $limit = db_paginate($params['page'], $params['items_per_page']);
     }
 
     $userlog = db_get_array("SELECT change_id, action, timestamp, amount, reason FROM ?:reward_point_changes WHERE user_id = ?i $sorting $limit", $params['user_id']);

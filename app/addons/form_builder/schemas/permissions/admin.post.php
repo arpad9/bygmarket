@@ -12,6 +12,6 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-$schema['tools']['modes']['update_status']['param_permissions']['table']['form_options'] = 'manage_pages';
+$schema['tools']['modes']['update_status']['param_permissions']['table_names']['form_options'] = 'manage_pages';
 
 return $schema;

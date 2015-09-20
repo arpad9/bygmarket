@@ -1,4 +1,4 @@
-/* previewer-description:tmpl_text_fancybox */
+/* previewer-description:text_fancybox */
 (function(_, $) {
     $.loadCss(['js/lib/fancybox/jquery.fancybox-1.3.4.css']);
     $.getScript('js/lib/fancybox/jquery.fancybox-1.3.4.pack.js');

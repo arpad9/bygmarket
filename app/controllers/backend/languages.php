@@ -13,16 +13,12 @@
 ****************************************************************************/
 
 use Tygh\Registry;
-use Tygh\Settings;
-use Tygh\Languages\Languages;
-use Tygh\Languages\Values as LanguageValues;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     fn_trusted_vars("lang_data", "new_lang_data");
-    $suffix = '.manage';
 
     //
     // Update language variables
@@ -31,8 +27,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (is_array($_REQUEST['lang_data'])) {
             fn_update_lang_var($_REQUEST['lang_data']);
         }
-
-        $suffix = '.translations';
     }
 
     //
@@ -40,10 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     //
     if ($mode == 'm_delete_variables') {
         if (!empty($_REQUEST['names'])) {
-            LanguageValues::deleteVariables($_REQUEST['names']);
+            fn_delete_language_variables($_REQUEST['names']);
         }
-
-        $suffix = '.translations';
     }
 
     //
@@ -54,30 +46,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $params = array('clear' => false);
             foreach (fn_get_translation_languages() as $lc => $_v) {
                 fn_update_lang_var($_REQUEST['new_lang_data'], $lc, $params);
-            }
-        }
-
-        $suffix = '.translations';
-    }
-
-    if ($mode == 'update_translation') {
-        $uploaded_data = fn_filter_uploaded_data('language_data', array('po', 'zip'));
-
-        if (!empty($uploaded_data['po_file']['path'])) {
-            $ext = fn_get_file_ext($uploaded_data['po_file']['name']);
-
-            $params = array(
-                'reinstall' => true,
-                'validate_lang_code' => $_REQUEST['language_data']['lang_code'],
-            );
-            if ($ext == 'po') {
-                $result = Languages::installLanguagePack($uploaded_data['po_file']['path'], $params);
-            } else {
-                $result = Languages::installZipPack($uploaded_data['po_file']['path'], $params);
-            }
-
-            if (!$result) {
-                fn_delete_notification('changes_saved');
             }
         }
     }
@@ -92,172 +60,45 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    //
-    // Update languages
-    //
-    if ($mode == 'm_update') {
+    if (!fn_allowed_for('ULTIMATE:FREE')) {
+        //
+        // Update languages
+        //
+        if ($mode == 'm_update') {
 
-        if (!Registry::get('runtime.company_id')) {
-            if (!empty($_REQUEST['update_language'])) {
-                foreach ($_REQUEST['update_language'] as $lang_id => $data) {
-                    Languages::update($data, $lang_id);
-                }
-            }
-
-            fn_save_languages_integrity();
-        }
-    }
-
-    //
-    // Create/update language
-    //
-    if ($mode == 'update') {
-
-        $lc = false;
-        $errors = false;
-
-        if (!Registry::get('runtime.company_id')) {
-            $lang_data = $_REQUEST['language_data'];
-
-            if (fn_allowed_for('ULTIMATE:FREE')) {
-                if ($lang_data['lang_code'] == DEFAULT_LANGUAGE && $lang_data['status'] != 'A') {
-                    fn_set_notification('E', __('error'), __('default_language_status'));
-                    $errors = true;
-
-                } else {
-                    if (isset($lang_data['status']) && $lang_data['status'] == 'A') {
-                        Languages::changeDefaultLanguage($lang_data['lang_code']);
+            if (!Registry::get('runtime.company_id')) {
+                if (!empty($_REQUEST['update_language'])) {
+                    foreach ($_REQUEST['update_language'] as $lang_id => $data) {
+                        fn_update_language($data, $lang_id);
                     }
                 }
-            }
 
-            if (!$errors) {
-                $lc = Languages::update($lang_data, $_REQUEST['lang_id']);
-            }
-
-            if ($lc !== false) {
                 fn_save_languages_integrity();
             }
         }
 
-        if ($lc == false) {
-            fn_delete_notification('changes_saved');
-        }
-    }
+        //
+        // Create/update language
+        //
+        if ($mode == 'update') {
 
-    if ($mode == 'install_from_po') {
-        $uploaded_data = fn_filter_uploaded_data('language_data', array('po', 'zip'));
+            $lc = false;
+            if (!Registry::get('runtime.company_id')) {
+                $lc = fn_update_language($_REQUEST['language_data'], $_REQUEST['lang_id']);
 
-        if (!empty($uploaded_data['po_file']['path'])) {
-            $ext = fn_get_file_ext($uploaded_data['po_file']['name']);
-
-            if ($ext == 'po') {
-                $result = Languages::installLanguagePack($uploaded_data['po_file']['path']);
-            } else {
-                $result = Languages::installZipPack($uploaded_data['po_file']['path']);
+                if ($lc !== false) {
+                    fn_save_languages_integrity();
+                }
             }
 
-            if (!$result) {
+            if ($lc == false) {
                 fn_delete_notification('changes_saved');
             }
         }
     }
-
-    if ($mode == 'install' && !empty($_REQUEST['pack'])) {
-        $pack_path = Registry::get('config.dir.lang_packs') . fn_basename($_REQUEST['pack']);
-
-        if (Languages::installCrowdinPack($pack_path, array())) {
-            return array(CONTROLLER_STATUS_OK, 'languages.manage');
-        } else {
-            return array(CONTROLLER_STATUS_OK, 'languages.manage?selected_section=available_languages');
-        }
-    }
-
-    if ($mode == 'delete_variable') {
-
-        LanguageValues::deleteVariables($_REQUEST['name']);
-
-        return array(CONTROLLER_STATUS_REDIRECT);
-    }
-
-    if ($mode == 'update_status') {
-
-        if (fn_allowed_for('ULTIMATE:FREE')) {
-            if ($_REQUEST['status'] == 'H') {
-                fn_set_notification('E', __('error'), __('language_hidden_status_free'));
-
-                return array(CONTROLLER_STATUS_REDIRECT, 'languages.manage');
-            }
-
-            $lang_data = Languages::get(array('lang_id' => $_REQUEST['id']), 'lang_id');
-            $lang_data = $lang_data[$_REQUEST['id']];
-
-            if ($lang_data['lang_code'] == DEFAULT_LANGUAGE) {
-                fn_set_notification('E', __('error'), __('default_language_status'));
-
-            } else {
-                if ($_REQUEST['status'] == 'A') {
-                    Languages::changeDefaultLanguage($lang_data['lang_code']);
-                }
-
-                fn_tools_update_status($_REQUEST);
-                fn_save_languages_integrity();
-
-                if (defined('AJAX_REQUEST')) {
-                    Tygh::$app['ajax']->assign('force_redirection', fn_url('languages.manage'));
-                }
-            }
-
-        } else {
-            fn_tools_update_status($_REQUEST);
-            fn_save_languages_integrity();
-        }
-    }
-
-    if ($mode == 'clone_language') {
-        $lang_id = $_REQUEST['lang_id'];
-        $lang_data = Languages::get(array('lang_id' => $lang_id), 'lang_id');
-
-        if (!empty($lang_data) && !empty($_REQUEST['lang_code'])) {
-            $language = $lang_data[$lang_id];
-
-            $new_language = array(
-                'lang_code' => $_REQUEST['lang_code'],
-                'name' => $language['name'] . '_clone',
-                'country_code' => $language['country_code'],
-                'from_lang_code' => $language['lang_code'],
-                'status' => 'D', // Disable cloned language
-            );
-
-            $lc = Languages::update($new_language, 0);
-
-            if ($lc !== false) {
-                fn_save_languages_integrity();
-            }
-        }
-    }
-
-    if ($mode == 'export_language') {
-        $lang_id = $_REQUEST['lang_id'];
-        $lang_data = Languages::get(array('lang_id' => $lang_id), 'lang_id');
-
-        if (!empty($lang_data)) {
-            Languages::export($lang_data[$lang_id]['lang_code']);
-        }
-    }
-
-    if ($mode == 'delete_language') {
-
-        if (!empty($_REQUEST['lang_id'])) {
-            fn_delete_languages($_REQUEST['lang_id']);
-        }
-
-        return array(CONTROLLER_STATUS_REDIRECT, 'languages.manage?selected_section=languages');
-    }
-
     $q = (empty($_REQUEST['q'])) ? '' : $_REQUEST['q'];
 
-    return array(CONTROLLER_STATUS_OK, 'languages' . $suffix . '?q=' . $q);
+    return array(CONTROLLER_STATUS_OK, "languages.manage?q=$q");
 }
 
 //
@@ -265,119 +106,112 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 //
 if ($mode == 'manage') {
 
-    if (fn_allowed_for('ULTIMATE:FREE') && !defined('AJAX_REQUEST')) {
-        fn_set_notification('N', __('notice'), __('change_language_in_free_mode'), 'K');
-    }
-
-    $sections = array(
-        'translations' => array(
-            'title' => __('translations'),
-            'href' => fn_url('languages.translations'),
-        ),
-        'manage_languages' => array(
-            'title' => __('manage_languages'),
-            'href' => fn_url('languages.manage'),
-        ),
-    );
-
-    Registry::set('navigation.dynamic.sections', $sections);
-    Registry::set('navigation.dynamic.active_section', 'manage_languages');
+    list($lang_data, $search) = fn_get_language_variables($_REQUEST, Registry::get('settings.Appearance.admin_elements_per_page'));
 
     Registry::set('navigation.tabs', array (
+        'translations' => array (
+            'title' => __('translations'),
+            'js' => true
+        ),
         'languages' => array (
-            'title' => __('installed_languages'),
+            'title' => __('languages'),
             'js' => true
         ),
     ));
 
-    if (!Registry::get('runtime.company_id')) {
-        Registry::set('navigation.tabs.available_languages', array (
-            'title' => __('available_languages'),
-            'ajax' => true,
-            'href' => 'languages.install_list',
-        ));
-    }
-
-    $view = Tygh::$app['view'];
+    Registry::get('view')->assign('lang_data', $lang_data);
+    Registry::get('view')->assign('search', $search);
 
     $languages = fn_get_translation_languages(true);
-    $view->assign('langs', $languages);
-    $view->assign('countries', fn_get_simple_countries(false, DESCR_SL));
+    Registry::get('view')->assign('langs', $languages);
+    Registry::get('view')->assign('countries', fn_get_simple_countries(false, DESCR_SL));
 
-} elseif ($mode == 'install_list') {
-    $view = Tygh::$app['view'];
-    $langs_meta = Languages::getLangPacksMeta();
+} elseif ($mode == 'delete_variable') {
 
-    $languages = fn_get_translation_languages(true);
+    fn_delete_language_variables($_REQUEST['name']);
 
-    $view->assign('langs_meta', $langs_meta);
-    $view->assign('countries', fn_get_simple_countries(false, DESCR_SL));
-
-    $view->assign('langs', $languages);
-
-    $view->display('views/languages/components/install_languages.tpl');
-    exit(0);
-
-} elseif ($mode == 'translations') {
-    $sections = array(
-        'translations' => array(
-            'title' => __('translations'),
-            'href' => fn_url('languages.translations'),
-        ),
-        'manage_languages' => array(
-            'title' => __('manage_languages'),
-            'href' => fn_url('languages.manage'),
-        ),
-    );
-    Registry::set('navigation.dynamic.sections', $sections);
-    Registry::set('navigation.dynamic.active_section', 'translations');
-
-    list($lang_data, $search) = LanguageValues::getVariables($_REQUEST, Registry::get('settings.Appearance.admin_elements_per_page'));
-
-    Tygh::$app['view']->assign('lang_data', $lang_data);
-    Tygh::$app['view']->assign('search', $search);
+    return array(CONTROLLER_STATUS_REDIRECT);
 
 } elseif ($mode == 'update') {
-    $lang_data = Languages::get(array('lang_id' => $_REQUEST['lang_id']), 'lang_id');
-    if (empty($lang_data[$_REQUEST['lang_id']])) {
-        return array(CONTROLLER_STATUS_NO_PAGE);
+    $lang_data = db_get_row("SELECT ?:languages.* FROM ?:languages WHERE lang_id = ?i",  $_REQUEST['lang_id']);
 
-    } else {
-        $lang_data = $lang_data[$_REQUEST['lang_id']];
+    Registry::get('view')->assign('lang_data', $lang_data);
+    Registry::get('view')->assign('countries', fn_get_simple_countries(false, DESCR_SL));
+
+} elseif ($mode == 'update_status') {
+    fn_tools_update_status($_REQUEST);
+    fn_save_languages_integrity();
+    exit;
+}
+
+//
+// Delete languages
+//
+if ($mode == 'delete_language') {
+
+    if (!empty($_REQUEST['lang_id'])) {
+        fn_delete_languages($_REQUEST['lang_id']);
     }
 
-    Tygh::$app['view']->assign('lang_data', $lang_data);
-    Tygh::$app['view']->assign('countries', fn_get_simple_countries(false, DESCR_SL));
-
-} elseif ($mode == 'update_translation') {
-    $lang_data = Languages::get(array('lang_id' => $_REQUEST['lang_id']), 'lang_id');
-    if (empty($lang_data[$_REQUEST['lang_id']])) {
-        return array(CONTROLLER_STATUS_NO_PAGE);
-
-    } else {
-        $lang_data = $lang_data[$_REQUEST['lang_id']];
-    }
-
-    Tygh::$app['view']->assign('lang_data', $lang_data);
+    return array(CONTROLLER_STATUS_REDIRECT, "languages.manage?selected_section=languages");
 }
 
 /**
- * @deprecated
- *
  * Updates language
  *
  * @param array $language_data Language data
  * @param string $lang_id language id
- * @return string language id
+ * return string language id
  */
 function fn_update_language($language_data, $lang_id)
 {
-    return Languages::update($language_data, $lang_id);
+    /**
+     * Changes language data before update
+     *
+     * @param array  $language_data Language data
+     * @param string $lang_id       language id
+     */
+    fn_set_hook('update_language_pre', $language_data, $lang_id);
+
+    $action = false;
+
+    $is_exists = db_get_field("SELECT COUNT(*) FROM ?:languages WHERE lang_code = ?s AND lang_id <> ?i", $language_data['lang_code'], $lang_id);
+
+    if (!empty($is_exists)) {
+        fn_set_notification('E', __('error'), __('error_lang_code_exists', array(
+            '[code]' => $language_data['lang_code']
+        )));
+
+    } elseif (empty($lang_id)) {
+        if (!empty($language_data['lang_code']) && !empty($language_data['name'])) {
+            $lang_id = db_query("INSERT INTO ?:languages ?e", $language_data);
+            $clone_from =  !empty($language_data['from_lang_code']) ? $language_data['from_lang_code'] : CART_LANGUAGE;
+
+            fn_clone_language($language_data['lang_code'], $clone_from);
+
+            $action = 'add';
+        }
+
+    } else {
+        db_query("UPDATE ?:languages SET ?u WHERE lang_id = ?i", $language_data, $lang_id);
+
+        $action = 'update';
+    }
+
+    /**
+     * Adds additional actions after language update
+     *
+     * @param array  $language_data Language data
+     * @param string $lang_id       language id
+     * @param string $action        Current action ('add', 'update' or bool false if failed to update language)
+     */
+    fn_set_hook('update_language_post', $language_data, $lang_id, $action);
+
+    return $lang_id;
+
 }
 
 /**
- * @deprecated
- *
  * Deletes language variablle
  *
  * @param array $names List of language variables go be deleted
@@ -385,13 +219,56 @@ function fn_update_language($language_data, $lang_id)
  */
 function fn_delete_language_variables($names)
 {
-    return LanguageValues::deleteVariables($names);
+    if (!is_array($names)) {
+        $names = array($names);
+    }
+    fn_set_hook('delete_language_variables', $names);
+
+    if (!empty($names)) {
+        db_query("DELETE FROM ?:language_values WHERE name IN (?a)", $names);
+    }
+
+    return true;
 }
 
-/**
- * @deprecated
- */
 function fn_get_language_variables($params, $items_per_page = 0, $lang_code = DESCR_SL)
 {
-    return LanguageValues::getVariables($params, $items_per_page, $lang_code);
+    // Set default values to input params
+    $default_params = array (
+        'page' => 1,
+        'items_per_page' => $items_per_page
+    );
+
+    $params = array_merge($default_params, $params);
+
+    $fields = array(
+        'lang.value' => true,
+        'lang.name' => true,
+    );
+
+    $tables = array(
+        '?:language_values as lang',
+    );
+
+    $left_join = array();
+    $condition = array();
+
+    $condition['param1'] = db_quote('lang.lang_code = ?s', $lang_code);
+    if (isset($params['q']) && fn_string_not_empty($params['q'])) {
+        $condition['param2'] = db_quote('(lang.name LIKE ?l OR lang.value LIKE ?l)', '%' . trim($params['q']) . '%', '%' . trim($params['q']) . '%');
+    }
+
+    fn_set_hook('get_language_variable', $fields, $tables, $left_join, $condition, $params);
+
+    $joins = !empty($left_join) ? ' LEFT JOIN ' . implode(', ', $left_join) : '';
+
+    $limit = '';
+    if (!empty($params['items_per_page'])) {
+        $params['total_items'] = db_get_field('SELECT COUNT(*) FROM ' . implode(', ', $tables) . $joins . ' WHERE ' . implode(' AND ', $condition));
+        $limit = db_paginate($params['page'], $params['items_per_page']);
+    }
+
+    $lang_data = db_get_array('SELECT ' . implode(', ', array_keys($fields)) . ' FROM ' . implode(', ', $tables) . $joins . ' WHERE ' . implode(' AND ', $condition) . ' ORDER BY lang.name ' . $limit);
+
+    return array($lang_data, $params);
 }

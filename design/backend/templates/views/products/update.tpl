@@ -50,7 +50,7 @@
                     {if "MULTIVENDOR"|fn_allowed_for && $mode != "add"}
                         {assign var="reload_form" value=true}
                     {/if}
-
+                    
                     {if "ULTIMATE"|fn_allowed_for}
                         {assign var="companies_tooltip" value=__("text_ult_product_store_field_tooltip")}
                     {/if}
@@ -93,16 +93,6 @@
                         <div class="controls">
                             {include file="buttons/update_for_all.tpl" display=$show_update_for_all object_id='full_description' name="update_all_vendors[full_description]"}
                             <textarea id="elm_product_full_descr" name="product_data[full_description]" cols="55" rows="8" class="cm-wysiwyg input-large">{$product_data.full_description}</textarea>
-
-                            {if $view_uri}
-                                {include
-                                    file="buttons/button.tpl"
-                                    but_href="customization.update_mode?type=live_editor&status=enable&frontend_url={$view_uri|urlencode}{if "ULTIMATE"|fn_allowed_for}&switch_company_id={$product_data.company_id}{/if}"
-                                    but_text=__("edit_content_on_site")
-                                    but_role="action"
-                                    but_meta="btn-small btn-live-edit cm-post"
-                                    but_target="_blank"}
-                            {/if}
                         </div>
                     </div>
                     {** /General info section **}
@@ -122,32 +112,29 @@
 
                 <hr>
 
+                {if !"ULTIMATE:FREE"|fn_allowed_for}
                 {include file="common/subheader.tpl" title=__("options_settings") target="#acc_options"}
-                {if "ULTIMATE:FREE"|fn_allowed_for}
-                    {$promo_class = "cm-promo-popup"}
-                    {$disable_selectors = true}
-                {/if}
-
                 <div id="acc_options" class="collapse in">
-                    <div class="control-group {$promo_class}">
+                    <div class="control-group">
                         <label class="control-label" for="elm_options_type">{__("options_type")}:</label>
                         <div class="controls">
-                            <select class="span3" name="product_data[options_type]" id="elm_options_type" {if $disable_selectors}disabled="disabled"{/if}>
+                            <select class="span3" name="product_data[options_type]" id="elm_options_type">
                                 <option value="P" {if $product_data.options_type == "P"}selected="selected"{/if}>{__("simultaneous")}</option>
                                 <option value="S" {if $product_data.options_type == "S"}selected="selected"{/if}>{__("sequential")}</option>
                             </select>
                         </div>
                     </div>
-                    <div class="control-group {$promo_class}">
+                    <div class="control-group">
                         <label class="control-label" for="elm_exceptions_type">{__("exceptions_type")}:</label>
                         <div class="controls">
-                            <select class="span3" name="product_data[exceptions_type]" id="elm_exceptions_type" {if $disable_selectors}disabled="disabled"{/if}>
+                            <select class="span3" name="product_data[exceptions_type]" id="elm_exceptions_type">
                                 <option value="F" {if $product_data.exceptions_type == "F"}selected="selected"{/if}>{__("forbidden")}</option>
                                 <option value="A" {if $product_data.exceptions_type == "A"}selected="selected"{/if}>{__("allowed")}</option>
                             </select>
                         </div>
                     </div>
                 </div>
+                {/if}
 
                 <hr>
 
@@ -170,7 +157,7 @@
                     <div class="control-group">
                         <label class="control-label" for="elm_in_stock">{__("in_stock")}:</label>
                         <div class="controls">
-                            {if $product_data.tracking == "ProductTracking::TRACK_WITH_OPTIONS"|enum}
+                            {if $product_data.tracking == "O"}
                                 {include file="buttons/button.tpl" but_text=__("edit") but_href="product_options.inventory?product_id=`$id`" but_role="edit"}
                             {else}
                                 <input type="text" name="product_data[amount]" id="elm_in_stock" size="10" value="{$product_data.amount|default:"1"}" class="input-small" />
@@ -194,10 +181,10 @@
                         <div class="controls">
                             <select class="span3" name="product_data[tracking]" id="elm_product_tracking" {if $settings.General.inventory_tracking == "N"}disabled="disabled"{/if}>
                                 {if $product_options}
-                                    <option value="{"ProductTracking::TRACK_WITH_OPTIONS"|enum}" {if $product_data.tracking == "ProductTracking::TRACK_WITH_OPTIONS"|enum && $settings.General.inventory_tracking == "Y"}selected="selected"{/if}>{__("track_with_options")}</option>
+                                    <option value="O" {if $product_data.tracking == "O" && $settings.General.inventory_tracking == "Y"}selected="selected"{/if}>{__("track_with_options")}</option>
                                 {/if}
-                                <option value="{"ProductTracking::TRACK_WITHOUT_OPTIONS"|enum}" {if $product_data.tracking == "{"ProductTracking::TRACK_WITHOUT_OPTIONS"|enum}" && $settings.General.inventory_tracking == "Y"}selected="selected"{/if}>{__("track_without_options")}</option>
-                                <option value="{"ProductTracking::DO_NOT_TRACK"|enum}" {if $product_data.tracking == "{"ProductTracking::DO_NOT_TRACK"|enum}" || $settings.General.inventory_tracking == "N"}selected="selected"{/if}>{__("dont_track")}</option>
+                                <option value="B" {if $product_data.tracking == "B" && $settings.General.inventory_tracking == "Y"}selected="selected"{/if}>{__("track_without_options")}</option>
+                                <option value="D" {if $product_data.tracking == "D" || $settings.General.inventory_tracking == "N"}selected="selected"{/if}>{__("dont_track")}</option>
                             </select>
                         </div>
                     </div>
@@ -246,13 +233,42 @@
                 </div>
 
                 <hr>
+
+                {include file="common/subheader.tpl" title=__("seo_meta_data") target="#acc_seo_meta"}
+                <div id="acc_seo_meta" class="collapse in">
+                    <div class="control-group {$no_hide_input_if_shared_product}">
+                        <label class="control-label" for="elm_product_page_title">{__("page_title")}:</label>
+                        <div class="controls">
+                            <input type="text" name="product_data[page_title]" id="elm_product_page_title" size="55" value="{$product_data.page_title}" class="input-large" />
+                            {include file="buttons/update_for_all.tpl" display=$show_update_for_all object_id="page_title" name="update_all_vendors[page_title]"}
+                        </div>
+                    </div>
+
+                    <div class="control-group {$no_hide_input_if_shared_product}">
+                        <label class="control-label" for="elm_product_meta_descr">{__("meta_description")}:</label>
+                        <div class="controls">
+                            <textarea name="product_data[meta_description]" id="elm_product_meta_descr" cols="55" rows="2" class="input-large">{$product_data.meta_description}</textarea>
+                            {include file="buttons/update_for_all.tpl" display=$show_update_for_all object_id="meta_description" name="update_all_vendors[meta_description]"}
+                        </div>
+                    </div>
+
+                    <div class="control-group {$no_hide_input_if_shared_product}">
+                        <label class="control-label" for="elm_product_meta_keywords">{__("meta_keywords")}:</label>
+                        <div class="controls">
+                            <textarea name="product_data[meta_keywords]" id="elm_product_meta_keywords" cols="55" rows="2" class="input-large">{$product_data.meta_keywords}</textarea>
+                            {include file="buttons/update_for_all.tpl" display=$show_update_for_all object_id="meta_keywords" name="update_all_vendors[meta_keywords]" }
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
                 {include file="common/subheader.tpl" title=__("availability") target="#acc_availability"}
                 <div id="acc_availability" class="collapse in">
                     {if !"ULTIMATE:FREE"|fn_allowed_for}
                         <div class="control-group">
                             <label class="control-label">{__("usergroups")}:</label>
                             <div class="controls">
-                                {include file="common/select_usergroups.tpl" id="ug_id" name="product_data[usergroup_ids]" usergroups=["type"=>"C", "status"=>["A", "H"]]|fn_get_usergroups:$smarty.const.DESCR_SL usergroup_ids=$product_data.usergroup_ids input_extra="" list_mode=false}
+                                {include file="common/select_usergroups.tpl" id="ug_id" name="product_data[usergroup_ids]" usergroups="C"|fn_get_usergroups:$smarty.const.DESCR_SL usergroup_ids=$product_data.usergroup_ids input_extra="" list_mode=false}
                             </div>
                         </div>
                     {/if}
@@ -288,7 +304,7 @@
                 {include file="common/subheader.tpl" title=__("extra") target="#acc_extra"}
                 <div id="acc_extra" class="collapse in">
                     <div class="control-group">
-                        <label class="control-label" for="elm_details_layout">{__("product_details_view")}:</label>
+                        <label class="control-label" for="elm_details_layout">{__("product_details_layout")}:</label>
                         <div class="controls">
                             <select class="span5" id="elm_details_layout" name="product_data[details_layout]">
                                 {foreach from=$id|fn_get_product_details_views key="layout" item="item"}
@@ -308,7 +324,6 @@
                         </div>
                     </div>
 
-                    {if $settings.General.enable_edp == "Y"}
                     <div class="control-group">
                         <label class="control-label" for="elm_product_is_edp">{__("downloadable")}:</label>
                         <div class="controls">
@@ -338,7 +353,6 @@
                             </label>
                         </div>
                     </div>
-                    {/if}
 
                     {include file="views/localizations/components/select.tpl" data_from=$product_data.localization data_name="product_data[localization]"}
 
@@ -409,40 +423,6 @@
             </div> {* /content images *}
             {** /Product images section **}
 
-            {** SEO settings section **}
-            <div id="content_seo" class="hidden">
-
-                {hook name="products:update_seo"}
-                {include file="common/subheader.tpl" title=__("seo_meta_data") target="#acc_seo_meta"}
-                <div id="acc_seo_meta" class="collapse in">
-                    <div class="control-group {$no_hide_input_if_shared_product}">
-                        <label class="control-label" for="elm_product_page_title">{__("page_title")}:</label>
-                        <div class="controls">
-                            <input type="text" name="product_data[page_title]" id="elm_product_page_title" size="55" value="{$product_data.page_title}" class="input-large" />
-                            {include file="buttons/update_for_all.tpl" display=$show_update_for_all object_id="page_title" name="update_all_vendors[page_title]"}
-                        </div>
-                    </div>
-
-                    <div class="control-group {$no_hide_input_if_shared_product}">
-                        <label class="control-label" for="elm_product_meta_descr">{__("meta_description")}:</label>
-                        <div class="controls">
-                            <textarea name="product_data[meta_description]" id="elm_product_meta_descr" cols="55" rows="2" class="input-large">{$product_data.meta_description}</textarea>
-                            {include file="buttons/update_for_all.tpl" display=$show_update_for_all object_id="meta_description" name="update_all_vendors[meta_description]"}
-                        </div>
-                    </div>
-
-                    <div class="control-group {$no_hide_input_if_shared_product}">
-                        <label class="control-label" for="elm_product_meta_keywords">{__("meta_keywords")}:</label>
-                        <div class="controls">
-                            <textarea name="product_data[meta_keywords]" id="elm_product_meta_keywords" cols="55" rows="2" class="input-large">{$product_data.meta_keywords}</textarea>
-                            {include file="buttons/update_for_all.tpl" display=$show_update_for_all object_id="meta_keywords" name="update_all_vendors[meta_keywords]" }
-                        </div>
-                    </div>
-                </div>
-                {/hook}
-            </div>
-            {** /SEO settings section **}
-
             {** Shipping settings section **}
             <div id="content_shippings" class="hidden"> {* content shippings *}
                 {include file="views/products/components/products_shipping_settings.tpl"}
@@ -455,7 +435,7 @@
             {/hook}
             {** /Quantity discounts section **}
             {** Product features section **}
-            {include file="views/products/components/products_update_features.tpl" product_id=$product_data.product_id}
+            {include file="views/products/components/products_update_features.tpl"}
             {** /Product features section **}
 
 
@@ -471,19 +451,30 @@
             {** Form submit section **}
             {capture name="buttons"}
                 {include file="common/view_tools.tpl" url="products.update?product_id="}
+                {if !"ULTIMATE"|fn_allowed_for}
+                    {assign var="view_uri" value="products.view?product_id=`$id`"}
+                    {assign var="view_uri_escaped" value="`$view_uri`&action=preview"|fn_url:'C':'http':$smarty.const.DESCR_SL|escape:"url"}
+                {/if}
 
+                {if "ULTIMATE"|fn_allowed_for}
+                    {if $runtime.company_id}
+                        {assign var="company_id" value=$runtime.company_id}
+                    {else}
+                        {assign var="company_id" value=$product_data.company_id}
+                    {/if}
+                    {assign var="view_uri" value="products.view?product_id=`$id`&company_id=`$company_id`"}
+                    {assign var="view_uri_escaped" value="`$view_uri`&action=preview"|fn_url:'C':'http':$smarty.const.DESCR_SL|escape:"url"}
+                {/if}
+                {$view_uri=$view_uri|fn_url:'C':'http':$smarty.const.DESCR_SL}
                 {if $id}
                     {capture name="tools_list"}
-                        {hook name="products:update_tools_list"}
-                            {if $view_uri}
-                                <li>{btn type="list" target="_blank" text=__("preview") href=$view_uri}</li>
-                                <li class="divider"></li>
-                            {/if}
-                            <li>{btn type="list" text=__("clone") class="cm-post" href="products.clone?product_id=`$id`"}</li>
-                            {if $allow_save}
-                                <li>{btn type="list" text=__("delete") class="cm-confirm cm-post" href="products.delete?product_id=`$id`"}</li>
-                            {/if}
-                        {/hook}
+                        <li>{btn type="list" target="_blank" text=__("preview") href=$view_uri}</li>
+                        <li>{btn type="list" target="_blank" text=__("preview_as_admin") href="profiles.act_as_user?user_id=`$auth.user_id`&area=C&redirect_url=`$view_uri_escaped`"}</li>
+                        <li class="divider"></li>
+                        <li>{btn type="list" text=__("clone") href="products.clone?product_id=`$id`"}</li>
+                        {if $allow_save}
+                            <li>{btn type="list" text=__("delete") class="cm-confirm" href="products.delete?product_id=`$id`"}</li>
+                        {/if}
                     {/capture}
                     {dropdown content=$smarty.capture.tools_list}
                 {/if}
@@ -503,13 +494,11 @@
             {** /Product options section **}
 
             {** Products files section **}
-            {if $settings.General.enable_edp == "Y"}
             <div id="content_files" class="cm-hide-save-button hidden">
                 {hook name="products:content_files"}
                 {include file="views/products/components/products_update_files.tpl"}
                 {/hook}
             </div>
-            {/if}
             {** /Products files section **}
 
             {** Subscribers section **}

@@ -20,7 +20,5 @@ fn_register_hooks(
     'get_product_data_post',
     'update_company_pre',
     'get_filters_products_count_query_params',
-    'set_admin_notification',
-    'clone_product_post',
-    'get_preview_url_post'
+    'set_admin_notification'
 );

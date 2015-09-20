@@ -107,14 +107,14 @@ if (defined('PAYMENT_NOTIFICATION')) {
         'TransactionDateTime' => date('Y-m-d H:i:s O'),
         'CallbackURL' => fn_payment_url('current', 'cardsave_hosted.php'), // it is not allowed to use arguments in this parameter
         'OrderDescription' => '',
-        'CustomerName' => fn_crds_generate_name($order_info['b_firstname'] . ' ' . $order_info['b_lastname']),
-        'Address1' => fn_crds_generate_name($order_info['b_address']),
-        'Address2' => fn_crds_generate_name($order_info['b_address_2']),
+        'CustomerName' => $order_info['b_firstname'] . ' ' . $order_info['b_lastname'],
+        'Address1' => $order_info['b_address'],
+        'Address2' => $order_info['b_address_2'],
         'Address3' => '',
         'Address4' => '',
-        'City' => fn_crds_generate_name($order_info['b_city']),
-        'State' => fn_crds_generate_name($order_info['b_state_descr']),
-        'PostCode' => fn_crds_generate_name($order_info['b_zipcode']),
+        'City' => $order_info['b_city'],
+        'State' => $order_info['b_state_descr'],
+        'PostCode' => $order_info['b_zipcode'],
         'CountryCode' => db_get_field('SELECT code_N3 FROM ?:countries WHERE code=?s', $order_info['b_country']),
         'CV2Mandatory' => $processor_data['processor_params']['cv2_mandatory'],
         'Address1Mandatory' => $processor_data['processor_params']['address_mandatory'],
@@ -139,27 +139,8 @@ if (defined('PAYMENT_NOTIFICATION')) {
     }
     $post_data['HashDigest'] = sha1($str);
     $post_data['MerchantID'] = $processor_data['processor_params']['merchant_id'];
+
     $submit_url = 'https://mms.cardsaveonlinepayments.com/Pages/PublicPages/PaymentForm.aspx';
     fn_create_payment_form($submit_url, $post_data, 'CardSave server', false);
-}
-
-function fn_crds_generate_name($str)
-{
-    $literals = "/[^a-z0-9-\.]/";
-    $convert_letters = fn_get_schema('literal_converter', 'schema');
-    $_convert_letters = array(
-        ' ' => '-',
-        '?' => '-',
-        '/' => '-',
-        '(' => '-',
-        ')' => '-',
-        '%' => '-',
-        ',' => '-',
-        ':' => '-',
-    );
-    $convert_letters = array_diff_assoc($convert_letters, $_convert_letters);
-    $str = strtr($str, $convert_letters);
-
-    return $str;
 }
 exit;

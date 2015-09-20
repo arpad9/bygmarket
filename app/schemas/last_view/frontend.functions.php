@@ -53,11 +53,11 @@ function fn_lv_get_product_default_navigation($params)
     db_query("SET @r = 0;");
     $product_position = db_get_field("SELECT a.row FROM (SELECT products.product_id, @r := @r + 1 as row FROM ?:products as products $join WHERE 1 $condition GROUP BY products.product_id $sorting) AS a WHERE a.product_id = ?i", $product_id);
 
-    $items_per_page = Registry::get('settings.Appearance.products_per_page');
-
-    if (empty($product_position) || empty($items_per_page)) {
+    if (empty($product_position)) {
         return false;
     }
+
+    $items_per_page = Registry::get('settings.Appearance.products_per_page');
 
     $page = ceil($product_position / $items_per_page);
     $limit = db_paginate($page, $items_per_page);

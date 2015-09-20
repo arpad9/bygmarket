@@ -20,6 +20,6 @@ $schema['buy_together'] = array (
         )
     ),
 );
-$schema['tools']['modes']['update_status']['param_permissions']['table']['buy_together'] = 'manage_catalog';
+$schema['tools']['modes']['update_status']['param_permissions']['table_names']['buy_together'] = 'manage_catalog';
 
 return $schema;

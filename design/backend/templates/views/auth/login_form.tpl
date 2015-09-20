@@ -7,7 +7,7 @@
         </div>
         <div class="modal-body">
             <div class="control-group">
-                <label for="username" class="cm-trim cm-required cm-email">{__("email")}:</label>
+                <label for="username" class="cm-required {if $settings.General.use_email_as_login == "Y"}cm-email{/if}">{if $settings.General.use_email_as_login == "Y"}{__("email")}{else}{__("username")}{/if}:</label>
                 <input id="username" type="text" name="user_login" size="20" value="{if $stored_user_login}{$stored_user_login}{else}{$config.demo_username}{/if}" class="cm-focus" tabindex="1">
             </div>
             <div class="control-group">

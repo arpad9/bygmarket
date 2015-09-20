@@ -49,6 +49,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
 
-        return array(CONTROLLER_STATUS_REDIRECT, 'rma.details?return_id=' . $change_return_status['return_id']);
+        return array(CONTROLLER_STATUS_REDIRECT, "rma.details?return_id=$change_return_status[return_id]");
     }
 }

@@ -10,13 +10,9 @@
 
     {capture name="s_body"}
         <input type="hidden" name="{$name}" id="{$id|default:"supplier_id"}" value="{$supplier.supplier_id}" />
-        {if $read_only}
-            {$supplier.name}
-        {else}
-            <div class="text-type-value ajax-select-wrap">
-                {include file="common/ajax_select_object.tpl" data_url="suppliers.get_suppliers_list?company_id=`$company_id`" text=$supplier.name result_elm=$id|default:"supplier_id" id="`$id`_selector"}
-            </div>
-        {/if}
+        <div class="text-type-value ajax-select-wrap">
+            {include file="common/ajax_select_object.tpl" data_url="suppliers.get_suppliers_list?company_id=`$company_id`" text=$supplier.name result_elm=$id|default:"supplier_id" id="`$id`_selector"}
+        </div>
     {/capture}
 
     {if !$no_wrap}

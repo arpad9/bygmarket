@@ -15,94 +15,9 @@
 namespace Tygh\SmartyEngine;
 
 use Tygh\Registry;
-use Tygh\Embedded;
-use Tygh\Tools\Url;
 
 class Filters
 {
-    public static function preScript($content, \Smarty_Internal_Template $template)
-    {
-        $pattern = '/\<script([^>]*)\>.*?\<\/script\>/s';
-        if (preg_match_all($pattern, $content, $matches)) {
-            $m = $matches[0];
-            $m_attrs = $matches[1];
-            $has_literals = strpos($content, '{literal}');
-            foreach ($m as $index => $match) {
-                if (!strpos($m_attrs[$index], 'data-no-defer') ) {
-                    $inline_wrapper_open = '{inline_script}';
-                    $inline_wrapper_close = '{/inline_script}';
-                    // Check if script was wrapped by the {literal} tag
-                    if ($has_literals !== false) {
-                        $end_pos = strpos($content, $match);
-                        // Calculate literals count to detect if script is between {literal}
-                        // If end_pos is equal to 0, {literal} tag inside <script>, so skip it
-                        if ($end_pos != 0) {
-                            $open_tags = substr_count($content, '{literal}', 0, $end_pos);
-                            $close_tags = substr_count($content, '{/literal}', 0, $end_pos);
-                            if ($open_tags != $close_tags) {
-                                $inline_wrapper_open = '{/literal}' . $inline_wrapper_open . '{literal}';
-                                $inline_wrapper_close = '{/literal}' . $inline_wrapper_close . '{literal}';
-                            }
-                        }
-                    }
-                    $content = str_replace($match, $inline_wrapper_open . $match . $inline_wrapper_close, $content);
-                }
-            }
-        }
-
-        return $content;
-    }
-
-    public static function outputScript($content, \Smarty_Internal_Template $template)
-    {
-        if (defined('AJAX_REQUEST')) {
-            return $content;
-        }
-
-        if ($template->smarty->getTemplateVars('block_rendering')) {
-            if (!$template->smarty->getTemplateVars('block_parse_js')) {
-                return $content;
-            }
-        }
-
-        $pattern = '/\<script([^>]*)\>.*?\<\/script\>/s';
-        if (preg_match_all($pattern, $content, $matches)) {
-            if (Registry::get('runtime.inside_scripts')) {
-                return $content;
-            }
-
-            $cache_name = $template->smarty->getTemplateVars('block_cache_name');
-
-            $m = $matches[0];
-            $m_attrs = $matches[1];
-
-            $javascript = '';
-
-            foreach ($m as $index => $match) {
-                if (strpos($m_attrs[$index], 'data-no-defer') === false) {
-                    $repeat = false;
-                    $template->smarty->loadPlugin('smarty_block_inline_script');
-                    smarty_block_inline_script(array(), $match, $template->smarty, $repeat);
-
-                    $content = str_replace($match, '<!-- Inline script moved to the bottom of the page -->', $content);
-                    $javascript .= $match;
-                }
-            }
-
-            if (!empty($cache_name)) {
-                $cached_content = Registry::get($cache_name);
-                if (!isset($cached_content['javascript'])) {
-                    $cached_content['javascript'] = '';
-                }
-                $cached_content['javascript'] .= $javascript;
-
-                Registry::set($cache_name, $cached_content, true);
-            }
-
-        }
-
-        return $content;
-    }
     /**
      * Prefilter: form tooltip
      * @param  string                    $content  template content
@@ -133,8 +48,7 @@ class Filters
 
             foreach ($matches[0] as $k => $m) {
                 $field_name = $matches[2][$k];
-                preg_match("/(^[a-zA-z0-9][\.a-zA-Z0-9_]*)/", $field_name, $name_matches);
-
+                preg_match("/(^[a-zA-z0-9][a-zA-Z0-9_]*)/", $field_name, $name_matches);
                 if (@strlen($name_matches[0]) != strlen($field_name)) {
                     continue;
                 }
@@ -153,7 +67,7 @@ class Filters
                     }
 
                     $tooltip_text = sprintf("%s: %s <br/> %s: %s", $common_lang_var, $common_text, $template_lang_var, $template_text);
-                    $tooltip = '{capture name="tooltip"}' . $tooltip_text . '{/capture}{include file="common/tooltip.tpl" tooltip=$smarty.capture.tooltip}';
+                    $tooltip = '{capture name="tooltip"}' . $tooltip_text . '{/capture}{include file="common/tooltip.tpl" tooltip=$smarty.capture.tooltip"}';
                 } else {
                     if (isset($template_tooltips[$template_lang_var])) {
                         $tooltip_text = '__("' . $template_lang_var . '")';
@@ -202,11 +116,31 @@ class Filters
                     '{capture name="template_content"}' . $content . '{/capture}' .
                     '{if $smarty.capture.template_content|trim}' .
                         '{if $auth.area == "A"}' .
-                            '<span class="cm-template-box template-box" data-ca-te-template="' . $cur_templ . '" id="{set_id name="' . $cur_templ . '"}">' .
-                            '<div class="cm-template-icon icon-edit ty-icon-edit hidden"></div>' .
+                            '<span class="cm-template-box" data-ca-te-template="' . $cur_templ . '" id="{set_id name="' . $cur_templ . '"}">' .
+                            '<div class="cm-template-icon icon-edit hidden"></div>' .
                             '{$smarty.capture.template_content nofilter}<!--[/tpl_id]--></span>' .
                         '{else}{$smarty.capture.template_content nofilter}{/if}{/if}' .
                 '{else}' . $content . '{/if}';
+        }
+
+        return $content;
+    }
+
+    /**
+     * Prefilter: webdriver testing
+     * @param  string                    $content  template content
+     * @param  \Smarty_Internal_Template $template template instance
+     * @return string                    template content
+     */
+   public static function preWebdriver($content, \Smarty_Internal_Template $template)
+    {
+        $href_expr = '/<a\s[^>]+>/is';
+
+        if (preg_match_all($href_expr, $content, $matches)) {
+            foreach ($matches[0] as $link) {
+                $new_link = preg_replace('/<a\s/is', '<a data-template="' . $template->template_resource . '" ', $link);
+                $content = str_replace($link, $new_link, $content);
+            }
         }
 
         return $content;
@@ -222,7 +156,7 @@ class Filters
     {
         $content = preg_replace('/([^\>])__\(/', '\1$_smarty_tpl->__(', $content);
 
-        if (preg_match_all('/__\(\"([\w\.]*?)\"/i', $content, $matches)) {
+        if (preg_match_all('/__\(\"(\w*?)\"/i', $content, $matches)) {
             return "<?php\nfn_preload_lang_vars(array('" . implode("','", $matches[1]) . "'));\n?>\n" . $content;
         }
 
@@ -235,16 +169,16 @@ class Filters
      * @param  \Smarty_Internal_Template $template template instance
      * @return string                    template content
      */
-    public static function outputLiveEditorWrapper($content, \Smarty_Internal_Template $template)
+    public static function outputTranslateWrapper($content, \Smarty_Internal_Template $template)
     {
-        $pattern = '/\<(input|img|div)[^>]*?(\[lang name\=([\w-\.]+?)( cm\-pre\-ajax)?\](.*?)\[\/lang\])[^>]*?\>/';
+        $pattern = '/\<(input|img|div)[^>]*?(\[lang name\=([\w-]+?)( [cm\-pre\-ajx]*)?\](.*?)\[\/lang\])[^>]*?\>/';
         if (preg_match_all($pattern, $content, $matches)) {
             foreach ($matches[0] as $k => $m) {
                 $phrase_replaced = str_replace($matches[2][$k], $matches[5][$k], $matches[0][$k]);
                 if (strpos($m, 'class="') !== false) {
-                    $class_added = str_replace('class="', 'data-ca-live-edit="langvar::' . $matches[3][$k] . $matches[4][$k] . '" class="cm-live-editor-need-wrap ', $phrase_replaced);
+                    $class_added = str_replace('class="', 'class="cm-translate lang_' . $matches[3][$k] . $matches[4][$k] . ' ', $phrase_replaced);
                 } else {
-                    $class_added = str_replace($matches[1][$k], $matches[1][$k] . ' data-ca-live-edit="langvar::' . $matches[3][$k] . $matches[4][$k] . '" class="cm-live-editor-need-wrap"', $phrase_replaced);
+                    $class_added = str_replace($matches[1][$k], $matches[1][$k] . ' class="cm-translate lang_' . $matches[3][$k] . $matches[4][$k] . '"', $phrase_replaced);
                 }
 
                 if ($matches[1][$k] == 'div') {
@@ -255,36 +189,36 @@ class Filters
             }
         }
 
-        $pattern = '/(\<(textarea|option)[^<]*?)\>(\[lang name\=([\w-\.]+?)( cm\-pre\-ajax)?\](.*?)\[\/lang\])[^>]*?\>/is';
+        $pattern = '/(\<(textarea|option)[^<]*?)\>(\[lang name\=([\w-]+?)( [cm\-pre\-ajx]*)?\](.*?)\[\/lang\])[^>]*?\>/is';
         if (preg_match_all($pattern, $content, $matches)) {
             foreach ($matches[0] as $k => $m) {
                 $phrase_replaced = str_replace($matches[3][$k], $matches[6][$k], $matches[0][$k]);
                 if (strpos($m, 'class="') !== false) {
-                    $class_added = str_replace('class="', 'data-ca-live-edit="langvar::' . $matches[4][$k] . $matches[5][$k] . '" class="cm-live-editor-need-wrap ', $phrase_replaced);
+                    $class_added = str_replace('class="', 'class="cm-translate lang_' . $matches[4][$k] . $matches[5][$k] . ' ', $phrase_replaced);
                 } else {
-                    $class_added = str_replace('<' . $matches[2][$k], '<' . $matches[2][$k] . ' data-ca-live-edit="langvar::' . $matches[4][$k] . $matches[5][$k] . '" class="cm-live-editor-need-wrap"', $phrase_replaced);
+                    $class_added = str_replace('<' . $matches[2][$k], '<' . $matches[2][$k] . ' class="cm-translate lang_' . $matches[4][$k] . $matches[5][$k] . '"', $phrase_replaced);
                 }
                 $content = str_replace($matches[0][$k], $class_added, $content);
             }
         }
 
         $pattern = '/<title>(.*?)<\/title>/is';
-        $pattern_inner = '/\[(lang) name\=([\w-\.]+?)( cm\-pre\-ajax)?\](.*?)\[\/\1\]/is';
+        $pattern_inner = '/\[(lang) name\=([\w-]+?)( [cm\-pre\-ajx]*)?\](.*?)\[\/\1\]/is';
         preg_match($pattern, $content, $matches);
         $phrase_replaced = $matches[0];
         $phrase_replaced = preg_replace($pattern_inner, '$4', $phrase_replaced);
         $content = str_replace($matches[0], $phrase_replaced, $content);
 
         // remove translation tags from elements attributes
-        $pattern = '/(\<[^<>]*\=[^<>]*)(\[lang name\=([\w-\.]+?)( cm\-pre\-ajax)?\](.*?)\[\/lang\])[^<>]*?\>/is';
+        $pattern = '/(\<[^<>]*\=[^<>]*)(\[lang name\=([\w-]+?)( [cm\-pre\-ajx]*)?\](.*?)\[\/lang\])[^<>]*?\>/is';
         while (preg_match($pattern, $content, $matches)) {
             $phrase_replaced = preg_replace($pattern_inner, '$4', $matches[0]);
             $content = str_replace($matches[0], $phrase_replaced, $content);
         }
 
-        $pattern = '/(?<=>)[^<]*?\[(lang) name\=([\w-\.]+?)( cm\-pre\-ajax)?\](.*?)\[\/\1\]/is';
-        $pattern_inner = '/\[(lang) name\=([\w-\.]+?)( cm\-pre\-ajax)?\]((?:(?>[^\[]+)|\[(?!\1[^\]]*\]))*?)\[\/\1\]/is';
-        $replacement = '<var class="live-edit-wrap"><i class="cm-icon-live-edit icon-live-edit ty-icon-live-edit"></i><var data-ca-live-edit="langvar::$2$3" class="cm-live-edit live-edit-item">$4</var></var>';
+        $pattern = '/(?<=>)[^<]*?\[(lang) name\=([\w-]+?)( [cm\-pre\-ajx]*)?\](.*?)\[\/\1\]/is';
+        $pattern_inner = '/\[(lang) name\=([\w-]+?)( [cm\-pre\-ajx]*)?\]((?:(?>[^\[]+)|\[(?!\1[^\]]*\]))*?)\[\/\1\]/is';
+        $replacement = '<font class="cm-translate lang_$2$3">$4</font>';
         while (preg_match($pattern, $content, $matches)) {
             $phrase_replaced = $matches[0];
             while (preg_match($pattern_inner, $phrase_replaced)) {
@@ -293,7 +227,7 @@ class Filters
             $content = str_replace($matches[0], $phrase_replaced, $content);
         }
 
-        $pattern = '/\[(lang) name\=([\w-\.]+?)( cm\-pre\-ajax)?\](.*?)\[\/\1\]/';
+        $pattern = '/\[(lang) name\=([\w-]+?)( [cm\-pre\-ajx]*)?\](.*?)\[\/\1\]/';
         $replacement = '$4';
         $content = preg_replace($pattern, $replacement, $content);
 
@@ -352,6 +286,41 @@ class Filters
     {
         $content = preg_replace('/<input type="hidden" name="security_hash".*?>/i', '', $content);
         $content = str_replace('</form>', '<input type="hidden" name="security_hash" class="cm-no-hide-input" value="'. fn_generate_security_hash() .'" /></form>', $content);
+
+        return $content;
+    }
+
+    /**
+     * Output filter: webdriver testing
+     * @param  string                    $content  template content
+     * @param  \Smarty_Internal_Template $template template instance
+     * @return string                    template content
+     */
+    public static function outputWebdriver($content, \Smarty_Internal_Template $template)
+    {
+        $href_expr = '/<a\s[^>]+>/is';
+
+        if (preg_match_all($href_expr, $content, $matches)) {
+            foreach ($matches[0] as $link) {
+                if (preg_match('/href=(?:\'|")([^"\']+)(?:\'|")/is', $link, $matches)) {
+                    $href = empty($matches[1]) ? '' : $matches[1];
+                } else {
+                    $href = '';
+                }
+
+                if (preg_match('/data-template="([^"]+)"/is', $link, $matches)) {
+                    $tpl = $matches[1];
+                } else {
+                    $tpl = '';
+                    $link = '';
+                }
+
+                if (!preg_match('/data-webdriver="([^"]+)"/is', $link)) {
+                    $new_link = preg_replace('/<a\s/is', '<a data-webdriver="' . md5($tpl . $href) . '" ', $link);
+                    $content = str_replace($link, $new_link, $content);
+                }
+            }
+        }
 
         return $content;
     }
@@ -418,65 +387,6 @@ class Filters
 
                 }
             }
-        }
-
-        return $content;
-    }
-
-    /**
-     * Output filter: Transforms URLs to the appropriate format for the embedded mode
-     * @param  string                    $content  template content
-     * @param  \Smarty_Internal_Template $template template instance
-     * @return string                    template content
-     */
-    public static function outputEmbeddedUrl($content, \Smarty_Internal_Template $template)
-    {
-        $path = Registry::get('config.current_host') . Registry::get('config.current_path');
-
-        // Transform 'href' attribute values of the 'a' elements, which:
-        // - have 'href' attribute
-        // - the 'href' value contains current path and host, or its a relative url
-        // - do not have class attribute starting with 'cm-' prefix
-
-        $pattern = '{'
-            . '<(?:a)\s+'
-            . '(?=[^>]*\bhref="([^"]*//' . $path . '[^"]*|(?!//)(?!https?)[^"]*)")'
-            . '(?![^>]*\bclass="[^"]*cm-[^"]*")'
-            . '[^>]*>'
-            . '}Usi';
-
-        $content = preg_replace_callback($pattern, function($matches) {
-            return str_replace(
-                $matches[1],
-                Embedded::resolveUrl($matches[1]),
-                $matches[0]
-            );
-        }, $content);
-
-        // Transform relative 'src'attribute values
-
-        $pattern = '{<[^>]+\bsrc="((?!//)(?!https?)[^"]+)"[^>]*>}Usi';
-
-        $content = preg_replace_callback($pattern, function($matches) {
-            return str_replace(
-                $matches[1],
-                Url::resolve($matches[1], Registry::get('config.current_location')),
-                $matches[0]
-            );
-        }, $content);
-
-        $area = \Tygh::$app['view']->getArea();
-
-        if ($area[1] == 'mail') {
-
-            // Transform URLs in the text
-
-            $pattern = '{\bhttps?://' . $path . '[^\s<>"\']*(?=[^>]*<)}s';
-
-            $content = preg_replace_callback($pattern, function($matches) {
-                return Embedded::resolveUrl($matches[0]);
-            }, $content);
-
         }
 
         return $content;

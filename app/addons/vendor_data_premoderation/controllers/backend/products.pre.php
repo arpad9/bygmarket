@@ -23,32 +23,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $products_updates_approval = Registry::get('addons.vendor_data_premoderation.products_updates_approval');
 
         if ($mode == 'update') {
-            // We update existing product
+
             if (!empty($_REQUEST['product_id'])) {
-                // Pre-moderation is required for current vendor
-                if ($products_updates_approval == 'all'
-                    || ($products_updates_approval == 'custom' && $company_data['pre_moderation_edit'] == 'Y')
-                ) {
-                    // Set approvement flag to "Pending"
+                if ($products_updates_approval == 'all' || $products_updates_approval == 'custom' && $company_data['pre_moderation_edit'] == 'Y') {
                     $_REQUEST['product_data']['approved'] = $_POST['product_data']['approved'] = 'P';
                 } else {
                     unset($_REQUEST['product_data']['approved'], $_POST['product_data']['approved']);
                 }
-            }
-            // We create a new product
-            else {
-                // Pre-moderation is required for current vendor
-                if ($products_prior_approval == 'all'
-                    || ($products_prior_approval == 'custom' && $company_data['pre_moderation'] == 'Y')
-                ) {
-                    // Set approvement flag to "Pending"
+            } else {
+                if ($products_prior_approval == 'all' || $products_prior_approval == 'custom' && $company_data['pre_moderation'] == 'Y') {
                     $_REQUEST['product_data']['approved'] = $_POST['product_data']['approved'] = 'P';
                 }
             }
+
         } elseif ($mode == 'm_update' && !empty($_REQUEST['products_data'])) {
-            if ($products_updates_approval == 'all'
-                || ($products_updates_approval == 'custom' && $company_data['pre_moderation_edit'] == 'Y')
-            ) {
+            if ($products_updates_approval == 'all' || $products_updates_approval == 'custom' && $company_data['pre_moderation_edit'] == 'Y') {
                 foreach ($_REQUEST['products_data'] as $key => $data) {
                     $_REQUEST['products_data'][$key]['approved'] = $_POST['products_data'][$key]['approved'] = 'P';
                 }
@@ -58,17 +47,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             }
         } elseif ($mode == 'm_add' && !empty($_REQUEST['products_data'])) {
-            if ($products_prior_approval == 'all'
-                || ($products_prior_approval == 'custom' && $company_data['pre_moderation'] == 'Y')
-            ) {
+            if ($products_prior_approval == 'all' || $products_prior_approval == 'custom' && $company_data['pre_moderation'] == 'Y') {
                 foreach ($_REQUEST['products_data'] as $key => $data) {
                     $_REQUEST['products_data'][$key]['approved'] = $_POST['products_data'][$key]['approved'] = 'P';
                 }
             }
         } elseif ($mode == 'update_file' && !empty($_REQUEST['product_id'])) {
-            if ($products_updates_approval == 'all'
-                || ($products_updates_approval == 'custom' && $company_data['pre_moderation_edit'] == 'Y')
-            ) {
+            if ($products_updates_approval == 'all' || $products_updates_approval == 'custom' && $company_data['pre_moderation_edit'] == 'Y') {
                 fn_change_approval_status($_REQUEST['product_id'], 'P');
             }
         }

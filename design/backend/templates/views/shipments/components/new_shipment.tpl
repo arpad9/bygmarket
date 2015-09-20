@@ -1,5 +1,7 @@
 <script type="text/javascript">
+//<![CDATA[
     var packages = [];
+//]]>
 </script>
 
 <form action="{""|fn_url}" method="post" name="shipments_form" class="form-horizontal form-edit">
@@ -14,7 +16,7 @@
 {if $has_packages}
     <div class="tabs cm-j-tabs">
         <ul>
-            <li id="tab_general" class="cm-js active"><a>{__("general")}</a></li>
+            <li id="tab_general" class="cm-js cm-active"><a>{__("general")}</a></li>
             <li id="tab_packages_info" class="cm-js"><a>{__("packages")}</a></li>
         </ul>
     </div>
@@ -34,7 +36,7 @@
         {assign var="shipment_products" value=false}
 
         {foreach from=$order_info.products item="product" key="key"}
-            {if $product.shipment_amount > 0 && (!isset($product.extra.group_key) || $product.extra.group_key == $group_key)}
+            {if $product.shipment_amount > 0 && $product.extra.group_key == $group_key}
             {assign var="shipment_products" value=true}
 
             <tr>
@@ -93,7 +95,15 @@
             <div class="control-group">
                 <label class="control-label" for="carrier_key">{__("carrier")}</label>
                 <div class="controls">
-                    {include file="common/carriers.tpl" id="carrier_key" name="shipment_data[carrier]"}
+                    <select id="carrier_key" name="shipment_data[carrier]">
+                        <option value="">--</option>
+                        <option value="USP">{__("usps")}</option>
+                        <option value="UPS">{__("ups")}</option>
+                        <option value="FDX">{__("fedex")}</option>
+                        <option value="AUP">{__("australia_post")}</option>
+                        <option value="DHL">{__("dhl")}</option>
+                        <option value="CHP">{__("chp")}</option>
+                    </select>
                 </div>
             </div>
             
@@ -104,7 +114,6 @@
                 </div>
             </div>
             
-            {if "orders.update_status"|fn_check_view_permissions}
             <div class="control-group">
                 <label class="control-label" for="order_status">{__("order_status")}</label>
                 <div class="controls">
@@ -119,7 +128,6 @@
                     </p>
                 </div>
             </div>
-            {/if}
         </fieldset>
 
         <div class="cm-toggle-button">
@@ -148,7 +156,9 @@
                         {*<input type="checkbox" class="cm-shipments-package" id="package_{$shipping_id}{$package_id}" value="Y" />*}
                         
                         <script type="text/javascript">
+                        //<![CDATA[
                             packages['package_{$shipping_id}{$package_id}'] = [];
+                        //]]>
                         </script>
                         <h3>
                         {*<label for="package_{$shipping_id}{$package_id}">*}{__("package")} {$package_num} {if $package.shipping_params}({$package.shipping_params.box_length} x {$package.shipping_params.box_width} x {$package.shipping_params.box_height}){/if}{*</label>*}
@@ -156,7 +166,9 @@
                         <ul>
                         {foreach from=$package.products key="cart_id" item="amount"}
                             <script type="text/javascript">
+                            //<![CDATA[
                                 packages['package_{$shipping_id}{$package_id}']['{$cart_id}'] = '{$amount}';
+                            //]]>
                             </script>
                             {if $order_info.products.$cart_id}
                                 <li><span>{$amount}</span> x {$order_info.products.$cart_id.product} {if $order_info.products.$cart_id.product_options}({include file="common/options_info.tpl" product_options=$order_info.products.$cart_id.product_options}){/if}</li>
@@ -190,6 +202,7 @@
 
 {literal}
 <script type="text/javascript">
+//<![CDATA[
     function fn_calculate_packages()
     {
         var products = [];
@@ -221,5 +234,6 @@
     Tygh.$(document).ready(function() {
         Tygh.$('.cm-shipments-package').on('change', fn_calculate_packages);
     });
+//]]>
 </script>
 {/literal}

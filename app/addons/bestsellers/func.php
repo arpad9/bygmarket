@@ -12,9 +12,6 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-use Tygh\Registry;
-use Tygh\Enum\ProductTracking;
-
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
 //
@@ -63,42 +60,11 @@ function fn_bestsellers_get_products_pre(&$params, &$items_per_page, &$lang_code
         if ((!empty($params['sort_by']) && $params['sort_by'] == 'bestsellers') || ($default_sorting_params['sort_by'] == 'bestsellers') || isset($params['sales_amount_from']) || isset($params['sales_amount_to'])) {
             $params['extend'][] = 'categories';
             $params['extend'][] = 'sales';
-
-        } elseif ((!empty($params['sort_by']) && $params['sort_by'] == 'on_sale') || $default_sorting_params['sort_by'] == 'on_sale') {
-            $params['extend'][] = 'on_sale';
-        }
-    }
-
-    if (!empty($params['similar'])) {
-
-        $product = Tygh::$app['view']->getTemplateVars('product');
-
-        if (!empty($params['main_product_id'])) {
-            $params['exclude_pid'] = $params['main_product_id'];
-        }
-
-        if (!empty($params['similar_category']) && $params['similar_category'] == 'Y') {
-            $params['cid'] = $product['main_category'];
-
-            if (!empty($params['similar_subcats']) && $params['similar_subcats'] == 'Y') {
-                $params['subcats'] = 'Y';
-            }
-        }
-
-        if (!empty($product['price'])) {
-
-            if (!empty($params['percent_range'])) {
-                $range = $product['price'] / 100 * $params['percent_range'];
-
-                $params['price_from'] = $product['price'] - $range;
-                $params['price_to'] = $product['price'] + $range;      
-            } 
-
         }
     }
 }
 
-function fn_bestsellers_get_products(&$params, &$fields, &$sortings, &$condition, &$join, &$sorting, &$group_by, &$lang_code, &$having)
+function fn_bestsellers_get_products(&$params, &$fields, &$sortings, &$condition, &$join, &$sorting, &$group_by)
 {
     if (!empty($params['bestsellers'])) {
         $fields[] = 'SUM(?:product_sales.amount) as sales_amount';
@@ -108,27 +74,9 @@ function fn_bestsellers_get_products(&$params, &$fields, &$sortings, &$condition
         if (!empty($params['category_id'])) {
             $condition .= db_quote(" AND ?:product_sales.category_id = ?i", $params['category_id']);
         }
-
-    } elseif (!empty($params['on_sale'])) {
-        $fields[] = '100 - ((prices.price * 100) / list_price) AS sales_discount';
-
-        if (empty($params['on_sale_from'])) {
-            $having[] = db_quote('sales_discount > 0');
-
-        } else {
-            $_having = db_quote('sales_discount >= ?i', $params['on_sale_from']);
-            
-            if (!empty($params['on_sale_to'])) {
-                $_having .= db_quote(' AND sales_discount <= ?i', $params['on_sale_to']);
-            }   
-
-            $having[] = $_having;
-        }
-
-    } 
+    }
 
     $sortings['bestsellers'] = '?:product_sales.amount';
-    $sortings['on_sale'] = 'sales_discount';
 
     if (isset($params['sales_amount_from']) && fn_is_numeric($params['sales_amount_from'])) {
         $condition .= db_quote(' AND ?:product_sales.amount >= ?i', trim($params['sales_amount_from']));
@@ -140,17 +88,6 @@ function fn_bestsellers_get_products(&$params, &$fields, &$sortings, &$condition
 
     if ((in_array('sales', $params['extend']) && empty($params['bestsellers']))) {
         $join .= ' LEFT JOIN ?:product_sales ON ?:product_sales.product_id = products.product_id AND ?:product_sales.category_id = products_categories.category_id ';
-    } elseif ((in_array('on_sale', $params['extend']) && empty($params['on_sale']))) {
-        $fields[] = '100 - ((prices.price * 100) / list_price) AS sales_discount';
-    }
-
-    if (!empty($params['similar_in_stock']) && $params['similar_in_stock'] == 'Y') {
-        $condition .= db_quote(
-            " AND (IF(products.tracking = ?s, inventory_b.amount >= 1, products.amount >= 1) OR (products.tracking = 'D'))",
-            ProductTracking::TRACK_WITH_OPTIONS
-        );
-
-        $join .= " LEFT JOIN ?:product_options_inventory as inventory_b ON inventory_b.product_id = products.product_id AND inventory_b.amount >= 1";
     }
 
     return true;
@@ -159,7 +96,7 @@ function fn_bestsellers_get_products(&$params, &$fields, &$sortings, &$condition
 function fn_bestsellers_products_sorting(&$sorting)
 {
     $sorting['bestsellers'] = array('description' => __('bestselling'), 'default_order' => 'desc');
-    $sorting['on_sale'] = array('description' => __('on_sale'), 'default_order' => 'desc');}
+}
 
 function fn_bestsellers_update_product_post(&$product_data, &$product_id)
 {

@@ -13,23 +13,10 @@
 ****************************************************************************/
 
 use Tygh\Api;
-use Tygh\Registry;
 
-// Area will be defined in Api::defineArea.
-define('API', true);
+define('AREA', 'A');
 define('NO_SESSION', true);
+require(dirname(__FILE__) . '/init.php');
 
-try {
-    require dirname(__FILE__) . '/init.php';
-
-    /**
-     * @var Api $api
-     */
-    $api = Tygh::$app['api'];
-    if ($api instanceof Api) {
-        $api->handleRequest();
-    }
-
-} catch (Tygh\Exceptions\AException $e) {
-    $e->output();
-}
+$api = new Api();
+$api->handleRequest();

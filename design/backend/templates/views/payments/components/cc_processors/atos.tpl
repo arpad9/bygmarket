@@ -1,14 +1,14 @@
 {assign var="home_path" value=$processor_params.atos_files}
-{if $processor_params.atos_files|strstr:$config.dir.root}
-    {assign var="path_len" value=$config.dir.root|strlen}
-    {assign var="http_path_" value=$processor_params.atos_files|substr:$path_len}
-    {assign var="http_path" value="`$config.current_location`$http_path_"}
+{if $processor_params.atos_files|strstr:$smarty.const.DIR_ROOT}
+{assign var="path_len" value=$smarty.const.DIR_ROOT|strlen}
+{assign var="http_path_" value=$processor_params.atos_files|substr:$path_len}
+{assign var="http_path" value="`$config.current_location`$http_path_"}
 {/if}
 {assign var="auto_url" value="payment_notification.result?payment=atos"|fn_url:'C':'http'}
 {assign var="ok_url" value="payment_notification.process?payment=atos"|fn_url:'C':'http'}
 <p>{__("text_atos_notice", ["[home_path]" => $home_path, "[http_path]" => $http_path, "[auto_url]" => $auto_url, "[ok_url]" => $ok_url])}</p>
 
-{if $processor_params.atos_files|default:"`$config.dir.payments`atos_files/"|strlen > 59}
+{if $processor_params.atos_files|default:"`$smarty.const.DIR_ROOT`/app/payments/atos_files/"|strlen > 59}
 <p><span>{__("text_atos_warning")}</span></p>
 {/if}
 <hr>
@@ -57,6 +57,6 @@
 <div class="control-group">
     <label class="control-label" for="atos_files">{__("path_to_files")}:</label>
     <div class="controls">
-        <input type="text" name="payment_data[processor_params][atos_files]" id="atos_files" value="{$processor_params.atos_files|default:"`$config.dir.payments`atos_files"}"  size="60">
+        <input type="text" name="payment_data[processor_params][atos_files]" id="atos_files" value="{$processor_params.atos_files|default:"`$smarty.const.DIR_ROOT`/app/payments/atos_files"}"  size="60">
     </div>
 </div>

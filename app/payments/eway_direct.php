@@ -1,16 +1,16 @@
 <?php
 /***************************************************************************
- *                                                                          *
- *   (c) 2004 Vladimir V. Kalynyak, Alexey V. Vinokurov, Ilya M. Shalnev    *
- *                                                                          *
- * This  is  commercial  software,  only  users  who have purchased a valid *
- * license  and  accept  to the terms of the  License Agreement can install *
- * and use this program.                                                    *
- *                                                                          *
- ****************************************************************************
- * PLEASE READ THE FULL TEXT  OF THE SOFTWARE  LICENSE   AGREEMENT  IN  THE *
- * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
- ****************************************************************************/
+*                                                                          *
+*   (c) 2004 Vladimir V. Kalynyak, Alexey V. Vinokurov, Ilya M. Shalnev    *
+*                                                                          *
+* This  is  commercial  software,  only  users  who have purchased a valid *
+* license  and  accept  to the terms of the  License Agreement can install *
+* and use this program.                                                    *
+*                                                                          *
+****************************************************************************
+* PLEASE READ THE FULL TEXT  OF THE SOFTWARE  LICENSE   AGREEMENT  IN  THE *
+* "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
+****************************************************************************/
 
 use Tygh\Http;
 use Tygh\Registry;
@@ -39,39 +39,36 @@ if (!empty($order_info['gift_certificates'])) {
     }
 }
 
-$post = array(
-    'ewaygateway' => array(
-        'ewayCustomerID' => $processor_data['processor_params']['client_id'],
-        'ewayTotalAmount' => (100*$order_info['total']),
-        'ewayCustomerFirstName' => $order_info['b_firstname'],
-        'ewayCustomerLastName' => $order_info['b_lastname'],
-        'ewayCustomerEmail' => $order_info['email'],
-        'ewayCustomerAddress' => $order_info['b_address'],
-        'ewayCustomerPostcode' => $order_info['b_zipcode'],
-        'ewayCustomerInvoiceDescription' => $payment_description,
-        'ewayCustomerInvoiceRef' => $_order_id,
-        'ewayCardHoldersName' => $order_info['payment_info']['cardholder_name'],
-        'ewayCardNumber' => $order_info['payment_info']['card_number'],
-        'ewayCardExpiryMonth' => $order_info['payment_info']['expiry_month'],
-        'ewayCardExpiryYear' => $order_info['payment_info']['expiry_year'],
-        'ewayTrxnNumber' => '',
-        'ewayOption1' => '',
-        'ewayOption2' => '',
-        'ewayOption3' => $test_mode
-    )
-);
-
+$post = array();
+$post[] = '<ewaygateway>';
+$post[] = '<ewayCustomerID>' . $processor_data['processor_params']['client_id'] . '</ewayCustomerID>';
+$post[] = '<ewayTotalAmount>' . (100*$order_info['total']) . '</ewayTotalAmount>';
+$post[] = '<ewayCustomerFirstName>' . $order_info['b_firstname'] . '</ewayCustomerFirstName>';
+$post[] = '<ewayCustomerLastName>' . $order_info['b_lastname'] . '</ewayCustomerLastName>';
+$post[] = '<ewayCustomerEmail>' . $order_info['email'] . '</ewayCustomerEmail>';
+$post[] = '<ewayCustomerAddress>' . $order_info['b_address'] . '</ewayCustomerAddress>';
+$post[] = '<ewayCustomerPostcode>' . $order_info['b_zipcode'] . '</ewayCustomerPostcode>';
+$post[] = '<ewayCustomerInvoiceDescription>' . $payment_description . '</ewayCustomerInvoiceDescription>';
+$post[] = '<ewayCustomerInvoiceRef>' . $_order_id . '</ewayCustomerInvoiceRef>';
+$post[] = '<ewayCardHoldersName>' . $order_info['payment_info']['cardholder_name'] . '</ewayCardHoldersName>';
+$post[] = '<ewayCardNumber>' . $order_info['payment_info']['card_number'] . '</ewayCardNumber>';
+$post[] = '<ewayCardExpiryMonth>' . $order_info['payment_info']['expiry_month'] . '</ewayCardExpiryMonth>';
+$post[] = '<ewayCardExpiryYear>' . $order_info['payment_info']['expiry_year'] . '</ewayCardExpiryYear>';
+$post[] = '<ewayTrxnNumber></ewayTrxnNumber>';
+$post[] = '<ewayOption1></ewayOption1>';
+$post[] = '<ewayOption2></ewayOption2>';
+$post[] = '<ewayOption3>' . $test_mode . '</ewayOption3>';
 if ($processor_data['processor_params']['include_cvn'] == 'true' && !empty($order_info['payment_info']['cvv2'])) {
-    $post['ewaygateway']['ewayCVN'] = $order_info['payment_info']['cvv2'];
+    $post[] = '<ewayCVN>' . $order_info['payment_info']['cvv2'] . '</ewayCVN>';
 }
+$post[] = '</ewaygateway>';
 
 Registry::set('log_cut_data', array('ewayCardNumber', 'ewayCardExpiryMonth', 'ewayCardExpiryYear'));
-
-$return = Http::post("https://www.eway.com.au/" . $request_script, fn_array_to_xml($post), array(
-        'headers' => array(
-            'Content-type: text/xml'
-        )
-    ));
+$return = Http::post("https://www.eway.com.au:443/" . $request_script, implode("\n", $post), array(
+    'headers' => array(
+        'Content-type: text/xml'
+    )
+));
 
 preg_match("/<ewayTrxnStatus>(.*)<\/ewayTrxnStatus>/", $return, $result);
 preg_match("/<ewayReturnAmount>(.*)<\/ewayReturnAmount>/", $return, $amount);

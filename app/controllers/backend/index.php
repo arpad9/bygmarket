@@ -12,10 +12,7 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-use Tygh\Enum\ProductTracking;
 use Tygh\Registry;
-use Tygh\Settings;
-use Tygh\Tools\DateTimeHelper;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -28,55 +25,16 @@ if ($mode == 'index') {
         && (Registry::get('settings.General.feedback_type') == 'auto' || fn_allowed_for('ULTIMATE:FREE'))
         && fn_is_expired_storage_data('send_feedback', SECONDS_IN_DAY * 30)
     ) {
-        $redirect_url = 'feedback.send?action=auto&redirect_url=' . urlencode(Registry::get('config.current_url'));
+        $redirect_url = 'feedback.send?action=auto';
+        $redirect_url = fn_link_attach($redirect_url, 'redirect_url=' . urlencode(Registry::get('config.current_url')));
 
-        return array(CONTROLLER_STATUS_REDIRECT, $redirect_url);
+        fn_redirect($redirect_url);
     }
 
-    $time_periods = array(
-        DateTimeHelper::PERIOD_TODAY,
-        DateTimeHelper::PERIOD_YESTERDAY,
-        DateTimeHelper::PERIOD_THIS_MONTH,
-        DateTimeHelper::PERIOD_LAST_MONTH,
-        DateTimeHelper::PERIOD_THIS_YEAR,
-        DateTimeHelper::PERIOD_LAST_YEAR,
-    );
-
-    $time_period = DateTimeHelper::getPeriod(DateTimeHelper::PERIOD_MONTH_AGO_TILL_NOW);
-
-    // Predefined period selected
-    if (isset($_REQUEST['time_period']) && in_array($_REQUEST['time_period'], $time_periods)) {
-        $time_period = DateTimeHelper::getPeriod($_REQUEST['time_period']);
-
-        fn_set_session_data('dashboard_selected_period', serialize(array(
-            'period' => $_REQUEST['time_period']
-        )));
-    }
-    // Custom period selected
-    elseif (isset($_REQUEST['time_from'], $_REQUEST['time_to'])) {
-        $time_period = DateTimeHelper::createCustomPeriod('@' . $_REQUEST['time_from'], '@' . $_REQUEST['time_to']);
-
-        fn_set_session_data('dashboard_selected_period', serialize(array(
-            'from' => $time_period['from']->format(DateTime::ISO8601),
-            'to' => $time_period['to']->format(DateTime::ISO8601),
-        )));
-    }
-    // Fallback to previously saved period
-    elseif ($timeframe = fn_get_session_data('dashboard_selected_period')) {
-        $timeframe = unserialize($timeframe);
-
-        if (isset($timeframe['period']) && in_array($timeframe['period'], $time_periods)) {
-            $time_period = DateTimeHelper::getPeriod($timeframe['period']);
-        } elseif (isset($timeframe['from'], $timeframe['to'])) {
-            $time_period = DateTimeHelper::createCustomPeriod($timeframe['from'], $timeframe['to']);
-        }
-    }
-
-    $timestamp_from = $time_period['from']->getTimestamp();
-    $timestamp_to = $time_period['to']->getTimestamp();
-
-    $time_difference = $timestamp_to - $timestamp_from;
-    $is_day = ($timestamp_to - $timestamp_from) <= SECONDS_IN_DAY ? true : false;
+    $time_from = !empty($_REQUEST['time_from']) ? $_REQUEST['time_from'] : strtotime('-30 day');
+    $time_to = !empty($_REQUEST['time_to']) ? $_REQUEST['time_to']-1 : strtotime('now');
+    $time_difference = $time_to - $time_from;
+    $is_day = ($time_to - $time_from) <= SECONDS_IN_DAY ? true : false;
 
     $stats = '';
 
@@ -91,7 +49,7 @@ if ($mode == 'index') {
         $general_stats['products'] = array();
 
         $params = array(
-            'only_short_fields' => true, // NOT NEEDED AT ALL BECAUSE WE DONT USE RESULTING $FIELDS
+            'only_short_fields' => true,
             'extend' => array('companies', 'sharing'),
             'status' => 'A',
             'get_conditions' => true,
@@ -103,22 +61,15 @@ if ($mode == 'index') {
         $general_stats['products']['total_products'] = db_get_found_rows();
 
         $params = array(
+            'amount_from' => 0,
             'amount_to' => 0,
             'tracking' => array(
-                ProductTracking::TRACK_WITHOUT_OPTIONS, ProductTracking::TRACK_WITH_OPTIONS,
+                'B', 'O',
             ),
             'get_conditions' => true,
         );
-
-        $params['extend'][] = 'companies';
-
-        if (fn_allowed_for('ULTIMATE')) {
-            $params['extend'][] = 'sharing';
-        }
         list($fields, $join, $condition) = fn_get_products($params);
-
-        db_query('SELECT SQL_CALC_FOUND_ROWS ' . implode(', ', $fields) . ' FROM ?:products AS products' . $join . ' WHERE 1 ' . $condition . ' GROUP BY products.product_id');
-        $general_stats['products']['out_of_stock_products'] = db_get_found_rows();
+        $general_stats['products']['out_of_stock_products'] = db_get_field('SELECT COUNT(*) FROM ?:products AS products' . $join . ' WHERE 1 ' . $condition);
     }
 
     /* Customers */
@@ -158,16 +109,16 @@ if ($mode == 'index') {
     if (fn_check_view_permissions('orders.manage', 'GET') || fn_check_view_permissions('sales_reports.view', 'GET') || fn_check_view_permissions('taxes.manage', 'GET')) {
         $params = array(
             'period' => 'C',
-            'time_from' => $timestamp_from,
-            'time_to' => $timestamp_to,
+            'time_from' => $time_from,
+            'time_to' => $time_to,
         );
         list($orders_stat['orders'], $search_params, $orders_stat['orders_total']) = fn_get_orders($params, 0, true);
 
-        $time_difference = $timestamp_to - $timestamp_from;
+        $time_difference = $time_to - $time_from;
         $params = array(
             'period' => 'C',
-            'time_from' => $timestamp_from - $time_difference,
-            'time_to' => $timestamp_to - $time_difference,
+            'time_from' => $time_from - $time_difference,
+            'time_to' => $time_to - $time_difference,
         );
         list($orders_stat['prev_orders'], $search_params, $orders_stat['prev_orders_total']) = fn_get_orders($params, 0, true);
 
@@ -184,8 +135,8 @@ if ($mode == 'index') {
     }
 
     if (fn_check_view_permissions('cart.cart_list', 'GET')) {
-        $orders_stat['abandoned_cart_total'] = count(db_get_fields('SELECT COUNT(*) FROM ?:user_session_products WHERE `timestamp` BETWEEN ?i AND ?i ?p GROUP BY user_id', $timestamp_from, $timestamp_to, $company_condition));
-        $orders_stat['prev_abandoned_cart_total'] = count(db_get_fields('SELECT COUNT(*) FROM ?:user_session_products WHERE `timestamp` BETWEEN ?i AND ?i ?p GROUP BY user_id', $timestamp_from - $time_difference, $timestamp_to - $time_difference, $company_condition));
+        $orders_stat['abandoned_cart_total'] = db_get_field('SELECT COUNT(*) FROM ?:user_session_products WHERE `timestamp` BETWEEN ?i AND ?i ?p GROUP BY user_id', $time_from, $time_to, $company_condition);
+        $orders_stat['prev_abandoned_cart_total'] = db_get_field('SELECT COUNT(*) FROM ?:user_session_products WHERE `timestamp` BETWEEN ?i AND ?i ?p GROUP BY user_id', $time_from - $time_difference, $time_to - $time_difference, $company_condition);
 
         $orders_stat['diff']['abandoned_carts'] = fn_calculate_differences($orders_stat['abandoned_cart_total'], $orders_stat['prev_abandoned_cart_total']);
     }
@@ -221,7 +172,7 @@ if ($mode == 'index') {
     $logs = array();
 
     if (fn_check_view_permissions('logs.manage', 'GET')) {
-        list($logs, $search) = fn_get_logs(array('time_from' => $timestamp_from, 'time_to' => $timestamp_to, 'period' => 'C'), 10); // Get last 10 items
+        list($logs, $search) = fn_get_logs(array('time_from' => $time_from, 'time_to' => $time_to, 'period' => 'C'), 10); // Get last 10 items
     }
     /* /Recent activity block */
 
@@ -247,12 +198,12 @@ if ($mode == 'index') {
                                         . "AND ?:status_descriptions.lang_code = ?s "
                                         . "?p "
                                     . "GROUP BY ?:orders.status ",
-                                    'O', $timestamp_from, $timestamp_to, CART_LANGUAGE, $company_condition);
+                                    'O', $time_from, $time_to, CART_LANGUAGE, $company_condition);
     }
     /* /Order by statuses */
 
     /* Statistics */
-    $graphs = fn_dashboard_get_graphs_data($timestamp_from, $timestamp_to, $is_day);
+    $graphs = fn_dashboard_get_graphs_data($time_from, $time_to, $is_day);
     /* /Statistics */
 
     if (!empty($_SESSION['stats'])) {
@@ -260,24 +211,23 @@ if ($mode == 'index') {
         unset($_SESSION['stats']);
     }
 
-    Tygh::$app['view']->assign('general_stats', $general_stats);
-    Tygh::$app['view']->assign('orders_stat', $orders_stat);
-    Tygh::$app['view']->assign('stats', $stats);
-    Tygh::$app['view']->assign('logs', $logs);
+    Registry::get('view')->assign('general_stats', $general_stats);
+    Registry::get('view')->assign('orders_stat', $orders_stat);
+    Registry::get('view')->assign('stats', $stats);
+    Registry::get('view')->assign('logs', $logs);
 
-    Tygh::$app['view']->assign('order_statuses', $order_statuses);
+    Registry::get('view')->assign('order_statuses', $order_statuses);
 
-    Tygh::$app['view']->assign('graphs', $graphs);
-    Tygh::$app['view']->assign('is_day', $is_day);
+    Registry::get('view')->assign('graphs', $graphs);
+    Registry::get('view')->assign('is_day', $is_day);
 
-    Tygh::$app['view']->assign('time_from', $timestamp_from);
-    Tygh::$app['view']->assign('time_to', $timestamp_to);
+    Registry::get('view')->assign('time_from', $time_from);
+    Registry::get('view')->assign('time_to', $time_to);
 
-    Tygh::$app['view']->assign('order_by_statuses', $order_by_statuses);
+    Registry::get('view')->assign('order_by_statuses', $order_by_statuses);
 
     if (!empty($_REQUEST['welcome']) && $_REQUEST['welcome'] == 'setup_completed') {
-        Tygh::$app['view']->assign('show_welcome', true);
-        Tygh::$app['view']->assign('product_name', PRODUCT_NAME);
+        Registry::get('view')->assign('show_welcome', true);
     }
 }
 
@@ -303,7 +253,7 @@ function fn_get_orders_taxes_subtotal($orders, $params)
             foreach ($taxes as $tax) {
                 $tax = unserialize($tax);
                 foreach ($tax as $id => $tax_data) {
-                    $subtotal += !empty($tax_data['tax_subtotal']) ? $tax_data['tax_subtotal'] : 0;
+                    $subtotal += $tax_data['tax_subtotal'];
                 }
             }
         }

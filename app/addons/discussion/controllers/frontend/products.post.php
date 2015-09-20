@@ -18,7 +18,7 @@ if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
 if ($mode == 'view' || $mode == 'quick_view') {
 
-    $product = Tygh::$app['view']->getTemplateVars('product');
+    $product = Registry::get('view')->getTemplateVars('product');
     $product['discussion'] = fn_get_discussion($product['product_id'], "P", true, $_REQUEST);
-    Tygh::$app['view']->assign('product', $product);
+    Registry::get('view')->assign('product', $product);
 }

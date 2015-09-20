@@ -5,12 +5,22 @@
     <input type="hidden" name="user_data[user_type]" value="{$user_data.user_type}" />
 {/if}
 
+{if $settings.General.use_email_as_login == "Y"}
 <div class="control-group">
     <label for="email" class="control-label cm-required cm-email">{__("email")}:</label>
     <div class="controls">
         <input type="text" id="email" name="user_data[email]" class="input-large" size="32" maxlength="128" value="{$user_data.email}" />
     </div>
 </div>
+{else}
+
+<div class="control-group">
+    <label for="user_login_profile" class="control-label cm-required">{__("username")}:</label>
+    <div class="controls">
+        <input id="user_login_profile" type="text" name="user_data[user_login]" class="input-large" size="32" maxlength="32" value="{$user_data.user_login}" />
+    </div>
+</div>
+{/if}
 
 <div class="control-group">
     <label for="password1" class="control-label cm-required">{__("password")}:</label>

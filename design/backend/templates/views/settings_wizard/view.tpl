@@ -9,10 +9,10 @@
         <div class="form-horizontal">
             {foreach from=$step_data.items item="item"}
                 {if $item.type == "header"}
-                    <h4>{__($item.text, $item.placeholders)}</h4>
+                    <h4>{__($item.text)}</h4>
             
                 {elseif $item.type == "text"}
-                    <p>{__($item.text, $item.placeholders)}</p>
+                    <p>{__($item.text)}</p>
             
                 {elseif $item.type == "template"}
                     <p>{include file=$item.template}</p>
@@ -84,5 +84,5 @@
 
 {if !"AJAX_REQUEST"|defined}
     {/capture}
-    {include file="common/mainbox.tpl" title=__("settings_wizard") content=$smarty.capture.mainbox buttons=$smarty.capture.buttons sidebar_position="left"}
+    {include file="common/mainbox.tpl" title=__("settings_wizard") content=$smarty.capture.mainbox buttons=$smarty.capture.buttons}
 {/if}

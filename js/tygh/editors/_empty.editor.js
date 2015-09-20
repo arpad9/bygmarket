@@ -4,10 +4,6 @@
     $.ceEditor('handlers', {
         
         run: function(elm) {
-
-            elm.change(function() {
-                elm.ceEditor('changed', elm.val());
-            });
             return true;
         },
 

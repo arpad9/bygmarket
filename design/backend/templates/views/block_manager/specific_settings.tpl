@@ -1,7 +1,7 @@
 {if $spec_settings && (($spec_settings|count > 1 && $spec_settings.settings) || (!$spec_settings.settings))}
 <div id="toggle_{$s_set_id}">
     <div class="specific-settings pull-left" id="container_{$s_set_id}">
-        <a id="sw_additional_{$s_set_id}" class="open cm-combination">
+        <a id="sw_additional_{$s_set_id}" class="cm-combo-off cm-combination">
             {__("specific_settings")}
             <span class="combo-arrow"></span>
         </a>

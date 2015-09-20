@@ -1,18 +1,20 @@
 
                               LICENSE AGREEMENT
-                             on the use of Multi-Vendor
+        on the use of CS-Cart Shopping Cart Software Multi-Vendor Edition
 
-This license agreement (hereinafter referred to as the "Agreement") constitutes a contract between Vladimir V. Kalynyak, Alexey V. Vinokurov, Ilya M. Shalnev who are the authors of and the owners of the exclusive right to the Multi-Vendor (hereinafter referred to as the "Copyright Owner"), and you (hereinafter referred to as the "User").
+This license agreement (hereinafter referred to as the "Agreement") constitutes a contract between Vladimir V. Kalynyak, Alexey V. Vinokurov, Ilya M. Shalnev who are the authors of and the owners of the exclusive right to the CS-Cart Shopping Cart Software (hereinafter referred to as the "Copyright Owner"), and you (hereinafter referred to as the "User").
 
-This Agreement contains definitions and conditions under which the User can use Multi-Vendor.
+This Agreement contains definitions and conditions under which the User can use CS-Cart Shopping Cart Software Multi-Vendor Edition.
 
 TERMS AND DEFINITIONS
 
 All terms given in this section of the Agreement shall have the following meaning for this Agreement only, and shall not be construed to suggest otherwise when used in respect of the conditions set forth in this Agreement.
 
-Multi-Vendor means the software registered at the Federal Service for Intellectual Property, Patents and Trademarks Regulations of the Russian Federation (certificate of official registration of a computer program #2014614177).
+CS-Cart Shopping Cart Software means the software registered at the Federal Service for Intellectual Property, Patents and Trademarks Regulations of the Russian Federation (certificate of official registration of a computer program #2007610394) and at the U.S. Copyright Office of the Library of Congress (certificate #TX 6-852-685).
 
-Program means the Multi-Vendor and all related printed materials, help and online documentation as well as all copies and all derivative works related to this software, including but not limited to, all updates and modifications.
+CS-Cart Shopping Cart Software Multi-Vendor Edition means one of the editions of the CS-Cart Shopping Cart Software.
+
+Program means the CS-Cart Shopping Cart Software Multi-Vendor Edition and all related printed materials, help and online documentation as well as all copies and all derivative works related to this software, including but not limited to, all updates and modifications.
 
 Program-based Derivative means any program, work or information created by the User or a third party with using the Program or any of its parts.
 
@@ -30,7 +32,7 @@ Full License means the right to Use the Program (one copy) on one Website provid
 
 License Domain Name means the Domain Name for which the User obtains the Subscription License or the Full License and which is provided by the User upon purchase of the Subscription License or the Full License.
 
-Reseller means a legal entity or a private entrepreneur empowered to distribute the Trial Licenses and the Full Licenses.
+Reseller means a legal entity or a private entrepreneur empowered to distribute the Trial Licenses, the Subscription Licenses or the Full License.
 
 Confidential Information means the contents of the Program (source code) as well as other information about the Program that the Copyright Owner may deem confidential.
 
@@ -48,11 +50,11 @@ The Copyright Owner provides the User with the Trial License under a simple non-
 
 The User having the Trial License shall keep the text "Powered by CS-Cart" which contains a hyperlink to the site http://www.cs-cart.com on each page of the Program. Upon removing this text and/or the hyperlink the User bears liability for infringing the Copyright Owner's exclusive rights in accordance with the effective law of the Russian Federation and international agreements on copyright and intellectual property.
 
-The User shall, upon expiration of the term granted by the Trial License, purchase the Subscription License or the Full License on the Website http://www.cs-cart.com or remove the Program both from the Website on which Domain Name the Program is used and from other media if any.
+The User shall, upon expiration of the term granted by the Trial License, purchase the Subscription License or the Full License on the Website http://www.cs-cart.com or from the Reseller or remove the Program both from the Website on which Domain Name the Program is used and from other media if any.
 
-The Copyright Owner provides the User with the Subscription License under a simple non-exclusive license on the territory mentioned in Section 7 of this Agreement only after the User pays the compensation on the site http://www.cs-cart.com provided that the Program may be available on the Internet only through one License Domain Name.
+The Copyright Owner provides the User with the Subscription License under a simple non-exclusive license on the territory mentioned in Section 7 of this Agreement only after the User pays the compensation on the site http://www.cs-cart.com or to the Reseller provided that the Program may be available on the Internet only through one License Domain Name.
 
-The User shall, upon expiration of the term granted by the Subscription License, purchase the Full License or purchase the Subscription License repeatedly on the Website http://www.cs-cart.com or remove the Program both from the Website on which Domain Name the Program is used and from other media, if any.
+The User shall, upon expiration of the term granted by the Subscription License, purchase the Full License or purchase the Subscription License repeatedly on the Website http://www.cs-cart.com or from the Reseller, or remove the Program both from the Website on which Domain Name the Program is used and from other media, if any.
 
 The Copyright Owner provides the User with the Full License under a simple non-exclusive license on the territory mentioned in Section 7 of this Agreement only after the User pays the compensation on the website http://www.cs-cart.com or to the Reseller provided that the Program may be available on the Internet only through one License Domain Name.
 
@@ -104,7 +106,7 @@ The User assumes all the risks related to the performance and the Use of the Pro
 
 Under no circumstances the Copyright Owner is liable to the User for any damages (including, but not limited to, any loss of profits and confidential or other information, the damages caused by an interruption of the business, loss of revenue, turnover, business reputation or data, neglected business opportunities, any indirect, incidental, special, punitive or consequential damages) related to the Use of the Program or impossibility to Use the Program.
 
-In the event that the law of the User's country concedes no limitation of liability, or the liability of the Copyright Owner is recognized by the competent court, the Copyright Owner will be liable only for actual damage incurred from Using the Program if the damage is caused by a tort of the Copyright Owner, or if the damage is caused by the reasons that the Copyright Owner knew or should have known. The maximum amount of liability of the Copyright Owner is limited to the amount of the compensation that the User paid for one Subscription License or one Full License.
+In the event that the law of the User's country concedes no limitation of liability, or the liability of the Copyright Owner is recognized by the competent court, the Copyright Owner will be liable only for actual damage incurred from Using the Program if the damage is caused by a tort of the Copyright Owner, or if the damage is caused by the reasons that the Copyright Owner knew or should have known. The maximum amount of liability of the Copyright Owner is limited to the amount of the compensation that the User paid for one Subscription License or one the Full License.
 
 The limitations of liability of the Copyright Owner that are specified in this section of the Agreement apply to the Program and all associated objects.
 
@@ -128,7 +130,7 @@ The Copyright Owner may unilaterally change this Agreement. The User is notified
 
 The User acknowledges that the Copyright Owner may suffer damage if the conditions of this Agreement are not respected, and therefore the User agrees that the Copyright Owner has the right to use any form of protecting the violated rights and legitimate interests, including the direct appeal to the appropriate court without a necessity to comply with the claim settlement procedure.
 
-Any dispute arising out or in connection with this Agreement, including any question regarding its interpretation, execution, termination or validity shall be finally settled by arbitration under the Rules of the International Commercial Arbitration Court at the Chamber of Commerce and Industry of the Russian Federation (hereinafter referred to as the "Rules", http://www.tpprf-mkac.ru/en/2010-06-13-13-33-51/regleng), which Rules are deemed to be incorporated by reference into this section. The arbitration panel shall consist of one (1) arbitrator selected in accordance with the Rules. The language to be used in the arbitral proceeding shall be English. The governing law of the Agreement shall be the substantive law of Russian Federation. The arbitration shall be held in Moscow, Russian Federation. The injunctive relief for the subject of dispute may be only suspension of recovery on the basis of the enforced document questioned by the plaintiff or any other document under which penalties are recovered on non-acceptable basis. The plaintiff shall bear its own and the other Party’s costs associated with the resolution or arbitration of any dispute, and all fees and other costs of the arbitration proceeding shall be paid by the plaintiff. The award rendered by the arbitration shall be final and binding upon both Parties and judgment upon the award may be entered in any court having jurisdiction thereof.
+Any dispute arising out or in connection with this agreement, including any question regarding its interpretation, validity or termination, shall be referred to and finally resolved by the Ulyanovsk Regional Court of Arbitration (Ulyanovsk, Russian Federation), or the appropriate court of common law on the territory of the Russian Federation (the competent court) at the location of the Copyright Owner.
 
 The Parties acknowledge the legal validity of the documents sent by email. The documents sent by the Copyright Owner are considered created in the proper written form if they are sent from sales@cs-cart.com.
 

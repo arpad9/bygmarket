@@ -44,14 +44,16 @@ if ($mode == 'get_suppliers_list') {
         array_unshift($suppliers, array('value' => 0, 'name' => '-' . __('none') . '-'));
     }
 
-    if (defined('AJAX_REQUEST') && sizeof($suppliers) < $limit) {
-        Tygh::$app['ajax']->assign('completed', true);
+    if (sizeof($suppliers) < $limit) {
+        Registry::get('ajax')->assign('completed', true);
     } else {
         array_pop($suppliers);
     }
 
-    Tygh::$app['view']->assign('objects', $suppliers);
-    Tygh::$app['view']->assign('id', $params['result_ids']);
-    Tygh::$app['view']->display('common/ajax_select_object.tpl');
+    Registry::get('ajax')->assign('action', $params['action']);
+
+    Registry::get('view')->assign('objects', $suppliers);
+    Registry::get('view')->assign('id', $params['result_ids']);
+    Registry::get('view')->display('common/ajax_select_object.tpl');
     exit;
 }

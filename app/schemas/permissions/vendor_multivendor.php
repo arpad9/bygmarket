@@ -22,6 +22,11 @@ return array(
             'permissions' => true,
         ),
         'elf_connector' => array (
+            'modes' => array (
+                'files' => array (
+                    'permissions' => false,
+                ),
+            ),
             'permissions' => true,
         ),
 
@@ -41,26 +46,23 @@ return array(
                 ),
                 'manage' => array (
                     'param_permissions' => array(
-                        'user_type' => array(
-                            'P' => false,
+                        'extra' => array(
+                            'user_type=P' => false,
                         ),
-                        'default_permission' => true,
+                        'permission' => true,
                     ),
                     'condition' => array(
-                        'user_type' => array(
-                            'A' => array(
+                        'extra' => array(
+                            'user_type=A' => array(
                                 'operator' => 'and',
                                 'function' => array('fn_check_permission_manage_profiles', 'A'),
                             ),
-                            'V' => array(
+                            'user_type=V' => array(
                                 'operator' => 'and',
                                 'function' => array('fn_check_permission_manage_profiles', 'V'),
                             ),
                         )
                     ),
-                ),
-                'view_product_as_user' => array(
-                    'permissions' => true,
                 ),
                 'act_as_user' => array (
                     'permissions' => false,
@@ -120,14 +122,14 @@ return array(
 
         'sales_reports' => array (
             'modes' => array(
-                'view' => array (
-                    'permissions' => true,
+                'reports_list' => array (
+                    'permissions' => false,
                 ),
                 'set_report_view' => array (
                     'permissions' => true,
                 ),
             ),
-            'permissions' => false,
+            'permissions' => array ('GET' => true, 'POST' => false),
         ),
 
         'categories' => array (
@@ -248,9 +250,6 @@ return array(
                     'permissions' => array ('GET' => true, 'POST' => false),
                 ),
                 'get_feature_variants_list' => array(
-                    'permissions' => true,
-                ),
-                'get_variants_list' => array(
                     'permissions' => true,
                 ),
                 'get_variants' => array(
@@ -383,26 +382,26 @@ return array(
             'modes' => array (
                 'update_position' => array(
                     'param_permissions' => array (
-                        'table' => array (
+                        'table_names' => array (
                             'images_links' => true,
                         )
                     )
                 ),
                 'update_status' => array (
                     'param_permissions' => array (
-                        'table' => array (
+                        'table_names' => array (
                             'shippings' => true,
                             'products' => true,
                             'product_options' => true,
                             'attachments' => true,
                             'product_files' => true,
-                            'pages' => true,
+                            'pages' => 'true',
                             //'users' => true,
                             /*'categories' => 'manage_catalog',
                             'states' => 'manage_locations',
                             'usergroups' => 'manage_usergroups',
                             'currencies' => 'manage_currencies',
-                            'blocks' => 'edit_files',
+                            'blocks' => 'edit_templates',
                             'taxes' => 'manage_taxes',
                             'promotions' => 'manage_promotions',
                             'static_data' => 'manage_static_data',
@@ -434,9 +433,6 @@ return array(
         'debugger' => array(
             'permissions' => true,
         ),
-        'file_editor' => array(
-            'permissions' => true
-        )
     ),
 
     'addons' => array (
@@ -479,10 +475,7 @@ return array(
         'hot_deals_block' => array(
             'permission' => false,
         ),
-        'newsletters' => array(
-            'permission' => false,
-        ),
-        'blog' => array(
+        'news_and_emails' => array(
             'permission' => false,
         ),
         'quickbooks' => array(
@@ -506,12 +499,6 @@ return array(
             'translations' => array(
                 'permission' => false,
             ),
-            'users' => array(
-                'permission' => false,
-            ),
-            'features' => array(
-                'permission' => false,
-            ),
         ),
         'patterns' => array(
             'google' => array(
@@ -528,9 +515,6 @@ return array(
                 'permission' => false,
             ),
             'users' => array(
-                'permission' => false,
-            ),
-            'features' => array(
                 'permission' => false,
             ),
         ),

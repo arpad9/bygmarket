@@ -12,7 +12,7 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-if (!defined('BOOTSTRAP')) { die('Access denied'); }
+if ( !defined('BOOTSTRAP') ) { die('Access denied');    }
 
 if ($mode == 'update' || $mode == 'install' || $mode == 'uninstall') {
     if ($_SERVER['REQUEST_METHOD'] == 'POST' && $_REQUEST['addon'] == 'seo') {
@@ -31,4 +31,8 @@ if (!empty($show_notice)) {
             '[link]' => fn_url('addons.update?addon=searchanise')
         )));
     }
+}
+
+if ($mode == 'uninstall' && $_REQUEST['addon'] == 'searchanise') {
+    fn_se_send_addon_status_request('disabled');
 }

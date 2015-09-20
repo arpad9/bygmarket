@@ -51,13 +51,7 @@ fn_register_hooks(
     'wishlist_get_count_post',
     'logo_types',
     'update_cart_by_data_post',
-    'update_cart_products_post',
-    'paypal_express_get_order_data',
-    'quickbooks_export_order',
-    'quickbooks_export_items',
-    'change_order_status',
-    'paypal_apply_discount_post',
-    'amazon_calculate_promotions'
+    'update_cart_products_post'
 );
 if (fn_allowed_for('ULTIMATE')) {
     fn_register_hooks(

@@ -1,11 +1,11 @@
-<form action="{""|fn_url}" method="post" name="add_global_options" class="form-table form-horizontal form-edit">
+<form action="{""|fn_url}" method="post" name="add_global_options" class="form-table">
 {capture name="mainbox"}
 
 {if "ULTIMATE"|fn_allowed_for && $runtime.company_id}
     {assign var="company_id" value=$runtime.company_id}
 {/if}
 
-{include file="pickers/products/picker.tpl" data_id="added_products" input_name="apply_options[product_ids]" no_item_text=__("text_no_items_defined", ["[items]" => __("products")]) type="links" company_id=$company_id placement="right"}
+{include file="pickers/products/picker.tpl" data_id="added_products" input_name="apply_options[product_ids]" no_item_text=__("text_no_items_defined", ["[items]" => __("products")]) type="links" company_id=$company_id}
 
 {include file="common/subheader.tpl" title=__("select_options")}
 {foreach from=$product_options item="po"}
@@ -19,17 +19,18 @@
 {/capture}
 
 {capture name="buttons"}
-<div class="btn-group btn-hover dropleft">
-    {include file="buttons/button.tpl" but_text=__("apply") but_name="dispatch[product_options.apply]" but_role="submit" but_meta="btn-primary dropdown-toggle"}
-    <ul class="dropdown-menu">
-        <li><a>
-            <label for="link">
-                <input type="hidden" name="apply_options[link]" value="N" />
-                <input type="checkbox" name="apply_options[link]" id="link" value="Y"/>
-            {__("apply_as_link")}
-            </label>
-        </a></li>
-    </ul>
+<div class="btn-group dropleft">
+  {include file="buttons/button.tpl" but_text=__("apply") but_name="dispatch[product_options.apply]" but_role="submit"}
+  <button class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+    <span class="caret"></span>
+  </button>
+  <ul class="dropdown-menu">
+    <li><a><label for="link">
+    <input type="hidden" name="apply_options[link]" value="N" />
+    <input type="checkbox" name="apply_options[link]" id="link" value="Y"/>
+    {__("apply_as_link")}
+    </label></a></li>
+  </ul>
 </div>
 {/capture}
 

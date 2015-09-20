@@ -44,67 +44,90 @@ if (!defined('BOOTSTRAP')) {
     exit;
 
 } else {
+
     $merchant_id = ($processor_data['processor_params']['mode'] == 'test') ? 'TEST' : $processor_data['processor_params']['merchant_id'];
     $biller_code = $processor_data['processor_params']['biller_code'];
-    $url = 'https://www.payway.com.au/MakePayment';
 
-    $data = array(
-        'merchant_id' => $merchant_id,
-        'biller_code' => $biller_code,
-        'payment_reference' => $order_id,
-        'receipt_address' => $order_info['email']
-    );
+echo <<<EOT
+<form method="post" action="https://www.payway.com.au/MakePayment" name="process">
+    <input type="hidden" name="merchant_id" value="{$merchant_id}">
+    <input type="hidden" name="biller_code" value="{$biller_code}">
 
-    // Products
-    if (!empty($order_info['products'])) {
-        foreach ($order_info['products'] as $k => $v) {
-            if (!empty($v['product_options'])) {
-                $opts = '';
-                foreach ($v['product_options'] as $key => $val) {
-                    $opts .= $val['option_name'] . ':' . $val['variant_name'] . '; ';
-                }
-                $v['product'] .= ' (' . $opts . ')';
+EOT;
+// Products
+if (!empty($order_info['products'])) {
+    foreach ($order_info['products'] as $k => $v) {
+        if (!empty($v['product_options'])) {
+            $opts = '';
+            foreach ($v['product_options'] as $key => $val) {
+                $opts .= "$val[option_name]:$val[variant_name]; ";
             }
-            $v['one_product_price'] = fn_format_price(($v['subtotal'] - fn_external_discounts($v)) / $v['amount']);
-            $data[$v['product']] = $v['amount'] . ',' . $v['one_product_price'];
+            $v['product'] .= ' ('.$opts.')';
         }
-    }
-    
-    // Gift Certificates
-    if (!empty($order_info['gift_certificates'])) {
-        foreach ($order_info['gift_certificates'] as $v) {
-            $v['amount'] = (!empty($v['extra']['exclude_from_calculate'])) ? 0 : $v['amount'];
-            $data[$v['gift_cert_code']] = '1,' . $v['amount'];
-        }
-    }
+        $v['one_product_price'] = fn_format_price(($v['subtotal'] - fn_external_discounts($v)) / $v['amount']);
+echo <<<EOT
+    <input type="hidden" name="{$v['product']} " value="{$v['amount']},{$v['one_product_price']}">
 
-    if (!empty($order_info['use_gift_certificates'])) {
-        foreach ($order_info['use_gift_certificates'] as $k => $v) {
-            $v['amount'] = (!empty($v['extra']['exclude_from_calculate'])) ? 0 : $v['amount'];
-            $data[$k] = '1,-' . $v['amount'];
-        }
+EOT;
     }
+}
+// Gift Certificates
+if (!empty($order_info['gift_certificates'])) {
+    foreach ($order_info['gift_certificates'] as $v) {
+        $v['amount'] = (!empty($v['extra']['exclude_from_calculate'])) ? 0 : $v['amount'];
+echo <<<EOT
+    <input type="hidden" name="{$v['gift_cert_code']} " value="1,{$v['amount']}">
 
-    // Payment surcharge
-    if (floatval($order_info['payment_surcharge'])) {
-        $desc = __('payment_surcharge');
-        $data[$desc] = $order_info['payment_surcharge'];
+EOT;
     }
+}
+// Payment surcharge
+if (floatval($order_info['payment_surcharge'])) {
+$desc = __('payment_surcharge');
+echo <<<EOT
+    <input type="hidden" name="{$desc}" value="{$order_info['payment_surcharge']}">
+EOT;
+}
 
 
-    if (floatval($order_info['subtotal_discount'])) {
-        $desc = __('order_discount');
-        $pr = fn_format_price($order_info['subtotal_discount']);
-        $data[$desc] = '-' . $pr;
-    }
+if (floatval($order_info['subtotal_discount'])) {
+    $desc = __('order_discount');
+    $pr = fn_format_price($order_info['subtotal_discount']);
+echo <<<EOT
+    <input type="hidden" name="{$desc}" value="-{$pr}">
 
-    // Shipping
-    if ($sh = fn_order_shipping_cost($order_info)) {
-        $desc = __('shipping_cost');
-        $data[$desc] = $sh;
-    }
+EOT;
+}
 
-    fn_create_payment_form($url, $data, 'PayWay server');
+// Shipping
+if ($sh = fn_order_shipping_cost($order_info)) {
+$desc = __('shipping_cost');
+echo <<<EOT
+    <input type="hidden" name="{$desc}" value="{$sh}">
+
+EOT;
+}
+echo <<<EOT
+    <input type="hidden" name="payment_reference" value="{$order_id}">
+    <input type="hidden" name="receipt_address" value="{$order_info['email']}">
+
+EOT;
+
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'PayWay server'
+));
+echo <<<EOT
+    </form>
+   <div align="center"><p>{$msg}</p></div>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
+exit;
 }
 
 function fn_payway_pkcs5_unpad($text)

@@ -190,21 +190,21 @@ class Response
 
     /**
      * Current response status
-     * @var int $status
+     * @var int $_status
      */
-    protected $status = '';
+    private $_status = '';
 
     /**
      * Current response body
-     * @var mixed $body
+     * @var mixed $_body
      */
-    protected $body = '';
+    private $_body = '';
 
     /**
      * Current response content type
-     * @var string $content_type
+     * @var string $_content_type
      */
-    protected $content_type = '';
+    private $_content_type = '';
 
     /**
      * Creates new response
@@ -216,53 +216,38 @@ class Response
      */
     public function __construct($status = self::STATUS_OK, $body = '', $content_type = '')
     {
-        $this->status = $status;
-        $this->body = $body;
-        $this->content_type = !empty($content_type) ? $content_type : Api::DEFAULT_RESPONSE_FORMAT;
+        $this->_status = $status;
+        $this->_body = $body;
+        $this->_content_type = !empty($content_type) ? $content_type : Api::DEFAULT_RESPONSE_FORMAT;
     }
 
     /**
      * Sends request
      *
-     * Method does not return result. It's exit from script.
+     * Method do not return result. It's exit from script.
      */
     public function send()
     {
-        if (fn_notification_exists('extra', 'company_access_denied')) {
-            $this->status = Response::STATUS_FORBIDDEN;
+        $this->_setStatusCode($this->_status);
 
-        } elseif (fn_notification_exists('extra', '404')) {
-            $this->status = Response::STATUS_NOT_FOUND;
-        }
-
-        if ($this->status == self::STATUS_UNAUTHORIZED) {
-            header('WWW-Authenticate: Basic realm="User email/API key"');
-        }
-
-        $this->sendStatusCode($this->status);
-
-        if ($this->status == self::STATUS_NO_CONTENT) {
+        if ($this->_status == self::STATUS_NO_CONTENT) {
             exit;
         }
 
-        header('Content-type: ' . $this->content_type);
+        header('Content-type: ' . $this->_content_type);
 
-        if (!self::isSuccessStatus($this->status)) {
+        if (!self::isSuccessStatus($this->_status)) {
 
             $messages = array();
-            if (is_array($this->body)) {
-                if (!empty($this->body['message'])) {
-                    $messages = array($this->body['message']);
-                } else {
-                    $messages = $this->body;
-                }
-            } elseif (!empty($this->body)) {
-                $messages = array($this->body);
+            if (!empty($this->_body['message'])) {
+                $messages[] = $this->_body['message'];
+            } elseif (!empty($this->_body)) {
+                $messages[] = $this->_body;
             }
 
-            $this->body = array();
+            $this->_body = array();
             $codes = self::getAvailableCodes();
-            $this->body['message'] = $codes[$this->status];
+            $this->_body['message'] = $this->_status . ' ' . $codes[$this->_status];
 
 
             $notifications = fn_get_notifications();
@@ -279,25 +264,24 @@ class Response
             }
 
             if (!empty($messages)) {
-                $this->body['message'] .= ': ' . implode('. ', $messages);
+                $this->_body['message'] .= ': ' . implode('. ', $messages);
             }
 
-            $this->body['status'] = $this->status;
         }
 
-        $body = FormatManager::instance()->encode($this->body, $this->content_type);
+        $body = FormatManager::instance()->encode($this->_body, $this->_content_type);
         echo $body;
 
         exit;
     }
 
     /**
-     * Sends response status
+     * Sets response status
      *
      * @param  int  $code Response status code
      * @return bool Always true
      */
-    protected function sendStatusCode($code)
+    private function _setStatusCode($code)
     {
         if (!function_exists('http_response_code')) {
             $codes = $this->getAvailableCodes();
@@ -305,6 +289,8 @@ class Response
             if (!isset($codes[$code])) {
                 $code = self::STATUS_OK;
             }
+
+            $message = $codes[$code];
 
             $protocol = (isset($_SERVER['SERVER_PROTOCOL']) ? $_SERVER['SERVER_PROTOCOL'] : 'HTTP/1.0');
 
@@ -319,7 +305,7 @@ class Response
     }
 
     /**
-     * Returns list of status codes and it's text descriptions
+     * Returns list of status codes and it's text desciptions
      *
      * @return array
      */

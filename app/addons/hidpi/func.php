@@ -27,39 +27,31 @@ function fn_hidpi_update_image(&$image_data, &$image_id, &$image_type, &$images_
 {
     // Save original image
     $filename = fn_hdpi_form_name($image_data['name']);
-
     Storage::instance('images')->put($images_path . $filename, array(
         'file' => $image_data['path'],
         'keep_origins' => true
     ));
-
-    $ext = fn_get_file_ext($filename);
-
-    // We should not process ICO files
-    if ($ext == 'ico') {
-        return false;
-    }
-
+    
     // Resize original image to non-hidpi resolution
     $_data['image_x'] = intval($_data['image_x'] / 2);
     $_data['image_y'] = intval($_data['image_y'] / 2);
 
-    fn_put_contents($image_data['path'], fn_resize_image($image_data['path'], $_data['image_x'], $_data['image_y'], Registry::get('settings.Thumbnails.thumbnail_background_color')));
+    fn_put_contents($image_data['path'], fn_resize_image($image_data['path'], $_data['image_x'], $_data['image_y']));
 }
 
 /**
  * Hook: generates HiDPI image during thumbnail generation
- * @param string $image_path
+ * @param string $real_path
  * @param boolean $lazy
  * @param string $filename
  * @param int $width
  * @param int $height
  */
-function fn_hidpi_generate_thumbnail_file_pre($image_path, $lazy, $filename, $width, $height)
+function fn_hidpi_generate_thumbnail_file_pre($real_path, $lazy, $filename, $width, $height)
 {
     if ($lazy == false) {
 
-        list(, , ,$tmp_path) = fn_get_image_size(fn_hdpi_form_name(Storage::instance('images')->getAbsolutePath($image_path)));
+        list(, , ,$tmp_path) = fn_get_image_size(fn_hdpi_form_name($real_path));
 
         if (!empty($tmp_path)) {
             list($cont, $format) = fn_resize_image($tmp_path, $width * 2, $height * 2, Registry::get('settings.Thumbnails.thumbnail_background_color'));
@@ -89,16 +81,6 @@ function fn_hidpi_delete_image($image_id, $pair_id, $object_type, $_image_file)
 }
 
 /**
- * Hook: gets images host
- * @param object $view templater object
- */
-function fn_hidpi_init_templater_post(&$view)
-{
-    $url = Storage::instance('images')->getUrl();
-    $view->assign('hidpi_image_host', parse_url($url, PHP_URL_HOST));
-}
-
-/**
  * Generates name for HiDPI image
  * @param string $filename original file name
  * @param string $extension target image extension, if empty - original extension used
@@ -106,27 +88,9 @@ function fn_hidpi_init_templater_post(&$view)
  */
 function fn_hdpi_form_name($filename, $extension = '')
 {
-    list($filename) = explode('?', $filename);
-
     if (!empty($extension)) {
         $filename = substr_replace($filename, '.' . $extension, strrpos($filename, '.'));
     }
 
     return  substr_replace($filename, '@2x.', strrpos($filename, '.'), 1);
-}
-
-/**
- * Show message on install addon
- */
-function fn_hidpi_install()
-{
-    fn_set_notification('W',__('warning'), __('text_hidpi_install'));
-}
-
-/**
- * Show message on uninstall addon
- */
-function fn_hidpi_uninstall()
-{
-    fn_set_notification('W',__('warning'), __('text_hidpi_uninstall'));
 }

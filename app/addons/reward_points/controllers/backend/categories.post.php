@@ -32,8 +32,8 @@ if ($mode == 'update') {
 
     // [/Page sections]
 
-    Tygh::$app['view']->assign('reward_points', fn_get_reward_points($_REQUEST['category_id'], CATEGORY_REWARD_POINTS));
-    Tygh::$app['view']->assign('object_type', CATEGORY_REWARD_POINTS);
+    Registry::get('view')->assign('reward_points', fn_get_reward_points($_REQUEST['category_id'], CATEGORY_REWARD_POINTS));
+    Registry::get('view')->assign('object_type', CATEGORY_REWARD_POINTS);
 
 } elseif ($mode == 'add') {
 
@@ -45,18 +45,9 @@ if ($mode == 'update') {
     ));
     // [/Page sections]
 
-    Tygh::$app['view']->assign('object_type', CATEGORY_REWARD_POINTS);
+    Registry::get('view')->assign('object_type', CATEGORY_REWARD_POINTS);
 }
 
-Tygh::$app['view']->assign(
-    'reward_usergroups',
-    fn_get_usergroups(
-        array(
-            'type'            => 'C',
-            'status'          => array('A', 'H'),
-            'include_default' => true
-        )
-    )
-);
+Registry::get('view')->assign('reward_usergroups', fn_array_merge(fn_get_default_usergroups(), fn_get_usergroups('C')));
 
 /** /Body **/

@@ -35,7 +35,7 @@ if ($mode == 'export_datafeed') {
                         $_suffix = '&meta_redirect_url=' . $meta_url;
 
                         $url = (empty($_SERVER['HTTP_REFERER']) ? fn_url("data_feeds.manage") : fn_query_remove($_SERVER['HTTP_REFERER'], 'meta_redirect_url')) . $_suffix;
-                        Tygh::$app['ajax']->assign('force_redirection', $url);
+                        Registry::get('ajax')->assign('force_redirection', $url);
                     }
                 }
             }

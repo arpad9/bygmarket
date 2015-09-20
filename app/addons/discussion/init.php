@@ -20,6 +20,8 @@ fn_register_hooks(
     'update_category_post',
     'delete_category_after',
     'delete_order',
+    'update_news',
+    'delete_news',
     'update_page_post',
     'delete_page',
     'update_event',
@@ -27,14 +29,11 @@ fn_register_hooks(
     'clone_product',
     'get_product_data',
     'get_products',
-    'load_products_extra_data',
     'get_categories',
     'get_pages',
     'get_companies',
     'delete_company',
     'companies_sorting',
     'get_predefined_statuses',
-    'init_secure_controllers',
-    'update_company',
-    'settings_variants_image_verification_use_for'
+    'init_secure_controllers'
 );

@@ -14,14 +14,14 @@
     <tr>
         <th class="center" width="1%">
             {include file="common/check_items.tpl"}</th>
-        <th width="15%"><a class="cm-ajax{if $search.sort_by == "gift_cert_code"} sort-link-{$search.sort_order_rev}{/if}" href="{"`$c_url`&sort_by=gift_cert_code&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("code")}{if $search.sort_by == "gift_cert_code"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
-        <th width="10%"><a class="cm-ajax{if $search.sort_by == "sender"} sort-link-{$search.sort_order_rev}{/if}" href="{"`$c_url`&sort_by=sender&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("gift_cert_from")}{if $search.sort_by == "sender"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
-        <th width="15%"><a class="cm-ajax{if $search.sort_by == "recipient"} sort-link-{$search.sort_order_rev}{/if}" href="{"`$c_url`&sort_by=recipient&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("gift_cert_to")}{if $search.sort_by == "recipient"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
-        <th width="10%"><a class="cm-ajax{if $search.sort_by == "send_via"} sort-link-{$search.sort_order_rev}{/if}" href="{"`$c_url`&sort_by=send_via&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("type")}{if $search.sort_by == "send_via"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
-        <th width="15%"><a class="cm-ajax{if $search.sort_by == "timestamp"} sort-link-{$search.sort_order_rev}{/if}" href="{"`$c_url`&sort_by=timestamp&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("date")}{if $search.sort_by == "timestamp"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
-        <th width="15%">{__("current_amount")}</th>
-        <th width="5%">&nbsp;</th>
-        <th width="10%" class="right"><a class="cm-ajax{if $search.sort_by == "status"} sort-link-{$search.sort_order_rev}{/if}" href="{"`$c_url`&sort_by=status&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("status")}{if $search.sort_by == "status"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
+        <th><a class="cm-ajax{if $search.sort_by == "gift_cert_code"} sort-link-{$search.sort_order_rev}{/if}" href="{"`$c_url`&sort_by=gift_cert_code&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("code")}{if $search.sort_by == "gift_cert_code"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
+        <th><a class="cm-ajax{if $search.sort_by == "sender"} sort-link-{$search.sort_order_rev}{/if}" href="{"`$c_url`&sort_by=sender&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("gift_cert_from")}{if $search.sort_by == "sender"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
+        <th><a class="cm-ajax{if $search.sort_by == "recipient"} sort-link-{$search.sort_order_rev}{/if}" href="{"`$c_url`&sort_by=recipient&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("gift_cert_to")}{if $search.sort_by == "recipient"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
+        <th><a class="cm-ajax{if $search.sort_by == "send_via"} sort-link-{$search.sort_order_rev}{/if}" href="{"`$c_url`&sort_by=send_via&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("type")}{if $search.sort_by == "send_via"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
+        <th><a class="cm-ajax{if $search.sort_by == "timestamp"} sort-link-{$search.sort_order_rev}{/if}" href="{"`$c_url`&sort_by=timestamp&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("date")}{if $search.sort_by == "timestamp"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
+        <th>{__("current_amount")}</th>
+        <th>&nbsp;</th>
+        <th class="right"><a class="cm-ajax{if $search.sort_by == "status"} sort-link-{$search.sort_order_rev}{/if}" href="{"`$c_url`&sort_by=status&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("status")}{if $search.sort_by == "status"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
     </tr>
 </thead>
 {assign var="gift_status_descr" value=$smarty.const.STATUSES_GIFT_CERTIFICATE|fn_get_simple_statuses}
@@ -43,12 +43,12 @@
         <div class="hidden-tools">
             {capture name="tools_list"}
                 <li>{btn type="list" text=__("edit") href="gift_certificates.update?gift_cert_id=`$gift.gift_cert_id`"}</li>
-                <li>{btn type="list" class="cm-confirm cm-post" text=__("delete") href="gift_certificates.delete?gift_cert_id=`$gift.gift_cert_id`"}</li>
+                <li>{btn type="list" class="cm-confirm" text=__("delete") href="gift_certificates.delete?gift_cert_id=`$gift.gift_cert_id`"}</li>
             {/capture}
             {dropdown content=$smarty.capture.tools_list}
         </div>
     </td>
-    <td class="right nowrap">
+    <td class="right">
         {include file="common/select_popup.tpl" id=$gift.gift_cert_id status=$gift.status items_status=$gift_status_descr update_controller="gift_certificates" notify=true statuses=$gift_statuses popup_additional_class="dropleft"}
     </td>
 </tr>
@@ -67,14 +67,12 @@
 {/capture}
 
 {capture name="buttons"}
-    {capture name="tools_list"}
-        <li>{btn type="list" href="statuses.manage?type=G" text=__("gift_certificate_statuses")}</li>
-        {if $gift_certificates}
-            <li class="divider"></li>
+    {if $gift_certificates}
+        {capture name="tools_list"}
             <li>{btn type="delete_selected" dispatch="dispatch[gift_certificates.m_delete]" form="gift_cert_list_form"}</li>
-        {/if}
-    {/capture}
-    {dropdown content=$smarty.capture.tools_list}
+        {/capture}
+        {dropdown content=$smarty.capture.tools_list}
+    {/if}
 {/capture}
 
 {capture name="adv_buttons"}

@@ -7,15 +7,14 @@
 {function name="profile_edit_link"}
     {if $is_edit}
     <div class="pull-right">
-        <a class="hand cm-tooltip icon-edit cm-dialog-opener{if $click_to} cm-external-click{/if}" data-ca-target-id="customer_info" data-ca-scroll="{$scroll_to}" {if $click_to}data-ca-external-click-id="{$click_to}"{/if} title="{__("edit")}"></a>
+        <a class="hand cm-tooltip icon-edit cm-dialog-opener" data-ca-target-id="customer_info" data-ca-scroll="{$scroll_to}" title="{__("edit")}"></a>
     </div>
     {/if}
 {/function}
 
 {* billing_address *}
 {capture name="billing_address"}
-    {hook name="order_management:profile_billing_address"}
-    {if !fn_is_empty($user_data)}
+    {if $user_data}
         {if $profile_fields.B}
             {if $user_data.b_firstname || $user_data.b_lastname}
                 <p class="strong">{$user_data.b_firstname} {$user_data.b_lastname}</p>
@@ -34,8 +33,6 @@
             {if $user_data.b_phone}
                 <p>{$user_data.b_phone}</p>
             {/if}
-        {else}
-            <p class="muted">{__("no_data")}</p>
         {/if}
     {else}
         <p class="muted">{__("section_is_not_completed")}</p>
@@ -43,13 +40,11 @@
             {profile_enter_data_link scroll_to="profile_fields_b"}
         </div>
     {/if}
-    {/hook}
 {/capture}
 
 {* shippng address *}
 {capture name="shipping_address"}
-    {hook name="order_management:profile_shipping_address"}
-    {if !fn_is_empty($user_data)}
+    {if $user_data}
         {if $profile_fields.S}
             {if $user_data.s_firstname || $user_data.s_lastname}
                 <p class="strong">{$user_data.s_firstname} {$user_data.s_lastname}</p>
@@ -71,8 +66,6 @@
             {if $user_data.s_address_type}
                 <p>{__("address_type")}: {$user_data.s_address_type}</p>
             {/if}
-        {else}
-            <p class="muted">{__("no_data")}</p>
         {/if}
     {else}
         <p class="muted">{__("section_is_not_completed")}</p>
@@ -80,13 +73,12 @@
             {profile_enter_data_link scroll_to="profile_fields_s"}
         </div>
     {/if}
-    {/hook}
 {/capture}
 
 {* customer information *}
 
 {capture name="customer_information"}
-    {if !fn_is_empty($user_data)}
+    {if $user_data}
         <p class="strong">
             {$user_full_name = "`$user_data.firstname` `$user_data.lastname`"|trim}
             {if $user_full_name}
@@ -96,7 +88,7 @@
                     {$user_full_name},
                 {/if}
             {/if}
-            <a href="mailto:{$user_data.email}">{$user_data.email}</a>
+            <a href="mailto:{$user_data.email|escape:url}">{$user_data.email}</a>
         </p>
 
         {if $user_data.ip_address}
@@ -155,47 +147,22 @@
         {$smarty.capture.customer_information nofilter}
     </div>
 </div>
-<hr class="profile-info-delim" />
-
-{if $settings.Checkout.address_position == 'shipping_first'}
-    <div class="sidebar-row">
-        {profile_edit_link scroll_to="profile_fields_s"}
-        <h6>{__("shipping_address")}</h6>
-        <div class="profile-info">
-            <i class="exicon-car"></i>
-            {$smarty.capture.shipping_address nofilter}
-        </div>
+<hr>
+<div class="sidebar-row">
+    {profile_edit_link scroll_to="profile_fields_s"}
+    <h6>{__("shipping_address")}</h6>
+    <div class="profile-info">
+        <i class="exicon-car"></i>
+        {$smarty.capture.shipping_address nofilter}
     </div>
-    <hr class="profile-info-delim" />
-    <div class="sidebar-row">
-        {profile_edit_link scroll_to="profile_fields_b"}
-        <h6>{__("billing_address")}</h6>
-        <div class="profile-info">
-            <i class="icon-tag"></i>
-            {$smarty.capture.billing_address nofilter}
-        </div>
+</div>
+<hr>
+<div class="sidebar-row">
+    {profile_edit_link scroll_to="profile_fields_b"}
+    <h6>{__("billing_address")}</h6>
+    <div class="profile-info">
+        <i class="icon-tag"></i>
+        {$smarty.capture.billing_address nofilter}
     </div>
-    <hr class="profile-info-delim" />
-{else}
-    <div class="sidebar-row">
-        {profile_edit_link scroll_to="profile_fields_b"}
-        <h6>{__("billing_address")}</h6>
-        <div class="profile-info">
-            <i class="icon-tag"></i>
-            {$smarty.capture.billing_address nofilter}
-        </div>
-    </div>
-    <hr class="profile-info-delim" />
-    <div class="sidebar-row">
-        {profile_edit_link scroll_to="profile_fields_s"}
-        <h6>{__("shipping_address")}</h6>
-        <div class="profile-info">
-            <i class="exicon-car"></i>
-            {$smarty.capture.shipping_address nofilter}
-        </div>
-    </div>
-    <hr class="profile-info-delim" />
-{/if}
-
-{hook name="order_management:profiles_info"}
-{/hook}
+</div>
+<hr>

@@ -1,5 +1,6 @@
 {capture name="mainbox"}
 <script type="text/javascript">
+    //<![CDATA[
     (function($) {
         $(document).ready(function(){
             // Double scroll
@@ -19,6 +20,7 @@
             });
         });
     }(Tygh.$));
+    //]]>
 </script>
 
 <form action="{""|fn_url}" method="post" enctype="multipart/form-data" name="categories_m_update_form">
@@ -74,24 +76,27 @@
                     
                     {elseif $field == "usergroup_ids"}
                         {if !"ULTIMATE:FREE"|fn_allowed_for}
-                            {include file="common/select_usergroups.tpl" id="category_ug_`$category.category_id`" name="categories_data[`$category.category_id`][`$field`]" usergroups=["type"=>"C", "status"=>["A", "H"]]|fn_get_usergroups:$smarty.const.DESCR_SL usergroup_ids=$category.usergroup_ids input_extra="" list_mode=true}
+                            {include file="common/select_usergroups.tpl" id="category_ug_`$category.category_id`" name="categories_data[`$category.category_id`][`$field`]" usergroups="C"|fn_get_usergroups:$smarty.const.DESCR_SL usergroup_ids=$category.usergroup_ids input_extra="" list_mode=true}
                         {/if}
                     {elseif $field == "discussion_type"}
                         {include file="addons/discussion/views/discussion_manager/components/bulk_allow_discussion.tpl" prefix="categories_data" object_id=$category.category_id object_type="C"}
                     {elseif $field == "image_pair"}
+                        {* Uncomment the section below to enable uploading of category images *}
+                        {*
                         <table width="420">
                         <tr>
                             <td>{include file="common/attach_images.tpl" image_key=$category.category_id image_name="category_main" image_object_type="category" image_pair=$category.main_pair image_object_id=$category.category_id no_thumbnail=true}</td>
                         </tr>
                         </table>
+                        *}
                     {elseif $field == "timestamp"}
                         {include file="common/calendar.tpl" date_id="date_`$category.category_id`" date_name="categories_data[`$category.category_id`][$field]" date_val=$category.timestamp|default:$smarty.const.TIME start_year=$settings.Company.company_start_year}
                     {elseif $field == "localization"}
                         {include file="views/localizations/components/select.tpl" no_div=true data_from=$category.localization data_name="categories_data[`$category.category_id`][`$field`]"}
-                    {elseif $field == "product_details_view"}
+                    {elseif $field == "product_details_layout"}
                         <select name="categories_data[{$category.category_id}][{$field}]">
                         {foreach from="category"|fn_get_product_details_views key="layout" item="item"}
-                            <option {if $category.product_details_view == $layout}selected="selected"{/if} value="{$layout}">{$item}</option>
+                            <option {if $category.product_details_layout == $layout}selected="selected"{/if} value="{$layout}">{$item}</option>
                         {/foreach}
                         </select>
                     {else}

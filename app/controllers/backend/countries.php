@@ -40,12 +40,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    return array(CONTROLLER_STATUS_OK, 'countries.manage');
+    return array(CONTROLLER_STATUS_OK, "countries.manage");
 }
 
 if ($mode == 'manage') {
 
-    list($countries, $search) = fn_get_countries($_REQUEST, Registry::get('settings.Appearance.admin_elements_per_page'), DESCR_SL);
-    Tygh::$app['view']->assign('countries', $countries);
-    Tygh::$app['view']->assign('search', $search);
+    list($countries, $search) = fn_get_countries($_REQUEST, Registry::get('settings.Appearance.admin_elements_per_page'));
+    Registry::get('view')->assign('countries', $countries);
+    Registry::get('view')->assign('search', $search);
 }

@@ -20,31 +20,11 @@ $schema['testimonials'] = array(
     'settings' => array(
         'limit' => array (
             'type' => 'input',
-            'default_value' => '10'
+            'default_value' => '3'
         ),
         'random' => array (
             'type' => 'checkbox',
             'default_value' => 'N'
-        ),
-        'not_scroll_automatically' => array (
-            'type' => 'checkbox',
-            'default_value' => 'N'
-        ),
-        'speed' =>  array (
-            'type' => 'input',
-            'default_value' => 400
-        ),
-        'pause_delay' =>  array (
-            'type' => 'input',
-            'default_value' => 3
-        ),
-        'item_quantity' =>  array (
-            'type' => 'input',
-            'default_value' => 3
-        ),
-        'outside_navigation' => array (
-            'type' => 'checkbox',
-            'default_value' => 'Y'
         )
     ),
     'cache' => array(
@@ -81,15 +61,5 @@ $schema['pages']['content']['items']['fillings']['rating'] = array (
 if (!empty($schema['pages']['cache']['update_handlers'])) {
     $schema['pages']['cache']['update_handlers'][] = 'discussion_rating';
 }
-
-$schema['main']['cache_overrides_by_dispatch']['products.view']['update_handlers'][] = 'discussion';
-$schema['main']['cache_overrides_by_dispatch']['products.view']['update_handlers'][] = 'discussion_messages';
-$schema['main']['cache_overrides_by_dispatch']['products.view']['update_handlers'][] = 'discussion_posts';
-$schema['main']['cache_overrides_by_dispatch']['products.view']['update_handlers'][] = 'discussion_rating';
-
-$schema['main']['cache_overrides_by_dispatch']['categories.view']['update_handlers'][] = 'discussion';
-$schema['main']['cache_overrides_by_dispatch']['categories.view']['update_handlers'][] = 'discussion_messages';
-$schema['main']['cache_overrides_by_dispatch']['categories.view']['update_handlers'][] = 'discussion_posts';
-$schema['main']['cache_overrides_by_dispatch']['categories.view']['update_handlers'][] = 'discussion_rating';
 
 return $schema;

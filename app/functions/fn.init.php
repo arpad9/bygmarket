@@ -13,21 +13,12 @@
 ****************************************************************************/
 
 use Tygh\BlockManager\Layout;
-use Tygh\Development;
-use Tygh\Embedded;
-use Tygh\Exceptions\PHPErrorException;
-use Tygh\Exceptions\InitException;
 use Tygh\Registry;
-use Tygh\Debugger;
 use Tygh\Storage;
 use Tygh\Session;
 use Tygh\Settings;
-use Tygh\Snapshot;
 use Tygh\SmartyEngine\Core as SmartyCore;
 use Tygh\Ajax;
-use Tygh\Api;
-use Tygh\Api\Response;
-use Tygh\Themes\Styles;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -38,74 +29,73 @@ if (!defined('BOOTSTRAP')) { die('Access denied'); }
  */
 function fn_init_templater($area = AREA)
 {
-    $auth = $_SESSION['auth'];
     $view = new SmartyCore();
     \SmartyException::$escape = false;
 
-    /**
-     * Change templater pre-init parameters
-     *
-     * @param object $view Templater object
-     */
     fn_set_hook('init_templater', $view);
-
-    $view->_dir_perms = DEFAULT_DIR_PERMISSIONS;
-    $view->_file_perms = DEFAULT_FILE_PERMISSIONS;
 
     $view->registerResource('tygh', new Tygh\SmartyEngine\FileResource());
 
-    if ($area == 'A') {
-
-        if (!empty($auth['user_id'])) {
-            // Auto-tooltips for admin panel
-            $view->registerFilter('pre', array('Tygh\SmartyEngine\Filters', 'preFormTooltip'));
-
-            if (fn_allowed_for('ULTIMATE')) {
-                // Enable sharing for objects
-                $view->registerFilter('output', array('Tygh\SmartyEngine\Filters', 'outputSharing'));
-            }
-        }
-
-        $view->registerFilter('pre', array('Tygh\SmartyEngine\Filters', 'preScript'));
+    if ($area == 'A' && !empty($_SESSION['auth']['user_id'])) {
+        // Auto-tooltips for admin panel
+        $view->registerFilter('pre', array('Tygh\SmartyEngine\Filters', 'preFormTooltip'));
     }
 
+    // Customization mode
     if ($area == 'C') {
         $view->registerFilter('pre', array('Tygh\SmartyEngine\Filters', 'preTemplateWrapper'));
 
         if (Registry::get('runtime.customization_mode.design')) {
             $view->registerFilter('output', array('Tygh\SmartyEngine\Filters', 'outputTemplateIds'));
         }
-
-        if (Registry::get('runtime.customization_mode.live_editor')) {
-            $view->registerFilter('output', array('Tygh\SmartyEngine\Filters', 'outputLiveEditorWrapper'));
-        }
-
-        $view->registerFilter('output', array('Tygh\SmartyEngine\Filters', 'outputScript'));
     }
 
-    if (Embedded::isEnabled()) {
-        $view->registerFilter('output', array('Tygh\SmartyEngine\Filters', 'outputEmbeddedUrl'));
-    }
-
-    // CSRF form protection
-    if (fn_is_csrf_protection_enabled($auth)) {
+    if (Registry::get('config.tweaks.anti_csrf') == true) {
+        // CSRF form protection
         $view->registerFilter('output', array('Tygh\SmartyEngine\Filters', 'outputSecurityHash'));
+    }
+
+    if (fn_allowed_for('ULTIMATE')) {
+        // Enable sharing for objects
+        $view->registerFilter('output', array('Tygh\SmartyEngine\Filters', 'outputSharing'));
     }
 
     // Language variable retrieval optimization
     $view->registerFilter('post', array('Tygh\SmartyEngine\Filters', 'postTranslation'));
 
-    $smarty_plugins_dir = $view->getPluginsDir();
-    $view->setPluginsDir(Registry::get('config.dir.functions') . 'smarty_plugins');
-    $view->addPluginsDir($smarty_plugins_dir);
+    // Webdriver
+    if (defined('DEVELOPMENT') && false) {
+        $view->registerFilter('pre', array('Tygh\SmartyEngine\Filters', 'preWebdriver'));
+        $view->registerFilter('output', array('Tygh\SmartyEngine\Filters', 'outputWebdriver'));
+    }
 
+    // Translation mode
+    if (Registry::get('runtime.customization_mode.translation')) {
+        $view->registerFilter('output', array('Tygh\SmartyEngine\Filters', 'outputTranslateWrapper'));
+    }
+
+    if (Registry::get('settings.General.debugging_console') == 'Y') {
+        if (empty($_SESSION['debugging_console']) && !empty($_SESSION['auth']['user_id'])) {
+            $user_type = db_get_field("SELECT user_type FROM ?:users WHERE user_id = ?i", $_SESSION['auth']['user_id']);
+            if ($user_type == 'A') {
+                $_SESSION['debugging_console'] = true;
+            }
+        }
+
+        if (isset($_SESSION['debugging_console']) && $_SESSION['debugging_console'] == true) {
+            error_reporting(0);
+            $view->debugging = true;
+        }
+    }
+
+    $view->addPluginsDir(Registry::get('config.dir.functions') . 'smarty_plugins');
     $view->error_reporting = E_ALL & ~E_NOTICE;
 
     $view->registerDefaultPluginHandler(array('Tygh\SmartyEngine\Filters', 'smartyDefaultHandler'));
 
     $view->setArea($area);
     $view->use_sub_dirs = false;
-    $view->compile_check = (Development::isEnabled('compile_check') || Debugger::isActive() || fn_is_development()) ? true : false;
+    $view->compile_check = (Registry::get('settings.store_optimization_dev') == 'Y') ? true : false;
     $view->setLanguage(CART_LANGUAGE);
 
     $view->assign('ldelim', '{');
@@ -115,11 +105,6 @@ function fn_init_templater($area = AREA)
     $view->assign('primary_currency', CART_PRIMARY_CURRENCY, false);
     $view->assign('secondary_currency', CART_SECONDARY_CURRENCY, false);
     $view->assign('languages', Registry::get('languages'));
-    $view->assign('language_direction', fn_is_rtl_language(CART_LANGUAGE) ? 'rtl' : 'ltr');
-
-    if ($area == 'A') {
-        $view->assign('addon_permissions_text', fn_get_addon_permissions_text());
-    }
 
     if (!fn_allowed_for('ULTIMATE:FREE')) {
         $view->assign('localizations', fn_get_localizations(CART_LANGUAGE , true));
@@ -136,14 +121,7 @@ function fn_init_templater($area = AREA)
         $view->assign('demo_theme', Registry::get('demo_theme'));
     }
 
-    Tygh::$app['view'] = $view;
-
-    /**
-     * Change templater parameters
-     *
-     * @param object $view Templater object
-     */
-    fn_set_hook('init_templater_post', $view);
+    Registry::set('view', $view);
 
     return array(INIT_STATUS_OK);
 }
@@ -155,9 +133,12 @@ function fn_init_templater($area = AREA)
  */
 function fn_init_crypt()
 {
-    Tygh::$app['crypt'] = function ($app) {
-        return new Crypt_Blowfish(Registry::get('config.crypt_key'));
-    };
+    if (!defined('CRYPT_STARTED')) {
+        $crypt = new Crypt_Blowfish(Registry::get('config.crypt_key'));
+        Registry::set('crypt', $crypt);
+
+        fn_define('CRYPT_STARTED', true);
+    }
 
     return true;
 }
@@ -173,10 +154,9 @@ function fn_init_ajax()
         return array(INIT_STATUS_OK);
     }
 
-    Embedded::init();
-
-    if (Ajax::validateRequest($_REQUEST)) {
-        Tygh::$app['ajax'] = new Ajax($_REQUEST);
+    if (empty($_REQUEST['ajax_custom']) && ((!empty($_REQUEST['callback']) && !empty($_REQUEST['result_ids'])) || !empty($_REQUEST['is_ajax']) || (!empty($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false))) {
+        $ajax = new Ajax();
+        Registry::set('ajax', $ajax);
         fn_define('AJAX_REQUEST', true);
     }
 
@@ -192,9 +172,25 @@ function fn_init_ajax()
 function fn_init_language($params, $area = AREA)
 {
     $default_language = Registry::get('settings.Appearance.' . fn_get_area_name($area) . '_default_language');
+    $join_cond = '';
+    $condition = "WHERE ?:languages.status = 'A'";
 
-    $show_hidden_languages = $area != 'C' ? true : false;
-    $avail_languages = fn_get_avail_languages($area, $show_hidden_languages);
+    if (fn_allowed_for('ULTIMATE:FREE')) {
+        $condition .= db_quote(" AND ?:languages.lang_code = ?s", $default_language);
+    }
+
+    $order_by = '';
+
+    if (!fn_allowed_for('ULTIMATE:FREE')) {
+        if (($area == 'C') && defined('CART_LOCALIZATION')) {
+            $join_cond = "LEFT JOIN ?:localization_elements ON ?:localization_elements.element = ?:languages.lang_code AND ?:localization_elements.element_type = 'L'";
+            $separator = ($condition == '') ? 'WHERE' : 'AND';
+            $condition .= db_quote(" $separator ?:localization_elements.localization_id = ?i", CART_LOCALIZATION);
+            $order_by = "ORDER BY ?:localization_elements.position ASC";
+        }
+    }
+
+    $avail_languages = db_get_hash_array("SELECT ?:languages.* FROM ?:languages $join_cond ?p $order_by", 'lang_code', $condition);
 
     if (!empty($params['sl']) && !empty($avail_languages[$params['sl']])) {
         fn_define('CART_LANGUAGE', $params['sl']);
@@ -223,10 +219,6 @@ function fn_init_language($params, $area = AREA)
 
     if (CART_LANGUAGE != fn_get_session_data('cart_language' . $area)) {
         fn_set_session_data('cart_language' . $area, CART_LANGUAGE, COOKIE_ALIVE_TIME);
-
-        if (Embedded::isEnabled() && defined('AJAX_REQUEST')) {
-            Tygh::$app['ajax']->assign('language_changed', true);
-        }
     }
 
     Registry::set('languages', $avail_languages);
@@ -276,47 +268,6 @@ function fn_init_company_id(&$params)
         $switch_company_id = intval($params['switch_company_id']);
     } else {
         $switch_company_id = false;
-    }
-
-    if (defined('API')) {
-        $api = Tygh::$app['api'];
-        $api_response_status = false;
-        if ($api instanceof Api) {
-            if (AREA == 'A') {
-                if ($user_data = $api->getUserData()) {
-                    $company_id = 0;
-
-                    if ($user_data['company_id']) {
-                        $company_id = $user_data['company_id'];
-                    }
-
-                    $store = array();
-                    if (preg_match('/(stores|vendors)\/(\d+)\/.+/', $api->getRequest()->getResource(), $store)) {
-
-                        if ($company_id && $company_id != $store[2]) {
-                            $api_response_status = Response::STATUS_FORBIDDEN;
-                        }
-
-                        $company_id = intval($store[2]);
-                        if (!fn_get_available_company_ids($company_id)) {
-                            $company_id = 0;
-                        }
-                    }
-                } else {
-                    $api_response_status = Response::STATUS_UNAUTHORIZED;
-                }
-            }
-        } else {
-            $api_response_status = Response::STATUS_FORBIDDEN;
-        }
-
-        if ($api_response_status) {
-            $response = new Response($api_response_status);
-            /**
-             * Here is exit.
-             */
-            $response->send();
-        }
     }
 
     // set company_id for vendor's admin
@@ -410,25 +361,31 @@ function fn_init_company_id_find_in_session()
  * Init currencies
  *
  * @param array $params request parameters
- * @param  string $area Area ('A' for admin or 'C' for customer)
  * @return boolean always true
  */
-function fn_init_currency($params, $area = AREA)
+function fn_init_currency($params)
 {
-    $_params = array();
-    if (fn_allowed_for('ULTIMATE:FREE')) {
-        $_params['only_primary'] = 'Y';
-    } elseif ($area == 'C') {
-        $_params['status'] = array('A', 'H');
-    } else {
-        $_params['status'] = array('A', 'H');
+    $cond = $join = $order_by = '';
+    if (!fn_allowed_for('ULTIMATE:FREE')) {
+        if ((AREA == 'C') && defined('CART_LOCALIZATION')) {
+            $join = " LEFT JOIN ?:localization_elements as c ON c.element = a.currency_code AND c.element_type = 'M'";
+            $cond = db_quote('AND c.localization_id = ?i', CART_LOCALIZATION);
+            $order_by = "ORDER BY c.position ASC";
+        }
+
+    } elseif (fn_allowed_for('ULTIMATE:FREE')) {
+        $cond .= db_quote(' AND is_primary = ?s', 'Y');
     }
 
-    $currencies = fn_get_currencies_list($_params, $area, CART_LANGUAGE);
+    if (!$order_by) {
+        $order_by = 'ORDER BY a.position';
+    }
+
+    $currencies = db_get_hash_array("SELECT a.*, b.description FROM ?:currencies as a LEFT JOIN ?:currency_descriptions as b ON a.currency_code = b.currency_code AND lang_code = ?s $join WHERE status = 'A' ?p $order_by", 'currency_code', CART_LANGUAGE, $cond);
 
     if (!empty($params['currency']) && !empty($currencies[$params['currency']])) {
         $secondary_currency = $params['currency'];
-    } elseif (($c = fn_get_session_data('secondary_currency' . $area)) && !empty($currencies[$c])) {
+    } elseif (($c = fn_get_session_data('secondary_currency' . AREA)) && !empty($currencies[$c])) {
         $secondary_currency = $c;
     } else {
         foreach ($currencies as $v) {
@@ -444,8 +401,8 @@ function fn_init_currency($params, $area = AREA)
         $secondary_currency = key($currencies);
     }
 
-    if ($secondary_currency != fn_get_session_data('secondary_currency' . $area)) {
-        fn_set_session_data('secondary_currency'.$area, $secondary_currency, COOKIE_ALIVE_TIME);
+    if ($secondary_currency != fn_get_session_data('secondary_currency' . AREA)) {
+        fn_set_session_data('secondary_currency'.AREA, $secondary_currency, COOKIE_ALIVE_TIME);
     }
 
     $primary_currency = '';
@@ -461,18 +418,6 @@ function fn_init_currency($params, $area = AREA)
         reset($currencies);
         $first_currency = current($currencies);
         $primary_currency = $first_currency['currency_code'];
-    } elseif ($area == 'C') {
-        if ($currencies[$secondary_currency]['status'] != 'A') {
-            $first_currency = '';
-            foreach ($currencies as $key => $currency) {
-                if ($currency['status'] != 'A' && $currency['is_primary'] != 'Y') {
-                    unset($currencies[$key]);
-                } elseif ($currency['status'] == 'A' && !$first_currency) {
-                    $first_currency = $currency;
-                }
-            }
-            $secondary_currency = $first_currency['currency_code'];
-        }
     }
 
     define('CART_PRIMARY_CURRENCY', $primary_currency);
@@ -492,42 +437,30 @@ function fn_init_currency($params, $area = AREA)
 function fn_init_layout($params)
 {
     if (fn_allowed_for('ULTIMATE')) {
-        if (!Registry::get('runtime.company_id')) {
+        if (!Registry::get('runtime.company_id')) { //
+
             return array(INIT_STATUS_OK);
         }
     }
 
-    $key_name = 'stored_layout' . (Embedded::isEnabled() ? '_embedded' : '');
-    $stored_layout = fn_get_session_data($key_name);
+    $stored_layout = fn_get_session_data('stored_layout');
 
     if (!empty($params['s_layout'])) {
         $stored_layout = $params['s_layout'];
-
-        fn_set_session_data($key_name, $params['s_layout']);
     }
 
     // Replace default theme with selected for current area
     if (!empty($stored_layout)) {
         $layout = Layout::instance()->get($stored_layout);
-
-        if (!isset($layout['theme_name']) || $layout['theme_name'] != fn_get_theme_path('[theme]', 'C')) {
-            unset($layout);
-        }
     }
 
     if (empty($layout)) {
-        $layout = Layout::instance()->getDefault(); // get default
-    }
-
-    $available_styles = Styles::factory($layout['theme_name'])->getList(array(
-        'short_info' => true
-    ));
-
-    if (!isset($available_styles[$layout['style_id']])) {
-        $layout['style_id'] = Styles::factory($layout['theme_name'])->getDefault();
+        $layout = Layout::instance()->get(); // get default
     }
 
     Registry::set('runtime.layout', $layout);
+
+    fn_set_session_data('stored_layout', $layout['layout_id']);
 
     return array(INIT_STATUS_OK);
 }
@@ -601,13 +534,13 @@ function fn_init_user($area = AREA)
         }
     }
 
-    if (!empty($user_info) && $user_info['user_type'] == 'A' && (empty($user_info['company_id']) || (fn_allowed_for('ULTIMATE') && $user_info['company_id'] == Registry::get('runtime.company_id')))) {
+    if (!empty($user_info) && $user_info['user_type'] == 'A' && empty($user_info['company_id'])) {
         $customization_mode = fn_array_combine(explode(',', Registry::get('settings.customization_mode')), true);
         if (!empty($customization_mode)) {
             Registry::set('runtime.customization_mode', $customization_mode);
 
-            if ($area == 'A' || Embedded::isEnabled()) {
-                Registry::set('runtime.customization_mode.live_editor', false);
+            if (!empty($customization_mode['design']) && $area != 'A') {
+                fn_define('PARSE_ALL', true);
             }
         }
     }
@@ -690,7 +623,7 @@ function fn_init_ua()
         'monitor', 'mechanize', 'facebookexternal'
     );
 
-    $http_ua = fn_strtolower($_SERVER['HTTP_USER_AGENT']);
+    $http_ua = isset($_SERVER['HTTP_USER_AGENT']) ? fn_strtolower($_SERVER['HTTP_USER_AGENT']) : '';
 
     if (strpos($http_ua, 'shiretoko') !== false || strpos($http_ua, 'firefox') !== false) {
         $ua = 'firefox';
@@ -700,17 +633,19 @@ function fn_init_ua()
         $ua = 'safari';
     } elseif (strpos($http_ua, 'opera') !== false) {
         $ua = 'opera';
-    } elseif (strpos($http_ua, 'msie') !== false || strpos($http_ua, 'trident/7.0; rv:11.0') !== false) {
-        // IE11 does not send normal headers and seems like Mozilla:
-        // Mozilla/5.0 (Windows NT 6.1; Trident/7.0; rv:11.0) like Gecko
+    } elseif (strpos($http_ua, 'msie') !== false) {
         $ua = 'ie';
-        if (preg_match("/msie (6|7|8)/i", $http_ua)) {
+        if (preg_match("/msie (6|7)/i", $http_ua)) {
             Registry::set('runtime.unsupported_browser', true);
         }
-    } elseif (preg_match('/(' . implode('|', $crawlers) . ')/', $http_ua, $m)) {
+    } elseif (empty($http_ua) || preg_match('/(' . implode('|', $crawlers) . ')/', $http_ua, $m)) {
         $ua = 'crawler';
-        fn_define('CRAWLER', $m[1]);
-        fn_define('NO_SESSION', true); // do not start session for crawler
+        if (!empty($m)) {
+            fn_define('CRAWLER', $m[1]);
+        }
+        if (!defined('SKIP_SESSION_VALIDATION')) {
+            fn_define('NO_SESSION', true); // do not start session for crawler
+        }
     } else {
         $ua = 'unknown';
     }
@@ -725,17 +660,17 @@ function fn_check_cache($params)
     $regenerated = true;
     $dir_root = Registry::get('config.dir.root') . '/';
 
-    if (isset($params['ct']) && ((AREA == 'A' && !(fn_allowed_for('MULTIVENDOR') && Registry::get('runtime.company_id'))) || Debugger::isActive() || fn_is_development())) {
+    if (isset($params['ct']) && ((AREA == 'A' && !(fn_allowed_for('MULTIVENDOR') && Registry::get('runtime.company_id'))) || defined('DEVELOPMENT'))) {
         Storage::instance('images')->deleteDir('thumbnails');
     }
 
     // Clean up cache
-    if (isset($params['cc']) && ((AREA == 'A' && !(fn_allowed_for('MULTIVENDOR') && Registry::get('runtime.company_id'))) || Debugger::isActive() || fn_is_development())) {
+    if (isset($params['cc']) && ((AREA == 'A' && !(fn_allowed_for('MULTIVENDOR') && Registry::get('runtime.company_id'))) || defined('DEVELOPMENT'))) {
         fn_clear_cache();
     }
 
     // Clean up templates cache
-    if (isset($params['ctpl']) && ((AREA == 'A' && !(fn_allowed_for('MULTIVENDOR') && Registry::get('runtime.company_id'))) || Debugger::isActive() || fn_is_development())) {
+    if (isset($params['ctpl']) && ((AREA == 'A' && !(fn_allowed_for('MULTIVENDOR') && Registry::get('runtime.company_id'))) || defined('DEVELOPMENT'))) {
         fn_rm(Registry::get('config.dir.cache_templates'));
     }
 
@@ -745,23 +680,30 @@ function fn_check_cache($params)
 
     /* Add extra files for cache checking if needed */
     $core_hashes = array(
-        'e8c64551ee873326fb1ced873ab9ee1739bfa4fd' => array(
+        '32980f59e6bf148e352b2b969c78088f278fd4bc' => array(
             'file' => 'cuc.xfrqcyrU/utlG/ccn',
         ),
-        'cb122cf60f32dc38f25bc4bac5ad4f24673ae3ea' => array(
+        '550af647b90c67d7be99b4528d11e8c49b18bfe7' => array(
             'file' => 'cuc.8sgh/ergeriabp_ynergvy/fnzrupf/ccn',
         ),
     );
 
     if (fn_allowed_for('ULTIMATE')) {
-        $core_hashes['e8c64551ee873326fb1ced873ab9ee1739bfa4fd']['notice'] = $core_hashes['cb122cf60f32dc38f25bc4bac5ad4f24673ae3ea']['notice'] = 'fgber_zbqr_jvyy_or_punatrq_gb_serr';
+        $core_hashes['32980f59e6bf148e352b2b969c78088f278fd4bc']['notice'] = $core_hashes['550af647b90c67d7be99b4528d11e8c49b18bfe7']['notice'] = 'fgber_zbqr_jvyy_or_punatrq_gb_serr';
     } else {
-        $core_hashes['e8c64551ee873326fb1ced873ab9ee1739bfa4fd']['notice'] = $core_hashes['cb122cf60f32dc38f25bc4bac5ad4f24673ae3ea']['notice'] = 'fgber_zbqr_jvyy_or_punatrq_gb_gevny';
+        $core_hashes['32980f59e6bf148e352b2b969c78088f278fd4bc']['notice'] = $core_hashes['550af647b90c67d7be99b4528d11e8c49b18bfe7']['notice'] = 'fgber_zbqr_jvyy_or_punatrq_gb_gevny';
     }
 
     foreach ($core_hashes as $hash => $file) {
         if ($hash != sha1_file($dir_root . strrev(str_rot13($file['file'])))) {
-            if (filemtime($dir_root . strrev(str_rot13($file['file']))) < TIME - SECONDS_IN_DAY * 2) { // 2-days cache
+            // Check cache timestamp
+            $timestamp = fn_get_storage_data('timestamp');
+            if (empty($timestamp)) {
+                fn_set_storage_data('timestamp', TIME);
+                $timestamp = TIME;
+            }
+
+            if (TIME - $timestamp > SECONDS_IN_DAY * 2) { // 2-days cache
                 fn_regenerate_cache($hash, $file['file']);
             } else {
                 $regenerated = false;
@@ -773,6 +715,11 @@ function fn_check_cache($params)
         }
     }
 
+    // If cache was not regenerated, update timestamp
+    if ($regenerated) {
+        fn_set_storage_data('timestamp', TIME);
+    }
+
     return array(INIT_STATUS_OK);
 }
 
@@ -780,13 +727,7 @@ function fn_init_settings()
 {
     Registry::registerCache('settings', array('settings_objects', 'settings_vendor_values', 'settings_descriptions', 'settings_sections', 'settings_variants'), Registry::cacheLevel('static'));
     if (Registry::isExist('settings') == false) {
-        $settings = Settings::instance()->getValues();
-
-        // Deprecated: workaround for old security settings
-        $settings['Security']['secure_auth'] = $settings['Security']['secure_storefront'] == 'partial' ? 'Y' : 'N';
-        $settings['Security']['secure_checkout'] = $settings['Security']['secure_storefront'] == 'partial' ? 'Y' : 'N';
-
-        Registry::set('settings', $settings);
+        Registry::set('settings', Settings::instance()->getValues());
     }
 
     // Set timezone
@@ -800,7 +741,7 @@ function fn_init_settings()
 /**
  * Initialize all enabled addons
  *
- * @return INIT_STATUS_OK
+ * @return boolean always true
  */
 function fn_init_addons()
 {
@@ -815,13 +756,13 @@ function fn_init_addons()
             $condition = '';
 
             if ($init_addons == 'core') {
-                $core_addons = Snapshot::getCoreAddons();
+                $core_addons = fn_get_core_addons();
                 if ($core_addons) {
                     $condition = db_quote(' AND addon IN (?a)', $core_addons);
                 }
             }
 
-            $_addons = db_get_hash_array("SELECT addon, priority, status, unmanaged FROM ?:addons WHERE 1 $condition ORDER BY priority", 'addon');
+            $_addons = db_get_hash_array("SELECT addon, priority, status FROM ?:addons WHERE 1 $condition ORDER BY priority", 'addon');
         }
 
         foreach ($_addons as $k => $v) {
@@ -832,7 +773,6 @@ function fn_init_addons()
                 $_addons[$k]['status'] = 'D';
             }
             $_addons[$k]['priority'] = $v['priority'];
-            $_addons[$k]['unmanaged'] = $v['unmanaged'];
         }
 
         // Some addons could be disabled for vendors.
@@ -853,33 +793,22 @@ function fn_init_addons()
     }
 
     foreach ((array) Registry::get('addons') as $addon_name => $data) {
-        if (empty($data['status'])) {
-            // FIX ME: Remove me
-            error_log("ERROR: Addons initialization: Bad '$addon_name' addon data:" . serialize($data) . " Addons Registry:" . serialize(Registry::get('addons')));
-        }
         if (!empty($data['status']) && $data['status'] == 'A') {
-            fn_load_addon($addon_name);
+            if (is_file(Registry::get('config.dir.addons') . $addon_name . '/init.php')) {
+                include_once(Registry::get('config.dir.addons') . $addon_name . '/init.php');
+            }
+            if (file_exists(Registry::get('config.dir.addons') . $addon_name . '/func.php')) {
+                include_once(Registry::get('config.dir.addons') . $addon_name . '/func.php');
+            }
+            if (file_exists(Registry::get('config.dir.addons') . $addon_name . '/config.php')) {
+                include_once(Registry::get('config.dir.addons') . $addon_name . '/config.php');
+            }
+
+            Registry::get('class_loader')->add('', Registry::get('config.dir.addons') . $addon_name);
         }
     }
 
-    Registry::set('addons_initiated', true, true);
-
-    return array(INIT_STATUS_OK);
-}
-
-/**
- * Initialize unmanaged addons
- *
- * @return INIT_STATUS_OK
- */
-function fn_init_unmanaged_addons()
-{
-    // Do not use cache here, because company ID is not initialized yet
-    $addons = db_get_fields("SELECT addon FROM ?:addons WHERE unmanaged = 1 AND status = 'A' ORDER BY priority");
-
-    foreach ($addons as $addon_name) {
-        fn_load_addon($addon_name);
-    }
+    Registry::set('addons_initiated', true);
 
     return array(INIT_STATUS_OK);
 }
@@ -940,7 +869,6 @@ function fn_init(&$request)
         $status = !empty($result[0]) ? $result[0] : INIT_STATUS_OK;
         $url = !empty($result[1]) ? $result[1] : '';
         $message = !empty($result[2]) ? $result[2] : '';
-        $permanent = !empty($result[3]) ? $result[3] : '';
 
         if ($status == INIT_STATUS_OK && !empty($url)) {
             $redirect_url = $url;
@@ -951,10 +879,9 @@ function fn_init(&$request)
 
         } elseif ($status == INIT_STATUS_FAIL) {
             if (empty($message)) {
-                $message = 'Initialization failed in <b>' . (is_array($function) ? implode('::', $function) : $function) . '</b> function';
+                $message = 'Initiation failed in <b>' . (is_array($function) ? implode('::', $function) : $function) . '</b> function';
             }
-
-            throw new InitException($message);
+            die($message);
         }
     }
 
@@ -962,7 +889,7 @@ function fn_init(&$request)
         if (!defined('CART_LANGUAGE')) {
             fn_init_language($request); // we need CART_LANGUAGE in fn_url function that called in fn_redirect
         }
-        fn_redirect($redirect_url, false, !empty($permanent));
+        fn_redirect($redirect_url, true, true);
     }
 
     $stack = Registry::get('init_stack');
@@ -971,7 +898,23 @@ function fn_init(&$request)
         fn_init($request);
     }
 
-    Debugger::init(true);
+    if ((isset($_REQUEST['debug']) || defined('DEBUGGER') && DEBUGGER == true) && AREA == 'A' && $_SESSION['auth']['user_type'] == 'A' && $_SESSION['auth']['is_root'] == 'Y') {
+        $user_admin = db_get_row('SELECT email, password FROM ?:users WHERE user_id = ?i', $_SESSION['auth']['user_id']);
+        fn_set_cookie('debugger', md5(SESSION::getId() . $user_admin['email'] . $user_admin['password']), SESSION_ALIVE_TIME);
+    }
+
+    if (isset($_REQUEST['debug'])) {
+        $_SESSION['DEBUGGER_ACTIVE_REQUEST'] = true;
+    }
+
+    if (isset($_REQUEST['debug']) || defined('DEBUGGER') && DEBUGGER == true) {
+        $_SESSION['DEBUGGER_ACTIVE'] = true;
+    }
+
+    if ((!defined('DEBUGGER') || DEBUGGER !== true) && empty($_SESSION['DEBUGGER_ACTIVE_REQUEST'])) {
+        unset($_SESSION['DEBUGGER_ACTIVE']);
+        fn_set_cookie('debugger', '', 0);
+    }
 
     return true;
 }
@@ -986,114 +929,9 @@ function fn_init_storage()
     fn_set_hook('init_storage');
 
     $storage = Settings::instance()->getValue('storage', '');
-
     Registry::set('runtime.storage', unserialize($storage));
 
-    Registry::set('config.images_path', Storage::instance('images')->getUrl()); // FIXME this path should be removed
-
-    return array(INIT_STATUS_OK);
-}
-
-/**
- * Init api object and put it to Application container.
- */
-function fn_init_api()
-{
-    Tygh::$app['api'] = new Api();
-
-    return array(INIT_STATUS_OK);
-}
-
-/**
- * Registers image manipulation library object at Application container.
- *
- * @return array
- */
-function fn_init_imagine()
-{
-    Tygh::$app['image'] = function ($app) {
-
-        $driver = Registry::ifGet('config.tweaks.image_resize_lib', 'gd');
-
-        if ($driver == 'auto') {
-            try {
-                return new Imagine\Imagick\Imagine();
-            } catch (\Exception $e) {
-                try {
-                    return new Imagine\Gd\Imagine();
-                } catch (\Exception $e) {
-                    return null;
-                }
-            }
-        } else {
-            switch ($driver) {
-                case 'gd':
-                    return new Imagine\Gd\Imagine();
-                    break;
-                case 'imagick':
-                    return new Imagine\Imagick\Imagine();
-                    break;
-            }
-        }
-    };
-
-    return array(INIT_STATUS_OK);
-}
-
-/**
- * Registers custom error handlers
- *
- * @return array
- */
-function fn_init_error_handler()
-{
-    // Fatal error handler
-    defined('AREA') && AREA == 'C' && register_shutdown_function(function () {
-        $error = error_get_last();
-
-        // Check whether error is fatal (i.e. couldn't have been catched with trivial error handler)
-        if (isset($error['type']) &&
-            in_array($error['type'], array(
-                E_ERROR, E_PARSE, E_CORE_ERROR, E_CORE_WARNING, E_COMPILE_ERROR, E_COMPILE_WARNING
-            ))
-        ) {
-            // Try to hide PHP's fatal error message
-            fn_clear_ob();
-
-            $exception = new PHPErrorException($error['message'], $error['type'], $error['file'], $error['line']);
-            $exception->output();
-
-            exit(1);
-        }
-    });
-
-    // Non-fatal errors, warnings and notices are caught and properly formatted
-    defined('DEVELOPMENT')
-    && DEVELOPMENT
-    && !extension_loaded('xdebug')
-    && set_error_handler(function($code, $message, $filename, $line) {
-        if (error_reporting() & $code) {
-            switch ($code) {
-                // Non-fatal errors, code execution wouldn't be stopped
-                case E_NOTICE:
-                case E_USER_NOTICE:
-                case E_WARNING:
-                case E_USER_WARNING:
-                case E_DEPRECATED:
-                case E_USER_DEPRECATED:
-                    $exception = new PHPErrorException($message, $code, $filename, $line);
-                    $exception->output();
-
-                    error_log(addslashes((string) $exception), 0);
-
-                    return true;
-                break;
-            }
-        }
-
-        // Let PHP's internal error handler handle other cases
-        return false;
-    });
+    Registry::set('config.images_path', Storage::instance('images')->getUrl()); // FIXME these 2 paths should be removed
 
     return array(INIT_STATUS_OK);
 }

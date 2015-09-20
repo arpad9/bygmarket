@@ -59,7 +59,6 @@
     padding-bottom: 25px;
     .grid-control-menu {
         padding-left: 13px;
-        cursor: @BlockManagerOpenhand , move;
     }
     &:hover > .grid-control-menu .grid-control-menu-actions {
         visibility: visible;
@@ -170,24 +169,10 @@
 
 .grid-control-title {
     color: #464646;
-    font: 600 13px sans-serif;
+    font: 400 13px sans-serif;
     text-align: center;
     text-transform: uppercase;
     margin: 5px 44px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.bm-full-menu .grid-control-title {
-    color: #464646;
-    font: 400 13px sans-serif;
-    text-align: center;
-    text-transform: none;
-    margin: 5px 44px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 .hover-element {
@@ -373,10 +358,10 @@
             visibility: visible;
         }
         &:hover .block-header {
-            background: #fafafa;
+            #gradient > .vertical(#e2e2e2, #fcfcfc);
         }
         .block-control-menu {
-            .border-radius(0 0 3px 3px);
+            .border-radius(0 0 6px 6px);
         }
     }
     .block.block-off {
@@ -393,9 +378,6 @@
         .block-control-menu {
             background-color: #fafafa !important;
             border-top: 1px solid #f2f2f2 !important;
-            [class^="exicon-"], [class*=" exicon-"] {
-                background-image: url('images/exicons.png');
-            }
         }
         .exicon-cog, .exicon-trash {
             opacity: 0.2;
@@ -428,16 +410,16 @@
 }
 
 .container-lock {
-    height: 80px !important;
-    min-height: 80px !important;
+    background-color: #f2f2f2;
+    background-image: none !important;
+    height: 50px !important;
+    min-height: 50px !important;
+    .grid-control-menu {
+        visibility: hidden;
+    }
     p {
         color: #717171;
-        background: #fcfcfc;
-        margin: 14px 14px 20px;
-        padding: 10px;
-    }
-    h4.grid-control-title a {
-        display: none;
+        padding: 25px 20px 20px;
     }
 }
 
@@ -490,23 +472,6 @@
     }
     .exicon-trash {
         float: right !important;
-    }
-}
-
-.block-control-menu {
-    background-color: #08c;
-    [class^="exicon-"], [class*=" exicon-"] {
-        background-image: url('images/exicons_white.png');
-    }
-    .action-properties {
-        margin: 3px 0 0 0;
-        .icon-cog {
-            background-image: url('../../../media/images/lib/twitterbootstrap/glyphicons-halflings-white.png');
-            opacity: 0.6;
-            &:hover {
-                opacity: 1;
-            }
-        }
     }
 }
 

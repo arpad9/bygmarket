@@ -14,7 +14,6 @@
 
 namespace Tygh\SmartyEngine;
 
-use Tygh\Exceptions\PermissionsException;
 use Tygh\Registry;
 
 class Core extends \Smarty
@@ -26,6 +25,8 @@ class Core extends \Smarty
     public $default_resource_type = 'tygh';
     public $merge_compiled_includes = false;
     public $escape_html = true;
+    public $_dir_perms = 0777;
+    public $_file_perms = 0666;
     public $template_area = '';
 
     /**
@@ -49,6 +50,10 @@ class Core extends \Smarty
      */
     public function display($template = null, $cache_id = null, $compile_id = null, $parent = null)
     {
+        if (ini_get('zlib.output_compression') == '' && strpos(@$_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip') !== false && !defined('AJAX_REQUEST')) {
+            //ob_start('ob_gzhandler');
+        }
+
         parent::display($template, $cache_id, $compile_id, $parent);
     }
 
@@ -114,20 +119,10 @@ class Core extends \Smarty
         if ($area_type == 'mail') {
             $path = fn_get_theme_path('[themes]/[theme]/mail', $area, $company_id);
             $path_rel = fn_get_theme_path('[relative]/[theme]/mail', $area, $company_id);
-            if ($area == 'A') {
-                $c_prefix = 'backend/mail';
-            } else {
-                $c_prefix = fn_get_theme_path('[theme]/mail', $area, $company_id);
-            }
-        } else {
 
+        } else {
             $path = fn_get_theme_path('[themes]/[theme]', $area, $company_id);
             $path_rel = fn_get_theme_path('[relative]/[theme]', $area, $company_id);
-            if ($area == 'A') {
-                $c_prefix = 'backend';
-            } else {
-                $c_prefix = fn_get_theme_path('[theme]', $area, $company_id);
-            }
         }
 
         $suffix = '/templates';
@@ -138,16 +133,23 @@ class Core extends \Smarty
         $this->_area = $area;
         $this->_area_type = $area_type;
 
-        $compile_dir = Registry::get('config.dir.cache_templates') . $c_prefix;
+        $compile_dir = Registry::get('config.dir.cache_templates') . $path_rel . $suffix;
+        $cache_dir = Registry::get('config.dir.cache_templates') . $path_rel . $suffix;
 
         if (!is_dir($compile_dir)) {
             if (fn_mkdir($compile_dir) == false) {
-                throw new PermissionsException("Can't create templates cache directory: <b>" . $compile_dir . '</b>.<br>Please check if it exists, and has writable permissions.');
+                fn_error(debug_backtrace(), "Can't create compiled templates directory: <b>" . $compile_dir . '</b>.<br>Please check if it exists, and has writable permissions.', false);
+            }
+        }
+
+        if (!is_dir($cache_dir)) {
+            if (fn_mkdir($cache_dir) == false) {
+                fn_error(debug_backtrace(), "Can't create template cache directory: <b>" . $cache_dir . '</b>.<br>Please check if it exists, and has writable permissions.', false);
             }
         }
 
         $this->setCompileDir($compile_dir);
-        $this->setCacheDir($compile_dir);
+        $this->setCacheDir($cache_dir);
 
         $this->assign('images_dir', Registry::get('config.current_location') . '/' . $path_rel . '/media/images');
         $this->assign('logos', fn_get_logos($company_id));
@@ -190,16 +192,20 @@ class Core extends \Smarty
      */
     private function _preFetch($template)
     {
-        if (defined('AJAX_REQUEST') && !\Tygh::$app['ajax']->full_render) {
-            // Decrease amount of templates to parse if we're using ajax request
-            if ($template == 'index.tpl') {
-                $template = $this->getTemplateVars('content_tpl');
-            }
+        $full_render = !empty($_REQUEST['full_render']) ? $_REQUEST['full_render'] : false;
 
-            list($area, $area_type) = $this->getArea();
-            if ($area == 'A' && empty($area_type)) {
-                // Display required helper files
-                parent::fetch('buttons/helpers.tpl');
+        if (defined('AJAX_REQUEST') && !$full_render) {
+            // Decrease amount of templates to parse if we're using ajax request
+            if (!defined('PARSE_ALL')) {
+                if ($template == 'index.tpl') {
+                    $template = $this->getTemplateVars('content_tpl');
+                }
+
+                list($area, $area_type) = $this->getArea();
+                if ($area == 'A' && empty($area_type)) {
+                    // Display required helper files
+                    parent::fetch('buttons/helpers.tpl');
+                }
             }
         }
 
@@ -243,22 +249,5 @@ class Core extends \Smarty
     public function getLanguage()
     {
         return $this->lang_code;
-    }
-
-    /**
-     * This realisation much faster and has less memory consumption than default, but does not support storages except file system.
-     * @param string $resource_name relative template path
-     * @return boolean true if exists, false - otherwise
-     */
-    public function templateExists($resource_name)
-    {
-        $dirs = $this->getTemplateDir();
-        foreach ($dirs as $dir) {
-            if (file_exists($dir . trim($resource_name, '/'))) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

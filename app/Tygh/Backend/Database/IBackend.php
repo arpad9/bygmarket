@@ -90,10 +90,4 @@ interface IBackend
      * @return string escaped value
      */
     public function escape($value);
-
-    /**
-     * Executes Command after when connecting to MySQL server
-     * @param string $command Command to execute
-     */
-    public function initCommand($command);
 }

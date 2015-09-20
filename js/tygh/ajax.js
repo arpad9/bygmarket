@@ -1,9 +1,8 @@
 (function(_, $) {
 
     var loadedScripts = {};
-    var sessionData = {};
 
-    (function($) {
+    (function($){
 
         var REQUEST_XML = 1;
         var REQUEST_IFRAME = 2;
@@ -34,9 +33,7 @@
                 params.force_exec = params.force_exec || false;
                 params.obj = params.obj || null;
                 params.append = params.append || null;
-                params.scroll = params.scroll || null;
-                params.overlay = params.overlay || null;
-
+                
                 if (_.embedded) {
                     params.full_render = true;
                 }
@@ -67,9 +64,7 @@
 
                 // If query is not hidden, display loading box
                 if (params.hidden === false) {
-                    $.toggleStatusBox('show', {
-                        overlay: params.overlay
-                    });
+                    $.toggleStatusBox('show', params.message);
                 }
 
                 var hash = '';
@@ -78,12 +73,13 @@
                 }
 
                 if (!hash || !responseCache[hash]) {
+
                     // Check, if we need to save all the input fields values from the updated element
-                    var saved_data = {};
+                    var saved_data = [];
                     var result_ids = (params.data.result_ids) ? params.data.result_ids.split(',') : [];
 
                     if (result_ids.length > 0) {
-                        for (var j = 0; j < result_ids.length; j++) {
+                        for (var j in result_ids) {
                             var container = $('#' + result_ids[j]);
                             if (container.hasClass('cm-save-fields')) {
                                 saved_data[result_ids[j]] = $(':input:visible', container).serializeArray();
@@ -112,19 +108,6 @@
                             activeQueries++;
 
                             var data_type = (!$.support.cors && url.indexOf('://' + window.location.hostname) == -1) ? 'jsonp' : 'json';
-
-                            if (!('is_ajax' in params.data) && data_type == 'json') {
-                                params.data.is_ajax = REQUEST_XML;
-                            }
-
-                            if (sessionData.name && url.indexOf(sessionData.name) == -1) {
-                                params.data[sessionData.name] = localStorage.getItem(sessionData.name);
-                            }
-
-                            var components = $.parseUrl(url);
-                            if (components.anchor) {
-                                params.data.anchor = components.anchor;
-                            }
 
                             return $.ajax({
                                 type: params.method,
@@ -182,36 +165,29 @@
             },
 
             submitForm: function(form, clicked_elm) {
-
+//alert(form);
+				$('.section-body').css("display","none");
                 if (activeQueries >= QUERIES_LIMIT) { // if we have queries in the queue, push request to it
                     queryStack.unshift(function() {
                         methods.submitForm(form, clicked_elm);
                     });
 
-                    return false; // prevent default form submit
+                    return true;
                 }
 
                 var params = {
                     form: form,
                     obj: clicked_elm,
-                    scroll: clicked_elm.data('caScroll') || '',
-                    overlay: clicked_elm.data('caOverlay') || '',
                     callback: 'ce.formajaxpost_' + form.prop('name')
                 };
 
                 $.ceNotification('closeAll');
-                $.toggleStatusBox('show', {
-                    overlay: params.overlay
-                });
+                $.toggleStatusBox('show');
 
                 var options = _getOptions(form, params);
 
                 if (options.force_exec) {
                     params['force_exec'] = true;
-                }
-
-                if (sessionData.name) {
-                    form.append('<input type="hidden" name="' + sessionData.name + '" value="' + localStorage.getItem(sessionData.name) + '">');
                 }
 
                 if (options.full_render) {
@@ -231,12 +207,7 @@
                 responseCache = {};
 
                 return true;
-            },
-
-            response: function(response, params) {
-                return _response(response, params);
             }
-
         };
 
         /*
@@ -258,38 +229,26 @@
                 iframe.on('load', function() {
                     var response = {};
                     var self = $(this);
-
+                    activeQueries--;
                     if (self.contents().text() !== null) {
                         eval('var response = ' + self.contents().find('textarea').val());
                     }
 
                     response = response || {};
                     _response(response, params);
-                    
-                    if (options.is_comet && jQuery.isEmptyObject(response) == false) {
-                        $('#comet_container_controller').ceProgress('finish');
 
-                        $.ceEvent('trigger', 'ce.cometdone', [ form, params, options, response ] );
+                    if (options.is_comet) {
+                        $('#comet_container_controller').ceProgress('finish');
                     }
 
                     self.remove();
-                    activeQueries--;
-                    if (queryStack.length) {
-                        var f = queryStack.shift();
-                        f();
-                    }
                 });
 
                 // We can send form, or open URL
                 if (form) {
                     form.prop('target', 'upload_iframe');
                 } else if (params.url) {
-
-                    if (params.method == 'post') {
-                        $('<form class="hidden" action="' + params.url +'" method="post" target="upload_iframe"><input type="hidden" name="security_hash" value="' + _.security_hash +'"></form>').appendTo(_.body).submit();
-                    } else {
-                        iframe.prop('src', params.url);
-                    }
+                    iframe.prop('src', params.url);
                 }
 
                 return true;
@@ -319,13 +278,14 @@
              * Transport for cross-domain form submit if XMLHttpRequest2 is not supported
              */
             jsonpPOST: function(form, params, options) {
-                $.receiveMessage(function(e) {
+
+                $.receiveMessage(function(e){
+                    activeQueries--;
                     if (options.is_comet) {
                         $('#comet_container_controller').ceProgress('finish');
                     }
                     iframe.remove();
                     _response($.parseJSON(e.data), params);
-                    activeQueries--;
                 });
 
                 var iframe = $('<iframe name="upload_iframe" src="javascript: false;" class="hidden"></iframe>').appendTo(_.body);
@@ -348,27 +308,14 @@
         /*
          * Private methods
          */
-        function _getOptions(obj, params) {
+        function _getOptions(obj, params)
+        {
             var is_comet = obj.hasClass('cm-comet') || (params.obj && params.obj.hasClass('cm-comet'));
             var transport = 'xml';
-            var uploads = is_comet;
 
-            if (!is_comet && obj.prop('enctype') == 'multipart/form-data') {
-                obj.find('input[type=file]').each(function() {
-                    if ($(this).val()) {
-                        uploads = true;
-                    }
-                });
-            }
-
-            if (
-                (!$.support.cors || (_.embedded && uploads))
-                && obj.prop('action').indexOf('//') != -1
-                && obj.prop('action').indexOf('//' + window.location.hostname) == -1
-                && obj.prop('method') == 'post'
-            ) {
+            if (!$.support.cors && obj.prop('action').indexOf('//') != -1 && obj.prop('action').indexOf('//' + window.location.hostname) == -1 && obj.prop('method') == 'post') {
                 transport = 'jsonpPOST';
-            } else if (uploads) {
+            } else if (is_comet || (obj.prop('enctype') == 'multipart/form-data' && obj.find('input[type=file][value!=""]').length)) {
                 transport = 'iframe';
             }
 
@@ -380,7 +327,8 @@
             };
         }
 
-        function _response(response, params) {
+        function _response(response, params)
+        {
             params = params || {};
             params.force_exec = params.force_exec || false;
             params.pre_processing = params.pre_processing || {};
@@ -393,7 +341,6 @@
             var inline_scripts = null;
             var scripts_to_load = [];
             var elms = [];
-            var content;
 
             // If pre processing function passed, run it
             if (params.pre_processing && typeof(params.pre_processing) == 'function') {
@@ -409,20 +356,11 @@
                 return true;
             }
 
-            // add hashes of current scripts
-            if ($.isEmptyObject(evalCache)) {
-                $('script:not([src])').each(function() {
-                    var self = $(this);
-                    evalCache[$.crc32(self.html())] = true;
-                });
-            }
-
             if (data.html) {
-
                 for (var k in data.html) {
 
                     elm = $('#' + k);
-                    if (elm.length != 1 || data.html[k] === null) {
+                    if (elm.length != 1) {
                         continue;
                     }
 
@@ -432,14 +370,11 @@
                     }
 
                     matches = data.html[k].match(regex_all);
-                    content = matches ? data.html[k].replace(regex_all, '') : data.html[k];
-
-                    $.ceDialog('destroy_loaded', {content: content});
 
                     if (params.append) {
-                        elm.append(content);
+                        elm.append(matches ? data.html[k].replace(regex_all, '') : data.html[k]);
                     } else {
-                        elm.html(content);
+                        elm.html(matches ? data.html[k].replace(regex_all, '') : data.html[k]);
                     }
 
                     // Restore saved data
@@ -450,7 +385,7 @@
                         }
 
                         $('input:visible, select:visible', elm).each(function(id, local_elm) {
-                            var jelm = $(local_elm);
+                            jelm = $(local_elm);
 
                             if (typeof(elements[jelm.prop('name')]) != 'undefined' && !jelm.parents().hasClass('cm-skip-save-fields')) {
                                 if (jelm.prop('type') == 'radio') {
@@ -473,8 +408,7 @@
                     }
 
                     // If returned data contains scripts, execute them
-                    var all_scripts = null,
-                        ext_scripts = null;
+                    var all_scripts = null, ext_scripts = null;
 
                     if (matches) {
                         all_scripts = $(matches.join('\n'));
@@ -484,12 +418,8 @@
                         if (ext_scripts.length) {
                             for (var i = 0; i < ext_scripts.length; i++) {
                                 var _src = ext_scripts.eq(i).prop('src');
-                                if (loadedScripts[_src]) {
-                                    if (ext_scripts.eq(i).hasClass('cm-ajax-force')) {
-                                        loadedScripts[_src] = null;
-                                    } else {
-                                        continue;
-                                    }
+                                if (loadedScripts[_src] && !ext_scripts.eq(i).hasClass('cm-ajax-force')) {
+                                    continue;
                                 }
 
                                 scripts_to_load.push($.getScript(_src));
@@ -497,18 +427,12 @@
                         }
                     }
 
+                    // If content was updated inside in non-resizable dialog, reload it
+                    if ($.ceDialog('inside_dialog', {jelm: elm})) {
+                        $.ceDialog('reload_parent', {jelm: elm, resizable: false});
+                    }
+                
                     elms.push(elm);
-                }
-
-                // If content was updated inside in non-resizable dialog, reload it
-                if ($.ceDialog('inside_dialog', {jelm: elm})) {
-                    $.ceDialog('reload_parent', {
-                        jelm: elm
-                    });
-                }
-
-                if (response.title) {
-                    $(document).prop('title', response.title);
                 }
             }
 
@@ -531,7 +455,7 @@
 
         // Override default ajax method to get count of loaded scripts
         var ajax = $.ajax;
-        $.ajax = function(origSettings) {
+        $.ajax = function( origSettings ) {
             if (origSettings.dataType && origSettings.dataType == 'script') {
                 var _src = origSettings.url;
                 if (loadedScripts[_src]) {
@@ -545,7 +469,7 @@
         };
 
         // Override getScript to prepend relative paths with full URL
-        $.getScript = function(url, callback) {
+        $.getScript = function(url, callback){
             url = (url.indexOf('//') == -1) ? _.current_location + '/' + url : url;
 
             if (_.otherjQ && getScriptQueries === 0) {
@@ -578,14 +502,6 @@
         $.ceEvent('on', 'ce.ajaxdone', function(elms, scripts, params, response_data, response_text) {
             var i;
 
-            // For full page reload in embedded mode if language was changed
-            if (_.embedded && response_data.language_changed) {
-                _.embedded = false;
-                $.redirect(response_data.current_url, false);
-                window.location.reload(true);
-                return;
-            }
-
             // If callback function passed, run it
             if (params.on_ajax_done && typeof(params.on_ajax_done) == 'function') {
                 params.on_ajax_done(response_data, params, response_text);
@@ -605,38 +521,23 @@
                 console.log(response_data.debug_info);
             }
 
-            var link_history = (params.save_history && (!params.obj || (params.obj && $.ceDialog('inside_dialog', {
-                jelm: params.obj
-            }) === false)));
+            var link_history = (params.save_history && (!params.obj || (params.obj && $.ceDialog('inside_dialog', {jelm: params.obj}) === false)));
 
-            if (response_data.session_data) {
-                sessionData = response_data.session_data;
-                localStorage.setItem(sessionData.name, sessionData.id);
-            }
-
-            if (response_data.current_url) {
-                var current_url = decodeURIComponent(response_data.current_url);
-
-                if (!params.skip_history && (_.embedded || link_history)) {
-                    var _params = params;
-                    if (!link_history) {
-                        _params.result_ids = _.container;
-                    }
-                    if (response_data.anchor) {
-                        current_url += '#' + response_data.anchor;
-                    }
-                    $.ceHistory('load', current_url, _params, true);
-
-                    _.current_url = current_url; // update current_url parameter in Tygh namespace
+            if (!params.skip_history && response_data.current_url && (_.embedded || link_history)) {
+                var _params = params;
+                if (!link_history) {
+                    _params.result_ids = _.container;
                 }
-
-                if (response_data.anchor) {
-                    _.anchor = params.scroll = '#' + response_data.anchor;
-                }
+                $.ceHistory('load', response_data.current_url, _params, true);
             }
 
             for (i = 0; i < elms.length; i++) {
+
                 $.commonInit(elms[i]);
+
+                if (elms[i].prop('id') == _.container && !_.scrolling) { // FIXME: not good
+                    $.scrollToElm(elms[i]);
+                }
             }
 
             // Enable disabled form fields back if we submitted form
@@ -657,15 +558,14 @@
                 $.ceEvent('trigger', params.callback, [response_data, params, response_text]);
             }
 
+            // Init design mode
+            if (_.translate_mode) {
+                $.init_design_mode();
+            }
+
             // Hide loading box
             if (!params.keep_status_box) {
                 $.toggleStatusBox('hide');
-            }
-
-            if (params.scroll) {
-                if (!_.scrolling) {
-                    $.scrollToElm($(params.scroll));
-                }
             }
 
             // Display notification
@@ -677,10 +577,10 @@
         $.ceAjax = function(method) {
             if (methods[method]) {
                 return methods[method].apply(this, Array.prototype.slice.call(arguments, 1));
-            } else if (typeof method === 'object' || !method) {
+            } else if ( typeof method === 'object' || ! method ) {
                 return methods.init.apply(this, arguments);
             } else {
-                $.error('ty.ajax: method ' + method + ' does not exist');
+                $.error('ty.ajax: method ' +  method + ' does not exist');
             }
         };
     })($);

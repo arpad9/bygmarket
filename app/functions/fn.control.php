@@ -12,7 +12,6 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-use Tygh\Exceptions\DeveloperException;
 use Tygh\Registry;
 use Tygh\Settings;
 use Tygh\Debugger;
@@ -20,8 +19,6 @@ use Tygh\Session;
 use Tygh\BlockManager\Location;
 use Tygh\BlockManager\SchemesManager;
 use Tygh\Navigation\LastView;
-use Tygh\Router;
-use Tygh\Bootstrap;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -35,112 +32,61 @@ define('GET_POST_CONTROLLERS', 3);
  * @param mixed $argN argument, passed to addon
  * @return boolean always true
  */
-function fn_set_hook($hook_name = NULL, &$arg1 = NULL, &$arg2 = NULL, &$arg3 = NULL, &$arg4 = NULL, &$arg5 = NULL, &$arg6 = NULL, &$arg7 = NULL, &$arg8 = NULL, &$arg9 = NULL, &$arg10 = NULL, &$arg11 = NULL, &$arg12 = NULL, &$arg13 = NULL, &$arg14 = NULL, &$arg15 = NULL)
+function fn_set_hook($arg0 = NULL, &$arg1 = NULL, &$arg2 = NULL, &$arg3 = NULL, &$arg4 = NULL, &$arg5 = NULL, &$arg6 = NULL, &$arg7 = NULL, &$arg8 = NULL, &$arg9 = NULL, &$arg10 = NULL, &$arg11 = NULL, &$arg12 = NULL, &$arg13 = NULL, &$arg14 = NULL, &$arg15 = NULL)
 {
-    /**
-     * @var bool[]|null $callable_functions Cache of validations that hook's function is callable groupped by func name.
-     */
+    $hooks = Registry::get('hooks');
+    static $loaded_addons;
     static $callable_functions;
+    static $hooks_already_sorted;
 
-    /**
-     * @var array $hooks_already_sorted Cache of hook lists ordered by addon priority and groupped by hook name.
-     */
-    static $hooks_already_sorted = array();
-
-    /**
-     * @var array|null $hooks Function's local cache of hooks that have been registered by addons.
-     */
-    static $hooks = null;
-
-    /**
-     * @var bool $addons_initiated Function's local cache of addons' initialization state.
-     */
-    static $addons_initiated = false;
-
-    // We use local hooks cache that was filled at previous fn_set_hook() call
-    // only if addons were already initiated at that call.
-    if ($addons_initiated) {
-        $update_hooks_cache = false;
-    }
-    // Otherwise, we should renew local hooks cache:
-    else {
-        $update_hooks_cache = true;
-
-        // Update local cache of addons' init state
-        $addons_initiated = Registry::get('addons_initiated');
+    for ($args = array(), $i = 0; $i < 16; $i++) {
+        $name = 'arg' . $i;
+        if ($i < func_num_args()) {
+            $args[$i] = &$$name;
+        }
+        unset($$name, $name);
     }
 
-    if (
-        $hooks === null
-        || $update_hooks_cache
-        || defined('DISABLE_HOOK_CACHE')
-    ) {
-        // Updating local hooks cache
-        $hooks = Registry::get('hooks');
-        $hooks_already_sorted = array();
-    }
-
-    $arg_count = func_num_args();
-    if ($arg_count === 1) {
-        $args = array();
-    } elseif ($arg_count === 2) {
-        $args = array(&$arg1);
-    } elseif ($arg_count === 3) {
-        $args = array(&$arg1, &$arg2);
-    } elseif ($arg_count === 4) {
-        $args = array(&$arg1, &$arg2, &$arg3);
-    } elseif ($arg_count === 5) {
-        $args = array(&$arg1, &$arg2, &$arg3, &$arg4);
-    } elseif ($arg_count === 6) {
-        $args = array(&$arg1, &$arg2, &$arg3, &$arg4, &$arg5);
-    } elseif ($arg_count === 7) {
-        $args = array(&$arg1, &$arg2, &$arg3, &$arg4, &$arg5, &$arg6);
-    } elseif ($arg_count === 8) {
-        $args = array(&$arg1, &$arg2, &$arg3, &$arg4, &$arg5, &$arg6, &$arg7);
-    } elseif ($arg_count === 9) {
-        $args = array(&$arg1, &$arg2, &$arg3, &$arg4, &$arg5, &$arg6, &$arg7, &$arg8);
-    } elseif ($arg_count === 10) {
-        $args = array(&$arg1, &$arg2, &$arg3, &$arg4, &$arg5, &$arg6, &$arg7, &$arg8, &$arg9);
-    } elseif ($arg_count === 11) {
-        $args = array(&$arg1, &$arg2, &$arg3, &$arg4, &$arg5, &$arg6, &$arg7, &$arg8, &$arg9, &$arg10);
-    } elseif ($arg_count === 12) {
-        $args = array(&$arg1, &$arg2, &$arg3, &$arg4, &$arg5, &$arg6, &$arg7, &$arg8, &$arg9, &$arg10, &$arg11);
-    } elseif ($arg_count === 13) {
-        $args = array(&$arg1, &$arg2, &$arg3, &$arg4, &$arg5, &$arg6, &$arg7, &$arg8, &$arg9, &$arg10, &$arg11, &$arg12);
-    } elseif ($arg_count === 14) {
-        $args = array(&$arg1, &$arg2, &$arg3, &$arg4, &$arg5, &$arg6, &$arg7, &$arg8, &$arg9, &$arg10, &$arg11, &$arg12, &$arg13);
-    } elseif ($arg_count === 15) {
-        $args = array(&$arg1, &$arg2, &$arg3, &$arg4, &$arg5, &$arg6, &$arg7, &$arg8, &$arg9, &$arg10, &$arg11, &$arg12, &$arg13, &$arg14);
-    } elseif ($arg_count === 16) {
-        $args = array(&$arg1, &$arg2, &$arg3, &$arg4, &$arg5, &$arg6, &$arg7, &$arg8, &$arg9, &$arg10, &$arg11, &$arg12, &$arg13, &$arg14, &$arg15);
-    }
+    $hook_name = array_shift($args);
 
     // Check for the core functions
-    if (is_callable('fn_core_' . $hook_name)) {
-        call_user_func_array('fn_core_' . $hook_name, $args);
+    $core_func = 'fn_core_' . $hook_name;
+    if (is_callable($core_func)) {
+        call_user_func_array($core_func, $args);
     }
 
     $edition_acronym = fn_get_edition_acronym(PRODUCT_EDITION);
-    if (!empty($edition_acronym) && function_exists("fn_{$edition_acronym}_{$hook_name}")) {
-        call_user_func_array("fn_{$edition_acronym}_{$hook_name}", $args);
+    if (!empty($edition_acronym)) {
+        $edition_hook_func = "fn_{$edition_acronym}_{$hook_name}";
+        if (function_exists($edition_hook_func)) {
+            call_user_func_array($edition_hook_func, $args);
+        }
     }
 
     if (isset($hooks[$hook_name])) {
+
         // cache hooks sorting
         if (!isset($hooks_already_sorted[$hook_name])) {
             $hooks[$hook_name] = fn_sort_array_by_key($hooks[$hook_name], 'priority');
             $hooks_already_sorted[$hook_name] = true;
-            Registry::set('hooks', $hooks, true);
         }
 
         foreach ($hooks[$hook_name] as $callback) {
+
+            //cache loaded addon
+            if (!isset($loaded_addons[$callback['addon']])) { // FIXME: duplicate with cache in fn_load_addon
+                fn_load_addon($callback['addon']);
+                $loaded_addons[$callback['addon']] = true;
+            }
+
             // cache if hook function callable
             if (!isset($callable_functions[$callback['func']])) {
                 if (!is_callable($callback['func'])) {
-                    throw new DeveloperException("Hook $callback[func] is not callable");
+                    die("Hook $callback[func] is not callable");
                 }
                 $callable_functions[$callback['func']] = true;
             }
+
             call_user_func_array($callback['func'], $args);
         }
     }
@@ -155,6 +101,8 @@ function fn_set_hook($hook_name = NULL, &$arg1 = NULL, &$arg2 = NULL, &$arg3 = N
  */
 function fn_register_hooks()
 {
+    $hooks = & Registry::get('hooks');
+
     $args = func_get_args();
     $backtrace = debug_backtrace();
 
@@ -164,46 +112,50 @@ function fn_register_hooks()
     array_pop($path_dirs);
     $addon_name = array_pop($path_dirs);
 
-    $hooks = Registry::get('hooks');
-
     $addon_priority = Registry::get('addons.' . $addon_name . '.priority');
     foreach ($args as &$hook) {
         $priority = $addon_priority;
-        $addon = $addon_name;
 
         // if we get array we need to set priority manually
         if (is_array($hook)) {
             $priority = $hook[1];
-
-            if (isset($hook[2])) {
-                $addon = $hook[2];
-                if (Registry::get('addons.' . $addon . '.status') != 'A') { // skip hook registration if addon is not enabled
-                    continue;
-                }
-                if ($priority === '') {
-                    $priority = Registry::get('addons.' . $addon . '.priority');
-                }
-            }
-
-            if (empty($priority)) {
-                $priority = $addon_priority;
-            }
-
             $hook = $hook[0];
         }
 
-        $callback = 'fn_' . $addon . '_' . $hook;
+        $callback = 'fn_' . $addon_name . '_' . $hook;
 
         if (!isset($hooks[$hook])) {
-            $hooks[$hook] = array();
+            $hooks[$hook] = Array();
         }
 
-        $hooks[$hook][] = array('func' => $callback, 'addon' => $addon, 'priority' => $priority);
+        $hooks[$hook][] = array('func' => $callback, 'addon' => $addon_name, 'priority' => $priority);
     }
 
-    Registry::set('hooks', $hooks, true);
-
     return true;
+}
+
+/**
+ * Load addon
+ *
+ * @param string $addon_name addon name
+ * @return boolean true if addon loaded, false otherwise
+ */
+function fn_load_addon($addon_name)
+{
+    static $cache = array(); // FIXME: duplicate with fn_set_hook
+
+    if (!isset($cache[$addon_name])) {
+        $_addon = Registry::get("addons.$addon_name");
+        if ($_addon === null || Registry::get("addons.$addon_name.status") === 'D') {
+            $cache[$addon_name] = false;
+
+            return false;
+        }
+
+        $cache[$addon_name] = true;
+    }
+
+    return $cache[$addon_name];
 }
 
 /**
@@ -218,11 +170,16 @@ function fn_get_secure_controllers()
         'image' => 'passive',
     );
 
-    if (Registry::get('settings.Security.secure_storefront') != 'none') {
+    if (Registry::get('settings.General.secure_auth') == 'Y') {
         $secure_controllers = array_merge($secure_controllers, array(
             'auth' => 'active',
             'orders' => 'active',
             'profiles' => 'active',
+        ));
+    }
+
+    if (Registry::get('settings.General.secure_checkout') == 'Y') {
+        $secure_controllers = array_merge($secure_controllers, array(
             'checkout' => 'active',
         ));
     }
@@ -239,43 +196,39 @@ function fn_get_secure_controllers()
  */
 function fn_dispatch($controller = '', $mode = '', $action = '', $dispatch_extra = '', $area = AREA)
 {
-    Debugger::checkpoint('After init');
+    
+	Debugger::checkpoint('After init');
 
-    $auth = $_SESSION['auth'];
+    fn_set_hook('before_dispatch');
+
     $controller = empty($controller) ? Registry::get('runtime.controller') : $controller;
     $mode = empty($mode) ? Registry::get('runtime.mode') : $mode;
     $action = empty($action) ? Registry::get('runtime.action') : $action;
     $dispatch_extra = empty($dispatch_extra) ? Registry::get('runtime.dispatch_extra') : $dispatch_extra;
 
-    fn_set_hook('before_dispatch', $controller, $mode, $action, $dispatch_extra, $area);
+    $regexp = "/^[a-zA-Z0-9_\+]+$/";
+    if (!preg_match($regexp, $controller) || !preg_match($regexp, $mode)) {
+        die('Access denied');
+    }
 
-    $view = Tygh::$app['view'];
+    $view = Registry::get('view');
     $run_controllers = true;
     $external = false;
     $status = CONTROLLER_STATUS_NO_PAGE;
 
-    // CSRF protection
-    if (fn_is_csrf_protection_enabled($auth) && !fn_csrf_validate_request(array(
-            'server' => $_SERVER,
-            'request' => $_REQUEST,
-            'session' => $_SESSION,
-            'controller' => $controller,
-            'mode' => $mode,
-            'action' => $action,
-            'dispatch_extra' => $dispatch_extra,
-            'area' => $area,
-            'auth' => $auth
-        ))
-    ) {
-        fn_set_notification('E', __('error'), __('text_csrf_attack'));
-        fn_redirect(fn_url());
+    // Security
+    if (Registry::get('config.tweaks.anti_csrf') == true) {
+        $trusted_csrf_controllers = array(
+            'auth'
+        );
+        if ($_SERVER['REQUEST_METHOD'] == 'POST' && !in_array($controller, $trusted_csrf_controllers) && (empty($_SESSION['security_hash']) || empty($_REQUEST['security_hash']) || $_REQUEST['security_hash'] != $_SESSION['security_hash'])) {
+            fn_set_notification('E', __('error'), __('text_csrf_attack'));
+            fn_redirect(fn_url());
+        }
     }
 
     // If $config['http_host'] was different from the domain name, there was redirection to $config['http_host'] value.
-    if (strtolower(Registry::get('config.current_host')) != strtolower(REAL_HOST)
-        && $_SERVER['REQUEST_METHOD'] == 'GET'
-        && !defined('CONSOLE')
-    ) {
+    if (Registry::get('config.current_host') != REAL_HOST && $_SERVER['REQUEST_METHOD'] == 'GET' && !defined('CONSOLE')) {
         if (!empty($_SERVER['REDIRECT_URL'])) {
             $qstring = $_SERVER['REDIRECT_URL'];
         } else {
@@ -294,20 +247,17 @@ function fn_dispatch($controller = '', $mode = '', $action = '', $dispatch_extra
         fn_redirect(Registry::get('config.current_location') . $qstring, false, true);
     }
 
-    $upload_max_filesize = Bootstrap::getIniParam('upload_max_filesize');
-    $post_max_size = Bootstrap::getIniParam('post_max_size');
-
-    if (!defined('AJAX_REQUEST') && isset($_SERVER['CONTENT_LENGTH']) && ($_SERVER['CONTENT_LENGTH'] > fn_return_bytes($upload_max_filesize) || $_SERVER['CONTENT_LENGTH'] > fn_return_bytes($post_max_size))) {
-        $max_size = fn_return_bytes($upload_max_filesize) < fn_return_bytes($post_max_size) ? $upload_max_filesize : $post_max_size;
+    if (isset($_SERVER['CONTENT_LENGTH']) && ($_SERVER['CONTENT_LENGTH'] > fn_return_bytes(ini_get('upload_max_filesize')) || $_SERVER['CONTENT_LENGTH'] > fn_return_bytes(ini_get('post_max_size')))) {
+        $max_size = fn_return_bytes(ini_get('upload_max_filesize')) < fn_return_bytes(ini_get('post_max_size')) ? ini_get('upload_max_filesize') : ini_get('post_max_size');
 
         fn_set_notification('E', __('error'), __('text_forbidden_uploaded_file_size', array(
             '[size]' => $max_size
         )));
-        fn_redirect($_SERVER['HTTP_REFERER']);
+        fn_redirect($_SERVER['HTTP_REFERER'], false);
     }
 
     // If URL contains session ID, remove it
-    if (!defined('AJAX_REQUEST') && !empty($_REQUEST[Session::getName()]) && $_SERVER['REQUEST_METHOD'] == 'GET') {
+    if (!empty($_REQUEST[Session::getName()]) && $_SERVER['REQUEST_METHOD'] == 'GET') {
         fn_redirect(fn_query_remove(Registry::get('config.current_url'), Session::getName()));
     }
 
@@ -332,7 +282,7 @@ function fn_dispatch($controller = '', $mode = '', $action = '', $dispatch_extra
             $run_controllers = fn_check_permissions($controller, $mode, 'admin', '', $_REQUEST);
             if ($run_controllers == false) {
                 if (defined('AJAX_REQUEST')) {
-                    $_info = (Debugger::isActive() || fn_is_development()) ? ' ' . $controller . '.' . $mode : '';
+                    $_info = defined('DEVELOPMENT') ? ' ' . $controller . '.' . $mode : '';
                     fn_set_notification('W', __('warning'), __('access_denied') . $_info);
                     exit;
                 }
@@ -341,39 +291,21 @@ function fn_dispatch($controller = '', $mode = '', $action = '', $dispatch_extra
         }
     }
 
-    if ($_SERVER['REQUEST_METHOD'] != 'POST' && !defined('AJAX_REQUEST')) {
-        if ($area == 'A' && empty($_REQUEST['keep_location']) && !defined('CONSOLE')) {
-            if (!defined('HTTPS') && Registry::get('settings.Security.secure_admin') == 'Y') {
-                fn_redirect(Registry::get('config.https_location') . '/' . Registry::get('config.current_url'));
-            } elseif (defined('HTTPS') && Registry::get('settings.Security.secure_admin') != 'Y') {
-                fn_redirect(Registry::get('config.http_location') . '/' . Registry::get('config.current_url'));
-            }
-        } elseif ($area == 'C') {
-            $secure_controllers = fn_get_secure_controllers();
-            // if we are not on https but controller is secure, redirect to https
-            if (
-                !defined('HTTPS')
-                && (
-                    Registry::get('settings.Security.secure_storefront') == 'full' ||
-                    (isset($secure_controllers[$controller])
-                    && $secure_controllers[$controller] == 'active')
-                )
-            ) {
-                fn_redirect(Registry::get('config.https_location') . '/' . Registry::get('config.current_url'), false, true);
-            }
+    if ($area == 'A' && (Registry::get('settings.General.secure_admin') == 'Y')  && !defined('HTTPS') && ($_SERVER['REQUEST_METHOD'] != 'POST') && !defined('AJAX_REQUEST') && empty($_REQUEST['keep_location']) && !defined('CONSOLE')) {
+        fn_redirect(Registry::get('config.https_location') . '/' . Registry::get('config.current_url'));
+    } elseif ($area == 'C' && $_SERVER['REQUEST_METHOD'] != 'POST' && !defined('AJAX_REQUEST')) {
+        $secure_controllers = fn_get_secure_controllers();
+        // if we are not on https but controller is secure, redirect to https
+        if (isset($secure_controllers[$controller]) && $secure_controllers[$controller] == 'active' && !defined('HTTPS')) {
+            fn_redirect(Registry::get('config.https_location') . '/' . Registry::get('config.current_url'));
+        }
 
-            // if we are on https and the controller is insecure, redirect to http
-            if (
-                defined('HTTPS')
-                && Registry::get('settings.Security.secure_storefront') != 'full'
-                && !isset($secure_controllers[$controller])
-                && Registry::get('settings.Security.keep_https') != 'Y'
-            ) {
-                fn_redirect(Registry::get('config.http_location') . '/' . Registry::get('config.current_url'), false, true);
-            }
+        // if we are on https and the controller is insecure, redirect to http
+        if (!isset($secure_controllers[$controller]) && defined('HTTPS') && Registry::get('settings.General.keep_https') != 'Y') {
+            fn_redirect('http://' . Registry::get('config.http_host') . Registry::get('config.http_path') . '/' . Registry::get('config.current_url'));
         }
     }
-
+	
     LastView::instance()->prepare($_REQUEST);
 
     $controllers_cascade = array();
@@ -394,7 +326,7 @@ function fn_dispatch($controller = '', $mode = '', $action = '', $dispatch_extra
         }
 
         if ((count($core_controllers) + count($addon_controllers)) > 1) {
-            throw new DeveloperException('Duplicate controller ' . $controller . var_export(array_merge($core_controllers, $addon_controllers), true));
+            die('Duplicate controller ' . $controller . fn_print_r(array_merge($core_controllers, $addon_controllers), 1));
         }
 
         $core_pre_controllers = fn_init_core_controllers($ctrl, GET_PRE_CONTROLLERS);
@@ -411,7 +343,7 @@ function fn_dispatch($controller = '', $mode = '', $action = '', $dispatch_extra
         $controllers_cascade = array_merge($controllers_cascade, $addon_pre_controllers, $core_pre_controllers, $core_controllers, $addon_controllers, $core_post_controllers, $addon_post_controllers);
 
         if (empty($controllers_cascade)) {
-            throw new DeveloperException("No controllers for: $ctrl");
+            die("No controllers for: $ctrl");
         }
     }
 
@@ -423,7 +355,7 @@ function fn_dispatch($controller = '', $mode = '', $action = '', $dispatch_extra
         $tpl = $mode . '.tpl';
     }
 
-    $view = Tygh::$app['view'];
+    $view = Registry::get('view');
     if ($view->templateExists('views/' . $controller . '/' . $tpl)) { // try to find template in base views
         $view->assign('content_tpl', 'views/' . $controller . '/' . $tpl);
     } elseif (defined('LOADED_ADDON_PATH') && $view->templateExists('addons/' . LOADED_ADDON_PATH . '/views/' . $controller . '/' . $tpl)) { // try to find template in addon views
@@ -437,23 +369,13 @@ function fn_dispatch($controller = '', $mode = '', $action = '', $dispatch_extra
         }
     }
 
-    /**
-     * Performs actions after template assignment and before controller run
-     *
-     * @param string $controller          controller name
-     * @param string $mode                controller mode name
-     * @param string $area                current working area
-     * @param array  $controllers_cascade list of controllers to run
-     */
-    fn_set_hook('dispatch_assign_template', $controller, $mode, $area, $controllers_cascade);
+    fn_set_hook('dispatch_assign_template', $controller, $mode, $area);
 
     foreach ($controllers_cascade as $item) {
         $_res = fn_run_controller($item, $controller, $mode, $action, $dispatch_extra); // 0 - status, 1 - url
 
-        $url = !empty($_res[1]) ? $_res[1] : '';
         $external = !empty($_res[2]) ? $_res[2] : false;
-        $permanent = !empty($_res[3]) ? $_res[3] : false;
-
+        $url = !empty($_res[1]) ? $_res[1] : '';
         // Status could be changed only if we allow to run controllers despite of init controller
         if ($run_controllers == true) {
             $status = !empty($_res[0]) ? $_res[0] : CONTROLLER_STATUS_OK;
@@ -473,18 +395,10 @@ function fn_dispatch($controller = '', $mode = '', $action = '', $dispatch_extra
 
     // In console mode, just stop here
     if (defined('CONSOLE')) {
-        $notifications = fn_get_notifications();
-        $exit_code = 0;
-        foreach ($notifications as $n) {
-            fn_echo('[' . $n['title'] . '] ' . $n['message'] . "\n");
-            if ($n['type'] == 'E') {
-                $exit_code = 1;
-            }
-        }
-        exit($exit_code);
+        exit;
     }
 
-    if (!empty($auth['this_login']) && Registry::ifGet($auth['this_login'], 'N') === 'Y') {
+    if (!empty($_SESSION['auth']['this_login']) && Registry::ifGet($_SESSION['auth']['this_login'], 'N') === 'Y') {
         fn_set_notification('E', __('error'), __(ACCOUNT_TYPE . LOGIN_STATUS_USER_DISABLED));
         $status = CONTROLLER_STATUS_DENIED;
     }
@@ -497,13 +411,13 @@ function fn_dispatch($controller = '', $mode = '', $action = '', $dispatch_extra
         (fn_allowed_for('ULTIMATE') && !Registry::get('runtime.company_id'))
     )) {
         if (fn_check_permissions('block_manager', 'manage', 'admin')) {
-            $dynamic_object = SchemesManager::getDynamicObject($_REQUEST['dispatch'], $area, $_REQUEST);
+            $dynamic_object = SchemesManager::getDynamicObject($_REQUEST['dispatch'], $area);
             if (!empty($dynamic_object)) {
                 if ($area == 'A' && Registry::get('runtime.mode') != 'add' && !empty($_REQUEST[$dynamic_object['key']])) {
                     $object_id = $_REQUEST[$dynamic_object['key']];
                     $location = Location::instance()->get($dynamic_object['customer_dispatch'], $dynamic_object, CART_LANGUAGE);
 
-                    if (!empty($location) && $location['is_default'] != 1) {
+                    if ($location['is_default'] != 1) {
                         $params = array(
                             'dynamic_object' => array(
                                 'object_type' => $dynamic_object['object_type'],
@@ -514,7 +428,7 @@ function fn_dispatch($controller = '', $mode = '', $action = '', $dispatch_extra
                         );
 
                         Registry::set('navigation.tabs.blocks', array(
-                            'title' => __('layouts'),
+                            'title' => __('blocks'),
                             'href' => 'block_manager.manage_in_tab?' . http_build_query($params),
                             'ajax' => true,
                         ));
@@ -537,40 +451,34 @@ function fn_dispatch($controller = '', $mode = '', $action = '', $dispatch_extra
 
     // In backend show "changes saved" notification
     if ($area == 'A' && $_SERVER['REQUEST_METHOD'] == 'POST' && in_array($status, array(CONTROLLER_STATUS_OK, CONTROLLER_STATUS_REDIRECT))) {
-        if (strpos($mode, 'update') !== false && $mode != 'update_status' && $mode != 'update_mode' && !fn_notification_exists('extra', 'demo_mode') && !fn_notification_exists('type', 'E')) {
+        if (strpos($mode, 'update') !== false && !fn_notification_exists('extra', 'demo_mode') && !fn_notification_exists('type', 'E')) {
             fn_set_notification('N', __('notice'), __('text_changes_saved'), 'I', 'changes_saved');
         }
     }
-
     // Attach params and redirect if needed
     if (in_array($status, array(CONTROLLER_STATUS_OK, CONTROLLER_STATUS_REDIRECT)) && !empty($redirect_url)) {
-        if (!isset($_REQUEST['return_to_list'])) {
-            $params = array (
-                'page',
-                'selected_section',
-                'active_tab'
-            );
+        $params = array (
+            'page',
+            'selected_section',
+            'active_tab'
+        );
 
-            $url_params = array();
-            foreach ($params as $param) {
-                if (!empty($_REQUEST[$param])) {
-                    $url_params[$param] = $_REQUEST[$param];
-                }
+        $url_params = array();
+        foreach ($params as $param) {
+            if (!empty($_REQUEST[$param])) {
+                $url_params[$param] = $_REQUEST[$param];
             }
+        }
 
-            if (!empty($url_params)) {
-                $redirect_url = fn_link_attach($redirect_url, http_build_query($url_params));
-            }
+        if (!empty($url_params)) {
+            $redirect_url = fn_link_attach($redirect_url, http_build_query($url_params));
         }
 
         if (!isset($external)) {
             $external = false;
         }
-
-        if (!isset($permanent)) {
-            $permanent = false;
-        }
-        fn_redirect($redirect_url, $external, $permanent);
+		
+        fn_redirect($redirect_url, false, $external);
     }
 
     if (!$view->getTemplateVars('content_tpl') && $status == CONTROLLER_STATUS_OK) { // FIXME
@@ -580,12 +488,6 @@ function fn_dispatch($controller = '', $mode = '', $action = '', $dispatch_extra
     if ($status != CONTROLLER_STATUS_OK) {
 
         if ($status == CONTROLLER_STATUS_NO_PAGE) {
-            if ($area == 'A' && empty($auth['user_id'])) {
-                // If admin is not logged in redirect to login page from not found page
-                fn_set_notification('W', __('page_not_found'), __('page_not_found_text'));
-                fn_redirect("auth.login_form");
-            }
-
             header(' ', true, 404);
         }
         $view->assign('exception_status', $status);
@@ -605,20 +507,15 @@ function fn_dispatch($controller = '', $mode = '', $action = '', $dispatch_extra
 
     // Pass current URL to ajax response only if we render whole page
     if (defined('AJAX_REQUEST') && Registry::get('runtime.root_template') == 'index.tpl') {
-        Tygh::$app['ajax']->assign('current_url', fn_url(Registry::get('config.current_url'), $area, 'current'));
+        $u = fn_query_remove(Registry::get('config.current_url'), 'from_url', 'is_ajax', 'callback', 'full_render', 'result_ids');
+        Registry::get('ajax')->assign('current_url', fn_url($u, $area, 'current'));
     }
 
-    Tygh::$app['view']->display(Registry::get('runtime.root_template'));
+    Registry::get('view')->display(Registry::get('runtime.root_template'));
     Debugger::checkpoint('After TPL');
     Debugger::display();
 
     fn_set_hook('complete');
-
-    if (defined('AJAX_REQUEST')) {
-        // HHVM workaround. Destroy Ajax object manually if it has been created.
-        $ajax = Tygh::$app['ajax'];
-        $ajax = null;
-    }
 
     exit; // stop execution
 }
@@ -667,6 +564,10 @@ function fn_run_controller($path, $controller, $mode, $action, $dispatch_extra)
     static $check_included = array();
 
     $auth = & $_SESSION['auth'];
+
+    //TODO Remove in 3.2.1
+    $ajax = new Tygh\SmartyEngine\ViewDeprecated('ajax');
+    $view = new Tygh\SmartyEngine\ViewDeprecated('view');
 
     if (!empty($check_included[$path])) {
         $code = fn_get_contents($path);
@@ -735,7 +636,7 @@ function fn_init_addon_controllers($controller, $type = GET_CONTROLLERS, $area =
     }
 
     foreach ((array) Registry::get('addons') as $addon_name => $data) {
-        if ($data['status'] == 'A') {
+        if (fn_load_addon($addon_name) == true) {
             // try to find area-specific controller
             $dir = Registry::get('config.dir.addons') . $addon_name . '/controllers/' . $area_name . '/';
             if (is_readable($dir . $controller . $prefix . '.php')) {
@@ -772,28 +673,11 @@ function fn_get_route(&$req, $area = AREA)
 {
     $result = array(INIT_STATUS_OK);
 
-    $is_allowed_url = fn_check_requested_url();
-
-    if (!$is_allowed_url) {
-
-        $request_uri = fn_get_request_uri($_SERVER['REQUEST_URI']);
-
-        $router = new Router($req);
-        $router->addRoutes(fn_get_schema('routes', 'objects'));
-
-        if ($params = $router->match($request_uri)) {
-            $is_allowed_url = true;
-            $req = $params;
-        }
+    if (!fn_check_requested_url()) {
+        $req['dispatch'] = '_no_page';
     }
 
-    fn_set_hook('get_route', $req, $result, $area, $is_allowed_url);
-
-    if (!$is_allowed_url) {
-        $req = array(
-            'dispatch' => '_no_page'
-        );
-    }
+    fn_set_hook('get_route', $req, $result, $area);
 
     if (!empty($req['dispatch'])) {
         $dispatch = is_array($req['dispatch']) ? key($req['dispatch']) : $req['dispatch'];
@@ -803,20 +687,20 @@ function fn_get_route(&$req, $area = AREA)
 
     rtrim($dispatch, '/.');
     $dispatch = str_replace('/', '.', $dispatch);
-    $parts = explode('.', $dispatch);
 
-    Registry::set('runtime.controller', !empty($parts[0]) ? basename($parts[0]) : 'index');
-    Registry::set('runtime.mode', !empty($parts[1]) ? basename($parts[1]) : 'index');
-    Registry::set('runtime.action', !empty($parts[2]) ? $parts[2] : '');
-    Registry::set('runtime.dispatch_extra', !empty($parts[3]) ? $parts[3] : '');
+    @list($c, $m, $a, $e) = explode('.', $dispatch);
 
+    Registry::set('runtime.controller', empty($c) ? 'index' : $c);
+    Registry::set('runtime.mode', empty($m) ? 'index' : $m);
+    Registry::set('runtime.action', $a);
+    Registry::set('runtime.dispatch_extra', $e);
     Registry::set('runtime.checkout', false);
     Registry::set('runtime.root_template', 'index.tpl');
 
     $req['dispatch'] = $dispatch;
 
     // URL's assignments
-    Registry::set('config.current_url', fn_url_remove_service_params(Registry::get('config.' . ACCOUNT_TYPE . '_index') . ((!empty($_SERVER['QUERY_STRING'])) ? '?' . $_SERVER['QUERY_STRING'] : '')));
+    Registry::set('config.current_url', Registry::get('config.' . ACCOUNT_TYPE . '_index') . ((!empty($_SERVER['QUERY_STRING'])) ? '?' . $_SERVER['QUERY_STRING'] : ''));
 
     return $result;
 }
@@ -842,20 +726,17 @@ function fn_parse_addon_options($options)
 }
 
 /**
- * Get list of templates that should be overridden by addons
+ * Get list of templates that should be overriden by addons
  *
- * @param  string $resource_name    Base template name
- * @param  Smarty $view             Templater object
- *
- * @return string Overridden template name
+ * @param string $resource_name base template name
+ * @param object $view templater object
+ * @return string overridden template name
  */
 function fn_addon_template_overrides($resource_name, &$view)
 {
     static $init = array();
 
-    //$o_name = 'template_overrides_' . AREA;
-    $template_dir = rtrim($view->getTemplateDir(0), '/').'/';
-    $o_name = 'template_overrides_' . str_replace('/', '_', str_replace(DIR_ROOT, '', rtrim($template_dir, '/')));
+    $o_name = 'template_overrides_' . AREA;
 
     if (!isset($init[$o_name])) {
         Registry::registerCache($o_name, array('addons'), Registry::cacheLevel('static'));
@@ -864,14 +745,13 @@ function fn_addon_template_overrides($resource_name, &$view)
             $template_overrides = array();
 
             foreach (Registry::get('addons') as $a => $_settings) {
-                $odir =  $template_dir . 'addons/' . $a . '/overrides';
+                $odir = $view->getTemplateDir(0) . '/addons/' . $a . '/overrides';
                 if ($_settings['status'] == 'A' && is_dir($odir)) {
                     $tpls = fn_get_dir_contents($odir, false, true, '', '', true);
 
                     foreach ($tpls as $k => $t) {
-                        $tpl_hash = md5($t);
-                        if (empty($template_overrides[$tpl_hash])) {
-                            $template_overrides[$tpl_hash] = $template_dir . 'addons/' . $a . '/overrides/' . $t;
+                        if (empty($template_overrides[md5($t)])) {
+                            $template_overrides[md5($t)] = 'addons/' . $a . '/overrides/' . $t;
                         }
                     }
                 }
@@ -898,34 +778,34 @@ function fn_addon_template_overrides($resource_name, &$view)
  */
 function fn_allowed_for($editions)
 {
-    static $cache = array();
-
     if ($editions == 'TRUNK') {
         return true;
     }
 
-    if (isset($cache[$editions])) {
-        return $cache[$editions];
-    }
-
+    static $store_mode = '';
+    static $extra = '';
     $is_allowed = false;
 
-    $_mode = fn_get_storage_data('store_mode');
+    if (empty($store_mode)) {
+        $_mode = fn_get_storage_data('store_mode');
 
-    if ($_mode == 'free') {
-        $store_mode = ':FREE';
-        $extra = '';
+        if ($_mode == 'free') {
+            $store_mode = ':FREE';
+            $extra = '';
 
-    } elseif ($_mode == 'full') {
-        $store_mode = ':FULL';
-        $extra = '';
+        } elseif ($_mode == 'full') {
+            $store_mode = ':FULL';
+            $extra = '';
 
-    } else {
-        $store_mode = ':FULL';
-        $extra = ':TRIAL';
+        } elseif ($_mode == 'trial') {
+            $store_mode = ':FULL';
+            $extra = ':TRIAL';
+        }
     }
 
-    foreach (explode(',', $editions) as $edition) {
+    $editions = explode(',', $editions);
+
+    foreach ($editions as $edition) {
         if (strpos($edition, ':') !== false) {
 
             if ($edition == PRODUCT_EDITION . $store_mode || $edition == PRODUCT_EDITION . $store_mode . $extra) {
@@ -933,185 +813,31 @@ function fn_allowed_for($editions)
                 break;
             }
 
+
         } elseif ($edition == PRODUCT_EDITION) {
             $is_allowed = true;
             break;
         }
     }
 
-    $cache[$editions] = $is_allowed;
-
     return $is_allowed;
 }
 
-/**
- * Puts data to storage
- * @param string $key key
- * @param string $data data
- * @return integer data ID
- */
 function fn_set_storage_data($key, $data = '')
 {
     $data_id = 0;
     if (!empty($data)) {
         $data_id = db_query('REPLACE ?:storage_data (`data_key`, `data`) VALUES(?s, ?s)', $key, $data);
-        Registry::set('storage_data.' . $key, $data);
     } else {
         db_query('DELETE FROM ?:storage_data WHERE `data_key` = ?s', $key);
-        Registry::del('storage_data.' . $key);
     }
 
     return $data_id;
 }
 
-/**
- * Gets data from storage
- * @param string $key key
- * @return mixed key value
- */
 function fn_get_storage_data($key)
 {
-    if (!Registry::isExist('storage_data.' . $key)) {
-        Registry::set('storage_data.' . $key, db_get_field('SELECT `data` FROM ?:storage_data WHERE `data_key` = ?s', $key));
-    }
+    $data = db_get_field('SELECT `data` FROM ?:storage_data WHERE `data_key` = ?s', $key);
 
-    return Registry::get('storage_data.' . $key);
-}
-
-/**
- * Checks is some key is expired (value of given key should be timestamp).
- *
- * @param string $key Key name
- * @param int $time_period Time period (in seconds), that should be added to the current timestamp for the future check.
- * @return boolean True, if saved timestamp is less than current timestamp, false otherwise.
- */
-function fn_is_expired_storage_data($key, $time_period = null)
-{
-    $time = fn_get_storage_data($key);
-    if ($time < TIME && $time_period) {
-        fn_set_storage_data($key, TIME + $time_period);
-    }
-
-    return $time < TIME;
-}
-
-/**
- * Removes service parameters from URL
- * @param string $url URL
- * @return string clean URL
- */
-function fn_url_remove_service_params($url)
-{
-    $params = array(
-        'is_ajax',
-        'callback',
-        'full_render',
-        'result_ids',
-        'init_context',
-        'skip_result_ids_check',
-        'anchor',
-        Session::getName()
-    );
-
-    array_unshift($params, $url);
-
-    return call_user_func_array('fn_query_remove', $params);
-}
-
-/**
- * Gets storefront URL
- * @param string $protocol protocol (http/https/current)
- * @param integer $company_id company ID
- * @return string storefront URL
- */
-function fn_get_storefront_url($protocol = 'current', $company_id = 0)
-{
-    $url = Registry::get('config.' . $protocol . '_location');
-
-    /**
-     * Changes storefront URL
-     * @param string  $protocol   protocol (http/https/current)
-     * @param integer $company_id company ID
-     * @param string  $url        storefront URL
-     */
-    fn_set_hook('get_storefront_url', $protocol, $company_id, $url);
-
-    return $url;
-}
-
-/*
- * Gets URI part from REQUEST_URI
- * @param string $request_uri request URI
- * @return mixed URI part on success, boolean false otherwise
- */
-function fn_get_request_uri($request_uri)
-{
-    $url_pattern = @parse_url(urldecode($request_uri));
-
-    if (empty($url_pattern)) {
-        $url_pattern = @parse_url($request_uri);
-    }
-
-    if (empty($url_pattern)) {
-        return false;
-    }
-
-    $current_path = Registry::get('config.current_path');
-    if (fn_allowed_for('ULTIMATE')) {
-        $urls = fn_get_storefront_urls(Registry::get('runtime.company_id'));
-        if (!empty($urls)) {
-            $current_path = $urls['current_path'];
-        }
-    }
-
-    return rtrim(substr($url_pattern['path'], strlen($current_path)), '/');
-}
-
-/**
- * Checks if correct url was requested
- *
- * @param string $area Area
- * @return boolean Return true if currecnt url requested or requested url was correct, false otherwise
- */
-function fn_check_requested_url($area = AREA)
-{
-    if (!defined('API') && $area == 'C' && !empty($_SERVER['REQUEST_URI']) && !empty($_SERVER['SCRIPT_NAME'])) {
-        $request_path = rtrim(@parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
-
-        if ($request_path != $_SERVER['SCRIPT_NAME']) {
-            $index_script = Registry::get('config.customer_index');
-            $current_path = Registry::get('config.current_path');
-
-            return preg_match("!^$current_path(/$index_script)?$!", $request_path);
-        }
-    }
-
-    return true;
-}
-
-/**
- * Gets storefront protocol (depends on security settings)
- * @return string protocol - http or https
- */
-function fn_get_storefront_protocol()
-{
-    static $protocol;
-
-    if (empty($protocol)) {
-        $protocol = Registry::get('settings.Security.secure_storefront') == 'full' ? 'https' : 'http';
-    }
-
-    return $protocol;
-}
-
-/**
- * Clears output buffers contents
- *
- * @return void
- */
-function fn_clear_ob()
-{
-    for ($level = ob_get_level(); $level > 0; --$level) {
-        @ob_end_clean() || @ob_clean();
-    }
+    return $data;
 }

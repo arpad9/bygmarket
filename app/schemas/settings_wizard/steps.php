@@ -12,7 +12,6 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-use Tygh\Registry;
 /*
     Field types:
         header - "text" Header text (language variable)
@@ -34,7 +33,7 @@ use Tygh\Registry;
             'func_name2' => array('%arg3%', CONST, 'param'),
 */
 
-$schema = array(
+$scheme = array(
     'security_settings' => array(
         'items' => array(
             array(
@@ -44,9 +43,6 @@ $schema = array(
             array(
                 'type' => 'text',
                 'text' => 'warning_insecure_admin_script',
-                'placeholders' => array(
-                    '[href]' => Registry::get('config.resources.admin_protection_url')
-                )
             ),
             array(
                 'type' => 'text',
@@ -65,11 +61,15 @@ $schema = array(
             ),
             array(
                 'type' => 'setting',
-                'setting_name' => 'secure_storefront',
+                'setting_name' => 'secure_checkout',
             ),
             array(
                 'type' => 'setting',
                 'setting_name' => 'secure_admin',
+            ),
+            array(
+                'type' => 'setting',
+                'setting_name' => 'secure_auth',
             ),
             array(
                 'type' => 'setting',
@@ -106,7 +106,7 @@ $schema = array(
                 'template' => 'views/settings_wizard/components/default_currency.tpl',
                 'pre_handlers' => array(
                     'currencies' => array(
-                        'fn_block_manager_get_currencies' => array(),
+                        'fn_get_currencies' => array(),
                     ),
                 ),
                 'post_handlers' => array(
@@ -239,6 +239,10 @@ $schema = array(
             ),
             array(
                 'type' => 'setting',
+                'setting_name' => 'use_email_as_login',
+            ),
+            array(
+                'type' => 'setting',
                 'setting_name' => 'allow_create_account_after_order',
             ),
             array(
@@ -254,6 +258,46 @@ $schema = array(
                 'setting_name' => 'user_multiple_profiles',
             ),
         ),
+        'next_step' => 'upgrade_center_settings',
+    ),
+
+    'upgrade_center_settings' => array(
+        'items' => array(
+            array(
+                'type' => 'header',
+                'text' => 'upgrade_center',
+            ),
+            array(
+                'type' => 'template',
+                'template' => 'views/settings_wizard/components/license_number.tpl',
+                'pre_handlers' => array(
+                    'license_number' => array(
+                        'fn_settings_wizard_get_license_number' => array(),
+                    ),
+                ),
+            ),
+            array(
+                'type' => 'header',
+                'text' => 'ftp_server_options',
+            ),
+            array(
+                'type' => 'setting',
+                'setting_name' => 'ftp_hostname',
+            ),
+            array(
+                'type' => 'setting',
+                'setting_name' => 'ftp_username',
+            ),
+            array(
+                'type' => 'setting',
+                'setting_name' => 'ftp_password',
+            ),
+            array(
+                'type' => 'setting',
+                'setting_name' => 'ftp_directory',
+            ),
+        ),
+
         'next_step' => 'addons',
     ),
 
@@ -313,10 +357,10 @@ $schema = array(
 );
 
 if (fn_allowed_for('ULTIMATE')) {
-    $schema['user_settings']['items'][] = array(
+    $scheme['user_settings']['items'][] = array(
         'type' => 'setting',
         'setting_name' => 'share_users',
     );
 }
 
-return $schema;
+return $scheme;

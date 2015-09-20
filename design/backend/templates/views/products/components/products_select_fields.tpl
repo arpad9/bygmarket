@@ -3,7 +3,7 @@
 
 {split data=$selected_fields|sort_by:"text" size=$rows assign="splitted_selected_fields" vertical_delimition=false size_is_horizontal=true}
 
-<table cellpadding="10" width="100%">
+<table cellpadding="10" width="100%" class="">
 <tr valign="top">
     {foreach from=$splitted_selected_fields item="sfs"}
         <td>

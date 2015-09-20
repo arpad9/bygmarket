@@ -12,7 +12,6 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-use Tygh\Enum\ProductTracking;
 use Tygh\Registry;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
@@ -34,7 +33,6 @@ function fn_settings_variants_addons_price_list_price_list_fields()
 function fn_settings_variants_addons_price_list_price_list_sorting()
 {
     $schema = fn_get_schema('price_list', 'schema');
-    $fields = array();
 
     if (!empty($schema['fields'])) {
         foreach ($schema['fields'] as $field => $field_info) {
@@ -167,7 +165,7 @@ function fn_price_list_get_combination($product)
     $poptions = $product['product_options'];
 
     if (!empty($poptions)) {
-        if ($product['tracking'] = ProductTracking::TRACK_WITH_OPTIONS) {
+        if ($product['tracking'] = 'O') {
             $product['option_inventory'] = db_get_array("SELECT combination_hash as options, amount, product_code FROM ?:product_options_inventory WHERE product_id= ?i", $product['product_id']);
         }
 

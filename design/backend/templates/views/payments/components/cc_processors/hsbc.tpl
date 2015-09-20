@@ -1,5 +1,5 @@
-
-<p>{__("text_hsbc_notice", ["[cart_dir]" => $config.dir.payments])}</p>
+{assign var="url" value="`$config.http_location`"}
+<p>{__("text_hsbc_notice", ["[cart_url]" => $url, "[cart_dir]" => $smarty.const.DIR_ROOT])}</p>
 <hr>
 
 <div class="control-group">

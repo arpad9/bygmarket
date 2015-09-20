@@ -22,7 +22,7 @@ if ($mode == 'cart_list') {
 
     if (empty($_REQUEST['user_id'])) {
 
-        $carts_list = Tygh::$app['view']->getTemplateVars('carts_list');
+        $carts_list = Registry::get('view')->getTemplateVars('carts_list');
 
         if (!empty($carts_list)) {
             $all_wishlist_products = array();
@@ -53,7 +53,7 @@ if ($mode == 'cart_list') {
             }
         }
 
-        Tygh::$app['view']->assign('carts_list', $carts_list);
+        Registry::get('view')->assign('carts_list', $carts_list);
 
     } else {
         if (fn_allowed_for('ULTIMATE') && !empty($_REQUEST['c_company_id'])) {
@@ -80,6 +80,6 @@ if ($mode == 'cart_list') {
             }
         }
 
-        Tygh::$app['view']->assign('wishlist_products', $products);
+        Registry::get('view')->assign('wishlist_products', $products);
     }
 }

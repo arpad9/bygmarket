@@ -79,25 +79,40 @@ $pbx_retour = "montant:M;ref:R;numauto:A;transac:T;erreur:E;maref:R;";
 $pbx_total = $order_info['total'] * 100;
 $pbx_cmd = ($order_info['repaid']) ? ($order_id . '_' . $order_info['repaid']) : $order_id;
 
-$post_data = array(
-    'PBX_MODE' => '1',
-    'PBX_SITE' => $processor_data['processor_params']['site_num'],
-    'PBX_RANG' => $processor_data['processor_params']['rank_num'],
-    'PBX_IDENTIFIANT' => $processor_data['processor_params']['identifier'],
-    'PBX_TOTAL' => $pbx_total,
-    'PBX_DEVISE' => $pbx_devise,
-    'PBX_CMD' => $pbx_cmd,
-    'PBX_PORTEUR' => $order_info['email'],
-    'PBX_RETOUR' => $pbx_retour,
-    'PBX_LANGUE' => $processor_data['processor_params']['language'],
-    'PBX_EFFECTUE' => $pbx_effectue,
-    'PBX_REFUSE' => $pbx_refuse,
-    'PBX_ANNULE' => $pbx_annule,
-    'PBX_BOUTPI' => 'nul',
-    'PBX_RUF1' => 'POST',
-    'PBX_TXT' => '<b>Proceeding to Payment Page ...</b>'    
-);
+echo <<<EOT
+<form method="post" action="$paybox_script" name="process">
+    <input type="hidden" name=PBX_MODE value="1">
+    <input type="hidden" name=PBX_SITE value="{$processor_data['processor_params']['site_num']}">
+    <input type="hidden" name=PBX_RANG value="{$processor_data['processor_params']['rank_num']}">
+    <input type="hidden" name=PBX_IDENTIFIANT value="{$processor_data['processor_params']['identifier']}">
+    <input type="hidden" name=PBX_TOTAL value="{$pbx_total}">
+    <input type="hidden" name=PBX_DEVISE value="{$pbx_devise}">
+    <input type="hidden" name=PBX_CMD value="{$pbx_cmd}">
+    <input type="hidden" name=PBX_PORTEUR value="{$order_info['email']}">
+    <input type="hidden" name=PBX_RETOUR value="{$pbx_retour}">
+    <input type="hidden" name=PBX_LANGUE value="{$processor_data['processor_params']['language']}">
+    <input type="hidden" name=PBX_EFFECTUE value="{$pbx_effectue}">
+    <input type="hidden" name=PBX_REFUSE value="{$pbx_refuse}">
+    <input type="hidden" name=PBX_ANNULE value="{$pbx_annule}">
+    <input type="hidden" name=PBX_BOUTPI value="nul">
+    <input type="hidden" name=PBX_RUF1 value="POST">
+    <input type="hidden" name=PBX_TXT value="<b>Proceeding to Payment Page ...</b>">
+<!-- end of form -->
+EOT;
 
-fn_create_payment_form($paybox_script, $post_data, 'PayBox');
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'PayBox server'
+));
+echo <<<EOT
+    </form>
+   <p><div align=center>{$msg}</div></p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
 exit;
 }

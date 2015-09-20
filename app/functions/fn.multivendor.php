@@ -18,15 +18,24 @@ use Tygh\Navigation\LastView;
 
 /* HOOKS */
 
-function fn_mve_get_product_filter_fields(&$filters)
+function fn_mve_get_product_filter_fields(&$fields)
 {
-    $filters['S'] = array (
+    $fields['S'] = array (
         'db_field' => 'company_id',
         'table' => 'products',
         'description' => 'vendor',
         'condition_type' => 'F',
-        'variant_name_field' => 'companies.company'
+        'range_name' => 'company',
+        'foreign_table' => 'companies',
+        'foreign_index' => 'company_id'
     );
+}
+
+function fn_mve_get_filter_range_name_post(&$range_name, &$range_type, &$range_id)
+{
+    if ($range_type == 'S') {
+        $range_name = db_get_field("SELECT company FROM ?:companies WHERE company_id = ?i AND lang_code = ?s", $range_id, CART_LANGUAGE);
+    }
 }
 
 function fn_mve_delete_user(&$user_id, &$user_data)
@@ -71,13 +80,13 @@ function fn_mve_place_order(&$order_id, &$action, &$__order_status, &$cart)
 
         if ($company_data['commission_type'] == 'P') {
             //Calculate commission amount and check if we need to include shipping cost
-            $commission_amount = (($order_info['total'] - (Registry::get('settings.Vendors.include_shipping') == 'N' ?  $order_info['shipping_cost'] : 0)) * $company_data['commission'])/100;
+            $commission_amount = (($order_info['total'] - (Registry::get('settings.Suppliers.include_shipping') == 'N' ?  $order_info['shipping_cost'] : 0)) * $company_data['commission'])/100;
         } else {
             $commission_amount = $company_data['commission'];
         }
 
         //Check if we need to take payment surcharge from vendor
-        if (Registry::get('settings.Vendors.include_payment_surcharge') == 'Y') {
+        if (Registry::get('settings.Suppliers.include_payment_surcharge') == 'Y') {
             $commission_amount += $order_info['payment_surcharge'];
         }
 
@@ -195,100 +204,82 @@ function fn_mve_import_get_primary_object_id(&$pattern, &$_alt_keys, &$v, &$skip
     }
 }
 
-function fn_mve_import_check_product_data(&$v, $primary_object_id, &$options, &$processed_data, &$skip_record)
+function fn_mve_import_process_data(&$primary_object_id, &$v, &$pattern, &$options, &$processed_data, &$processing_groups, &$skip_record)
 {
     static $company_categories     = null;
     static $company_categories_ids = null;
 
     if (Registry::get('runtime.company_id')) {
-        $v['company_id'] = Registry::get('runtime.company_id');
-    }
+        unset($v['company']);
+        if ($pattern['section'] == 'products' && in_array($pattern['pattern_id'], array('products', 'product_images', 'qty_discounts'))) {
+            // Check the product data
+            if ($pattern['pattern_id'] == 'products') {
+                $v['company_id'] = Registry::get('runtime.company_id');
+                // Check the category name
+                if (!empty($v['Category'])) {
+                    if (strpos($v['Category'], $options['category_delimiter']) !== false) {
+                        $paths = explode($options['category_delimiter'], $v['Category']);
+                        array_walk($paths, 'fn_trim_helper');
+                    } else {
+                        $paths[] = $v['Category'];
+                    }
 
-    if (!empty($primary_object_id['product_id'])) {
-        $v['product_id'] = $primary_object_id['product_id'];
-    } else {
-        unset($v['product_id']);
-    }
+                    if (!empty($paths)) {
+                        $parent_id = 0;
+                        foreach ($paths as $category) {
+                            $category_id = db_get_field("SELECT ?:categories.category_id FROM ?:category_descriptions INNER JOIN ?:categories ON ?:categories.category_id = ?:category_descriptions.category_id WHERE ?:category_descriptions.category = ?s AND lang_code = ?s AND parent_id = ?i", $category, $options['lang_code'], $parent_id);
+                            if (empty($category_id)) {
+                                $skip_record = true;
 
-    // Check the category name
-    if (!empty($v['Category'])) {
-        if (strpos($v['Category'], $options['category_delimiter']) !== false) {
-            $paths = explode($options['category_delimiter'], $v['Category']);
-            array_walk($paths, 'fn_trim_helper');
-        } else {
-            $paths[] = $v['Category'];
-        }
+                                return false;
+                            }
+                            $parent_id = $category_id;
+                        }
+                        if ($company_categories === null) {
+                            $company_categories_ids = Registry::get('runtime.company_data.category_ids');
+                        }
+                        $allow = empty($company_categories_ids) || in_array($parent_id, $company_categories_ids);
 
-        if (!empty($paths)) {
-            $parent_id = 0;
-            foreach ($paths as $category) {
-                $category_id = db_get_field("SELECT ?:categories.category_id FROM ?:category_descriptions INNER JOIN ?:categories ON ?:categories.category_id = ?:category_descriptions.category_id WHERE ?:category_descriptions.category = ?s AND lang_code = ?s AND parent_id = ?i", $category, $v['lang_code'], $parent_id);
-                if (empty($category_id)) {
+                        if (!$allow) {
+                            $skip_record = true;
+
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            if (!empty($primary_object_id)) {
+                list($field, $value) = each($primary_object_id);
+                $company_id = db_get_field('SELECT company_id FROM ?:products WHERE ' . $field . ' = ?s', $value);
+
+                if ($company_id != Registry::get('runtime.company_id')) {
                     $processed_data['S']++;
                     $skip_record = true;
-
-                    return false;
                 }
-                $parent_id = $category_id;
             }
-            if ($company_categories === null) {
-                $company_categories_ids = Registry::get('runtime.company_data.category_ids');
-            }
-            $allow = empty($company_categories_ids) || in_array($parent_id, $company_categories_ids);
-
-            if (!$allow) {
+        } elseif ($pattern['section'] == 'products' && $pattern['pattern_id'] == 'product_combinations') {
+            if (empty($primary_object_id) && empty($v['product_id'])) {
                 $processed_data['S']++;
                 $skip_record = true;
 
                 return false;
             }
+
+            if (!empty($primary_object_id)) {
+                list($field, $value) = each($primary_object_id);
+                $company_id = db_get_field('SELECT company_id FROM ?:products WHERE ' . $field . ' = ?s', $value);
+            } else {
+                $company_id = db_get_field('SELECT company_id FROM ?:products WHERE product_id = ?i', $v['product_id']);
+            }
+
+            if ($company_id != Registry::get('runtime.company_id')) {
+                $processed_data['S']++;
+                $skip_record = true;
+            }
         }
     }
-
-    return true;
 }
-
-function fn_mve_import_check_object_id(&$primary_object_id, &$processed_data, &$skip_record, $object = 'products')
-{
-    if (!empty($primary_object_id)) {
-        list($field, $value) = each($primary_object_id);
-        $company_id = db_get_field("SELECT company_id FROM ?:$object WHERE $field = ?s", $value);
-        if ($company_id != Registry::get('runtime.company_id')) {
-            $processed_data['S']++;
-            $skip_record = true;
-        }
-    }
-
-    return true;
-}
-
-function fn_import_reset_company_id($import_data)
-{
-    foreach ($import_data as $key => $data) {
-        $import_data[$key]['company_id'] = Registry::get('runtime.company_id');
-        unset($import_data[$key]['company']);
-    }
-}
-
-function fn_mve_import_check_company_id(&$primary_object_id, &$v,  &$processed_data, &$skip_record)
-{
-    if (!empty($primary_object_id)) {
-        list($field, $value) = each($primary_object_id);
-        $company_id = db_get_field('SELECT company_id FROM ?:products WHERE ' . $field . ' = ?s', $value);
-    } else {
-        $company_id = db_get_field('SELECT company_id FROM ?:products WHERE product_id = ?i', $v['product_id']);
-    }
-
-    if ($company_id != Registry::get('runtime.company_id')) {
-        $processed_data['S']++;
-        $skip_record = true;
-
-        return false;
-    }
-
-    return true;
-}
-
 
 function fn_mve_set_admin_notification(&$auth)
 {
@@ -457,8 +448,6 @@ function fn_companies_get_payouts($params = array(), $items_per_page = 0)
     $statuses = db_get_fields('SELECT status FROM ?:status_data WHERE `type` = ?s AND param = ?s AND `value` = ?s', 'O', 'calculate_for_payouts', 'Y');
     if (!empty($statuses)) {
         $condition .= db_quote(' AND (orders.status IN (?a) OR payouts.order_id = 0)', $statuses);
-    } else {
-        $condition .= db_quote(' AND payouts.order_id = 0');
     }
 
     $date_condition .= db_quote(' AND ((payouts.start_date >= ?i AND payouts.end_date <= ?i AND payouts.order_id != ?i) OR (payouts.order_id = ?i AND (payouts.start_date BETWEEN ?i AND ?i OR payouts.end_date BETWEEN ?i AND ?i)))', $params['time_from'], $params['time_to'], 0, 0, $params['time_from'], $params['time_to'], $params['time_from'], $params['time_to']);
@@ -487,11 +476,14 @@ function fn_companies_get_payouts($params = array(), $items_per_page = 0)
     $sorting = db_sort($params, $sortings, 'sort_vendor', 'asc');
 
     $limit = '';
+    if (!empty($params['items_per_page'])) {
+        $limit = db_paginate($params['page'], $params['items_per_page']);
+    }
+
     $items = db_get_array("SELECT SQL_CALC_FOUND_ROWS * FROM ?:vendor_payouts AS payouts $join WHERE $condition AND $date_condition GROUP BY payouts.payout_id $sorting $limit");
 
     if (!empty($params['items_per_page'])) {
         $params['total_items']= db_get_found_rows();
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
     }
 
     // Calculate balance for the selected period
@@ -573,7 +565,7 @@ function fn_get_company_customers_ids($company_id)
 function fn_take_payment_surcharge_from_vendor($products)
 {
     $take_surcharge_from_vendor = false;
-    if (Registry::get('settings.Vendors.include_payment_surcharge') == 'Y') {
+    if (Registry::get('settings.Suppliers.include_payment_surcharge') == 'Y') {
         $take_surcharge_from_vendor = true;
     }
 
@@ -656,45 +648,4 @@ function fn_mve_logo_types(&$types, &$for_company)
         unset($types['favicon']);
         unset($types['theme']['for_layout']);
     }
-}
-
-function fn_get_products_companies($products)
-{
-    $companies = array();
-
-    foreach ($products as $v) {
-        $_company_id = !empty($v['company_id']) ? $v['company_id'] : 0;
-        $companies[$_company_id] = $_company_id;
-    }
-
-    return $companies;
-}
-
-function fn_get_vendor_categories($params)
-{
-    $items = array();
-
-    if (!empty($params['company_ids'])) {
-        $items = fn_get_categories($params);
-    }
-
-    return $items;
-}
-
-function fn_mve_dropdown_object_link_post(&$object_data, &$object_type, &$result)
-{
-    static $vendor_id;
-
-    if (empty($vendor_id)) {
-        $vendor_id = Registry::get('runtime.vendor_id');
-    }
-
-    if ($object_type == 'vendor_categories') {
-        $result = fn_url('companies.products?category_id=' . $object_data['category_id'] . '&company_id=' . $vendor_id);
-    }
-}
-
-function fn_mve_settings_variants_image_verification_use_for(&$objects)
-{
-    $objects['apply_for_vendor_account'] = __('use_for_apply_for_vendor_account');
 }

@@ -16,23 +16,21 @@ use Tygh\Registry;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if ($mode == 'clean') {
-        if (Registry::get('runtime.company_id')) {
-            db_query('DELETE FROM ?:logs WHERE company_id = ?i', Registry::get('runtime.company_id'));
-        } else {
-            db_query('TRUNCATE TABLE ?:logs');
-        }
+if ($mode == 'clean') {
+    if (Registry::get('runtime.company_id')) {
+        db_query('DELETE FROM ?:logs WHERE company_id = ?i', Registry::get('runtime.company_id'));
+    } else {
+        db_query('TRUNCATE TABLE ?:logs');
     }
 
-   return array (CONTROLLER_STATUS_REDIRECT, "logs.manage");
+    return array (CONTROLLER_STATUS_REDIRECT, "logs.manage");
 }
 
 if ($mode == 'manage') {
 
     list($logs, $search) = fn_get_logs($_REQUEST, Registry::get('settings.Appearance.admin_elements_per_page'));
 
-    Tygh::$app['view']->assign('logs', $logs);
-    Tygh::$app['view']->assign('search', $search);
-    Tygh::$app['view']->assign('log_types', fn_get_log_types());
+    Registry::get('view')->assign('logs', $logs);
+    Registry::get('view')->assign('search', $search);
+    Registry::get('view')->assign('log_types', fn_get_log_types());
 }

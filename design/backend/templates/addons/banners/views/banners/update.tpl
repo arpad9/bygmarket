@@ -43,8 +43,8 @@
         <label for="elm_banner_type" class="control-label cm-required">{__("type")}</label>
         <div class="controls">
         <select name="banner_data[type]" id="elm_banner_type" onchange="Tygh.$('#banner_graphic').toggle();  Tygh.$('#banner_text').toggle(); Tygh.$('#banner_url').toggle();  Tygh.$('#banner_target').toggle();">
-            <option {if $banner.type == "G"}selected="selected"{/if} value="G">{__("graphic_banner")}</option>
-            <option {if $banner.type == "T"}selected="selected"{/if} value="T">{__("text_banner")}</option>
+            <option {if $banner.type == "G"}selected="selected"{/if} value="G">{__("graphic_banner")}
+            <option {if $banner.type == "T"}selected="selected"{/if} value="T">{__("text_banner")}
         </select>
         </div>
     </div>
@@ -108,16 +108,10 @@
 
 {/capture}
 
-{notes}
-    {hook name="banners:update_notes"}
-    {__("banner_details_notes", ["[layouts_href]" => fn_url('block_manager.manage')])}
-    {/hook}
-{/notes}
-
 {if !$id}
-    {assign var="title" value=__("banners.new_banner")}
+    {assign var="title" value=__("new_banner")}
 {else}
-    {assign var="title" value="{__("banners.editing_banner")}: `$banner.banner`"}
+    {assign var="title" value="{__("editing_banner")}: `$banner.banner`"}
 {/if}
 {include file="common/mainbox.tpl" title=$title content=$smarty.capture.mainbox buttons=$smarty.capture.buttons select_languages=true}
 

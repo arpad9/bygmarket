@@ -11,22 +11,15 @@
     {/if}
 </title>
 {/strip}
-<meta name="viewport" content="width=1240,maximum-scale=1.0" />
-<link href="{$images_dir}/favicon.ico" rel="shortcut icon" type="image/x-icon" >
+<meta http-equiv="X-UA-Compatible" content="chrome=1">
+<link href="{$images_dir}/favicon.ico" rel="shortcut icon">
 {include file="common/styles.tpl"}
-{if "DEVELOPMENT"|defined && $smarty.const.DEVELOPMENT == true}
-<script type="text/javascript" data-no-defer>
-window.jsErrors = [];
-window.onerror = function(errorMessage) {
-    document.write('<div data-ca-debug="1" style="border: 2px solid red; margin: 2px;">' + errorMessage + '</div>');
-}
-</script>
-{/if}
+{include file="common/scripts.tpl"}
 </head>
 {include file="buttons/helpers.tpl"}
 <!--[if lte IE 8 ]><body class="ie8"><![endif]-->
 <!--[if lte IE 9 ]><body class="ie9"><![endif]-->
-<!--[if !IE]><!--><body><!--<![endif]-->
+<!--[if !IE]><!--><body><!--<![endif]-->     
     {include file="common/loading_box.tpl"}
     {if "THEMES_PANEL"|defined}
         {include file="demo_theme_selector.tpl"}
@@ -52,8 +45,12 @@ window.onerror = function(errorMessage) {
         {else}
         {$content nofilter}
     {/if}
-
+    
     <!--main_column{if !$auth.user_id || $view_mode == 'simple'}_login{/if}--></div>
+    
+    {if $runtime.customization_mode.translation}
+        {include file="common/translate_box.tpl"}
+    {/if}
 
     {include file="common/comet.tpl"}
 
@@ -61,12 +58,6 @@ window.onerror = function(errorMessage) {
         <meta http-equiv="refresh" content="1;url={$smarty.request.meta_redirect_url|fn_check_meta_redirect|fn_url}" />
     {/if}
 
-    {if $auth.user_id && (!$runtime.company_id || $runtime.simple_ultimate)}
-        {include file="views/settings/store_mode.tpl" show=$show_sm_dialog}
-    {/if}
-
-    {hook name="index:after_content"}{/hook}
-
-    {include file="common/scripts.tpl"}
+    {include file="views/settings/store_mode.tpl" show=$show_sm_dialog}
 </body>
 </html>

@@ -1,5 +1,6 @@
 {if !$smarty.request.extra}
 <script type="text/javascript">
+//<![CDATA[
 (function(_, $) {
 
     _.tr('text_items_added', '{__("text_items_added")|escape:"javascript"}');
@@ -34,6 +35,7 @@
         return false;        
     });
 }(Tygh, Tygh.$));
+//]]>
 </script>
 {/if}
 
@@ -52,9 +54,7 @@
         {/if}
     <th>{__("id")}</th>
     <th>{__("name")}</th>
-    {if !"ULTIMATE"|fn_allowed_for}
-        <th>{__("email")}</th>
-    {/if}
+    <th>{__("email")}</th>
     <th>{__("registered")}</th>
     {if !"ULTIMATE"|fn_allowed_for}
         <th class="right">{__("active")}</th>
@@ -72,9 +72,7 @@
     </td>
     <td><a href="{"companies.update?company_id=`$company.company_id`"|fn_url}">&nbsp;<span>{$company.company_id}</span>&nbsp;</a></td>
     <td><a id="company_{$company.company_id}" href="{"companies.update?company_id=`$company.company_id`"|fn_url}">{$company.company}</a></td>
-    {if !"ULTIMATE"|fn_allowed_for}
-        <td><a href="mailto:{$company.email}">{$company.email}</a></td>
-    {/if}
+    <td><a href="mailto:{$company.email}">{$company.email}</a></td>
     <td>{$company.timestamp|date_format:"`$settings.Appearance.date_format`, `$settings.Appearance.time_format`"}</td>
     {if !"ULTIMATE"|fn_allowed_for}
         <td class="right">{if $company.status != "A"}{__("disable")}{else}{__("active")}{/if}</td>
@@ -82,11 +80,7 @@
 </tr>
 {foreachelse}
 <tr class="no-items">
-    {if !"ULTIMATE"|fn_allowed_for}
-        <td colspan="6"><p>{__("no_data")}</p></td>
-    {else}
-        <td colspan="4"><p>{__("no_data")}</p></td>
-    {/if}
+    <td colspan="6"><p>{__("no_data")}</p></td>
 </tr>
 {/foreach}
 </table>

@@ -54,13 +54,7 @@ class Can implements IService
                         $id = $shipment[$i]->getAttribute("id");
 
                         if (!empty($id) && $id > 0) {
-                            $rates[$id] = array(
-                                'rate' => floatval($shipment[$i]->getValueByPath("rate")) * $currencies['CAD']['coefficient']
-                            );
-
-                            if ($shipment[$i]->getValueByPath("deliveryDate") != '') {
-                                $rates[$id]['delivery_time'] = $shipment[$i]->getValueByPath("deliveryDate");
-                            }
+                            $rates[$id] = floatval($shipment[$i]->getValueByPath("rate")) * $currencies['CAD']['coefficient'];
                             unset($id);
                         }
                     }
@@ -110,15 +104,12 @@ class Can implements IService
         $return = array(
             'cost' => false,
             'error' => false,
-            'delivery_time' => false,
         );
 
         $rates = $this->_getRates($response);
-        $service_code = $this->_shipping_info['service_code'];
 
-        if (!empty($rates['cost'][$service_code])) {
-            $return['cost'] = $rates['cost'][$service_code]['rate'];
-            $return['delivery_time'] = $rates['cost'][$service_code]['delivery_time'];
+        if (!empty($rates['cost'][$this->_shipping_info['service_code']])) {
+            $return['cost'] = $rates['cost'][$this->_shipping_info['service_code']];
         } else {
             $return['error'] = !empty($rates['error']) ? $rates['error'] : __('service_not_available');
         }

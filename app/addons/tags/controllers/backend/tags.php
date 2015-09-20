@@ -39,33 +39,10 @@ if ($_SERVER['REQUEST_METHOD']	== 'POST') {
     }
 
     if ($mode == 'update') {
-        if (defined('AJAX_REQUEST')) {
-            $params = $_REQUEST['tag_data'];
-            fn_update_tag($params);
-
-            Tygh::$app['ajax']->assign('tag_name', fn_get_tag_names($params));
-
-            exit();
-        }
+        $tag_id = fn_update_tag($_REQUEST['tag_data'], $_REQUEST['tag_id']);
     }
 
-    if ($mode == 'delete') {
-        if (!empty($_REQUEST['tag_id'])) {
-            fn_delete_tag($_REQUEST['tag_id']);
-
-        } elseif (!empty($_REQUEST['tag_data'])) {
-            $params = $_REQUEST['tag_data'];
-            fn_delete_tags_by_params($params);
-        }
-
-        if (defined('AJAX_REQUEST')) {
-            Tygh::$app['ajax']->assign('tag_name', fn_get_tag_names($params));
-
-            exit();
-        }
-    }
-
-    return array(CONTROLLER_STATUS_OK, 'tags.manage');
+    return array(CONTROLLER_STATUS_OK, "tags.manage");
 }
 
 if ($mode == 'manage') {
@@ -73,15 +50,44 @@ if ($mode == 'manage') {
     $params['count_objects'] = true;
     list($tags, $search) = fn_get_tags($params, Registry::get('settings.Appearance.admin_elements_per_page'));
 
-    Tygh::$app['view']->assign('tags', $tags);
-    Tygh::$app['view']->assign('search', $search);
-    Tygh::$app['view']->assign('tag_objects', fn_get_tag_objects());
+    Registry::get('view')->assign('tags', $tags);
+    Registry::get('view')->assign('search', $search);
+    Registry::get('view')->assign('tag_objects', fn_get_tag_objects());
 
 // ajax autocomplete mode
 } elseif ($mode == 'list') {
     if (defined('AJAX_REQUEST')) {
         $tags = fn_get_tag_names(array('tag' => $_REQUEST['q']));
-        Tygh::$app['ajax']->assign('autocomplete', $tags);
+        Registry::get('ajax')->assign('autocomplete', $tags);
+
+        exit();
+    }
+
+} elseif ($mode == 'delete' && !empty($auth['user_id'])) {
+    if (!empty($_REQUEST['tag_id'])) {
+        fn_delete_tag($_REQUEST['tag_id']);
+
+    } elseif (!empty($_REQUEST['tag_data'])) {
+        $params = $_REQUEST['tag_data'];
+        $params['user_id'] = $auth['user_id'];
+        fn_delete_tags_by_params($params);
+    }
+
+    if (defined('AJAX_REQUEST')) {
+        Registry::get('ajax')->assign('tag_name', fn_get_tag_names($params));
+
+        exit();
+    }
+
+    return array(CONTROLLER_STATUS_REDIRECT, "tags.manage");
+
+} elseif ($mode == 'update'  && !empty($auth['user_id'])) {
+    if (defined('AJAX_REQUEST')) {
+        $params = $_REQUEST['tag_data'];
+        $params['user_id'] = $auth['user_id'];
+        fn_update_tag($params);
+
+        Registry::get('ajax')->assign('tag_name', fn_get_tag_names($params));
 
         exit();
     }
@@ -100,7 +106,7 @@ function fn_get_tag_objects()
     if (Registry::get('addons.tags.tags_for_pages') == 'Y') {
         $types['A'] = array(
             'name' => 'pages',
-            'url' => 'pages.manage?full_search=Y',
+            'url' => 'pages.manage',
         );
     }
 

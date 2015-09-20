@@ -23,57 +23,55 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         $suffix = ".update?page_id=" . $_REQUEST['page_id'];
 
-        return array(CONTROLLER_STATUS_OK, 'pages' . $suffix);
-    }
-
-    if ($mode == 'delete_question') {
-        if (!empty($_REQUEST['item_id'])) {
-            $p_id = db_get_field("SELECT parent_id FROM ?:poll_items WHERE item_id = ?i", $_REQUEST['item_id']);
-            db_query("DELETE FROM ?:poll_items WHERE item_id = ?i", $_REQUEST['item_id']);
-            db_query("DELETE FROM ?:poll_descriptions WHERE object_id = ?i AND type = 'I'", $_REQUEST['item_id']);
-            db_query("DELETE FROM ?:polls_answers WHERE item_id = ?i", $_REQUEST['item_id']);
-
-            $count = db_get_field("SELECT COUNT(*) FROM ?:poll_items WHERE parent_id = ?i", $p_id);
-            if (empty($count)) {
-                db_query("DELETE FROM ?:polls_votes WHERE page_id = ?i", $p_id);
-
-                return array(CONTROLLER_STATUS_OK, 'pages.update?page_id=' . $p_id);
-            }
-        }
-        exit;
-
-    }
-
-    if ($mode == 'delete_vote') {
-        if (!empty($_REQUEST['vote_id'])) {
-            $p_id = db_get_field("SELECT page_id FROM ?:polls_votes WHERE vote_id = ?i", $_REQUEST['vote_id']);
-            db_query("DELETE FROM ?:polls_votes WHERE vote_id = ?i", $_REQUEST['vote_id']);
-            db_query("DELETE FROM ?:polls_answers WHERE vote_id = ?i", $_REQUEST['vote_id']);
-
-            return array(CONTROLLER_STATUS_OK, 'pages.update?selected_section=poll_statistics&page_id=' . $p_id);
-        }
+        return array(CONTROLLER_STATUS_OK, "pages$suffix");
     }
 
     return;
 }
 
+if ($mode == 'delete_question') {
+    if (!empty($_REQUEST['item_id'])) {
+        $p_id = db_get_field("SELECT parent_id FROM ?:poll_items WHERE item_id = ?i", $_REQUEST['item_id']);
+        db_query("DELETE FROM ?:poll_items WHERE item_id = ?i", $_REQUEST['item_id']);
+        db_query("DELETE FROM ?:poll_descriptions WHERE object_id = ?i AND type = 'I'", $_REQUEST['item_id']);
+        db_query("DELETE FROM ?:polls_answers WHERE item_id = ?i", $_REQUEST['item_id']);
 
-if ($mode == 'poll_reports') {
+        $count = db_get_field("SELECT COUNT(*) FROM ?:poll_items WHERE parent_id = ?i", $p_id);
+        if (empty($count)) {
+            db_query("DELETE FROM ?:polls_votes WHERE page_id = ?i", $p_id);
+
+            return array(CONTROLLER_STATUS_OK, "pages.update?page_id=" . $p_id);
+        }
+    }
+    exit;
+
+} elseif ($mode == 'delete_vote') {
+    if (!empty($_REQUEST['vote_id'])) {
+        $p_id = db_get_field("SELECT page_id FROM ?:polls_votes WHERE vote_id = ?i", $_REQUEST['vote_id']);
+        db_query("DELETE FROM ?:polls_votes WHERE vote_id = ?i", $_REQUEST['vote_id']);
+        db_query("DELETE FROM ?:polls_answers WHERE vote_id = ?i", $_REQUEST['vote_id']);
+
+        return array(CONTROLLER_STATUS_OK, "pages.update?page_id=$p_id&selected_section=poll_statistics");
+    }
+
+    return;
+
+} elseif ($mode == 'poll_reports') {
 
     if ($_REQUEST['report'] == 'votes') {
 
         list($votes, $search) = fn_polls_get_votes($_REQUEST, Registry::get('addons.polls.polls_votes_on_page'));
 
-        Tygh::$app['view']->assign('votes', $votes);
-        Tygh::$app['view']->assign('search', $search);
-        Tygh::$app['view']->display('addons/polls/views/pages/components/votes.tpl');
+        Registry::get('view')->assign('votes', $votes);
+        Registry::get('view')->assign('search', $search);
+        Registry::get('view')->display('addons/polls/views/pages/components/votes.tpl');
 
     } elseif ($_REQUEST['report'] == 'answers') {
 
         list($comments, $search) = fn_polls_get_comments($_REQUEST, Registry::get('addons.polls.polls_comments_on_page'));
-        Tygh::$app['view']->assign('comments', $comments);
-        Tygh::$app['view']->assign('search', $search);
-        Tygh::$app['view']->display('addons/polls/views/pages/components/comments.tpl');
+        Registry::get('view')->assign('comments', $comments);
+        Registry::get('view')->assign('search', $search);
+        Registry::get('view')->display('addons/polls/views/pages/components/comments.tpl');
 
     }
 
@@ -90,7 +88,7 @@ if ($mode == 'poll_reports') {
     }
 
 } elseif ($mode == 'update') {
-    $page_data = Tygh::$app['view']->getTemplateVars('page_data');
+    $page_data = Registry::get('view')->getTemplateVars('page_data');
 
     if ($page_data['page_type'] == PAGE_TYPE_POLL) {
 
@@ -111,7 +109,7 @@ if ($mode == 'poll_reports') {
 
         $questions = db_get_array("SELECT q.*, d.description FROM ?:poll_items as q LEFT JOIN ?:poll_descriptions as d ON d.object_id = q.item_id AND d.type = 'I' AND d.lang_code = ?s WHERE q.parent_id = ?i AND q.type IN ('Q', 'M', 'T')", DESCR_SL, $_REQUEST['page_id']);
 
-        Tygh::$app['view']->assign('questions', $questions);
+        Registry::get('view')->assign('questions', $questions);
     }
 
 } elseif ($mode == 'update_question') {
@@ -119,14 +117,14 @@ if ($mode == 'poll_reports') {
 
     $question_data['answers'] = db_get_array("SELECT q.*, d.description FROM ?:poll_items as q LEFT JOIN ?:poll_descriptions as d ON d.object_id = q.item_id AND d.type = 'I' AND d.lang_code = ?s WHERE q.parent_id = ?i ORDER BY q.position", DESCR_SL, $_REQUEST['item_id']);
 
-    Tygh::$app['view']->assign('question_data', $question_data);
+    Registry::get('view')->assign('question_data', $question_data);
 
     $page_data = fn_get_page_data($question_data['page_id']);
-    Tygh::$app['view']->assign('page_data', $page_data);
+    Registry::get('view')->assign('page_data', $page_data);
 
 } elseif ($mode == 'picker' && !empty($_REQUEST['picker_for']) && $_REQUEST['picker_for'] == 'polls') {
 
-    Tygh::$app['view']->assign('button_names', array (
+    Registry::get('view')->assign('button_names', array (
         'but_close_text' => __('add_polls_and_close'),
         'but_text' => __('add_polls')
     ));

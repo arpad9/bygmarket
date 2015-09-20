@@ -78,12 +78,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    if ($mode == 'delete') {
-        if (!empty($_REQUEST['field_id'])) {
-            fn_delete_profile_field($_REQUEST['field_id']);
-        }
-    }    
-
     return array(CONTROLLER_STATUS_OK, 'profile_fields' . $_suffix);
 }
 
@@ -91,8 +85,15 @@ if ($mode == 'manage') {
 
     $profile_fields = fn_get_profile_fields('ALL', array(), DESCR_SL);
 
-    Tygh::$app['view']->assign('profile_fields_areas', fn_profile_fields_areas());
-    Tygh::$app['view']->assign('profile_fields', $profile_fields);
+    Registry::get('view')->assign('profile_fields_areas', fn_profile_fields_areas());
+    Registry::get('view')->assign('profile_fields', $profile_fields);
+
+} elseif ($mode == 'delete') {
+    if (!empty($_REQUEST['field_id'])) {
+        fn_delete_profile_field($_REQUEST['field_id']);
+    }
+
+    return array(CONTROLLER_STATUS_REDIRECT, "profile_fields.manage");
 
 } elseif ($mode == 'update' || $mode == 'add') {
 
@@ -100,10 +101,10 @@ if ($mode == 'manage') {
         $params['field_id'] = $_REQUEST['field_id'];
         $field = fn_get_profile_fields('ALL', array(), DESCR_SL, $params);
 
-        Tygh::$app['view']->assign('field', $field);
+        Registry::get('view')->assign('field', $field);
     }
 
-    Tygh::$app['view']->assign('profile_fields_areas', fn_profile_fields_areas());
+    Registry::get('view')->assign('profile_fields_areas', fn_profile_fields_areas());
 
 }
 

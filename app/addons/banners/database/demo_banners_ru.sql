@@ -1,3 +1,4 @@
-REPLACE INTO ?:banner_descriptions (`banner_id`, `banner`, `url`, `description`, `lang_code`) VALUES(6, 'Nokia n1', 'products.view&product_id=247', '', 'ru');
-REPLACE INTO ?:banner_descriptions (`banner_id`, `banner`, `url`, `description`, `lang_code`) VALUES(7, 'Подарочный сертификат', 'gift_certificates.add', '', 'ru');
-REPLACE INTO ?:banner_descriptions (`banner_id`, `banner`, `url`, `description`, `lang_code`) VALUES(8, 'Holiday gift guide', '', '', 'ru');
+REPLACE INTO ?:banner_descriptions (banner_id, banner, description, lang_code) VALUES ('2', 'Специальное предложение', '', 'ru');
+REPLACE INTO ?:banner_descriptions (banner_id, banner, description, lang_code) VALUES ('3', 'Банер плазменного телевизора', '', 'ru');
+REPLACE INTO ?:banner_descriptions (banner_id, banner, description, lang_code) VALUES ('4', 'Банер гольф-клуба', '', 'ru');
+REPLACE INTO ?:banner_descriptions (banner_id, banner, description, lang_code) VALUES ('5', 'Баннер планшета', '', 'ru');

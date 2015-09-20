@@ -28,7 +28,7 @@
     <ul class="dropdown-menu cm-select">
         {assign var="items_status" value=$status|fn_get_default_statuses:$hidden}
         {foreach from=$items_status item="val" key="st"}
-            <li {if $selected_st == $st}class="disabled"{/if}><a class="status-link-{$st|lower} {if $selected_st == $st}active{/if}"  onclick="return fn_check_object_status(this, '{$st|lower}', '{if $statuses}{$statuses[$st].color|default:''}{/if}');" data-ca-result-id="{$input_id|default:$input_name}">{$val}</a></li>
+            <li {if $selected_st == $st}class="disabled"{/if}><a class="status-link-{$st|lower} {if $selected_st == $st}cm-active{/if}"  onclick="return fn_check_object_status(this, '{$st|lower}', '{if $statuses}{$statuses[$st].color|default:''}{/if}');" data-ca-result-id="{$input_id|default:$input_name}">{$val}</a></li>
         {/foreach}
     </ul>
 </div>
@@ -38,7 +38,7 @@
 {/if}
 {elseif $display == "text"}
 <div class="control-group">
-    <label class="control-label cm-required">{__("status")}:</label>
+    <label class="control-label cm-required">{__("status")}</label>
     <div class="controls">
     <span>
     {$smarty.capture.status_title nofilter}
@@ -47,7 +47,7 @@
 </div>
 {else}
 <div class="control-group">
-    <label class="control-label cm-required">{__("status")}:</label>
+    <label class="control-label cm-required">{__("status")}</label>
     <div class="controls">
         {if $items_status}
             {foreach from=$items_status item="val" key="st" name="status_cycle"}
@@ -62,9 +62,6 @@
 
         {if $obj.status == "P"}
             <label class="radio inline" for="{$id}_{$obj_id|default:0}_p"><input type="radio" name="{$input_name}" id="{$id}_{$obj_id|default:0}_p" checked="checked" value="P"/>{__("pending")}</label>
-        {/if}
-        {if $obj.status == "N"}
-            <label class="radio inline" for="{$id}_{$obj_id|default:0}_n"><input type="radio" name="{$input_name}" id="{$id}_{$obj_id|default:0}_n" checked="checked" value="N"/>{__("new")}</label>
         {/if}
 
             <label class="radio inline" for="{$id}_{$obj_id|default:0}_d"><input type="radio" name="{$input_name}" id="{$id}_{$obj_id|default:0}_d" {if $obj.status == "D"}checked="checked"{/if} value="D" />{__("disabled")}</label>

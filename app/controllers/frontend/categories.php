@@ -27,7 +27,7 @@ if ($mode == 'catalog') {
         $root_categories[$k]['main_pair'] = fn_get_image_pairs($v['category_id'], 'category', 'M');
     }
 
-    Tygh::$app['view']->assign('root_categories', $root_categories);
+    Registry::get('view')->assign('root_categories', $root_categories);
 
 } elseif ($mode == 'view') {
 
@@ -44,13 +44,13 @@ if ($mode == 'catalog') {
         $_condition .= fn_get_company_condition('?:categories.company_id');
     }
 
-    $category_exists = db_get_field(
-        "SELECT category_id FROM ?:categories WHERE category_id = ?i ?p",
-        $_REQUEST['category_id'],
-        $_condition
-    );
+    $is_avail = db_get_field("SELECT category_id FROM ?:categories WHERE category_id = ?i ?p", $_REQUEST['category_id'], $_condition);
 
-    if (!empty($category_exists)) {
+    if (!empty($is_avail)) {
+
+        if (!empty($_REQUEST['features_hash'])) {
+            $_REQUEST['features_hash'] = fn_correct_features_hash($_REQUEST['features_hash']);
+        }
 
         // Save current url to session for 'Continue shopping' button
         $_SESSION['continue_url'] = "categories.view?category_id=$_REQUEST[category_id]";
@@ -59,39 +59,24 @@ if ($mode == 'catalog') {
         $_SESSION['current_category_id'] = $_SESSION['breadcrumb_category_id'] = $_REQUEST['category_id'];
 
         // Get subcategories list for current category
-        Tygh::$app['view']->assign('subcategories', fn_get_subcategories($_REQUEST['category_id']));
+        Registry::get('view')->assign('subcategories', fn_get_subcategories($_REQUEST['category_id']));
 
         // Get full data for current category
         $category_data = fn_get_category_data($_REQUEST['category_id'], CART_LANGUAGE, '*', true, false, $preview);
 
-        $category_parent_ids = fn_explode('/', $category_data['id_path']);
-        array_pop($category_parent_ids);
-
         if (!empty($category_data['meta_description']) || !empty($category_data['meta_keywords'])) {
-            Tygh::$app['view']->assign('meta_description', $category_data['meta_description']);
-            Tygh::$app['view']->assign('meta_keywords', $category_data['meta_keywords']);
+            Registry::get('view')->assign('meta_description', $category_data['meta_description']);
+            Registry::get('view')->assign('meta_keywords', $category_data['meta_keywords']);
         }
 
         $params = $_REQUEST;
-
-        if ($items_per_page = fn_change_session_param($_SESSION, $_REQUEST, 'items_per_page')) {
-            $params['items_per_page'] = $items_per_page;
-        }
-        if ($sort_by = fn_change_session_param($_SESSION, $_REQUEST, 'sort_by')) {
-            $params['sort_by'] = $sort_by;
-        }
-        if ($sort_order = fn_change_session_param($_SESSION, $_REQUEST, 'sort_order')) {
-            $params['sort_order'] = $sort_order;
-        }
-
         $params['cid'] = $_REQUEST['category_id'];
         $params['extend'] = array('categories', 'description');
-        $params['subcats'] = '';
         if (Registry::get('settings.General.show_products_from_subcategories') == 'Y') {
             $params['subcats'] = 'Y';
         }
 
-        list($products, $search) = fn_get_products($params, Registry::get('settings.Appearance.products_per_page'), CART_LANGUAGE);
+        list($products, $search) = fn_get_products($params, Registry::get('settings.Appearance.products_per_page'));
 
         if (isset($search['page']) && ($search['page'] > 1) && empty($products)) {
             return array(CONTROLLER_STATUS_NO_PAGE);
@@ -106,39 +91,43 @@ if ($mode == 'catalog') {
             'get_features' => false
         ));
 
-        $show_no_products_block = (!empty($params['features_hash']) && !$products);
-        if ($show_no_products_block && defined('AJAX_REQUEST')) {
-            fn_filters_not_found_notification();
-            exit;
-        }
-
-        Tygh::$app['view']->assign('show_no_products_block', $show_no_products_block);
-
         $selected_layout = fn_get_products_layout($_REQUEST);
-        Tygh::$app['view']->assign('show_qty', true);
-        Tygh::$app['view']->assign('products', $products);
-        Tygh::$app['view']->assign('search', $search);
-        Tygh::$app['view']->assign('selected_layout', $selected_layout);
+        Registry::get('view')->assign('show_qty', true);
+        Registry::get('view')->assign('products', $products);
+        Registry::get('view')->assign('search', $search);
+        Registry::get('view')->assign('selected_layout', $selected_layout);
 
-        Tygh::$app['view']->assign('category_data', $category_data);
+        Registry::get('view')->assign('category_data', $category_data);
 
         // If page title for this category is exist than assign it to template
         if (!empty($category_data['page_title'])) {
-             Tygh::$app['view']->assign('page_title', $category_data['page_title']);
+             Registry::get('view')->assign('page_title', $category_data['page_title']);
         }
 
+        fn_define('FILTER_CUSTOM_ADVANCED', true); // this constant means that extended filtering should be stayed on the same page
+
+        list($filters) = fn_get_filters_products_count($_REQUEST);
+        Registry::get('view')->assign('filter_features', $filters);
+
         // [Breadcrumbs]
-        if (!empty($category_parent_ids)) {
-            Registry::set('runtime.active_category_ids', $category_parent_ids);
-            $cats = fn_get_category_name($category_parent_ids);
-            foreach ($category_parent_ids as $c_id) {
+        $parent_ids = explode('/', $category_data['id_path']);
+        array_pop($parent_ids);
+
+        if (!empty($parent_ids)) {
+            $cats = fn_get_category_name($parent_ids);
+            foreach ($parent_ids as $c_id) {
                 fn_add_breadcrumb($cats[$c_id], "categories.view?category_id=$c_id");
             }
         }
 
-        fn_add_breadcrumb($category_data['category'], (empty($_REQUEST['features_hash'])) ? '' : "categories.view?category_id=$_REQUEST[category_id]");
-        // [/Breadcrumbs]
+        fn_add_breadcrumb($category_data['category'], (empty($_REQUEST['features_hash']) && empty($_REQUEST['advanced_filter'])) ? '' : "categories.view?category_id=$_REQUEST[category_id]");
 
+        if (!empty($params['features_hash'])) {
+            fn_add_filter_ranges_breadcrumbs($params, "categories.view?category_id=$_REQUEST[category_id]");
+        } elseif (!empty($_REQUEST['advanced_filter'])) {
+            fn_add_breadcrumb(__('advanced_filter'));
+        }
+        // [/Breadcrumbs]
     } else {
         return array(CONTROLLER_STATUS_NO_PAGE);
     }
@@ -151,7 +140,7 @@ if ($mode == 'catalog') {
             'simple' => false
         );
          list($categories_tree, ) = fn_get_categories($params);
-         Tygh::$app['view']->assign('show_all', true);
+         Registry::get('view')->assign('show_all', true);
     } else {
         $params = array (
             'category_id' => $_REQUEST['category_id'],
@@ -165,13 +154,13 @@ if ($mode == 'catalog') {
     if (!empty($_REQUEST['root'])) {
         array_unshift($categories_tree, array('category_id' => 0, 'category' => $_REQUEST['root']));
     }
-    Tygh::$app['view']->assign('categories_tree', $categories_tree);
+    Registry::get('view')->assign('categories_tree', $categories_tree);
     if ($category_count < CATEGORY_SHOW_ALL) {
-        Tygh::$app['view']->assign('expand_all', true);
+        Registry::get('view')->assign('expand_all', true);
     }
     if (defined('AJAX_REQUEST')) {
-        Tygh::$app['view']->assign('category_id', $_REQUEST['category_id']);
+        Registry::get('view')->assign('category_id', $_REQUEST['category_id']);
     }
-    Tygh::$app['view']->display('pickers/categories/picker_contents.tpl');
+    Registry::get('view')->display('pickers/categories/picker_contents.tpl');
     exit;
 }

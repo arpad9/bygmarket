@@ -29,7 +29,7 @@
 {/capture}
 
 {capture name="adv_buttons"}
-    {include file="common/tools.tpl" tool_href="sales_reports.add" prefix="top" title=__("add_report") hide_tools=true}
+    {include file="common/tools.tpl" tool_href="sales_reports.add" prefix="top" title=__("add_report") hide_tools=true icon=true}
 {/capture}
 
 {include file="common/mainbox.tpl" title=__("reports") content=$smarty.capture.mainbox adv_buttons=$smarty.capture.adv_buttons}

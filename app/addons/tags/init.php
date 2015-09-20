@@ -26,6 +26,7 @@ fn_register_hooks(
     'get_page_data',
     'get_pages',
     'get_products',
+    'get_users',
     'seo_is_indexed_page',
     'get_predefined_statuses'
 );

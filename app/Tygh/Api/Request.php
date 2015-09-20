@@ -20,95 +20,91 @@ class Request
 {
     /**
      * Current resource name
-     * @var string $resource
+     * @var string $_resource
      */
-    protected $resource = '';
+    private $_resource = '';
 
     /**
      * Current request method
      *
-     * @var string $method
+     * @var string $_request_method
      */
-    protected $method = '';
+    private $_method = '';
 
     /**
      * Current request data
      *
-     * @var array $data
+     * @var array $_request_data
      */
-    protected $data = array();
+    private $_data = array();
 
     /**
      * Current request headers
      *
-     * @var string $headers
+     * @var string $_headers
      */
-    protected $headers = array();
+    private $_headers = array();
 
-    protected $content_type = '';
+    private $_content_type = '';
 
-    protected $accept_type = '';
+    private $_accept_type = '';
 
     /**
      * uth data (user => 'user name', api_key => 'API KEY')
      *
      * @var string $_auth
      */
-    protected $auth = array();
+    private $_auth = array();
 
-    protected $error = array();
+    private $_error = array();
 
     public function getResource()
     {
-        return $this->resource;
+        return $this->_resource;
     }
 
     public function getAuthData()
     {
-        return $this->auth;
+        return $this->_auth;
     }
 
     public function getHeaders()
     {
-        if ($this->headers['Accept'] == '*/*') {
-            $this->headers['Accept'] = Api::DEFAULT_RESPONSE_FORMAT;
+        if ($this->_headers['Accept'] == '*/*') {
+            $this->_headers['Accept'] = Api::DEFAULT_RESPONSE_FORMAT;
         }
 
-        return $this->headers;
+        return $this->_headers;
     }
 
     public function getContentType()
     {
-        return $this->content_type;
+        return $this->_content_type;
     }
 
     public function getAcceptType()
     {
-        return $this->accept_type;
+        return $this->_accept_type;
     }
 
     public function getData()
     {
-        if (!$this->data) {
-            $this->data = $this->getDataFromRequestBody();
-        }
-
         // Unset REST resource name param
-        if (isset($this->data[Api::REST_RESOURCE_PARAM_NAME])) {
-            unset($this->data[Api::REST_RESOURCE_PARAM_NAME]);
+        if (isset($this->_data[Api::REST_RESOURCE_PARAM_NAME])) {
+            unset($this->_data[Api::REST_RESOURCE_PARAM_NAME]);
         }
 
-        return $this->data;
+        return $this->_data;
     }
 
     public function getMethod()
     {
-        return $this->method;
+        return $this->_method;
     }
 
     public function getError()
     {
-        return $this->error;
+        return $this->_error;
     }
 
     /**
@@ -123,36 +119,41 @@ class Request
     public function __construct($resource = "", $method = "",  $headers = array(), $data = array(), $auth = array())
     {
         if (empty($resource)) {
-            $this->resource = $this->getResourceNameFromRequest();
+            $this->_resource = $this->_getResourceNameFromRequest();
         } else {
-            $this->resource = $resource;
+            $this->_resource = $resource;
         }
 
         if (empty($method)) {
-            $this->method = $this->getMethodFromRequestHeaders();
+            $this->_method = $this->_getMethodFromRequestHeaders();
         } else {
-            $this->method = $method;
+            $this->_method = $method;
         }
 
         if (empty($headers)) {
-            $this->headers = $this->getHeadersFromRequestHeaders();
+            $this->_headers = $this->_getHeadersFromRequestHeaders();
         } else {
-            $this->headers = $headers;
+            $this->_headers = $headers;
         }
 
-        if ($this->headers) {
-            $this->content_type = $this->getContentTypeFromHeader($this->headers['Content-Type']);
-            $this->accept_type = $this->getAcceptTypeFromHeader($this->headers['Accept']);
+        if (empty($this->_headers)) {
+            $this->_content_type = '';
+            $this->_accept_type = '';
+        } else {
+            $this->_content_type = $this->_getContentTypeFromHeader($this->_headers['Content-Type']);
+            $this->_accept_type = $this->_getAcceptTypeFromHeader($this->_headers['Accept']);
         }
 
-        if ($data) {
-            $this->data = $data;
+        if (empty($data)) {
+            $this->_data = $this->_getDataFromRequestBody();
+        } else {
+            $this->_data = $data;
         }
 
         if (empty($auth)) {
-            $this->auth = $this->getAuthFromRequest();
+            $this->_auth = $this->_getAuthFromRequest();
         } else {
-            $this->auth = $auth;
+            $this->_auth = $auth;
         }
     }
 
@@ -161,7 +162,7 @@ class Request
      *
      * @return string Resource name
      */
-    protected function getResourceNameFromRequest()
+    private function _getResourceNameFromRequest()
     {
         return !empty($_REQUEST[Api::REST_RESOURCE_PARAM_NAME]) ? $_REQUEST[Api::REST_RESOURCE_PARAM_NAME] : '';
     }
@@ -171,7 +172,7 @@ class Request
      *
      * @return string Request method name
      */
-    protected function getMethodFromRequestHeaders()
+    private function _getMethodFromRequestHeaders()
     {
         return $_SERVER['REQUEST_METHOD'];
     }
@@ -181,7 +182,7 @@ class Request
      *
      * @return string Content type
      */
-    protected function getHeadersFromRequestHeaders()
+    private function _getHeadersFromRequestHeaders()
     {
         return array(
             'Content-Type' => !empty($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : Api::DEFAULT_REQUEST_FORMAT,
@@ -190,7 +191,7 @@ class Request
 
     }
 
-    protected function getContentTypeFromHeader($header_content_type)
+    private function _getContentTypeFromHeader($header_content_type)
     {
         $content_type = '';
 
@@ -205,12 +206,12 @@ class Request
         return $content_type;
     }
 
-    protected function getAcceptTypeFromHeader($header_accept)
+    private function _getAcceptTypeFromHeader($header_accept)
     {
         $accept_type = '';
 
         if (!empty($header_accept)) {
-            $accept_type = $this->getAvailableContentType(array_keys($this->parseHeaderAccept($header_accept)));
+            $accept_type = $this->_getAvailableContentType(array_keys($this->_parseHeaderAccept($header_accept)));
         }
 
         return $accept_type;
@@ -219,10 +220,10 @@ class Request
     /**
      * Get the first matching one from the list of the client-requested data types
      *
-     * @param array - Data types, sorted by priority
+     * @param array Data types, sorted by priority
      * @return string Available data type
      */
-    protected function getAvailableContentType($mime_types)
+    private function _getAvailableContentType($mime_types)
     {
         foreach ($mime_types as $type) {
             if (FormatManager::instance()->isMimeTypeSupported($type)) {
@@ -242,7 +243,7 @@ class Request
      * @param  string $header Header to parse
      * @return array  Data type array, sorted by priority
      */
-    protected function parseHeaderAccept($header)
+    private function _parseHeaderAccept($header)
     {
         if (!$header) {
             return array();
@@ -282,18 +283,18 @@ class Request
      *
      * @return string Content type
      */
-    protected function getDataFromRequestBody()
+    private function _getDataFromRequestBody()
     {
         $params = array();
 
-        $method = $this->getMethodFromRequestHeaders();
+        $method = $this->_getMethodFromRequestHeaders();
         $content_type = $this->getContentType();
 
         if ($method == "PUT" || $method == "DELETE" || $method == "POST") {
             $params = file_get_contents('php://input');
 
             if (!empty($content_type)) {
-                list($params, $this->error) = FormatManager::instance()->decode($params, $content_type);
+                list($params, $this->_error) = FormatManager::instance()->decode($params, $content_type);
             }
         } elseif ($method == "GET") {
             $params = $_GET;
@@ -307,7 +308,7 @@ class Request
      *
      * @return string Content type
      */
-    protected function getAuthFromRequest()
+    private function _getAuthFromRequest()
     {
         $auth = array();
 

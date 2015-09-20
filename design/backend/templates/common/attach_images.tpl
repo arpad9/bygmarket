@@ -10,10 +10,11 @@ image_type - optional
 {if !"SMARTY_ATTACH_IMAGES_LOADED"|defined}
 {assign var="tmp" value="SMARTY_ATTACH_IMAGES_LOADED"|define:true}
 <script type="text/javascript">
+//<![CDATA[
 (function(_, $) {
     $.ceEvent('on', 'ce.delete_image', function(r, p) {
         if (r.deleted == true) {
-            $('#' + p.result_ids).closest('a').replaceWith('<div class="no-image"><i class="glyph-image" title="' + _.tr('no_image') + '"></i></div>');
+            $('#' + p.result_ids).closest('a').replaceWith('<div class="no-image"><i class="glyph-image" title="{__("no_image")}"></i></div>');
             $('a[data-ca-target-id=' + p.result_ids + ']').hide();
         }
     });
@@ -24,6 +25,7 @@ image_type - optional
         }        
     });    
 }(Tygh, Tygh.$));    
+//]]>
 </script>
 {/if}
 
@@ -45,7 +47,7 @@ image_type - optional
 
 <div id="box_attach_images_{$name}_{$key}" class="attach-images">
     {if $no_thumbnail && !$pair.icon}
-        <span class="desc">{__("text_thumbnail_manual_loading", ["[id]" => "sw_load_thumbnail_`$name``$suffix``$key`", "[class]" => "cm-combination"])}</span>
+        <span class="desc">{__("text_thumbnail_manual_loading")}&nbsp;<a id="sw_load_thumbnail_{$name}{$suffix}{$key}" class="cm-combination">{__("thumbnail_manual_loading_link")}</a></span>
     {/if}
 
     {if !$hide_titles}
@@ -62,7 +64,7 @@ image_type - optional
     <div class="upload-box clearfix {if $no_thumbnail && !$pair.icon}hidden{/if}" id="load_thumbnail_{$name}{$suffix}{$key}">
     {if $delete_pair && $pair.pair_id}
         <div class="float-right">
-            <a data-ca-target-id="box_attach_images_{$name}_{$key}" href="{"image.delete_image_pair?pair_id=`$pair.pair_id`&object_type=`$object_type`"|fn_url}" class="cm-confirm cm-post cm-ajax cm-tooltip pull-right" data-ca-event="ce.delete_image_pair" title="{__("delete_image_pair")}"><i class="icon-remove"></i></a>
+            <a data-ca-target-id="box_attach_images_{$name}_{$key}" href="{"image.delete_image_pair?pair_id=`$pair.pair_id`&object_type=`$object_type`"|fn_url}" class="cm-confirm cm-ajax cm-tooltip pull-right" data-ca-event="ce.delete_image_pair" title="{__("delete_image_pair")}"><i class="icon-remove"></i></a>
         </div>
     {/if}
         {if !$hide_titles}
@@ -75,7 +77,7 @@ image_type - optional
         <div class="pull-left image-wrap">
             {if $pair.image_id}
             {if !("MULTIVENDOR"|fn_allowed_for && $runtime.company_id && $object_type == "category")}
-                <a data-ca-target-id="image_{$pair.image_id}" href="{"image.delete_image?pair_id=`$pair.pair_id`&image_id=`$pair.image_id`&object_type=`$object_type`"|fn_url}" class="image-delete cm-confirm cm-post cm-ajax delete cm-delete-image-link cm-tooltip" data-ca-event="ce.delete_image" title="{__("remove")}"><i class="icon-remove-sign"></i></a>
+                <a data-ca-target-id="image_{$pair.image_id}" href="{"image.delete_image?pair_id=`$pair.pair_id`&image_id=`$pair.image_id`&object_type=`$object_type`"|fn_url}" class="image-delete cm-confirm cm-ajax delete cm-delete-image-link cm-tooltip" data-ca-event="ce.delete_image" title="{__("remove")}"><i class="icon-remove-sign"></i></a>
             {/if}
             {/if}
             {if !$hide_images}
@@ -98,7 +100,7 @@ image_type - optional
             {/if}
         </div>
         <div class="image-upload cm-hide-with-inputs">
-            {include file="common/fileuploader.tpl" var_name="`$name`_image_icon`$suffix`[`$key`]" is_image=true}
+            {include file="common/fileuploader.tpl" var_name="`$name`_image_icon`$suffix`[`$key`]" image=true}
             {hook name="attach_images:options_for_icon"}
             {/hook}
         </div>
@@ -114,7 +116,7 @@ image_type - optional
             {if !$hide_images}
                 {if $pair.detailed_id}
                     {if !("MULTIVENDOR"|fn_allowed_for && $runtime.company_id && $object_type == "category")}
-                        <a data-ca-target-id="image_{$pair.detailed_id}" href="{"image.delete_image?pair_id=`$pair.pair_id`&image_id=`$pair.detailed_id`&object_type=detailed"|fn_url}" class="image-delete cm-confirm cm-post cm-tooltip cm-ajax delete cm-delete-image-link" data-ca-event="ce.delete_image" title="{__("remove")}"><i class="icon-remove-sign"></i></a>
+                        <a data-ca-target-id="image_{$pair.detailed_id}" href="{"image.delete_image?pair_id=`$pair.pair_id`&image_id=`$pair.detailed_id`&object_type=detailed"|fn_url}" class="image-delete cm-confirm cm-tooltip cm-ajax delete cm-delete-image-link" data-ca-event="ce.delete_image" title="{__("remove")}"><i class="icon-remove-sign"></i></a>
                     {/if}
                 {/if}
                 <div class="image">

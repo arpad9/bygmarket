@@ -15,12 +15,11 @@
 use Tygh\Bootstrap;
 use Tygh\Http;
 use Tygh\Registry;
-use Tygh\Storage;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
 /**
- * Normalize path (URL also accepted): remove "../", "./" and duplicated slashes
+ * Normalize path: remove "../", "./" and duplicated slashes
  *
  * @param string $path
  * @param string $separator
@@ -28,11 +27,6 @@ if (!defined('BOOTSTRAP')) { die('Access denied'); }
  */
 function fn_normalize_path($path, $separator = '/')
 {
-    $prefix = '';
-    if (strpos($path, '://') !== false) { // url is passed
-        list($prefix, $path) = explode('://', $path);
-        $prefix .= '://';
-    }
 
     $result = array();
     $path = preg_replace("/[\\\\\/]+/S", $separator, $path);
@@ -57,7 +51,7 @@ function fn_normalize_path($path, $separator = '/')
         $result[] = '';
     }
 
-    return fn_is_empty($result) ? '' : $prefix . implode($separator, $result);
+    return fn_is_empty($result) ? '' : implode($separator, $result);
 }
 
 /**
@@ -127,140 +121,69 @@ function fn_mkdir($dir, $perms = DEFAULT_DIR_PERMISSIONS)
 /**
  * Compress files with Tar archiver
  *
- * @param string $archive_name - archive name (zip, tgz, gz and tar.gz supported)
+ * @param string $archive_name - name of the compressed file will be created
  * @param string $file_list - list of files to place into archive
  * @param string $dirname - directory, where the files should be get from
  * @return bool true
  */
 function fn_compress_files($archive_name, $file_list, $dirname = '')
 {
-    if (!class_exists('PharData')) {
-        fn_set_notification('E', __('error'), __('error_class_phar_data_not_found'));
+    $tar = new Archive_Tar($archive_name, 'gz');
 
-        return false;
+    if (!is_object($tar)) {
+        fn_error('Archiver initialization error');
     }
 
-    if (empty($dirname)) {
-        $dirname = Registry::get('config.dir.files');
-    }
-
-    if (!is_array($file_list)) {
-        $file_list = array($file_list);
-    }
-
-    $ext = fn_get_file_ext($archive_name);
-
-    $_exts = explode('.', $archive_name);
-    array_shift($_exts);
-
-    $first_dot_ext = '.' . implode('.', $_exts); // https://bugs.php.net/bug.php?id=58852. Phar gets ext from the first dot: 'test.1.2.3.tgz' -> ext = 1.2.3.tgz
-
-    $arch = fn_normalize_path($dirname . '/' . $archive_name);
-
-    fn_rm($arch);
-
-    if ($ext != 'zip') {
-        $arch = fn_normalize_path($dirname . '/' . $archive_name . '.tmp');
-        fn_rm($arch);
-    }
-
-    if ($ext == 'gz' && strpos($archive_name, '.tar.gz') !== false) {
-        $ext = 'tar.gz';
-    }
-
-    try {
-        $phar = new PharData($arch);
-
-        foreach ($file_list as $file) {
-            $path = fn_normalize_path($dirname . '/' . $file);
-
-            if (is_file($path)) {
-                $phar->addFile($path, basename($path));
-
-            } elseif (is_dir($path)) {
-                $phar->buildFromDirectory($path);
-            }
-        }
-
-        if ($ext == 'zip') {
-            $phar->compressFiles(Phar::GZ);
-        } else {
-            $phar->compress(Phar::GZ, $first_dot_ext);
-
-            // We need to unset Phar because the PharData class still has the file "open".
-            // Windows servers cannot delete the files with the "open" handlers.
-            unset($phar);
-
-            fn_rm($arch);
-        }
-
-    } catch (Exception $e) {
-        fn_set_notification('E', __('error'), $e->getMessage());
-
-        return false;
+    if (!empty($dirname) && is_dir($dirname)) {
+        chdir($dirname);
+        $tar->create($file_list);
+        chdir(Registry::get('config.dir.root'));
+    } else {
+        $tar->create($file_list);
     }
 
     return true;
 }
 
 /**
- * Extracts files from archive to specified place
+ * Extract files with Tar archiver
  *
- * @param $archive_name - path to the compressed file
+ * @param $archive_name - name of the compressed file will be created
+ * @param $file_list - list of files to place into archive
  * @param $dirname - directory, where the files should be extracted to
- * @return bool true if archive was succesfully extracted, false otherwise
+ * @return bool true
  */
 function fn_decompress_files($archive_name, $dirname = '')
 {
-    if (empty($dirname)) {
-        $dirname = Registry::get('config.dir.files');
+    $tar = new Archive_Tar($archive_name, 'gz');
+
+    if (!is_object($tar)) {
+        fn_error('Archiver initialization error');
     }
 
-    $ext = fn_get_file_ext($archive_name);
-
-    try {
-        // We cannot use PharData for ZIP archives. All extracted data looks broken after extract.
-        if ($ext == 'zip') {
-            if (!class_exists('ZipArchive')) {
-                fn_set_notification('E', __('error'), __('error_class_zip_archive_not_found'));
-
-                return false;
-            }
-
-            $zip = new ZipArchive;
-            $zip->open($archive_name);
-            $zip->extractTo($dirname);
-            $zip->close();
-
-        } elseif ($ext == 'tgz' || $ext == 'gz') {
-            if (!class_exists('PharData')) {
-                fn_set_notification('E', __('error'), __('error_class_phar_data_not_found'));
-
-                return false;
-            }
-
-            $phar = new PharData($archive_name);
-            $phar->extractTo($dirname, null, true); // extract all files, and overwrite
-        }
-
-    } catch (Exception $e) {
-        fn_set_notification('E', __('error'), __('unable_to_unpack_file'));
-
-        return false;
+    if (!empty($dirname) && is_dir($dirname)) {
+        chdir($dirname);
+        $tar->extract('');
+        chdir(Registry::get('config.dir.root'));
+    } else {
+        $tar->extract('');
     }
 
     return true;
 }
 
 /**
- * Gets list of extensions with mime types or mime types with exts
+ * Get MIME type by the file name
  *
- * @param string $key get ext list with the mime linked, or mime with the ext linked
- * @return array List of Exts/Mime
+ * @param string $filename
+ * @param string $not_available_result MIME type that will be returned in case all checks fail
+ * @return string $file_type MIME type of the given file.
  */
-function fn_get_ext_mime_types($key = 'ext')
+function fn_get_file_type($filename, $not_available_result = 'application/octet-stream')
 {
-    $types = array (
+    $file_type = $not_available_result;
+
+    static $types = array (
         'zip' => 'application/zip',
         'tgz' => 'application/tgz',
         'rar' => 'application/rar',
@@ -270,8 +193,8 @@ function fn_get_ext_mime_types($key = 'ext')
         'bat' => 'application/bat',
 
         'png' => 'image/png',
-        'jpeg' => 'image/jpeg',
         'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
         'gif' => 'image/gif',
         'bmp' => 'image/bmp',
         'ico' => 'image/x-icon',
@@ -287,26 +210,6 @@ function fn_get_ext_mime_types($key = 'ext')
         'css' => 'text/css',
         'js' => 'text/javascript'
     );
-
-    if ($key == 'mime') {
-        $types = array_flip($types);
-    }
-
-    return $types;
-}
-
-/**
- * Get MIME type by the file name
- *
- * @param string $filename
- * @param string $not_available_result MIME type that will be returned in case all checks fail
- * @return string $file_type MIME type of the given file.
- */
-function fn_get_file_type($filename, $not_available_result = 'application/octet-stream')
-{
-    $file_type = $not_available_result;
-
-    $types = fn_get_ext_mime_types('ext');
 
     $ext = fn_get_file_ext($filename);
 
@@ -354,152 +257,109 @@ function fn_get_mime_content_type($filename, $check_by_extension = true, $not_av
  *
  * @param string $path path to the file
  * @param string $filename file name to be displayed in download dialog
- * @param boolean $delete deletes original file after download
  * @return bool Always false
  */
-function fn_get_file($file_path, $filename = '', $delete = false)
+function fn_get_file($filepath, $filename = '')
 {
-    $handle_stream = @fopen($file_path, 'rb');
-    if (!$handle_stream) {
-        return false;
-    }
-    $file_size = filesize($file_path);
-    $file_mime_type = fn_get_mime_content_type($file_path);
-    $file_last_modified_time = date('D, d M Y H:i:s T', filemtime($file_path));
-    if (empty($filename)) {
-        // Non-ASCII filenames containing spaces and underscore
-        // characters are chunked if no locale is provided
-        setlocale(LC_ALL, 'en_US.UTF8');
-        $filename = fn_basename($file_path);
-    }
+    $fd = @fopen($filepath, 'rb');
+    if ($fd) {
+        $fsize = filesize($filepath);
+        $ftime = date('D, d M Y H:i:s T', filemtime($filepath)); // get last modified time
 
-    if (isset($_SERVER['HTTP_RANGE'])) {
-        $range = str_replace('bytes=', '', $_SERVER['HTTP_RANGE']);
-        $range = (int) strtok($range, '-');
+        if (isset($_SERVER['HTTP_RANGE'])) {
+            header($_SERVER['SERVER_PROTOCOL'] . ' 206 Partial Content');
+            $range = $_SERVER['HTTP_RANGE'];
+            $range = str_replace('bytes=', '', $range);
+            list($range, $end) = explode('-', $range);
 
-        if (!empty($range)) {
-            fseek($handle_stream, $range);
+            if (!empty($range)) {
+                fseek($fd, $range);
+            }
+        } else {
+            header($_SERVER['SERVER_PROTOCOL'] . ' 200 OK');
+            $range = 0;
         }
-    } else {
-        $range = 0;
-    }
 
-    // Clear output buffers before headers are sent to prevent dowloading damaged file
-    // if any content was added to buffers before
-    $gz_handler = false;
-    foreach (ob_list_handlers() as $handler) {
-        if (strpos($handler, 'gzhandler') !== false) {
-            $gz_handler = true;
-            break;
+        if (empty($filename)) {
+            // Non-ASCII filenames containing spaces and underscore characters are chunked if no locale is provided
+            setlocale(LC_ALL, 'en_US.UTF8');
+            $filename = fn_basename($filepath);
+        }
+
+        // Browser bug workaround: Filenames can't be sent to IE if there is any kind of traffic compression enabled on the server side
+        if (USER_AGENT == 'ie') {
+            if (function_exists('apache_setenv')) {
+                apache_setenv('no-gzip', '1');
+            }
+
+            ini_set("zlib.output_compression", "Off");
+
+            // Browser bug workaround: During the file download with IE, non-ASCII filenames appears with a broken encoding
+            $filename = rawurlencode($filename);
+        }
+
+        header("Content-disposition: attachment; filename=\"$filename\"");
+        header('Content-type: ' . fn_get_mime_content_type($filepath));
+        header('Last-Modified: ' . $ftime);
+        header('Accept-Ranges: bytes');
+        header('Content-Length: ' . ($fsize - $range));
+        header('Pragma: public');
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+        header('Cache-Control: private', false);
+
+        if ($range) {
+            header("Content-Range: bytes $range-" . ($fsize - 1) . '/' . $fsize);
+        }
+
+        $result = fpassthru($fd);
+        if ($result == false) {
+            fclose($fd);
+
+            return false;
+        } else {
+            fclose($fd);
+            exit;
         }
     }
-    fn_clear_ob();
-    // Delete headers added by ob_start("ob_gzhandler")
-    if ($gz_handler && !headers_sent() && !ob_list_handlers()) {
-        header_remove('Vary');
-        header_remove('Content-Encoding');
-    }
 
-    // Browser bug workaround: filenames can't be sent to IE if there is
-    // any kind of traffic compression enabled on the server side
-    if (USER_AGENT == 'ie') {
-        if (function_exists('apache_setenv')) {
-            apache_setenv('no-gzip', '1');
-        }
-        ini_set("zlib.output_compression", "Off");
-
-        // Browser bug workaround: During the file download with IE,
-        // non-ASCII filenames appears with a broken encoding
-        $filename = rawurlencode($filename);
-    }
-
-    if ($range) {
-        header($_SERVER['SERVER_PROTOCOL'] . ' 206 Partial Content');
-        header("Content-Range: bytes $range-" . ($file_size - 1) . '/' . $file_size);
-    } else {
-        header($_SERVER['SERVER_PROTOCOL'] . ' 200 OK');
-    }
-
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-    header('Content-Type: ' . $file_mime_type);
-    header('Last-Modified: ' . $file_last_modified_time);
-    header('Accept-Ranges: bytes');
-    header('Content-Length: ' . ($file_size - $range));
-    header('Pragma: public');
-    header('Expires: 0');
-    header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
-    header('Cache-Control: private', false);
-
-    $result = fpassthru($handle_stream);
-    fclose($handle_stream);
-
-    if ($delete) {
-        fn_rm($file_path);
-    }
-    if ($result === false) {
-        return false;
-    }
-
-    exit;
+    return false;
 }
 
 /**
- * Gets file, located on server FS
+ * Create temporary file for uploaded file
  *
  * @param $val file path
  * @return array $val
  */
 function fn_get_server_data($val)
 {
+    $tmp = $val;
+
     if (defined('IS_WINDOWS')) {
-        $val = str_replace('\\', '/', $val);
+        $tmp = str_replace('\\', '/', $tmp);
+    }
+    if (strpos($tmp, Registry::get('config.dir.root')) === 0) {
+        $tmp = substr_replace($tmp, '', 0, strlen(Registry::get('config.dir.root')));
     }
 
-    $allowed_paths = array(
-        fn_get_files_dir_path(),
-        fn_get_public_files_path()
-    );
-
-    $val = fn_normalize_path($val);
-
-    if (Registry::get('runtime.allow_upload_external_paths') && strpos($val, Registry::get('config.dir.root')) === 0) {
-        $allowed_paths = array($val);
-    }
-
+    $val = array();
     setlocale(LC_ALL, 'en_US.UTF8');
+    $val['name'] = fn_basename($tmp);
+    $val['path'] = fn_normalize_path(Registry::get('config.dir.root') . '/' . $tmp);
 
-    foreach ($allowed_paths as $root_path) {
+    $tempfile = fn_create_temp_file();
+    fn_copy($val['path'], $tempfile);
+    $val['path'] = $tempfile;
+    $val['size'] = filesize($val['path']);
 
-        if (strpos($val, $root_path) === 0) {
-            $path = $val;
-        } else {
-            $path = fn_normalize_path($root_path . $val);
-        }
+    $cache = & Registry::get('temp_fs_data');
 
-        if (strpos($path, $root_path) === 0 && file_exists($path)) {
-
-            $result = array(
-                'name' => fn_basename($path),
-                'path' => $path
-            );
-
-            $tempfile = fn_create_temp_file();
-            fn_copy($result['path'], $tempfile);
-            $result['path'] = $tempfile;
-            $result['size'] = filesize($result['path']);
-
-            $cache = Registry::get('temp_fs_data');
-
-            if (!isset($cache[$result['path']])) { // cache file to allow multiple usage
-                $cache[$result['path']] = $tempfile;
-                Registry::set('temp_fs_data', $cache);
-            }
-
-            return $result;
-        }
+    if (!isset($cache[$val['path']])) { // cache file to allow multiple usage
+        $cache[$val['path']] = $tempfile;
     }
 
-    return false;
+    return $val;
 }
 
 /**
@@ -540,33 +400,14 @@ function fn_rebuild_files($name)
  * @param string $source
  * @param string $dest
  * @param bool $silent
- * @param array $exclude_files
  * @return bool True on success, false otherwise
  */
-function fn_copy($source, $dest, $silent = true, $exclude_files = array())
+function fn_copy($source, $dest, $silent = true)
 {
-    /**
-     * Ability to forbid file copy or change parameters
-     *
-     * @param string  $source  source file/directory
-     * @param string  $dest    destination file/directory
-     * @param boolean $silent  silent flag
-     * @param array   $exclude files to exclude
-     */
-    fn_set_hook('copy_file', $source, $dest, $silent, $exclude_files);
-
-    if (empty($source)) {
-        return false;
-    }
-
     // Simple copy for a file
     if (is_file($source)) {
-        $source_file_name = fn_basename($source);
-        if (in_array($source_file_name, $exclude_files)) {
-            return true;
-        }
         if (@is_dir($dest)) {
-            $dest .= '/' . $source_file_name;
+            $dest .= '/' . fn_basename($source);
         }
         if (filesize($source) == 0) {
             $fd = fopen($dest, 'w');
@@ -583,8 +424,7 @@ function fn_copy($source, $dest, $silent = true, $exclude_files = array())
 
     // Make destination directory
     if ($silent == false) {
-        $_dir = strpos($dest, Registry::get('config.dir.root')) === 0 ? str_replace(Registry::get('config.dir.root') . '/', '', $dest) : $dest;
-        fn_set_progress('echo', $_dir . '<br/>');
+        fn_set_progress('echo', 'Copying directory <b>' . ((strpos($dest, Registry::get('config.dir.root')) === 0) ? str_replace(Registry::get('config.dir.root') . '/', '', $dest) : $dest) . '</b><br />');
     }
 
     if (!fn_mkdir($dest)) {
@@ -602,7 +442,7 @@ function fn_copy($source, $dest, $silent = true, $exclude_files = array())
 
             // Deep copy directories
             if ($dest !== $source . '/' . $entry) {
-                if (fn_copy($source . '/' . $entry, $dest . '/' . $entry, $silent, $exclude_files) == false) {
+                if (fn_copy($source . '/' . $entry, $dest . '/' . $entry, $silent) == false) {
                     return false;
                 }
             }
@@ -638,7 +478,8 @@ function fn_rm($source, $delete_root = true, $pattern = '')
     }
 
     // Loop through the folder
-    if (is_dir($source) && $dir = dir($source)) {
+    if (is_dir($source)) {
+        $dir = dir($source);
         while (false !== $entry = $dir->read()) {
             // Skip pointers
             if ($entry == '.' || $entry == '..') {
@@ -683,7 +524,7 @@ function fn_get_file_ext($filename)
  * @param string $prefix file/dir path prefix
  * @return array $contents directory contents
  */
-function fn_get_dir_contents($dir, $get_dirs = true, $get_files = false, $extension = '', $prefix = '', $recursive = false, $exclude = array())
+function fn_get_dir_contents($dir, $get_dirs = true, $get_files = false, $extension = '', $prefix = '', $recursive = false)
 {
 
     $contents = array();
@@ -694,12 +535,12 @@ function fn_get_dir_contents($dir, $get_dirs = true, $get_files = false, $extens
             $extension = is_array($extension) ? $extension : array($extension);
 
             while (($file = readdir($dh)) !== false) {
-                if ($file == '.' || $file == '..' || in_array($file, $exclude)) {
+                if ($file == '.' || $file == '..' || $file{0} == '.') {
                     continue;
                 }
 
                 if ($recursive == true && is_dir($dir . '/' . $file)) {
-                    $contents = fn_array_merge($contents, fn_get_dir_contents($dir . '/' . $file, $get_dirs, $get_files, $extension, $prefix . $file . '/', $recursive, $exclude), false);
+                    $contents = fn_array_merge($contents, fn_get_dir_contents($dir . '/' . $file, $get_dirs, $get_files, $extension, $prefix . $file . '/', $recursive), false);
                 }
 
                 if ((is_dir($dir . '/' . $file) && $get_dirs == true) || (is_file($dir . '/' . $file) && $get_files == true)) {
@@ -747,10 +588,9 @@ function fn_get_contents($location, $base_dir = '')
 
     // Location is url
     } elseif (strpos($path, '://') !== false) {
-        // Prepare url
-        $url = new \Tygh\Tools\Url($path);
-        $path = $url->build($url->getIsEncoded());
 
+        // Prepare url
+        $path = str_replace(' ', '%20', $path);
         if (Bootstrap::getIniParam('allow_url_fopen') == true) {
             $result = @file_get_contents($path);
         } else {
@@ -768,10 +608,9 @@ function fn_get_contents($location, $base_dir = '')
  * @param string $content
  * @param string $base_dir
  * @param int $file_perm File access permissions for setting after writing into the file. For example 0666.
- * @param boolean $append append content if set to true
  * @return string $result
  */
-function fn_put_contents($location, $content, $base_dir = '', $file_perm = DEFAULT_FILE_PERMISSIONS, $append = false)
+function fn_put_contents($location, $content, $base_dir = '', $file_perm = DEFAULT_FILE_PERMISSIONS)
 {
     $result = '';
     $path = $base_dir . $location;
@@ -782,13 +621,8 @@ function fn_put_contents($location, $content, $base_dir = '', $file_perm = DEFAU
 
     fn_mkdir(dirname($path));
 
-    $flags = 0;
-    if ($append == true) {
-        $flags = FILE_APPEND;
-    }
-
     // Location is regular file
-    $result = @file_put_contents($path, $content, $flags);
+    $result = @file_put_contents($path, $content);
     if ($result !== false) {
         @chmod($path, $file_perm);
     }
@@ -808,35 +642,33 @@ function fn_get_url_data($val)
         $val = 'http://' . $val;
     }
 
-    $result = false;
-    $_data = fn_get_contents($val);
+    $tmp = $val;
+    $_data = fn_get_contents($tmp);
 
     if (!empty($_data)) {
-        $result = array(
-            'name' => fn_basename($val)
-        );
+        $val = array();
+        $val['name'] = fn_basename($tmp);
 
         // Check if the file is dynamically generated
-        if (strpos($result['name'], '&') !== false || strpos($result['name'], '?') !== false) {
-            $result['name'] = 'url_uploaded_file_' . uniqid(TIME);
+        if (strpos($val['name'], '&') !== false || strpos($val['name'], '?') !== false) {
+            $val['name'] = 'url_uploaded_file_'.uniqid(TIME);
         }
-        $result['path'] = fn_create_temp_file();
-        $result['size'] = strlen($_data);
+        $val['path'] = fn_create_temp_file();
+        $val['size'] = strlen($_data);
 
-        $fd = fopen($result['path'], 'wb');
-        fwrite($fd, $_data, $result['size']);
+        $fd = fopen($val['path'], 'wb');
+        fwrite($fd, $_data, $val['size']);
         fclose($fd);
-        @chmod($result['path'], DEFAULT_FILE_PERMISSIONS);
+        @chmod($val['path'], DEFAULT_FILE_PERMISSIONS);
 
-        $cache = Registry::get('temp_fs_data');
+        $cache = & Registry::get('temp_fs_data');
 
-        if (!isset($cache[$result['path']])) { // cache file to allow multiple usage
-            $cache[$result['path']] = $result['path'];
-            Registry::set('temp_fs_data', $cache);
+        if (!isset($cache[$val['path']])) { // cache file to allow multiple usage
+            $cache[$val['path']] = $val['path'];
         }
     }
 
-    return $result;
+    return $val;
 }
 
 /**
@@ -848,19 +680,16 @@ function fn_get_url_data($val)
  */
 function fn_get_local_data($val)
 {
-    $cache = Registry::get('temp_fs_data');
+    $cache = & Registry::get('temp_fs_data');
 
     if (!isset($cache[$val['path']])) { // cache file to allow multiple usage
         $tempfile = fn_create_temp_file();
         if (move_uploaded_file($val['path'], $tempfile) == true) {
             @chmod($tempfile, DEFAULT_FILE_PERMISSIONS);
-            clearstatcache(true, $tempfile);
             $cache[$val['path']] = $tempfile;
         } else {
             $cache[$val['path']] = '';
         }
-
-        Registry::set('temp_fs_data', $cache);
     }
 
     if (defined('KEEP_UPLOADED_FILES')) {
@@ -871,7 +700,7 @@ function fn_get_local_data($val)
         $val['path'] = $cache[$val['path']];
     }
 
-    return !empty($val['size']) ? $val : false;
+    return $val;
 }
 
 /**
@@ -899,10 +728,10 @@ function fn_get_last_key(&$arr, $fn = '', $is_first = false)
 }
 
 /**
- * Filters data from instant file uploader
- * @param string $name name of uploaded data
- * @param array $filter_by_ext allow file extensions
- * @return mixed filtered file data on success, false otherwise
+ * Filter data from file uploader
+ *
+ * @param string $name
+ * @return array $filtered
  */
 function fn_filter_uploaded_data($name, $filter_by_ext = array())
 {
@@ -919,8 +748,11 @@ function fn_filter_uploaded_data($name, $filter_by_ext = array())
     foreach ($utype as $id => $type) {
         if ($type == 'local' && !fn_is_empty(@$udata_local[$id])) {
             $filtered[$id] = fn_get_local_data(Bootstrap::stripSlashes($udata_local[$id]));
-
-        } elseif ($type == 'server' && !fn_is_empty(@$udata_other[$id]) && (Registry::get('runtime.skip_area_checking') || AREA == 'A')) {
+            if (empty($filtered[$id]['size'])) {
+                fn_set_notification('E', __('error'), __('cant_upload_file'));
+                unset($filtered[$id]);
+            }
+        } elseif ($type == 'server' && !fn_is_empty(@$udata_other[$id]) && AREA == 'A') {
             fn_get_last_key($udata_other[$id], 'fn_get_server_data', true);
             $filtered[$id] = $udata_other[$id];
 
@@ -929,15 +761,35 @@ function fn_filter_uploaded_data($name, $filter_by_ext = array())
             $filtered[$id] = $udata_other[$id];
         }
 
-        if (isset($filtered[$id]) && $filtered[$id] === false) {
-            unset($filtered[$id]);
-            fn_set_notification('E', __('error'), __('cant_upload_file'));
-            continue;
-        }
-
         if (!empty($filtered[$id]['name'])) {
             $filtered[$id]['name'] = str_replace(' ', '_', urldecode($filtered[$id]['name'])); // replace spaces with underscores
-            if (!fn_check_uploaded_data($filtered[$id], $filter_by_ext)) {
+            $ext = fn_get_file_ext($filtered[$id]['name']);
+
+            if (!empty($filter_by_ext) && !in_array(fn_strtolower($ext), $filter_by_ext)) {
+                unset($filtered[$id]);
+                fn_set_notification('E', __('error'), __('text_not_allowed_to_upload_file_extension', array(
+                    '[ext]' => $ext
+                )));
+            }
+
+            if (!empty($filtered[$id]) && in_array(fn_strtolower($ext), Registry::get('config.forbidden_file_extensions'))) {
+                unset($filtered[$id]);
+
+                fn_set_notification('E', __('error'), __('text_forbidden_file_extension', array(
+                    '[ext]' => $ext
+                )));
+            }
+
+            if (!empty($filtered) && (!is_array($filtered[$id]) || !empty($filtered[$id]['path']) && in_array(fn_get_mime_content_type($filtered[$id]['path'], true, 'text/plain'), Registry::get('config.forbidden_mime_types')))) {
+                if (!is_array($filtered[$id])) {
+                    fn_set_notification('E', __('error'), __('cant_upload_file'));
+
+                } else {
+                    fn_set_notification('E', __('error'), __('text_forbidden_file_mime', array(
+                        '[mime]' => fn_get_mime_content_type($filtered[$id]['path'], true, 'text/plain')
+                    )));
+                }
+
                 unset($filtered[$id]);
             }
         }
@@ -951,105 +803,6 @@ function fn_filter_uploaded_data($name, $filter_by_ext = array())
     }
 
     return $filtered;
-}
-
-/**
- * Filters data from instant file uploader
- * @param array $filter_by_ext allow file extensions
- * @return mixed filtered file data on success, false otherwise
- */
-function fn_filter_instant_upload($filter_by_ext = array())
-{
-    if (!empty($_FILES['upload'])) {
-        $_FILES['upload']['path'] = $_FILES['upload']['tmp_name'];
-        $uploaded_data = fn_get_local_data(Bootstrap::stripSlashes($_FILES['upload']));
-        if (fn_check_uploaded_data($uploaded_data, $filter_by_ext)) {
-            return $uploaded_data;
-        }
-    }
-
-    return false;
-}
-
-/**
- * Checks uploaded file can be processed
- * @param array $uploaded_data uploaded file data
- * @param array $filter_by_ext allowed file extensions
- * @return boolean true if file can be processed, false - otherwise
- */
-function fn_check_uploaded_data($uploaded_data, $filter_by_ext)
-{
-    $result = true;
-    $processed = false;
-
-    /**
-     * Actions before check uploaded data
-     *
-     * @param array $uploaded_data Uploaded data
-     * @param array $filter_by_ext Allowed file extensions
-     * @param bool  $result        Result status
-     * @param bool  $processed     Processed flag
-     */
-    fn_set_hook('check_uploaded_data_pre', $uploaded_data, $filter_by_ext, $result, $processed);
-
-    if ($processed) {
-        return $result;
-    }
-
-    if (!empty($uploaded_data) && is_array($uploaded_data) && !empty($uploaded_data['name'])) {
-        $ext = fn_get_file_ext($uploaded_data['name']);
-
-        if (empty($ext)) {
-            $types = fn_get_ext_mime_types('mime');
-            $mime = fn_get_mime_content_type($uploaded_data['path']);
-
-            $ext = isset($types[$mime]) ? $types[$mime] : '';
-        }
-
-        if (!$processed && !empty($filter_by_ext) && !in_array(fn_strtolower($ext), $filter_by_ext)) {
-            fn_set_notification('E', __('error'), __('text_not_allowed_to_upload_file_extension', array(
-                '[ext]' => $ext
-            )));
-
-            $result = false;
-            $processed = true;
-        }
-
-        if (!$processed && in_array(fn_strtolower($ext), Registry::get('config.forbidden_file_extensions'))) {
-            fn_set_notification('E', __('error'), __('text_forbidden_file_extension', array(
-                '[ext]' => $ext
-            )));
-
-            $result = false;
-            $processed = true;
-        }
-
-        $mime_type = fn_get_mime_content_type($uploaded_data['path'], true, 'text/plain');
-        if (
-            !$processed
-            && !empty($uploaded_data['path'])
-            && in_array($mime_type, Registry::get('config.forbidden_mime_types'))
-        ) {
-            fn_set_notification('E', __('error'), __('text_forbidden_file_mime', array(
-                '[mime]' => $mime_type
-            )));
-
-            $result = false;
-            $processed = true;
-        }
-    }
-
-    /**
-     * Actions after check uploaded data
-     *
-     * @param array $uploaded_data Uploaded data
-     * @param array $filter_by_ext Allowed file extensions
-     * @param bool  $result        Result status
-     * @param bool  $processed     Processed flag
-     */
-    fn_set_hook('check_uploaded_data_post', $uploaded_data, $filter_by_ext, $result, $processed);
-
-    return $result;
 }
 
 /**
@@ -1072,9 +825,8 @@ function fn_remove_temp_data()
  */
 function fn_create_temp_file()
 {
-    $prefix = fn_get_cache_path(false);
-    fn_mkdir($prefix . 'tmp');
-    $tmpnam = fn_normalize_path(tempnam($prefix . 'tmp/', 'tmp_'));
+    fn_mkdir(Registry::get('config.dir.cache_misc') . 'tmp');
+    $tmpnam = tempnam(Registry::get('config.dir.cache_misc') . 'tmp/', 'tmp_');
 
     return $tmpnam;
 }
@@ -1182,7 +934,7 @@ function fn_rename($oldname, $newname, $context = null)
 {
     $result = ($context === null) ? rename($oldname, $newname) : rename($oldname, $newname, $context);
     if ($result !== false) {
-        @chmod($newname, is_dir($newname) ? DEFAULT_DIR_PERMISSIONS : DEFAULT_FILE_PERMISSIONS);
+        @chmod($newname, DEFAULT_FILE_PERMISSIONS);
     }
 
     return $result;
@@ -1242,14 +994,6 @@ function fn_basename($path, $suffix = '', $encoding = 'UTF-8')
         $basename = fn_substr($basename, 0, (0 - fn_strlen($suffix, $encoding)), $encoding);
     }
 
-    /* Remove query params
-        Original: http://somehost.com/images/test.jpg?12345678
-        Bad result: test.jpg?12345678
-        Correct result: test.jpg
-    */
-
-    list($basename) = explode('?', $basename);
-
     return $basename;
 }
 
@@ -1269,13 +1013,12 @@ function fn_unified_path($path)
 }
 
 /**
- * Connects to ftp server
+ * Connect to ftp server
  *
- * @param array $settings options
  * @param array $settings options
  * @return boolean true if connected successfully and working directory is correct, false - otherwise
  */
-function fn_ftp_connect($settings, $show_notifications = false)
+function fn_ftp_connect($settings)
 {
     $result = true;
 
@@ -1302,46 +1045,36 @@ function fn_ftp_connect($settings, $show_notifications = false)
                     if (!empty($files) && in_array('config.php', $files)) {
                         Registry::set('ftp_connection', $ftp);
                     } else {
-                        if ($show_notifications) {
-                            fn_set_notification('E', __('error'), __('text_uc_ftp_cart_directory_not_found'));
-                        }
+//                        fn_set_notification('E', __('error'), __('text_uc_ftp_cart_directory_not_found'));
                         $result = false;
                     }
                 } else {
-                    if ($show_notifications) {
-                        fn_set_notification('E', __('error'), __('text_uc_ftp_login_failed'));
-                    }
+//                    fn_set_notification('E', __('error'), __('text_uc_ftp_login_failed'));
                     $result = false;
                 }
             } else {
-                if ($show_notifications) {
-                    fn_set_notification('E', __('error'), __('text_uc_ftp_connect_failed'));
-                }
+//                fn_set_notification('E', __('error'), __('text_uc_ftp_connect_failed'));
                 $result = false;
             }
         }
     } else {
-        if ($show_notifications) {
-            fn_set_notification('E', __('error'), __('text_uc_no_ftp_module'));
-        }
+//        fn_set_notification('E', __('error'), __('text_uc_no_ftp_module'));
         $result = false;
     }
 
     return $result;
 }
 
-function fn_ftp_chmod_file($filename, $perm = DEFAULT_FILE_PERMISSIONS, $recursive = false)
+function fn_fpt_chmod_file($filename, $perm = DEFAULT_FILE_PERMISSIONS, $recursive = false)
 {
     $result = false;
 
     $ftp = Registry::get('ftp_connection');
     if (is_resource($ftp)) {
-        $filename = rtrim($filename, '/');
+        $dest = dirname($filename);
+        $dest = rtrim($dest, '/') . '/'; // force adding trailing slash to path
 
-        $parent_directory = dirname($filename);
-        $parent_directory = rtrim($parent_directory, '/') . '/'; // force adding trailing slash to path
-
-        $rel_path = str_replace(Registry::get('config.dir.root') . '/', '', $parent_directory);
+        $rel_path = str_replace(Registry::get('config.dir.root') . '/', '', $dest);
         $cdir = ftp_pwd($ftp);
 
         if (empty($rel_path)) { // if rel_path is empty, assume it's root directory
@@ -1349,387 +1082,25 @@ function fn_ftp_chmod_file($filename, $perm = DEFAULT_FILE_PERMISSIONS, $recursi
         }
 
         if (@ftp_chdir($ftp, $rel_path)) {
-            $ftp_chmod_command = 'CHMOD ' . sprintf('0%o', $perm) . ' ' . fn_basename($filename);
-            $result = @ftp_site($ftp, $ftp_chmod_command);
+            $result = @ftp_site($ftp, 'CHMOD ' . sprintf('0%o', $perm) . ' ' . fn_basename($filename));
 
             if ($recursive) {
-                $path = fn_normalize_path($cdir . '/' . $rel_path . fn_basename($filename));
+                if (@ftp_chdir($ftp, $cdir . '/' . $rel_path . fn_basename($filename))) {
+                    // The destination filename is folder. Change permissions recursively
+                    $list_of_files = ftp_nlist($ftp, '.');
 
-                if (is_dir($path)) {
-                    $_files = fn_get_dir_contents($path, true, true, '', '', true);
+                    if (!empty($list_of_files)) {
+                        foreach ($list_of_files as $_file) {
+                            @ftp_chdir($ftp, $cdir);
 
-                    if (!empty($_files)) {
-                        foreach ($_files as $_file) {
-                            fn_ftp_chmod_file($path . '/' . $_file, $perm, false);
+                            fn_fpt_chmod_file($rel_path . fn_basename($filename) . '/' . $_file, $perm, $recursive);
                         }
                     }
-
                 }
             }
-
             ftp_chdir($ftp, $cdir);
         }
     }
 
     return $result;
-}
-
-/**
- * Gets path user is allowed to put files to
- * @return string files path
- */
-function fn_get_files_dir_path()
-{
-    $path = Registry::get('config.dir.files');
-    $company_id = Registry::get('runtime.simple_ultimate') ? Registry::get('runtime.forced_company_id') : Registry::get('runtime.company_id');
-
-    if (!empty($company_id)) {
-        $path .=  $company_id . '/';
-    }
-
-    return $path;
-}
-
-/**
- * Gets HTTP path user is allowed to put files to
- * @return string files path
- */
-function fn_get_http_files_dir_path()
-{
-    $path = fn_get_rel_dir(fn_get_files_dir_path());
-    $path = Registry::get('config.http_location') . '/' . $path;
-
-    return $path;
-}
-
-/**
- * Gets path to user public files
- * @return string public files path
- */
-function fn_get_public_files_path()
-{
-    $path = Storage::instance('images')->getAbsolutePath('');
-    $company_id = Registry::get('runtime.simple_ultimate') ? Registry::get('runtime.forced_company_id') : Registry::get('runtime.company_id');
-
-    if (!empty($company_id)) {
-        $path .=  'companies/' . $company_id . '/';
-    }
-
-    return $path;
-}
-
-/**
- * Gets directory path relative to root directory
- * @param string $dir absolute directory path
- * @return string relative directory path
- */
-function fn_get_rel_dir($dir)
-{
-    $dir = str_replace(Registry::get('config.dir.root') . '/', '', $dir);
-
-    return $dir;
-}
-
-/**
- * Checks if folders/files can be copied to destination dir
- *
- * @param string $path path to Root add-on path
- * @return array List if non-writable directories
- */
-function fn_check_copy_ability($source, $destination)
-{
-    $struct_files = fn_get_dir_contents($source, true, true, '', '', true);
-
-    $non_writable = array();
-
-    foreach ($struct_files as $file) {
-        if (is_file($source . $file)) {
-            $res = fn_check_writable_path_permissions(dirname($destination . '/' . $file));
-
-            if ($res !== true) {
-                $non_writable[$res] = true;
-            }
-        }
-    }
-
-    return $non_writable;
-}
-
-/**
- * Check if specified file path can be rewritten.
- *
- * Example:
- *      Base struct
- *          app                         r-x
- *              /addons                 r-x
- *                  /widget             rwx
- *                      addon.xml       rw-
- *              /core                   r-x
- *                  /functions          r-x
- *                      fn.addons.php   r--
- *          design                      rwx
- *              /index.tpl              rw-
- *
- * fn_check_writable_path_permissions(app/addons/widget/addon.xml)          true
- * fn_check_writable_path_permissions(app/core/functions/fn.addons.php)     app/core/functions/
- * fn_check_writable_path_permissions(app/core/functions/not_a_file.php)    app/core/functions/
- * fn_check_writable_path_permissions(design/index.tpl)                     true
- * fn_check_writable_path_permissions(design/test_file.tpl)                 true
- *
- * @param string $path Path to file
- * @return bool true of path is writable or (string) path to parent non-writable directory
- *
- */
-function fn_check_writable_path_permissions($path)
-{
-    if (is_writable($path)) {
-        $result = true;
-
-    } elseif (is_dir($path)) {
-        $result = $path;
-
-    } else {
-        $result = call_user_func(__FUNCTION__, dirname($path));
-    }
-
-    return $result;
-}
-
-/**
- * Copies files using FTP access
- *
- * @param string $source Absolute path (non-ftp) to source dir/file
- * @param string $destination Absolute path (non-ftp) to destination dir/file
- * @param array $ftp_access
- *      array(
- *          'hostname',
- *          'username',
- *          'password',
- *          'directory'
- *      )
- * @return bool true if all files were copied or (string) Error message
- */
-function fn_copy_by_ftp($source, $destination, $ftp_access)
-{
-    try {
-        $ftp = new Ftp;
-
-        $ftp->connect($ftp_access['hostname']);
-        $ftp->login($ftp_access['username'], $ftp_access['password']);
-        $ftp->chdir($ftp_access['directory']);
-
-        $files = $ftp->nlist('');
-        if (!empty($files) && in_array('config.php', $files)) {
-            $ftp_destination = str_replace(Registry::get('config.dir.root'), '', $destination);
-
-            if (is_file($source)) { // File
-
-                try {
-                    $file = ltrim($ftp_destination, '/');
-                    $ftp->put($file, $source, FTP_BINARY);
-                } catch (FtpException $e) {
-                    throw new FtpException('ftp_access_denied' . ':' . $e->getMessage());
-                }
-
-            } else { // Dir
-
-                $ftp->chdir($ftp_access['directory'] . $ftp_destination);
-
-                $struct = fn_get_dir_contents($source, false, true, '', '', true);
-
-                foreach ($struct as $file) {
-                    $dir = dirname($file);
-
-                    if (!$ftp->isDir($dir)) {
-                        try {
-                            $ftp->mkDirRecursive($dir);
-                        } catch (FtpException $e) {
-                            throw new FtpException('ftp_access_denied' . ':' . $e->getMessage());
-                        }
-                    }
-
-                    try {
-                        $ftp->put($file, $source . $file, FTP_BINARY);
-                    } catch (FtpException $e) {
-                        throw new FtpException('ftp_access_denied' . ':' . $e->getMessage());
-                    }
-                }
-            }
-
-            return true;
-
-        } else {
-            throw new FtpException('ftp_directory_is_incorrect');
-        }
-
-    } catch (FtpException $e) {
-        return __('invalid_ftp_access') . ': ' . $e->getMessage();
-    }
-
-    return false;
-}
-
-/**
- * Checks if path to directory/file is under base directory
- * @param string $base_dir base directory
- * @param string $path path to be checked
- * @return boolean true if path is valid, false - otherwise
- */
-function fn_is_valid_path($base_dir, $path)
-{
-    $base_dir = rtrim($base_dir, '/') . '/';
-
-    if (strpos($path, $base_dir) !== 0) {
-        // relative path
-        $path = fn_normalize_path($base_dir . $path);
-    }
-
-    if (strpos($path, $base_dir) !== 0) {
-        return false;
-    }
-
-    return true;
-}
-
-/**
- * @param string $file_path Path to file
- *
- * @return string File's permissions, group and owner in format "drwxrwxrwx www-data:www-data"
- */
-function fn_get_file_perms_info($file_path)
-{
-    clearstatcache(true, $file_path);
-
-    return sprintf('%s %s:%s',
-        fn_get_readable_file_perms(fileperms($file_path)),
-        fn_get_server_username_by_id(fileowner($file_path)),
-        fn_get_server_group_name_by_id(filegroup($file_path))
-    );
-}
-
-/**
- * Converts file permissions to human-readable format.
- *
- * @param int $perms fileperms() function call result
- *
- * @return string Human-readable file permissions (drwxrwxrwx)
- */
-function fn_get_readable_file_perms($perms)
-{
-    if (($perms & 0xC000) == 0xC000) {
-        // Socket
-        $info = 's';
-    } elseif (($perms & 0xA000) == 0xA000) {
-        // Symbolic link
-        $info = 'l';
-    } elseif (($perms & 0x8000) == 0x8000) {
-        // Usual
-        $info = '-';
-    } elseif (($perms & 0x6000) == 0x6000) {
-        // Special block
-        $info = 'b';
-    } elseif (($perms & 0x4000) == 0x4000) {
-        // Dir
-        $info = 'd';
-    } elseif (($perms & 0x2000) == 0x2000) {
-        // Special symbol
-        $info = 'c';
-    } elseif (($perms & 0x1000) == 0x1000) {
-        // FIFO stream
-        $info = 'p';
-    } else {
-        // Unknown
-        $info = 'u';
-    }
-
-    // Owner
-    $info .= (($perms & 0x0100) ? 'r' : '-');
-    $info .= (($perms & 0x0080) ? 'w' : '-');
-    $info .= (($perms & 0x0040)
-        ? (($perms & 0x0800) ? 's' : 'x')
-        : (($perms & 0x0800) ? 'S' : '-'));
-
-    // Group
-    $info .= (($perms & 0x0020) ? 'r' : '-');
-    $info .= (($perms & 0x0010) ? 'w' : '-');
-    $info .= (($perms & 0x0008)
-        ? (($perms & 0x0400) ? 's' : 'x')
-        : (($perms & 0x0400) ? 'S' : '-'));
-
-    // World
-    $info .= (($perms & 0x0004) ? 'r' : '-');
-    $info .= (($perms & 0x0002) ? 'w' : '-');
-    $info .= (($perms & 0x0001)
-        ? (($perms & 0x0200) ? 't' : 'x')
-        : (($perms & 0x0200) ? 'T' : '-'));
-
-    return $info;
-}
-
-/**
- * @param string $unix_user_id UNIX user ID
- *
- * @return string
- */
-function fn_get_server_username_by_id($unix_user_id)
-{
-    if (function_exists('posix_getpwuid')) {
-        $user_info = posix_getpwuid($unix_user_id);
-        if (is_array($user_info) && isset($user_info['name'])) {
-            return $user_info['name'];
-        }
-    }
-
-    return $unix_user_id;
-}
-
-/**
- * @param string $unix_group_id UNIX group ID
- *
- * @return string
- */
-function fn_get_server_group_name_by_id($unix_group_id)
-{
-    if (function_exists('posix_getgrgid')) {
-        $group_info = posix_getgrgid($unix_group_id);
-        if (is_array($group_info) && isset($group_info['name'])) {
-            return $group_info['name'];
-        }
-    }
-
-    return $unix_group_id;
-}
-
-/**
- * @return string Name of user that owns current PHP process
- */
-function fn_get_process_owner_name()
-{
-    if (function_exists('posix_getuid')) {
-        return fn_get_server_username_by_id(posix_getuid());
-    } else {
-        return (string)(getenv('USERNAME') ?: getenv('USER'));
-    }
-}
-
-/**
- * Allows to fetch a list of parent directories for given path. This functions doesn't checks real filesystem
- * and operates only using given path string.
- *
- * @param string $path Path to file or directory
- *
- * @return array List of paths of parent directories
- */
-function fn_get_parent_directory_stack($path)
-{
-    $directories = array();
-    while ($path = dirname($path)) {
-        if (!empty($path) && $path !== '.' && $path !== DIRECTORY_SEPARATOR) {
-            $directories[] = rtrim($path, '\\/') . DIRECTORY_SEPARATOR;
-        } else {
-            break;
-        }
-    }
-
-    return $directories;
 }

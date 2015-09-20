@@ -19,7 +19,6 @@
         <p class="p-notice">{__("text_exim_import_notice")}</p>
         {split data=$pattern.export_fields size=5 assign="splitted_fields" simple=true size_is_horizontal=true}
         <table class="table table-striped table-exim">
-            <tr>
             {foreach from=$splitted_fields item="fields"}
                 <td>
                     <ul class="unstyled">
@@ -29,7 +28,6 @@
                     </ul>
                 </td>
             {/foreach}
-            </tr>
         </table>
     </div>
 
@@ -58,10 +56,6 @@
                         <option value="{$vk}" {if $vk == $o.default_value}checked="checked"{/if}>{__($vi)}</option>
                     {/foreach}
                 </select>
-            {/if}
-
-            {if $o.notes}
-                <p class="muted">{$o.notes nofilter}</p>
             {/if}
         </div>
     </div>

@@ -33,19 +33,3 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 }
-
-if ($mode == 'verify') {
-    fn_add_breadcrumb(__('age_verification'));
-    $available_objects = array('product_descriptions' => 'product_id', 'category_descriptions' => 'category_id');
-    if (isset($_REQUEST['object']) && in_array($_REQUEST['object'], array_keys($available_objects)) && isset($_REQUEST['object_id'])) {
-        $field = $available_objects[$_REQUEST['object']];
-        $message = db_get_field("SELECT age_warning_message FROM ?:$_REQUEST[object] WHERE $field = ?i AND lang_code = ?s", $_REQUEST['object_id'], CART_LANGUAGE);
-        Tygh::$app['view']->assign('age_warning_message', $message);
-    }
-
-    if (isset($_REQUEST['type']) && $_REQUEST['type'] == 'deny') {
-        Tygh::$app['view']->assign('age_warning_type', 'deny');
-    } else {
-        Tygh::$app['view']->assign('age_warning_type', 'form');
-    }
-}

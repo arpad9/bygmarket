@@ -16,21 +16,21 @@ use Tygh\Session;
 use Tygh\Registry;
 
 if (!defined('BOOTSTRAP')) {
-    define('FORCE_SESSION_START', true);
+    define('SKIP_SESSION_VALIDATION', true);
     //it will be merged with the $_REQUEST later
     $_GET['dispatch'] = 'checkout.cresecure_template';
 
     require './init_payment.php';
     require (Registry::get('config.dir.root') . '/app/controllers/frontend/init.php');
-    Tygh::$app['view']->assign('display_base_href', true);
+    Registry::get('view')->assign('display_base_href', true);
     //We should assign this information to display in the default checkout blocks (Order summary and Products in your order)
-    Tygh::$app['view']->assign('cart', $_SESSION['cart']);
-    Tygh::$app['view']->assign('cart_products', $_SESSION['cart']['products']);
+    Registry::get('view')->assign('cart', $_SESSION['cart']);
+    Registry::get('view')->assign('cart_products', $_SESSION['cart']['products']);
 
     fn_add_breadcrumb(__('payment_information'));
-    Tygh::$app['view']->assign('content_tpl', 'views/orders/processors/cresecure.tpl');
+    Registry::get('view')->assign('content_tpl', 'views/orders/processors/cresecure.tpl');
 
-    Tygh::$app['view']->display(Registry::get('runtime.root_template'));
+    Registry::get('view')->display(Registry::get('runtime.root_template'));
 } else {
 
 if (defined('PAYMENT_NOTIFICATION')) {

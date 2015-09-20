@@ -1,7 +1,6 @@
 {scripts}
 
 {script src="js/lib/jquery/jquery.min.js"}
-{script src="js/lib/modernizr/modernizr.custom.js"}
 {script src="js/tygh/core.js"}
 {script src="js/tygh/history.js"}
 
@@ -15,15 +14,18 @@
 
 {script src="js/tygh/ajax.js"}
 
-{script src="js/tygh/quick_menu.js"}
+{if $settings.General.feedback_type == "auto"}
+    {include file="common/analytics.tpl"}
+{/if}
 
 {capture name="promo_data"}
     <div class="commercial-promotion-text">
-        <p>{$addon_permissions_text.text nofilter}</p>
+        <p>{__("text_forbidden_functionality")}</p>
     <div>
 {/capture}
 
 <script type="text/javascript">
+//<![CDATA[
 (function(_, $) {
     _.tr({
         cannot_buy: '{__("cannot_buy")|escape:"javascript"}',
@@ -54,8 +56,8 @@
         error_ajax: '{__("error_ajax")|escape:"javascript"}',
         text_changes_not_saved: '{__("text_changes_not_saved")|escape:"javascript"}',
         text_data_changed: '{__("text_data_changed")|escape:"javascript"}',
-        trial_notice: '{__("text_block_trial_notice", ["[href]" => $config.resources.license_url])|escape:"javascript"}',
-        expired_license: '{__("text_expired_license", ["[product]" => $smarty.const.PRODUCT_NAME])|escape:"javascript"}',
+        trial_notice: '{__("text_block_trial_notice")|escape:"javascript"}',
+        expired_license: '{__("text_expired_license")|escape:"javascript"}',
         file_browser: '{__("file_browser")|escape:"javascript"}',
         editing_block: '{__("editing_block")|escape:"javascript"}',
         editing_grid: '{__("editing_grid")|escape:"javascript"}',
@@ -67,10 +69,8 @@
         add_block: '{__("add_block")|escape:"javascript"}',
         text_position_updating: '{__("text_position_updating")|escape:"javascript"}',
         more: '{__("more")|escape:"javascript"}',
-        browse: '{__("browse")|escape:javascript}',
-        enter_new_lang_code: '{__("enter_new_lang_code")|escape:javascript}',
-        no_image: '{__("no_image")|escape:javascript}',
-        cookie_is_disabled: '{__("cookie_is_disabled")|escape:"javascript"}'
+        text_full_mode_required: '{__("text_full_mode_required")|escape:javascript}',
+        browse: '{__("browse")|escape:javascript}'
     });
 
     $.extend(_, {
@@ -90,34 +90,34 @@
             }
         },
         default_editor: '{$settings.Appearance.default_wysiwyg_editor}',
-        default_previewer: '{$settings.Appearance.default_image_previewer}',
+        frontend_css: '{""|fn_get_frontend_css}',
+        default_previewer: '{$settings.Appearance.default_image_previewer}',    
         current_path: '{$config.current_path|escape:javascript nofilter}',
         current_location: '{$config.current_location|escape:javascript nofilter}',
+        current_url: '{$config.current_url|escape:javascript nofilter}',
         images_dir: '{$images_dir}',
         notice_displaying_time: {if $settings.Appearance.notice_displaying_time}{$settings.Appearance.notice_displaying_time}{else}0{/if},
         cart_language: '{$smarty.const.CART_LANGUAGE}',
-        language_direction: '{$language_direction}',
         default_language: '{$smarty.const.DEFAULT_LANGUAGE}',
         cart_prices_w_taxes: {if ($settings.Appearance.cart_prices_w_taxes == 'Y')}true{else}false{/if},
+        translate_mode: {if $runtime.customization_mode.translation}true{else}false{/if},
         theme_name: '{$settings.theme_name|escape:javascript nofilter}',
-        current_url: '{$config.current_url|fn_url|escape:javascript nofilter}',
+        regexp: [],
+        current_url: '{$config.current_url|escape:javascript nofilter}',
         {if $config.tweaks.anti_csrf}
         security_hash: '{""|fn_generate_security_hash}', // CSRF form protection key
         {/if}
-        promo_data: {
-            title: '{$addon_permissions_text.title|escape:javascript nofilter}',
-            text: '{$smarty.capture.promo_data|escape:javascript nofilter}'
-        }
+        promo_data: '{$smarty.capture.promo_data|escape:javascript nofilter}'
     });
 
     $(document).ready(function(){
         $.runCart('A');
     });
 }(Tygh, Tygh.$));
+//]]>
 </script>
 
 {hook name="index:scripts"}
 {/hook}
-
 
 {/scripts}

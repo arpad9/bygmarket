@@ -11,7 +11,7 @@
         {/if}
 
         {if $up.profile_type != "P"}
-            {include file="buttons/button.tpl" but_meta="cm-confirm cm-post" but_icon="icon-trash" but_href="profiles.delete_profile?user_id=`$user_data.user_id`&profile_id=`$up.profile_id`" but_role="delete_item"}
+            {include file="buttons/button.tpl" but_meta="cm-confirm" but_text="&nbsp;" but_href="profiles.delete_profile?user_id=`$user_data.user_id`&profile_id=`$up.profile_id`" but_role="delete_item"}
         {/if}
 
         {if !$smarty.foreach.pfe.last}&nbsp;|&nbsp;{/if}

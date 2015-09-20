@@ -16,7 +16,7 @@
     
     <li id="container_add_bonus" class="clear hidden cm-row-item">
         <div class="option">
-            <select onchange="Tygh.$.ceAjax('request', fn_url('promotions.dynamic?prefix=' + encodeURIComponent(this.name) + '&bonus=' + this.value + '&elm_id=' + this.id), {$ldelim}result_ids: 'container_' + this.id{$rdelim})">
+            <select onchange="Tygh.$.ceAjax('request', '{"promotions.dynamic?prefix="|fn_url:'A':'rel' nofilter}' + escape(this.name) + '&bonus=' + this.value + '&elm_id=' + this.id, {$ldelim}result_ids: 'container_' + this.id{$rdelim})">
                 <option value=""> -- </option>
                 {foreach from=$schema.bonuses key="_k" item="b"}
                     {if $zone|in_array:$b.zones}

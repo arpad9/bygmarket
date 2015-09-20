@@ -12,6 +12,7 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
+use Tygh\Http;
 use Tygh\Mailer;
 use Tygh\Pdf;
 use Tygh\Registry;
@@ -19,6 +20,8 @@ use Tygh\Storage;
 use Tygh\Settings;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
+
+fn_define('GOOGLE_ORDER_DATA', 'O');
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
@@ -43,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Log order update
         fn_log_event('orders', 'update', array(
             'order_id' => $_REQUEST['order_id'],
+            'company_id' => fn_get_company_id('orders', 'order_id', $_REQUEST['order_id']),
         ));
 
         db_query('UPDATE ?:orders SET ?u WHERE order_id = ?i', $_REQUEST['update_order'], $_REQUEST['order_id']);
@@ -74,18 +78,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             db_query('REPLACE INTO ?:order_data ?e', $_data);
         }*/
 
-        $edp_data = array();
         $order_info = fn_get_order_info($_REQUEST['order_id'], false, true, false, true);
-        if (!empty($_REQUEST['activate_files'])) {
-            $edp_data = fn_generate_ekeys_for_edp(array(), $order_info, $_REQUEST['activate_files']);
-        }
-        fn_order_notification($order_info, $edp_data, fn_get_notification_rules($_REQUEST));
+        fn_order_notification($order_info, array(), fn_get_notification_rules($_REQUEST));
 
         if (!empty($_REQUEST['prolongate_data']) && is_array($_REQUEST['prolongate_data'])) {
             foreach ($_REQUEST['prolongate_data'] as $ekey => $v) {
                 $newttl = fn_parse_date($v, true);
                 db_query('UPDATE ?:product_file_ekeys SET ?u WHERE ekey = ?s', array('ttl' => $newttl), $ekey);
             }
+        }
+
+        if (!empty($_REQUEST['activate_files'])) {
+            $edp_data = fn_generate_ekeys_for_edp(array(), $order_info, $_REQUEST['activate_files']);
+        }
+
+        if (!empty($edp_data)) {
+            Mailer::sendMail(array(
+                'to' => $order_info['email'],
+                'from' => 'company_orders_department',
+                'data' => array(
+                    'order_info' => $order_info,
+                    'edp_data' => $edp_data,
+                ),
+                'tpl' => 'orders/edp_access.tpl',
+                'company_id' => $order_info['company_id'],
+            ), 'C', $order_info['lang_code']);
         }
 
         // Update file downloads section
@@ -148,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             unset($_REQUEST['redirect_url']);
 
-            return array(CONTROLLER_STATUS_REDIRECT, 'exim.export?section=orders&pattern_id=' . $_SESSION['export_ranges']['orders']['pattern_id']);
+            return array(CONTROLLER_STATUS_REDIRECT, "exim.export?section=orders&pattern_id=" . $_SESSION['export_ranges']['orders']['pattern_id']);
         }
     }
 
@@ -156,52 +173,103 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (!empty($_REQUEST['order_ids'])) {
             unset($_REQUEST['redirect_url']);
 
-            return array(CONTROLLER_STATUS_REDIRECT, 'products.manage?order_ids=' . implode(',', $_REQUEST['order_ids']));
+            return array(CONTROLLER_STATUS_REDIRECT, "products.manage?order_ids=" . implode(',', $_REQUEST['order_ids']));
         }
     }
 
+    if ($mode == 'google') {
+        $google_request_sent = false;
+        $order_info = fn_get_order_info($_REQUEST['order_id'], false, true, false, true);
+        $processor_data = fn_get_payment_method_data($order_info['payment_id']);
+        $base_url = "https://" . (($processor_data['processor_params']['test'] == 'N') ? 'checkout.google.com' : 'sandbox.google.com/checkout') . '/cws/v2/Merchant/' . $processor_data['processor_params']['merchant_id'];
+        $request_url = $base_url . '/request';
+        $schema_url = 'http://checkout.google.com/schema/2';
+        $google_data = !empty($_REQUEST['google_data']) ? $_REQUEST['google_data'] : array();
 
-    if ($mode == 'delete') {
-        fn_delete_order($_REQUEST['order_id']);
+        $post = array();
+        // XML request to mark order delivered
+        if ($action == 'deliver') {
+            $ship_info = reset($order_info['shipping']);
 
-        return array(CONTROLLER_STATUS_REDIRECT);
-    }
+            $post = array();
+            $post[] = "<deliver-order xmlns='" . $schema_url . "' google-order-number='" . $order_info['payment_info']['transaction_id'] . "'>";
+            $post[] = '<tracking-data>';
+            $post[] = '<carrier>' . (!empty($ship_info['carrier']) ? $ship_info['carrier'] : 'Other') . '</carrier>';
+            $post[] = '<tracking-number>' . (!empty($ship_info['tracking_number']) ? $ship_info['tracking_number'] : '') . '</tracking-number>';
+            $post[] = '</tracking-data>';
+            $post[] = '<send-email>false</send-email>';
+            $post[] = '</deliver-order>';
 
-    if ($mode == 'update_status') {
+        // XML request to cancel the order
+        } elseif ($action == 'add_tracking_data') {
+            //$ship_info = reset($order_info['shipping']);
 
-        $order_info = fn_get_order_short_info($_REQUEST['id']);
-        $old_status = $order_info['status'];
-        if (fn_change_order_status($_REQUEST['id'], $_REQUEST['status'], '', fn_get_notification_rules($_REQUEST))) {
-            $order_info = fn_get_order_short_info($_REQUEST['id']);
-            fn_check_first_order($order_info);
-            $new_status = $order_info['status'];
-            if ($_REQUEST['status'] != $new_status) {
-                Tygh::$app['ajax']->assign('return_status', $new_status);
-                Tygh::$app['ajax']->assign('color', fn_get_status_param_value($new_status, 'color'));
-
-                fn_set_notification('W', __('warning'), __('status_changed'));
-            } else {
-                fn_set_notification('N', __('notice'), __('status_changed'));
+            foreach ($order_info['shipping'] as $ship_info) {
+                if (!empty($ship_info['carrier']) && !empty($ship_info['tracking_number'])) {
+                    $post = array();
+                    $post[] = "<add-tracking-data xmlns='" . $schema_url . "' google-order-number='" . $order_info['payment_info']['transaction_id'] . "'>";
+                    $post[] = '<tracking-data>';
+                    $post[] = '<carrier>' . $ship_info['carrier'] . '</carrier>';
+                    $post[] = '<tracking-number>' . $ship_info['tracking_number'] . '</tracking-number>';
+                    $post[] = '</tracking-data>';
+                    $post[] = '</add-tracking-data>';
+                    fn_google_send_order_command($post, $processor_data, $request_url, $action, $_REQUEST['order_id']);
+                }
             }
-        } else {
-            fn_set_notification('E', __('error'), __('error_status_not_changed'));
-            Tygh::$app['ajax']->assign('return_status', $old_status);
-            Tygh::$app['ajax']->assign('color', fn_get_status_param_value($old_status, 'color'));
+            $google_request_sent = true;
+
+        // XML request to send a message to the customer
+        } elseif ($action == 'send_message') {
+            $post[] = "<send-buyer-message xmlns='" . $schema_url . "' google-order-number='" . $order_info['payment_info']['transaction_id'] . "'>";
+            $post[] = '<message>' . $google_data['message'] . '</message>';
+            $post[] = '<send-email>true</send-email>';
+            $post[] = '</send-buyer-message>';
+
+        // XML request to refund the order
+        } elseif ($action == 'charge') {
+            $post[] = "<charge-order xmlns='" . $schema_url . "' google-order-number='" . $order_info['payment_info']['transaction_id'] . "'>";
+            $post[] = '<amount currency="' . $processor_data['processor_params']['currency'] . '">' . $google_data['charge_amount'] . '</amount>';
+            $post[] = '</charge-order>';
+
+        // XML request to refund the order
+        } elseif ($action == 'refund') {
+            $post[] = "<refund-order xmlns='" . $schema_url . "' google-order-number='" . $order_info['payment_info']['transaction_id'] . "'>";
+            $post[] = '<amount currency="' . $processor_data['processor_params']['currency'] . '">' . $google_data['refund_amount'] . '</amount>';
+            $post[] = '<reason>' . $google_data['refund_reason'] . '</reason>';
+            $post[] = '<comment>' . $google_data['refund_comment'] . '</comment>';
+            $post[] = '</refund-order>';
+
+        // XML request to cancel the order
+        } elseif ($action == 'cancel') {
+            $post[] = "<cancel-order xmlns='" . $schema_url . "' google-order-number='" . $order_info['payment_info']['transaction_id'] . "'>";
+            $post[] = '<reason>' . $google_data['cancel_reason'] . '</reason>';
+            $post[] = '<comment>' . $google_data['cancel_comment'] . '</comment>';
+            $post[] = '</cancel-order>';
+
+        // XML request to archive the order
+        } elseif ($action == 'archive') {
+            $post[] = "<archive-order xmlns='" . $schema_url . "' google-order-number='" . $order_info['payment_info']['transaction_id'] . "' />";
+
         }
 
-        if (empty($_REQUEST['return_url'])) {
-            exit;
-        } else {
-            return array(CONTROLLER_STATUS_REDIRECT, $_REQUEST['return_url']);
+        if (!$google_request_sent) {
+            fn_google_send_order_command($post, $processor_data, $request_url, $action, $_REQUEST['order_id']);
         }
+
+        $suffix = '.details?order_id=' . $_REQUEST['order_id'];
     }
 
-    return array(CONTROLLER_STATUS_OK, 'orders' . $suffix);
+    return array(CONTROLLER_STATUS_OK, "orders" . $suffix);
 }
 
 $params = $_REQUEST;
 
-if ($mode == 'print_invoice') {
+if ($mode == 'delete') {
+    fn_delete_order($_REQUEST['order_id']);
+
+    return array(CONTROLLER_STATUS_REDIRECT);
+
+} elseif ($mode == 'print_invoice') {
     if (!empty($_REQUEST['order_id'])) {
         fn_print_order_invoices($_REQUEST['order_id'], !empty($_REQUEST['format']) && $_REQUEST['format'] == 'pdf');
     }
@@ -217,7 +285,6 @@ if ($mode == 'print_invoice') {
     $_REQUEST['order_id'] = empty($_REQUEST['order_id']) ? 0 : $_REQUEST['order_id'];
 
     $order_info = fn_get_order_info($_REQUEST['order_id'], false, true, true, true);
-    fn_check_first_order($order_info);
 
     if (empty($order_info)) {
         return array(CONTROLLER_STATUS_NO_PAGE);
@@ -234,7 +301,7 @@ if ($mode == 'print_invoice') {
         $company_id = !empty($order_info['company_id']) ? $order_info['company_id'] : null;
 
         $shippings = fn_get_available_shippings($company_id);
-        Tygh::$app['view']->assign('shippings', $shippings);
+        Registry::get('view')->assign('shippings', $shippings);
     }
 
     Registry::set('navigation.tabs', array (
@@ -248,29 +315,48 @@ if ($mode == 'print_invoice') {
         ),
     ));
 
+    $google_info = db_get_field("SELECT data FROM ?:order_data WHERE order_id = ?i AND type = ?s", $_REQUEST['order_id'], GOOGLE_ORDER_DATA);
+
     if (fn_allowed_for('MULTIVENDOR')) {
-        Tygh::$app['view']->assign('take_surcharge_from_vendor', fn_take_payment_surcharge_from_vendor($order_info['products']));
+        Registry::get('view')->assign('take_surcharge_from_vendor', fn_take_payment_surcharge_from_vendor($order_info['products']));
     }
 
-    $downloads_exist = false;
-
-    foreach ($order_info['products'] as $k => $v) {
-
-        if (!$downloads_exist && !empty($v['extra']['is_edp']) && $v['extra']['is_edp'] == 'Y') {
-            $downloads_exist = true;
-        }
-
-        $order_info['products'][$k]['main_pair'] = fn_get_cart_product_icon(
-            $v['product_id'], $order_info['products'][$k]
-        );
-    }
-
-    if ($downloads_exist) {
-        Registry::set('navigation.tabs.downloads', array (
-            'title' => __('downloads'),
+    if (!empty($google_info)) {
+        Registry::set('navigation.tabs.google', array (
+            'title' => __('google_info'),
             'js' => true
         ));
-        Tygh::$app['view']->assign('downloads_exist', true);
+
+        $google_info = unserialize($google_info);
+
+        $google_actions = array();
+        if (($google_info['financial_state'] == "CHARGED" || $google_info['financial_state'] == "REFUNDED") && $google_info['refunded_amount'] != $order_info['total']) {
+            $google_actions['refund'] = true;
+        }
+
+        if (((!empty($google_info['refunded_amount']) && $google_info['refunded_amount'] == $google_info['charged_amount']) || (!empty($google_info['chargeback_amount']) && $google_info['chargeback_amount'] == $google_info['charged_amount'])) && !($google_info['financial_state'] == "CANCELLED" || $google_info['financial_state'] == "CANCELLED_BY_GOOGLE")) {
+            $google_actions['cancel'] = true;
+        }
+        
+        if ($google_info['charged_amount'] < $order_info['total']) {
+            $google_actions['charge'] = true;
+        }
+
+        $_SESSION['google_info'] = $google_info;
+        
+        Registry::get('view')->assign('google_actions', $google_actions);
+        Registry::get('view')->assign('google_info', $google_info);
+    }
+
+    foreach ($order_info['products'] as $v) {
+        if (!empty($v['extra']['is_edp']) && $v['extra']['is_edp'] == 'Y') {
+            Registry::set('navigation.tabs.downloads', array (
+                'title' => __('downloads'),
+                'js' => true
+            ));
+            Registry::get('view')->assign('downloads_exist', true);
+            break;
+        }
     }
 
     if (!empty($order_info['promotions'])) {
@@ -291,14 +377,13 @@ if ($mode == 'print_invoice') {
         }
         $use_shipments = true;
     } else {
-        Tygh::$app['view']->assign('shipments', $shipments);
+        Registry::get('view')->assign('shipments', $shipments);
     }
 
-    Tygh::$app['view']->assign('use_shipments', $use_shipments);
-    Tygh::$app['view']->assign('carriers', fn_get_carriers());
+    Registry::get('view')->assign('use_shipments', $use_shipments);
 
-    Tygh::$app['view']->assign('order_info', $order_info);
-    Tygh::$app['view']->assign('status_settings', fn_get_status_params($order_info['status']));
+    Registry::get('view')->assign('order_info', $order_info);
+    Registry::get('view')->assign('status_settings', fn_get_status_params($order_info['status']));
 
     // Delete order_id from new_orders table
     db_query("DELETE FROM ?:new_orders WHERE order_id = ?i AND user_id = ?i", $_REQUEST['order_id'], $auth['user_id']);
@@ -307,7 +392,7 @@ if ($mode == 'print_invoice') {
     if (!empty($order_info['user_id'])) {
         $current_email = db_get_field("SELECT email FROM ?:users WHERE user_id = ?i", $order_info['user_id']);
         if (!empty($current_email) && $current_email != $order_info['email']) {
-            Tygh::$app['view']->assign('email_changed', true);
+            Registry::get('view')->assign('email_changed', true);
         }
     }
 
@@ -315,11 +400,38 @@ if ($mode == 'print_invoice') {
     $_REQUEST['skip_view'] = 'Y';
 
     list($orders, $search) = fn_get_orders($_REQUEST, Registry::get('settings.Appearance.admin_orders_per_page'));
-    Tygh::$app['view']->assign('orders', $orders);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('orders', $orders);
+    Registry::get('view')->assign('search', $search);
 
-    Tygh::$app['view']->display('pickers/orders/picker_contents.tpl');
+    Registry::get('view')->display('pickers/orders/picker_contents.tpl');
     exit;
+
+} elseif ($mode == 'update_status') {
+
+    $order_info = fn_get_order_short_info($_REQUEST['id']);
+    $old_status = $order_info['status'];
+    if (fn_change_order_status($_REQUEST['id'], $_REQUEST['status'], '', fn_get_notification_rules($_REQUEST))) {
+        $order_info = fn_get_order_short_info($_REQUEST['id']);
+        $new_status = $order_info['status'];
+        if ($_REQUEST['status'] != $new_status) {
+            Registry::get('ajax')->assign('return_status', $new_status);
+            Registry::get('ajax')->assign('color', fn_get_status_param_value($new_status, 'color'));
+
+            fn_set_notification('W', __('warning'), __('status_changed'));
+        } else {
+            fn_set_notification('N', __('notice'), __('status_changed'));
+        }
+    } else {
+        fn_set_notification('E', __('error'), __('error_status_not_changed'));
+        Registry::get('ajax')->assign('return_status', $old_status);
+        Registry::get('ajax')->assign('color', fn_get_status_param_value($old_status, 'color'));
+    }
+
+    if (empty($_REQUEST['return_url'])) {
+        exit;
+    } else {
+        return array(CONTROLLER_STATUS_REDIRECT, $_REQUEST['return_url']);
+    }
 
 } elseif ($mode == 'manage') {
 
@@ -327,6 +439,8 @@ if ($mode == 'print_invoice') {
         $params['include_incompleted'] = true;
     }
 
+    // FIXME CORE SUPPLIERS
+    //$params['check_for_suppliers'] = true;
     if (fn_allowed_for('MULTIVENDOR')) {
         $params['company_name'] = true;
     }
@@ -334,11 +448,11 @@ if ($mode == 'print_invoice') {
     list($orders, $search, $totals) = fn_get_orders($params, Registry::get('settings.Appearance.admin_orders_per_page'), true);
 
     if (!empty($params['include_incompleted']) || !empty($search['include_incompleted'])) {
-        Tygh::$app['view']->assign('incompleted_view', true);
+        Registry::get('view')->assign('incompleted_view', true);
     }
 
     if (!empty($_REQUEST['redirect_if_one']) && count($orders) == 1) {
-        return array(CONTROLLER_STATUS_REDIRECT, 'orders.details?order_id=' . $orders[0]['order_id']);
+        return array(CONTROLLER_STATUS_REDIRECT, "orders.details?order_id={$orders[0]['order_id']}");
     }
 
     $shippings = fn_get_shippings(true, CART_LANGUAGE);
@@ -356,17 +470,37 @@ if ($mode == 'print_invoice') {
 
     $remove_cc = db_get_field("SELECT COUNT(*) FROM ?:status_data WHERE type = 'O' AND param = 'remove_cc_info' AND value = 'N'");
     $remove_cc = $remove_cc > 0 ? true : false;
-    Tygh::$app['view']->assign('remove_cc', $remove_cc);
+    Registry::get('view')->assign('remove_cc', $remove_cc);
 
-    Tygh::$app['view']->assign('orders', $orders);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('orders', $orders);
+    Registry::get('view')->assign('search', $search);
 
-    Tygh::$app['view']->assign('totals', $totals);
-    Tygh::$app['view']->assign('display_totals', fn_display_order_totals($orders));
-    Tygh::$app['view']->assign('shippings', $shippings);
+    Registry::get('view')->assign('totals', $totals);
+    Registry::get('view')->assign('display_totals', fn_display_order_totals($orders));
+    Registry::get('view')->assign('shippings', $shippings);
 
-    $payments = fn_get_payments(array('simple' => true));
-    Tygh::$app['view']->assign('payments', $payments);
+    $payments = fn_get_simple_payment_methods(false);
+    Registry::get('view')->assign('payments', $payments);
+
+} elseif ($mode == 'google') {
+    // In this action we loop the script until google data is changed
+    if ($action == 'wait_response') {
+        $current_time = TIME;
+        echo "Waiting for a Google response. Please be patient.";
+        fn_flush();
+        do {
+            echo ' .';
+            $google_info_new = db_get_field("SELECT data FROM ?:order_data WHERE order_id = ?i AND type = ?s", $_REQUEST['order_id'], GOOGLE_ORDER_DATA);
+            if ($google_info_new != $_SESSION['google_info']) {
+                unset($_SESSION['google_info']);
+
+                return array(CONTROLLER_STATUS_REDIRECT, "orders.details?order_id=$_REQUEST[order_id]");
+            }
+            sleep(1);
+        } while (time() - TIME < 59);
+
+        return array(CONTROLLER_STATUS_REDIRECT, "orders.google.wait_response?order_id=$_REQUEST[order_id]");
+    }
 
 } elseif ($mode == 'get_custom_file') {
     if (!empty($_REQUEST['file']) && !empty($_REQUEST['order_id'])) {
@@ -401,9 +535,41 @@ function fn_display_order_totals($orders)
     return $result;
 }
 
+function fn_google_send_order_command($post, $processor_data, $request_url, $action, $order_id)
+{
+    $_id = base64_encode($processor_data['processor_params']['merchant_id'] . ":" . $processor_data['processor_params']['merchant_key']);
+
+    $return = Http::post($request_url, implode("\n", $post), array(
+        'headers' => array(
+            'Content-type: application/xml',
+            "Authorization: Basic $_id",
+            'Accept: application/xml'
+        )
+    ));
+
+    preg_match("/<error-message>(.*)<\/error-message>/", $return, $error);
+
+    if (!empty($error[1])) {
+        fn_set_notification('E', __('notice'), $error[1]);
+    } else {
+        if (in_array($action, array('refund', 'cancel', 'deliver'))) {
+            $_SESSION['google_info'] = db_get_field("SELECT data FROM ?:order_data WHERE order_id = ?i AND type = ?s", $order_id, GOOGLE_ORDER_DATA);
+            echo "Request is successfully sent.<br />";
+            echo "Waiting for a Google response. Please be patient.";
+
+            return array(CONTROLLER_STATUS_OK, "orders.google.wait_response?order_id=$order_id");
+        }
+        fn_set_notification('N', __('notice'), __('google_request_sent', array(
+            '[action]' => __($action)
+        )));
+    }
+
+    return true;
+}
+
 function fn_print_order_packing_slips($order_ids, $pdf = false, $lang_code = CART_LANGUAGE)
 {
-    $view = Tygh::$app['view'];
+    $view = Registry::get('view');
     $html = array();
 
     if (!is_array($order_ids)) {
@@ -420,7 +586,7 @@ function fn_print_order_packing_slips($order_ids, $pdf = false, $lang_code = CAR
         $view->assign('order_info', $order_info);
 
         if ($pdf == true) {
-            fn_disable_live_editor_mode();
+            fn_disable_translation_mode();
             $html[] = $view->displayMail('orders/print_packing_slip.tpl', false, 'A', $order_info['company_id'], $lang_code);
         } else {
             $view->displayMail('orders/print_packing_slip.tpl', true, 'A', $order_info['company_id'], $lang_code);

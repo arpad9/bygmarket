@@ -156,7 +156,6 @@ class RealtimeServices
             'price' => $rate['cost'],
             'error' => $rate['error'],
             'shipping_key' => $shipping_key,
-            'delivery_time' => isset($rate['delivery_time']) ? $rate['delivery_time'] : false,
         );
     }
 

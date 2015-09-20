@@ -95,16 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $suffix = '.manage';
     }
 
-    if ($mode == 'delete') {
-
-        if (!empty($_REQUEST['tax_id'])) {
-            fn_delete_taxes($_REQUEST['tax_id']);
-        }
-
-        $suffix = '.manage';
-    }
-
-    return array(CONTROLLER_STATUS_OK, 'taxes' . $suffix);
+    return array(CONTROLLER_STATUS_OK, "taxes$suffix");
 }
 
 // ---------------------- GET routines ---------------------------------------
@@ -129,9 +120,9 @@ if ($mode == 'update') {
         ),
     ));
 
-    Tygh::$app['view']->assign('tax', $tax);
-    Tygh::$app['view']->assign('rates',  db_get_hash_array("SELECT * FROM ?:tax_rates WHERE tax_id = ?i", 'destination_id', $_REQUEST['tax_id']));
-    Tygh::$app['view']->assign('destinations', $destinations);
+    Registry::get('view')->assign('tax', $tax);
+    Registry::get('view')->assign('rates',  db_get_hash_array("SELECT * FROM ?:tax_rates WHERE tax_id = ?i", 'destination_id', $_REQUEST['tax_id']));
+    Registry::get('view')->assign('destinations', $destinations);
 
 // Add tax
 } elseif ($mode == 'add') {
@@ -147,10 +138,18 @@ if ($mode == 'update') {
         ),
     ));
 
-    Tygh::$app['view']->assign('destinations', fn_get_destinations());
+    Registry::get('view')->assign('destinations', fn_get_destinations());
 
 // Edit taxes
 } elseif ($mode == 'manage') {
 
-    Tygh::$app['view']->assign('taxes', fn_get_taxes(DESCR_SL));
+    Registry::get('view')->assign('taxes', fn_get_taxes(DESCR_SL));
+
+} elseif ($mode == 'delete') {
+
+    if (!empty($_REQUEST['tax_id'])) {
+        fn_delete_taxes($_REQUEST['tax_id']);
+    }
+
+    return array(CONTROLLER_STATUS_REDIRECT, "taxes.manage");
 }

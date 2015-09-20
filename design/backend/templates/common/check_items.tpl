@@ -16,8 +16,8 @@
             </a>
             {$smarty.capture.check_items_checkbox nofilter}
             <ul class="dropdown-menu">
-                <li><a class="cm-on" {$check_data nofilter}>{__("check_all")}</a></li>
-                <li><a class="cm-off" {$check_data nofilter}>{__("check_none")}</a></li>
+                <li><a class="cm-on" {$check_data nofilter}>{__("all")}</a></li>
+                <li><a class="cm-off" {$check_data nofilter}>{__("none")}</a></li>
                 {foreach $check_statuses as $status => $title}
                 <li><a {$check_data nofilter} data-ca-status="{$status|lower}">{$title}</a></li>
                 {/foreach}

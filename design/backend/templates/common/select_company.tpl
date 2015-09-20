@@ -5,11 +5,7 @@
 	{/capture}
 {else}
 	{capture name="mainbox"}
-        {$id = $select_id|default:"top_company_id"}
-
-        <div class="store-selector">
-            {__("pick_store")} - {include file="common/ajax_select_object.tpl" data_url="companies.get_companies_list?action=href" type="opened" text=__("select") id=$id}
-        </div>
+	    {__("text_select_vendor")} - {include file="common/ajax_select_object.tpl" data_url="companies.get_companies_list?action=href" text=__("select") id=$select_id|default:"top_company_id"}
 	{/capture}
 {/if}
 

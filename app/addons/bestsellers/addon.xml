@@ -1,47 +1,15 @@
 <?xml version="1.0"?>
-<addon scheme="3.0">
+<addon scheme="2.0">
     <id>bestsellers</id>
+    <name>Bestsellers</name>
+    <description>Makes it possible to collect data about the best selling products and add a product block filling type to represent them</description>
     <version>1.0</version>
     <priority>2300</priority>
     <position>120</position>
     <status>active</status>
-    <default_language>en</default_language>
     <auto_install>MULTIVENDOR,ULTIMATE</auto_install>
-    <settings edition_type="ROOT,ULT:VENDOR">
-        <sections>
-            <section id="general">
-                <items>
-                    <item id="final_sale_from">
-                        <type>input</type>
-                        <default_value>40</default_value>
-                    </item>
-                    <item id="sales_amount_from">
-                        <type>input</type>
-                        <default_value>1</default_value>
-                    </item>
-                </items>
-            </section>
-            <section id="newest">
-                <items>
-                    <item id="period">
-                        <type>selectbox</type>
-                        <default_value>all</default_value>
-                        <variants>
-                            <item id="all"> </item>
-                            <item id="today"> </item>
-                            <item id="last_days"> </item>
-                        </variants>
-                    </item>
-                    <item id="last_days">
-                        <type>input</type>
-                        <default_value>3</default_value>
-                    </item>
-                </items>
-            </section>
-        </sections>
-    </settings>
     <queries>
-        <item for="demo" type="file">database/demo.sql</item>
+        <item for="demo" type='file'>database/demo.sql</item>
         <item>DROP TABLE IF EXISTS ?:product_sales</item>
         <item>
             CREATE TABLE IF NOT EXISTS `?:product_sales` (
@@ -54,4 +22,54 @@
         </item>
         <item for="uninstall">DROP TABLE IF EXISTS ?:product_sales</item>
     </queries>
+    <translations>
+        <item for="name" lang="de">Bestseller</item>
+        <item for="name" lang="es">Más Vendidos</item>
+        <item for="name" lang="fr">Meilleures ventes</item>
+        <item for="name" lang="it">I piu venduti</item>
+        <item for="name" lang="da">Bestseller</item>
+        <item for="name" lang="ro">Cele mai vândute</item>
+        <item for="name" lang="ru">Хиты продаж</item>
+        <item for="name" lang="sl">Najbolj prodajani</item>
+        <item for="name" lang="zh">畅销</item>
+        <item for="description" lang="ru">Позволяет собирать информацию о самых продаваемых товарах и выводить их в блоке на витрине магазина</item>
+        <item for="description" lang="zh">可以收集最畅销产品的数据,并添加产品块的填充类型来展现他们</item>
+    </translations>
+    <language_variables>
+        <item lang="en" id="sort_by_bestsellers_asc">Sort by Bestselling: Low to High</item>
+        <item lang="en" id="sort_by_bestsellers_desc">Sort by Bestselling</item>
+        <item lang="ru" id="sort_by_bestsellers_asc">Сортировать по продаваемости: по возрастанию</item>
+        <item lang="ru" id="sort_by_bestsellers_desc">Сортировать по продаваемости</item>
+        <item lang="zh" id="sort_by_bestsellers_asc">按畅销排序: 低到高</item>
+        <item lang="zh" id="sort_by_bestsellers_desc">按畅销排序</item>
+        <item lang="en" id="sales_amount">Sales amount</item>
+        <item lang="en" id="bestselling">Bestselling</item>
+
+        <item lang="bg" id="sales_amount">Брой продажби</item>
+        <item lang="bg" id="bestselling">Най-продаван</item>
+
+        <item lang="da" id="sales_amount">Salgs beløb</item>
+        <item lang="da" id="bestselling">Mest solgte</item>
+
+        <item lang="el" id="sales_amount">Ποσό πωλήσεων</item>
+        <item lang="el" id="bestselling">Καλύτεροι πωλητές</item>
+
+        <item lang="it" id="sales_amount">Importo vendite</item>
+        <item lang="it" id="bestselling">Più venduto</item>
+
+        <item lang="no" id="sales_amount">Salgssum</item>
+        <item lang="no" id="bestselling">Bestselgende</item>
+
+        <item lang="ro" id="sales_amount">Suma de vânzări</item>
+        <item lang="ro" id="bestselling">Cele mai vândute</item>
+
+        <item lang="ru" id="sales_amount">Количество продаж</item>
+        <item lang="ru" id="bestselling">Кол-во продаж</item>
+
+        <item lang="sl" id="sales_amount">Prodajna količina</item>
+        <item lang="sl" id="bestselling">Uspešnica</item>
+
+        <item lang="zh" id="sales_amount">销售金额</item>
+        <item lang="zh" id="bestselling">热销产品</item>
+    </language_variables>
 </addon>

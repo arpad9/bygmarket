@@ -118,7 +118,30 @@ if (defined('PAYMENT_NOTIFICATION')) {
             $post['area'] = 'admin';
         }
 
-        fn_create_payment_form('https://secure.gate2shop.com/ppp/purchase.do', $post, 'Gate2Shop');
+        echo <<<EOT
+<form method="post" action="https://secure.gate2shop.com/ppp/purchase.do" name="process">
+EOT;
+
+        foreach ($post as $name => $value) {
+            echo "<input type=\"hidden\" name=\"$name\" value=\"$value\" />\n";
+        }
+
+        $msg = __('text_cc_processor_connection', array(
+            '[processor]' => 'Gate2Shop server'
+        ));
+
+        echo "\n";
+        echo <<<EOT
+</form>
+<p><div align=center>{$msg}</div></p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+</body>
+</html>
+EOT;
         exit;
     }
 }

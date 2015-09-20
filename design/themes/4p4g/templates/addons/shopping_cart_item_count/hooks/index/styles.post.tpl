@@ -1,0 +1,1 @@
+{style src="addons/shopping_cart_item_count/styles.css"}

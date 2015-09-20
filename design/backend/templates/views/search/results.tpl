@@ -4,6 +4,11 @@
     {if $found_objects}
         {capture name="tabsbox"}
             {foreach from=$found_objects key="object" item="data"}
+                {capture name="adv_buttons"}
+                    {$smarty.capture.adv_buttons nofilter}
+                    <div class="cm-tab-tools" id="tools_manage_{$object}_adv_buttons">
+                    <!--tools_{$object}_adv_buttons--></div>
+                {/capture}
                 {capture name="buttons"}
                     {$smarty.capture.buttons nofilter}
                     <div class="cm-tab-tools btn-bar btn-toolbar" id="tools_manage_{$object}_buttons">
@@ -49,4 +54,4 @@
 
 {/capture}
 {assign var="title" value=__("search_results_for", ["[search]" => $smarty.request.q])}
-{include file="common/mainbox.tpl" title=$title content=$smarty.capture.mainbox buttons=$smarty.capture.buttons main_buttons_meta=""}
+{include file="common/mainbox.tpl" title=$title content=$smarty.capture.mainbox adv_buttons=$smarty.capture.adv_buttons buttons=$smarty.capture.buttons main_buttons_meta=""}

@@ -109,14 +109,18 @@ if (defined('PAYMENT_NOTIFICATION')) {
 
     $_current_os = fn_strtolower(substr(PHP_OS,0,3));
 
-    $post_data_line = escapeshellarg(implode("\" \"", $post_data));
-
     // Generate Hash
-    if ($_current_os == 'sun') {
+    if ($_current_os == 'win') {
+        @exec('PATH ' . Registry::get('config.dir.payments') . 'hsbc_files/lib/' . $_current_os);
+        $post_data_line = implode("\" \"", $post_data);
+        @exec(Registry::get('config.dir.payments') . 'hsbc_files/modules/' . $_current_os . '/TestHash.exe ' . $hashkey . " \"" . $post_data_line . "\"", $data);
+    } elseif ($_current_os == 'sun') {
         putenv("LD_LIBRARY_PATH=" . Registry::get('config.dir.payments') . "hsbc_files/lib/$_current_os");
+        $post_data_line = implode("\" \"", $post_data);
         @exec(Registry::get('config.dir.payments') . "hsbc_files/modules/$_current_os/TestHash.e ".$hashkey . " \"" . $post_data_line . "\"", $data);
     } elseif ($_current_os == 'lin') {
         putenv("LD_LIBRARY_PATH=" . Registry::get('config.dir.payments') . "hsbc_files/lib/$_current_os");
+        $post_data_line = implode("\" \"", $post_data);
         @exec(Registry::get('config.dir.payments') . "hsbc_files/modules/$_current_os/TestHash.e ".$hashkey . " \"" . $post_data_line . "\"", $data);
     }
 
@@ -132,7 +136,34 @@ if (defined('PAYMENT_NOTIFICATION')) {
     } else {
         $post_data["OrderHash"] = $a[1];
 
-        fn_create_payment_form('https://www.cpi.hsbc.com/servlet', $post_data, 'HSBC');
+        $msg = __('text_cc_processor_connection', array(
+            '[processor]' => 'HSBC server'
+        ));
+
+        echo <<<EOT
+        <form action="https://www.cpi.hsbc.com/servlet" method="post" name="process">
+EOT;
+
+        if ($post_data) {
+            foreach ($post_data as $k => $v) {
+                echo "<input type=hidden name='$k' value='$v'>\n";
+            }
+        }
+
+        echo <<<EOT
+        </form>
+        <br />
+        <p>
+        <div align="center">{$msg}</div>
+        </p>
+        <script type="text/javascript">
+        window.onload = function(){
+            document.process.submit();
+        };
+        </script>
+        </body>
+        </html>
+EOT;
         exit;
     }
 }

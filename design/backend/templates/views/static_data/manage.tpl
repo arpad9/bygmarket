@@ -2,7 +2,7 @@
 
 {capture name="mainbox"}
 <form action="{""|fn_url}" method="post" name="static_data_tree_form">
-<div class="{if !""|fn_allow_save_object:"static_data":$section_data.skip_edition_checking} cm-hide-inputs{/if}" id="static_data_list">
+<div id="static_data_list" class="{if !""|fn_allow_save_object:"static_data":$section_data.skip_edition_checking} cm-hide-inputs{/if}">
 {if $section_data.multi_level == true}
     <input name="section" type="hidden" value="{$section}" />
     {if $section_data.owner_object}
@@ -31,11 +31,9 @@
 
 {capture name="buttons"}
     {capture name="tools_list"}
-        {hook name="static_data:manage_tools_list"}
-            {if $static_data}
-                <li>{btn type="delete_selected" dispatch="dispatch[static_data.m_delete]" form="static_data_tree_form"}</li>
-            {/if}
-        {/hook}
+        {if $static_data}
+            <li>{btn type="delete_selected" dispatch="dispatch[static_data.m_delete]" form="static_data_tree_form"}</li>
+        {/if}
     {/capture}
     {dropdown content=$smarty.capture.tools_list}
 

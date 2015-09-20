@@ -15,7 +15,7 @@
 $schema['controllers']['discussion'] = array (
     'modes' => array(
         'add' => array(
-            'permissions' => true
+            'permissions' => false
         ),
         'update' => array(
             'permissions' => false
@@ -38,6 +38,18 @@ $schema['controllers']['discussion_manager'] = array (
     ),
     'permissions' => true,
     //'permissions' => false,
+);
+
+$schema['controllers']['tools'] = array (
+    'modes' => array(
+        'update_status' => array(
+            'param_permissions' => array (
+                'table_names' => array (
+                    'discussion_posts' => true,
+                )
+            )
+        )
+    )
 );
 
 return $schema;

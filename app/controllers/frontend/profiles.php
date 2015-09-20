@@ -24,49 +24,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // Create/Update user
     //
     if ($mode == 'update') {
-        if (fn_image_verification('register', $_REQUEST) == false) {
+        fn_trusted_vars('user_data');
+
+        if (fn_image_verification('use_for_register', $_REQUEST) == false) {
             fn_save_post_data('user_data');
 
             return array(CONTROLLER_STATUS_REDIRECT, 'profiles.add');
         }
 
         $is_update = !empty($auth['user_id']);
-
-        if (!$is_update) {
-            $is_valid_user_data = true;
-
-            if (empty($_REQUEST['user_data']['email'])) {
-                fn_set_notification('W', __('warning'), __('error_validator_required', array('[field]' => __('email'))));
-                $is_valid_user_data = false;
-
-            } elseif (!fn_validate_email($_REQUEST['user_data']['email'])) {
-                fn_set_notification('W', __('error'), __('text_not_valid_email', array('[email]' => $_REQUEST['user_data']['email'])));
-                $is_valid_user_data = false;
-            }
-
-            if (empty($_REQUEST['user_data']['password1']) || empty($_REQUEST['user_data']['password2'])) {
-
-                if (empty($_REQUEST['user_data']['password1'])) {
-                    fn_set_notification('W', __('warning'), __('error_validator_required', array('[field]' => __('password'))));
-                }
-
-                if (empty($_REQUEST['user_data']['password2'])) {
-                    fn_set_notification('W', __('warning'), __('error_validator_required', array('[field]' => __('confirm_password'))));
-                }
-                $is_valid_user_data = false;
-
-            } elseif ($_REQUEST['user_data']['password1'] !== $_REQUEST['user_data']['password2']) {
-                fn_set_notification('W', __('warning'), __('error_validator_password', array('[field2]' => __('password'), '[field]' => __('confirm_password'))));
-                $is_valid_user_data = false;
-            }
-
-            if (!$is_valid_user_data) {
-                return array(CONTROLLER_STATUS_REDIRECT, 'profiles.add');
-            }
-        }
-
-        fn_restore_processed_user_password($_REQUEST['user_data'], $_POST['user_data']);
-
         $res = fn_update_user($auth['user_id'], $_REQUEST['user_data'], $auth, !empty($_REQUEST['ship_to_another']), true);
 
         if ($res) {
@@ -74,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // Cleanup user info stored in cart
             if (!empty($_SESSION['cart']) && !empty($_SESSION['cart']['user_data'])) {
-                $_SESSION['cart']['user_data'] = fn_array_merge($_SESSION['cart']['user_data'], $_REQUEST['user_data']);
+                unset($_SESSION['cart']['user_data']);
             }
 
             // Delete anonymous authentication
@@ -94,9 +60,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         if (!empty($user_id) && !$is_update) {
-
-            fn_login_user($user_id);
-
             $redirect_url = "profiles.success_add";
         } else {
             $redirect_url = "profiles." . (!empty($user_id) ? "update" : "add") . "?";
@@ -117,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 if ($mode == 'add') {
 
     if (!empty($auth['user_id'])) {
-        return array(CONTROLLER_STATUS_REDIRECT, 'profiles.update');
+        return array(CONTROLLER_STATUS_REDIRECT, "profiles.update");
     }
 
     fn_add_breadcrumb(__('registration'));
@@ -137,23 +100,18 @@ if ($mode == 'add') {
         'js' => true
     ));
 
-    $params = array();
-    if (isset($_REQUEST['user_type'])) {
-        $params['user_type'] = $_REQUEST['user_type'];
-    }
+    $profile_fields = fn_get_profile_fields();
 
-    $profile_fields = fn_get_profile_fields('C', array(), CART_LANGUAGE, $params);
-
-    Tygh::$app['view']->assign('profile_fields', $profile_fields);
-    Tygh::$app['view']->assign('user_data', $user_data);
-    Tygh::$app['view']->assign('ship_to_another', fn_check_shipping_billing($user_data, $profile_fields));
-    Tygh::$app['view']->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
-    Tygh::$app['view']->assign('states', fn_get_all_states());
+    Registry::get('view')->assign('profile_fields', $profile_fields);
+    Registry::get('view')->assign('user_data', $user_data);
+    Registry::get('view')->assign('ship_to_another', fn_check_shipping_billing($user_data, $profile_fields));
+    Registry::get('view')->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
+    Registry::get('view')->assign('states', fn_get_all_states());
 
 } elseif ($mode == 'update') {
 
     if (empty($auth['user_id'])) {
-        return array(CONTROLLER_STATUS_REDIRECT, 'auth.login_form?return_url=' . urlencode(Registry::get('config.current_url')));
+        return array(CONTROLLER_STATUS_REDIRECT, "auth.login_form?return_url=".urlencode(Registry::get('config.current_url')));
     }
 
     $profile_id = empty($_REQUEST['profile_id']) ? 0 : $_REQUEST['profile_id'];
@@ -185,26 +143,26 @@ if ($mode == 'add') {
     }
 
     if ($show_usergroups) {
-        $usergroups = fn_get_usergroups(array('type' => 'C', 'status' => 'A'));
+        $usergroups = fn_get_usergroups('C');
         if (!empty($usergroups)) {
             Registry::set('navigation.tabs.usergroups', array (
                 'title' => __('usergroups'),
                 'js' => true
             ));
 
-            Tygh::$app['view']->assign('usergroups', $usergroups);
+            Registry::get('view')->assign('usergroups', $usergroups);
         }
     }
 
     $profile_fields = fn_get_profile_fields();
 
-    Tygh::$app['view']->assign('profile_fields', $profile_fields);
-    Tygh::$app['view']->assign('user_data', $user_data);
-    Tygh::$app['view']->assign('ship_to_another', fn_check_shipping_billing($user_data, $profile_fields));
-    Tygh::$app['view']->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
-    Tygh::$app['view']->assign('states', fn_get_all_states());
+    Registry::get('view')->assign('profile_fields', $profile_fields);
+    Registry::get('view')->assign('user_data', $user_data);
+    Registry::get('view')->assign('ship_to_another', fn_check_shipping_billing($user_data, $profile_fields));
+    Registry::get('view')->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
+    Registry::get('view')->assign('states', fn_get_all_states());
     if (Registry::get('settings.General.user_multiple_profiles') == 'Y') {
-        Tygh::$app['view']->assign('user_profiles', fn_get_user_profiles($auth['user_id']));
+        Registry::get('view')->assign('user_profiles', fn_get_user_profiles($auth['user_id']));
     }
 
 // Delete profile
@@ -212,7 +170,7 @@ if ($mode == 'add') {
 
     fn_delete_user_profile($auth['user_id'], $_REQUEST['profile_id']);
 
-    return array(CONTROLLER_STATUS_OK, 'profiles.update');
+    return array(CONTROLLER_STATUS_OK, "profiles.update");
 
 } elseif ($mode == 'usergroups') {
     if (empty($auth['user_id']) || empty($_REQUEST['type']) || empty($_REQUEST['usergroup_id'])) {
@@ -221,19 +179,14 @@ if ($mode == 'add') {
 
     if (fn_request_usergroup($auth['user_id'], $_REQUEST['usergroup_id'], $_REQUEST['type'])) {
         $user_data = fn_get_user_info($auth['user_id']);
-        $usergroups = fn_get_usergroups(
-            array('type' => 'C', 'status' => 'A'),
-            Registry::get('settings.Appearance.backend_default_language')
-        );
+
         Mailer::sendMail(array(
             'to' => 'default_company_users_department',
             'from' => 'default_company_users_department',
             'reply_to' => $user_data['email'],
             'data' => array(
-                'user_data'    => $user_data,
-                'usergroup'    => !empty($usergroups[$_REQUEST['usergroup_id']]['usergroup'])
-                    ? $usergroups[$_REQUEST['usergroup_id']]['usergroup']
-                    : null,
+                'user_data' => $user_data,
+                'usergroups' => fn_get_usergroups('F', Registry::get('settings.Appearance.backend_default_language')),
                 'usergroup_id' => $_REQUEST['usergroup_id']
             ),
             'tpl' => 'profiles/usergroup_request.tpl',
@@ -241,12 +194,12 @@ if ($mode == 'add') {
         ), 'A', Registry::get('settings.Appearance.backend_default_language'));
     }
 
-    return array(CONTROLLER_STATUS_OK, 'profiles.update');
+    return array(CONTROLLER_STATUS_OK, "profiles.update");
 
 } elseif ($mode == 'success_add') {
 
     if (empty($auth['user_id'])) {
-        return array(CONTROLLER_STATUS_REDIRECT, 'profiles.add');
+        return array(CONTROLLER_STATUS_REDIRECT, "profiles.add");
     }
 
     fn_add_breadcrumb(__('registration'));

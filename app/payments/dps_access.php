@@ -14,42 +14,54 @@
 
 use Tygh\Registry;
 
-if (isset($_REQUEST['result'])) {
+if (defined('PAYMENT_NOTIFICATION')) {
+    if (!defined('BOOTSTRAP')) { die('Access denied'); }
+
+    if ($mode == 'notify') {
+
+        $result = $_SESSION['dps_access']['result'];
+        unset($_SESSION['dps_access']);
+
+        include(Registry::get('config.dir.payments') . 'dps_files/pxaccess.inc');
+
+        $payment_id = db_get_field("SELECT ?:payments.payment_id FROM ?:payments LEFT JOIN ?:payment_processors ON ?:payment_processors.processor_id = ?:payments.processor_id WHERE ?:payment_processors.processor_script = 'dps_access.php'");
+        $processor_data = fn_get_payment_method_data($payment_id);
+
+        $PxAccess_Url    = "https://sec.paymentexpress.com/pxpay/pxpay.aspx";
+        $PxAccess_Userid = $processor_data["processor_params"]["user_id"]; //Change to your user ID
+        $PxAccess_Key    =  $processor_data["processor_params"]["key"]; //Your DES Key from DPS
+        $Mac_Key = $processor_data["processor_params"]["mac_key"]; //Your MAC key from DPS
+
+        $pxaccess = new PxAccess($PxAccess_Url, $PxAccess_Userid, $PxAccess_Key, $Mac_Key);
+        $enc_hex = $result;
+
+        //getResponse method in PxAccess object returns PxPayResponse object
+        //which encapsulates all the response data
+        $rsp = $pxaccess->getResponse($enc_hex);
+        $order_alias = $rsp->getMerchantReference();
+        $order_id = (strpos($order_alias, '_')) ? substr($order_alias, 0, strpos($order_alias, '_')) : $order_alias;
+        $pp_response = array();
+        $pp_response['order_status'] = ($rsp->getSuccess() == "1") ? 'P' : 'F';
+        $pp_response['reason_text'] = $rsp->getResponseText();
+        if ($pp_response['order_status'] == 'P') {
+            $pp_response['reason_text'] .= ("; Auth code: " . $rsp->getAuthCode());  // from bank
+        }
+        $pp_response['transaction_id'] = $rsp->getDpsTxnRef();
+
+        if (fn_check_payment_script('dps_access.php', $order_id)) {
+            fn_finish_payment($order_id, $pp_response, false);
+        }
+
+        fn_order_placement_routines('route', $order_id);
+    }
+
+} elseif (isset($_REQUEST['result'])) {
 
     require './init_payment.php';
 
-    $result = $_REQUEST['result'];
+    $_SESSION['dps_access']['result'] = $_REQUEST['result'];
+    fn_redirect(fn_url("payment_notification.notify?payment=dps_access&order_id={$_SESSION['dps_access']['order_id']}", 'C'));
 
-    include(Registry::get('config.dir.payments') . 'dps_files/pxaccess.inc');
-
-    $payment_id = db_get_field("SELECT ?:payments.payment_id FROM ?:payments LEFT JOIN ?:payment_processors ON ?:payment_processors.processor_id = ?:payments.processor_id WHERE ?:payment_processors.processor_script = 'dps_access.php'");
-    $processor_data = fn_get_payment_method_data($payment_id);
-
-    $PxAccess_Url    = "https://sec.paymentexpress.com/pxpay/pxpay.aspx";
-    $PxAccess_Userid = $processor_data["processor_params"]["user_id"]; //Change to your user ID
-    $PxAccess_Key    =  $processor_data["processor_params"]["key"]; //Your DES Key from DPS
-    $Mac_Key = $processor_data["processor_params"]["mac_key"]; //Your MAC key from DPS
-
-    $pxaccess = new PxAccess($PxAccess_Url, $PxAccess_Userid, $PxAccess_Key, $Mac_Key);
-    $enc_hex = $result;
-
-    $rsp = $pxaccess->getResponse($enc_hex);
-    $order_alias = $rsp->getMerchantReference();
-    $_order_id = !empty($order_alias) ? $order_alias : $_SESSION['dps_access']['order_id'];
-    $order_id = (strpos($_order_id, '_')) ? substr($_order_id, 0, strpos($_order_id, '_')) : $_order_id;
-    $pp_response = array();
-    $pp_response['order_status'] = ($rsp->getSuccess() == "1") ? 'P' : 'F';
-    $pp_response['reason_text'] = $rsp->getResponseText();
-    if ($pp_response['order_status'] == 'P') {
-        $pp_response['reason_text'] .= ("; Auth code: " . $rsp->getAuthCode());  // from bank
-    }
-    $pp_response['transaction_id'] = $rsp->getDpsTxnRef();
-    //This payment send two absolutely identical response, so, to avoid double email notifications we should check session data
-    if (!isset($_SESSION['dps_access']) && fn_check_payment_script('dps_access.php', $order_id)) {
-        fn_finish_payment($order_id, $pp_response, false);
-    } else {
-        fn_order_placement_routines('route', $order_id);
-    }
 } else {
     if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -83,5 +95,20 @@ if (isset($_REQUEST['result'])) {
 
     //Call makeResponse of PxAccess object to obtain the 3-DES encrypted payment request
     $request_string = $pxaccess->makeRequest($request);
-    fn_create_payment_form($request_string, array(), 'DPS server', true, 'get');
+
+echo <<<EOT
+<html>
+<body onLoad="javascript: self.location='{$request_string}';">
+EOT;
+
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'DPS server'
+));
+echo <<<EOT
+   <p><div align=center>{$msg}</div></p>
+ </body>
+</html>
+EOT;
+exit;
+
 }

@@ -22,6 +22,6 @@ if ($mode == 'view') {
     $attachments = fn_get_attachments('product', $product_id);
 
     if (!empty($attachments)) {
-        Tygh::$app['view']->assign('attachments_data', $attachments);
+        Registry::get('view')->assign('attachments_data', $attachments);
     }
 }

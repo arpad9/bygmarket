@@ -15,6 +15,6 @@
 $schema['tags'] = array (
     'permissions' => 'manage_catalog'
 );
-$schema['tools']['modes']['update_status']['param_permissions']['table']['tags'] = 'manage_catalog';
+$schema['tools']['modes']['update_status']['param_permissions']['table_names']['tags'] = 'manage_catalog';
 
 return $schema;

@@ -49,12 +49,12 @@ class Helpdesk
             'ver' => PRODUCT_VERSION,
             'product_status' => PRODUCT_STATUS,
             'product_build' => strtoupper(PRODUCT_BUILD),
-            'edition' => isset($extra_fields['edition']) ? $extra_fields['edition'] : PRODUCT_EDITION,
+            'edition' => PRODUCT_EDITION,
             'lang' => strtoupper(CART_LANGUAGE),
             'store_uri' => fn_url('', 'C', 'http'),
             'secure_store_uri' => fn_url('', 'C', 'https'),
-            'https_enabled' => (Registry::get('settings.Security.secure_storefront') != 'none' || Registry::get('settings.Security.secure_admin') == 'Y') ? 'Y' : 'N',
-            'admin_uri' => str_replace(fn_get_index_script('A'), '',fn_url('', 'A', 'http')),
+            'https_enabled' => (Registry::get('settings.General.secure_checkout') == 'Y' || Registry::get('settings.General.secure_admin') == 'Y' || Registry::get('settings.General.secure_auth') == 'Y') ? 'Y' : 'N',
+            'admin_uri' => fn_url('', 'A', 'http'),
             'store_ip' => $store_ip,
         );
 
@@ -64,12 +64,12 @@ class Helpdesk
 
         $request = '<?xml version="1.0" encoding="UTF-8"?>' . fn_array_to_xml($request);
 
-        $data = Http::get(Registry::get('config.resources.updates_server') . '/index.php?dispatch=product_updates.check_available', array('request' => $request), array(
+        $data = Http::get(Registry::get('config.updates_server') . '/index.php?dispatch=product_updates.check_available', array('request' => $request), array(
             'timeout' => 10
         ));
 
         if (empty($data)) {
-            $data = fn_get_contents(Registry::get('config.resources.updates_server') . '/index.php?dispatch=product_updates.check_available&request=' . urlencode($request));
+            $data = fn_get_contents(Registry::get('config.updates_server') . '/index.php?dispatch=product_updates.check_available&request=' . urlencode($request));
         }
 
         return $data;
@@ -153,23 +153,20 @@ class Helpdesk
             }
         }
 
-        if (!empty($auth)) {
-            if (Registry::get('settings.General.auto_check_updates') == 'Y' && fn_check_user_access($auth['user_id'], 'upgrade_store')) {
-                // If upgrades are available
-                if ($updates == 'AVAILABLE') {
-                    fn_set_notification('W', __('notice'), __('text_upgrade_available', array(
-                        '[product]' => PRODUCT_NAME,
-                        '[link]' => fn_url('upgrade_center.manage')
-                    )), 'S', 'upgrade_center:core');
-                }
-            }
-
-            if (!empty($data)) {
-                $_SESSION['last_status'] = $license;
+        if (Registry::get('settings.General.auto_check_updates') == 'Y' && fn_check_user_access($auth['user_id'], 'upgrade_store')) {
+            // If upgrades are available
+            if ($updates == 'AVAILABLE') {
+                fn_set_notification('W', __('notice'), __('text_upgrade_available', array(
+                    '[link]' => fn_url('upgrade_center.manage')
+                )), 'S', 'upgrade_center');
             }
         }
 
         $messages = self::processMessages($messages, $process_messages);
+
+        if (!empty($data)) {
+            $_SESSION['last_status'] = $license;
+        }
 
         return array($license, $updates, $messages);
     }
@@ -222,12 +219,12 @@ class Helpdesk
 
         $request = '<?xml version="1.0" encoding="UTF-8"?>' . fn_array_to_xml($request);
 
-        $data = Http::get(Registry::get('config.resources.updates_server') . '/index.php?dispatch=licenses_remote.add', array('request' => $request), array(
+        $data = Http::get(Registry::get('config.updates_server') . '/index.php?dispatch=licenses_remote.add', array('request' => $request), array(
             'timeout' => 10
         ));
 
         if (empty($data)) {
-            $data = fn_get_contents(Registry::get('config.resources.updates_server') . '/index.php?dispatch=licenses_remote.create&request=' . urlencode($request));
+            $data = fn_get_contents(Registry::get('config.updates_server') . '/index.php?dispatch=licenses_remote.create&request=' . urlencode($request));
         }
 
         $result = $messages = $license = '';
@@ -245,35 +242,5 @@ class Helpdesk
         self::processMessages($messages, true);
 
         return array($result, $license, $messages);
-    }
-
-    public static function checkStoreImportAvailability($license_number, $version, $edition = PRODUCT_EDITION)
-    {
-        $request = array(
-            'dispatch' => 'product_updates.check_storeimport_available',
-            'license_key' => $license_number,
-            'ver' => $version,
-            'edition' => $edition,
-        );
-
-        $data = Http::get(Registry::get('config.resources.updates_server'), $request, array(
-            'timeout' => 10
-        ));
-
-        if (empty($data)) {
-            $data = fn_get_contents(Registry::get('config.resources.updates_server') . '/index.php?' . http_build_query($request));
-        }
-
-        $result = false;
-
-        if (!empty($data)) {
-            // Check if we can parse server response
-            if (strpos($data, '<?xml') !== false) {
-                $xml = simplexml_load_string($data);
-                $result = ((string) $xml == 'Y') ? true : false;
-            }
-        }
-
-        return $result;
     }
 }

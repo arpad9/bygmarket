@@ -5,7 +5,7 @@
         {assign var="editable" value=false}
     {/if}
     {assign var="block_content_id" value="unique_block_content_`$block_data.block_id`"}
-    <div class="block base-block" id="block_{$block_data.block_id}">
+    <div class="block cm-list-box base-block" id="block_{$block_data.block_id}">
         {strip}
             {if $editable && ($location == "all_pages" || $block_data.location != "all_pages") && !$block_data.properties.static_block}
             <div><a class="pull-right cm-confirm delete-block" href="{"block_manager.delete?selected_section=`$location`&block_id=`$block_data.block_id`&redirect_url=`$redirect_url`"|fn_url}"><i class="icon-trash" title="{__("delete")}"></i></a></div>

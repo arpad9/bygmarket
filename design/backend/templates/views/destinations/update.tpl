@@ -22,6 +22,10 @@
 
 {include file="common/select_status.tpl" input_name="destination_data[status]" id="elm_destination_status" obj=$destination}
 
+{notes}
+    {__("multiple_selectbox_notice")}
+{/notes}
+
 <hr />
 
 {* Countries list *}

@@ -12,7 +12,7 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-if (!defined('BOOTSTRAP')) { die('Access denied'); }
+if ( !defined('BOOTSTRAP') ) { die('Access denied'); }
 
 if ($mode == 'export') {
 
@@ -23,7 +23,7 @@ if ($mode == 'export') {
 
 } elseif ($mode == 'options') {
     if (isset($_REQUEST['snize_use_navigation'])) {
-        $is_navigation = ($_REQUEST['snize_use_navigation'] == 'true') ? 'Y' : 'N';
+        $is_navigation = ($_REQUEST['snize_use_navigation'] == 'true')? 'Y' : 'N';
         fn_se_set_simple_setting('use_navigation', $is_navigation);
     }
 
@@ -36,4 +36,5 @@ if ($mode == 'export') {
     }
 
     return array(CONTROLLER_STATUS_OK, 'addons.update?addon=searchanise');
+
 }

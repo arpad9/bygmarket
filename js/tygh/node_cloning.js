@@ -18,8 +18,6 @@
             var clone = clone || false;
     
             var self = $(this);
-            $('textarea.cm-wysiwyg', self).ceEditor('destroy');
-           
             var regex = new RegExp('((?:\\[\\w+\\]){' + (level - 1) + '})\\[(\\d+)\\]');
             var image_regex = new RegExp('((?:\\[\\w+\\]){0})\\[(\\d+)\\]');
     
@@ -46,7 +44,7 @@
             $('.cm-picker', new_node).remove();
 
             // Correct Ids
-            var changes = {};
+            var changes = [];
             $('[id],[for],[data-ca-target-id],[data-ca-result-id]', new_node).each(function() {
                 var self = $(this);
                 if (self.prop('id')) {
@@ -175,9 +173,7 @@
             } else {
                 self.after(new_node);
             }
-
-            $('textarea.cm-wysiwyg', self).ceEditor('recover');
-                        
+    
             // if node has file uploader, process it
             $('[id^=clean_selection]', new_node).each(function() {
 
@@ -203,10 +199,6 @@
             // init calendar
             $('.cm-calendar', new_node).each(function () {
                 $(this).removeClass('hasDatepicker').datepicker(window.calendar_config || {});
-            });
-            
-            $('textarea.cm-wysiwyg', new_node).appear(function() {
-                $(this).ceEditor();
             });
 
             // init autoNumeric plugin

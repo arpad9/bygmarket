@@ -14,7 +14,6 @@
 
 namespace Tygh\Backend\Cache;
 
-use Tygh\Exceptions\ClassNotFoundException;
 use Tygh\Registry;
 
 class Sqlite extends ABackend
@@ -110,7 +109,7 @@ class Sqlite extends ABackend
     public function __construct($config)
     {
         $this->_config = array(
-            'store_prefix' => !empty($config['store_prefix']) ? $config['store_prefix'] : null,
+            'saas_uid' => !empty($config['saas_uid']) ? $config['saas_uid'] : null,
             'dir_cache' => $config['dir']['cache_registry']
         );
 
@@ -204,7 +203,7 @@ class Sqlite extends ABackend
             $db_class = '\\SQLiteDatabase';
             $this->db_fetch = SQLITE_ASSOC;
         } else {
-            throw new ClassNotFoundException('SQLITE cache data storage is not supported. Please choose another one.');
+            die('SQLITE cache data storage is not supported. Please choose another one.');
         }
 
         fn_mkdir($this->_dirCache());
@@ -236,6 +235,6 @@ class Sqlite extends ABackend
      */
     private function _dirCache()
     {
-        return $this->_config['dir_cache'] . (!empty($this->_config['store_prefix']) ? $this->_config['store_prefix'] . '/' : '');
+        return $this->_config['dir_cache'] . (!empty($this->_config['saas_uid']) ? $this->_config['saas_uid'] . '/' : '');
     }
 }

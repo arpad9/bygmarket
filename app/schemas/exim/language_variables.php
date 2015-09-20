@@ -12,10 +12,6 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-use Tygh\Registry;
-
-include_once(Registry::get('config.dir.schemas') . 'exim/language_variables.functions.php');
-
 return array(
     'section' => 'translations',
     'pattern_id' => 'language_variables',
@@ -23,10 +19,6 @@ return array(
     'key' => array('name', 'lang_code'),
     'order' => 1,
     'table' => 'language_values',
-    'permissions' => array(
-        'import' => 'manage_languages',
-        'export' => 'view_languages',
-    ),
     'condition' => array(
         'conditions' => array('lang_code' => '@lang_code'),
     ),
@@ -54,13 +46,6 @@ return array(
             'alt_key' => true,
             'required' => true,
             'multilang' => true
-        ),
-    ),
-    'import_process_data' => array(
-        'check_lang_code' => array(
-            'function' => 'fn_import_check_translations_lang_code',
-            'args' => array('$primary_object_id', '$object', '$processed_data', '$skip_record'),
-            'import_only' => true,
         ),
     ),
 );

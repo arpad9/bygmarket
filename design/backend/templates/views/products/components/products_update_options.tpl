@@ -31,7 +31,7 @@
             </form>
         {/capture}
         <div class="pull-right shift-left">
-            {include file="common/popupbox.tpl" id="add_global_option" text=__("add_global_option") content=$smarty.capture.add_global_option link_text=__("add_global_option") act="general" icon="icon-plus"}
+            {include file="common/popupbox.tpl" id="add_global_option" text=__("add_global_option") content=$smarty.capture.add_global_option link_text=__("add_global_option") act="general"}
         </div>
     {/if}
 

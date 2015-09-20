@@ -2,6 +2,20 @@
 
 {capture name="tabsbox"}
 <div id="content_general">
+
+    <div class="item-summary clear center">
+        <div class="pull-left">
+        {include file="common/carriers.tpl" capture=true carrier=$shipment.carrier}
+        
+        {__("shipment")}&nbsp;&nbsp;<span>#{$shipment.shipment_id}</span>&nbsp;
+        {__("on")}&nbsp;{$shipment.shipment_timestamp|date_format:"`$settings.Appearance.date_format`"}&nbsp;
+        {__("by")}&nbsp;<span>{$shipment.shipping}</span>{if $shipment.tracking_number}&nbsp;({$shipment.tracking_number}){/if}{if $shipment.carrier}&nbsp;({$smarty.capture.carrier_name|trim nofilter}){/if}
+        </div>
+        
+        {hook name="shipments:customer_shot_info"}
+        {/hook}
+    </div>
+    
     {* Customer info *}
     {include file="views/profiles/components/profiles_info.tpl" user_data=$order_info location="I"}
     {* /Customer info *}
@@ -31,8 +45,12 @@
     {/foreach}
     </table>
     <div class="row-fluid">
-        <h3><label for="notes">{__("comments")}:</label></h3>
-        <textarea class="input-xxlarge" cols="40" rows="5" readonly="readonly">{$shipment.comments}</textarea>
+        <div class="clear order-notes">
+            <div class="float-left">
+                <h3><label for="notes">{__("comments")}:</label></h3>
+                <textarea class="span12" cols="40" rows="5" readonly="readonly">{$shipment.comments}</textarea>
+            </div>
+        </div>
     </div>
     
 <!--content_general--></div>
@@ -40,18 +58,8 @@
 {include file="common/tabsbox.tpl" content=$smarty.capture.tabsbox active_tab=$smarty.request.selected_section track=true}
 
 {/capture}
-
-{capture name="sidebar"}
-    <div class="sidebar-row">
-        <h6>{__("shipment_info")}</h6>
-        {include file="common/carriers.tpl" capture=true carrier=$shipment.carrier}
-
-        <p>{__("shipment")} #{$shipment.shipment_id}
-        {__("on")} {$shipment.shipment_timestamp|date_format:"`$settings.Appearance.date_format`"} <br />
-        {__("by")} {$shipment.shipping} <br />{if $shipment.tracking_number} ({$shipment.tracking_number}){/if}{if $shipment.carrier} ({$smarty.capture.carrier_name|trim nofilter}){/if}</p>
-        {hook name="shipments:customer_shot_info"}
-        {/hook}
-    </div>
+{capture name="mainbox_title"}
+    {__("shipment_details")}
 {/capture}
 
 {capture name="buttons"}
@@ -59,12 +67,11 @@
         {hook name="shipments:details_tools"}
             <li>{btn type="list" text="{__("order")} #`$order_info.order_id`" href="orders.details?order_id=`$order_info.order_id`"}</li>
             <li>{btn type="list" text=__("print_packing_slip") href="shipments.packing_slip?shipment_ids[]=`$shipment.shipment_id`" class="cm-new-window"}</li>
-            <li>{btn type="list" text=__("print_pdf_packing_slip") href="shipments.packing_slip?shipment_ids[]=`$shipment.shipment_id`&format=pdf" class="cm-new-window"}</li>
             <li class="divider"></li>
-            <li>{btn type="list" text=__("delete") class="cm-confirm cm-post" href="shipments.delete?shipment_ids[]=`$shipment.shipment_id`"}</li>
+            <li>{btn type="list" text=__("delete") class="cm-confirm" href="shipments.delete?shipment_ids[]=`$shipment.shipment_id`"}</li>
         {/hook}
     {/capture}
     {dropdown content=$smarty.capture.tools_list}
 {/capture}
 
-{include file="common/mainbox.tpl" title=__("shipment_details") content=$smarty.capture.mainbox buttons=$smarty.capture.buttons sidebar=$smarty.capture.sidebar}
+{include file="common/mainbox.tpl" title=$smarty.capture.mainbox_title content=$smarty.capture.mainbox buttons=$smarty.capture.buttons}

@@ -17,10 +17,13 @@ $schema['rss_feed'] = array (
         'filling' => array(
             'type' => 'selectbox',
             'values' => array (
+                'pages' => 'pages',
                 'products' => 'products',
             ),
             'default_value' => 'products',
             'values_settings' => array(
+                'pages' => array(
+                ),
                 'products' => array(
                     'settings' => array(
                         'rss_sort_by' => array (
@@ -67,8 +70,7 @@ $schema['rss_feed'] = array (
             'type' => 'input',
             'default_value' => ''
         ),
-    ),
-    'cache' => true,
+    )
 );
 
 return $schema;

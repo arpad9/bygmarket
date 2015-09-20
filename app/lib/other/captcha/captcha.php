@@ -1,5 +1,7 @@
 <?php
 
+use Tygh\Session;
+
    /***************************************************************/
    /* PhpCaptcha - A visual and audio CAPTCHA generation library
 
@@ -61,7 +63,7 @@
    define('CAPTCHA_FILE_TYPE', 'jpeg');
    define('CAPTCHA_FLITE_PATH', '/usr/bin/flite');
    define('CAPTCHA_AUDIO_PATH', '/tmp/'); // must be writeable by PHP process
-   define('CAPTCHA_TTL', 60 * 60 * 6); // 6 hours
+   define('CAPTCHA_TTL', 60 * 5); // 5 minutes
 
    /************************ End Default Options **********************/
 
@@ -293,9 +295,16 @@
             }
          }
 
-         $cid = md5($this->cId);
-
-         fn_generate_ekey(($this->bCaseInsensitive) ? strtoupper($this->sCode) : $this->sCode, 'C', CAPTCHA_TTL, $cid);
+         // save code in session variable
+         $cid = Session::getId() . ':' . $this->cId;
+          db_query("DELETE FROM ?:ekeys WHERE object_string = ?s AND object_type = 'C'", $cid);
+           $data = array (
+                'object_string' => $cid,
+               'object_type' => 'C',
+               'ekey' => ($this->bCaseInsensitive) ? strtoupper($this->sCode) : $this->sCode,
+               'ttl' => TIME + CAPTCHA_TTL
+           );
+           db_query("REPLACE INTO ?:ekeys ?e", $data);
       }
 
       function DrawCharacters()
@@ -443,7 +452,10 @@
             $sUserCode = strtoupper($sUserCode);
         }
 
-        $code = fn_get_object_by_ekey(md5($cId), 'C');
+        $code = db_get_field("SELECT ekey FROM ?:ekeys WHERE object_string = ?s AND ttl > ?i", Session::getId() . ':' . $cId, TIME);
+
+        // Cleanup garbage
+        db_query("DELETE FROM ?:ekeys WHERE object_string = ?s", Session::getId() . ':' . $cId);
 
         if (!empty($code) && $sUserCode == $code) {
             return true;

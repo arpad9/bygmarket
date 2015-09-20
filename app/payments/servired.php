@@ -118,19 +118,33 @@ $url_nok = fn_url("payment_notification.failed?payment=servired&order_id=$order_
 $message = $amount . $order_n . $merchant . $currency . $transaction_type . $url_merchant . $clave;
 $signature = strtoupper(sha1($message));
 
-$post_data = array(
-    'Ds_Merchant_Amount' => $amount,
-    'Ds_Merchant_Currency' => $currency,
-    'Ds_Merchant_Order' => $order_n,
-    'Ds_Merchant_MerchantCode' => $merchant,
-    'Ds_Merchant_Terminal' => $terminal,
-    'Ds_Merchant_TransactionType' => $transaction_type,
-    'Ds_Merchant_MerchantURL' => $url_merchant,
-    'Ds_Merchant_UrlOK' => $url_ok,
-    'Ds_Merchant_UrlKO' => $url_nok,
-    'Ds_Merchant_MerchantSignature' => $signature,    
-);
+echo <<<EOT
+<form method="post" action="$post_address" name="process">
+<input type="hidden" name="Ds_Merchant_Amount" value="{$amount}">
+<input type="hidden" name="Ds_Merchant_Currency" value="{$currency}">
+<input type="hidden" name="Ds_Merchant_Order"  value="{$order_n}">
+<input type="hidden" name="Ds_Merchant_MerchantCode" value="{$merchant}">
+<input type="hidden" name="Ds_Merchant_Terminal" value="{$terminal}">
+<input type="hidden" name="Ds_Merchant_TransactionType" value="{$transaction_type}">
+<input type="hidden" name="Ds_Merchant_MerchantURL" value="{$url_merchant}">
+<input type="hidden" name="Ds_Merchant_UrlOK" value="{$url_ok}">
+<input type="hidden" name="Ds_Merchant_UrlKO" value="{$url_nok}">
+<input type="hidden" name="Ds_Merchant_MerchantSignature" value="{$signature}">
+EOT;
 
-fn_create_payment_form($post_address, $post_data, 'SERMEPA');
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'SERMEPA server'
+));
+echo <<<EOT
+    </form>
+   <p><div align=center>{$msg}</div></p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
 }
 exit;

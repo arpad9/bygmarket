@@ -24,7 +24,7 @@
 
 {if $view_mode != "button"}
     {if !$positions}
-    <input id="b{$data_id}_ids" type="hidden" name="{$input_name}" value="{if $item_ids}{","|implode:$item_ids}{/if}" class="input-micro" />
+    <input id="b{$data_id}_ids" type="hidden" name="{$input_name}" value="{if $item_ids}{","|implode:$item_ids}{/if}" />
     {/if}
     
     <table width="100%" class="table table-middle">

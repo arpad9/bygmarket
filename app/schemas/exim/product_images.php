@@ -12,6 +12,8 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
+use Tygh\Registry;
+
 return array(
     'section' => 'products',
     'name' => __('images'),
@@ -19,15 +21,10 @@ return array(
     'key' => array('product_id'),
     'order' => 2,
     'table' => 'products',
-    'permissions' => array(
-        'import' => 'manage_catalog',
-        'export' => 'view_catalog',
-    ),
     'references' => array(
         'images_links' => array(
             'reference_fields' => array('object_id' => '#key', 'object_type' => 'product'),
-            'join_type' => 'LEFT',
-            'import_skip_db_processing' => true
+            'join_type' => 'LEFT'
         ),
     ),
     'update_only' => true,
@@ -38,16 +35,12 @@ return array(
     'notes' => array(
         'text_exim_import_images_note',
     ),
-    'condition' => array(
-        'use_company_condition' => true,
-    ),
     'options' => array(
         'images_path' => array(
             'title' => 'images_directory',
             'description' => 'text_images_directory',
             'type' => 'input',
-            'default_value' => 'exim/backup/images/',
-            'notes' => __('text_file_editor_notice', array('[href]' => fn_url('file_editor.manage?path=/'))),
+            'default_value' => Registry::get('config.dir.exim') . 'backup/images/'
         ),
         'remove_images' => array(
             'title' => 'exim_remove_additional_images',

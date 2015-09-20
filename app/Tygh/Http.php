@@ -14,22 +14,11 @@
 
 namespace Tygh;
 
-use Tygh\Exceptions\DeveloperException;
 use Tygh\Registry;
 
 class Http
 {
     const TIMEOUT = 30;
-    const GET = 'GET';
-    const POST = 'POST';
-    const PUT = 'PUT';
-    const DELETE = 'DELETE';
-
-    const STATUS_OK = 200;
-    const STATUS_FORBIDDEN = 403;
-    const STATUS_NOT_FOUND = 404;
-    const STATUS_SERVICE_UNAVAILABLE = 503;
-
     public static $logging = true;
     private static $_curl_ssl_support = false;
     private static $_curl_followlocation_support = false;
@@ -46,7 +35,7 @@ class Http
      */
     public static function get($url, $data = array(), $extra = array())
     {
-        return self::_request(self::GET, $url, $data, $extra);
+        return self::_request('GET', $url, $data, $extra);
     }
 
     /**
@@ -58,7 +47,7 @@ class Http
      */
     public static function mget($url, $data = array(), $extra = array())
     {
-         return self::_mrequest(self::GET, $url, $data, $extra);
+         return self::_mrequest('GET', $url, $data, $extra);
     }
 
     /**
@@ -70,7 +59,7 @@ class Http
      */
     public static function post($url, $data, $extra = array())
     {
-        return self::_request(self::POST, $url, $data, $extra);
+        return self::_request('POST', $url, $data, $extra);
     }
 
     /**
@@ -82,57 +71,11 @@ class Http
      */
     public static function mpost($url, $data, $extra = array())
     {
-        return self::_mrequest(self::POST, $url, $data, $extra);
+        return self::_mrequest('POST', $url, $data, $extra);
     }
 
     /**
-     * Runs http PUT method
-     * @param  string $url   request URL
-     * @param  mixed  $data  data to post to request
-     * @param  array  $extra extra parameters
-     * @return mixed  false of failure, string with returned content on success
-     */
-    public static function put($url, $data, $extra = array())
-    {
-        return self::_request(self::PUT, $url, $data, $extra);
-    }
-
-    /**
-     * Runs http PUT method and returns connection handler to run several threads using processMultiRequest method
-     * @param  string $url   request URL
-     * @param  mixed  $data  data to post to request
-     * @param  array  $extra extra parameters
-     * @return mixed  false on failure, string thread ID on success
-     */
-    public static function mput($url, $data, $extra = array())
-    {
-        return self::_mrequest(self::PUT, $url, $data, $extra);
-    }
-
-    /**
-     * Runs http DELETE method
-     * @param  string $url   request URL
-     * @param  array  $extra extra parameters
-     * @return mixed  false of failure, string with returned content on success
-     */
-    public static function delete($url, $extra = array())
-    {
-        return self::_request(self::DELETE, $url, array(), $extra);
-    }
-
-    /**
-     * Runs http DELETE method and returns connection handler to run several threads using processMultiRequest method
-     * @param  string $url   request URL
-     * @param  array  $extra extra parameters
-     * @return mixed  false on failure, string thread ID on success
-     */
-    public static function mdelete($url, $extra = array())
-    {
-        return self::_mrequest(self::DELETE, $url, array(), $extra);
-    }
-
-    /**
-     * Gets curl information
+     * Get curl information
      *
      * @param  string $object object name to generate message for is case of error
      * @return string true if no problems with curl, string error message if problems
@@ -157,7 +100,7 @@ class Http
     }
 
     /**
-     * Gets response headers
+     * Get response headers
      * @return string headers
      */
     public static function getHeaders()
@@ -166,21 +109,7 @@ class Http
     }
 
     /**
-     * Gets response status
-     * @return integer status on success of false if status can't be retrieved
-     */
-    public static function getStatus()
-    {
-        $headers = self::getHeaders();
-        if (preg_match("/HTTP\/\d\.\d (\d+)/", $headers, $m)) {
-            return intval($m[1]);
-        }
-
-        return false;
-    }
-
-    /**
-     * Gets response error
+     * Get response error
      * @return string error message
      */
     public static function getError()
@@ -217,18 +146,7 @@ class Http
                     list($method, $url, $data, $extra) = $thread['params'];
                     $contents = self::_processHeadersRedirect($method, $url, $extra, $contents);
                 }
-                if (self::$logging) {
-                    $logging_data['response'] = $contents;
-                    if (isset($url)) {
-                        $logging_data['url'] = $url;
-                    }
-                    if (isset($data)) {
-                        $logging_data['data'] = var_export($data, true);
-                    }
-                    fn_log_event('requests', 'http', $logging_data);
-                }
 
-                curl_multi_remove_handle($mh, $thread['ch']);
                 curl_close($thread['ch']);
                 unset(self::$_pull[$p_id]);
 
@@ -303,8 +221,11 @@ class Http
      */
     private static function _parseContent($content)
     {
-        while (strpos(ltrim($content), 'HTTP/1') === 0) {
-            list(self::$_headers, $content) = preg_split("/(\r?\n){2}/", $content, 2);
+        list(self::$_headers, $content) = preg_split("/\R\R/", $content, 2);
+
+        // remove 100 Continue header
+        if (strpos(self::$_headers, '100 Continue') !== false) {
+            list(self::$_headers, $content) = preg_split("/\R\R/", $content, 2);
         }
 
         return $content;
@@ -356,7 +277,7 @@ class Http
      */
     private static function _request($method, $url, $data, $extra = array())
     {
-        list($url, $data) = self::_prepareData($method, $url, $data);
+        list($url, $data) = self::_prepareData($url, $data);
 
         if (self::_curlExists()) {
             $content = self::_curlRequest($method, $url, $data, $extra);
@@ -386,7 +307,7 @@ class Http
     private static function _mrequest($method, $url, $data, $extra = array())
     {
         if (self::_supportsMultiRequests()) {
-            list($url, $data) = self::_prepareData($method, $url, $data);
+            list($url, $data) = self::_prepareData($url, $data);
 
             $extra['return_handler'] = true;
             $ch = self::_curlRequest($method, $url, $data, $extra);
@@ -410,12 +331,11 @@ class Http
 
     /**
      * Parses request URL to use in request
-     * @param  string $method request method
-     * @param  string $url    request URL
-     * @param  mixed  $data   request data
+     * @param  string $url  request URL
+     * @param  mixed  $data request data
      * @return array  parsed URL and URL-encoded data
      */
-    private static function _prepareData($method, $url, $data)
+    private static function _prepareData($url, $data)
     {
         $components = parse_url($url);
 
@@ -433,17 +353,13 @@ class Http
         $url = $components['scheme'] . '://' . $upass . $components['host'] . $port . $components['path'];
 
         if (!empty($components['query'])) {
-            if ($method == self::GET) {
-                parse_str($components['query'], $args);
+            parse_str($components['query'], $args);
 
-                if (!empty($data) && !is_array($data) && !empty($args)) {
-                    throw new DeveloperException('Http: incompatible data type passed');
-                }
-
-                $data = fn_array_merge($args, $data);
-            } else {
-                $url .= '?' . $components['query'];
+            if (!empty($data) && !is_array($data) && !empty($args)) {
+                fn_error('Http: incompatible data type passed');
             }
+
+            $data = fn_array_merge($args, $data);
         }
 
         return array($url, is_array($data) ? http_build_query($data) : $data);
@@ -479,7 +395,7 @@ class Http
 
         if ($sh) {
 
-            if ($method == self::GET) {
+            if ($method == 'GET') {
 
                 if (empty($req_settings['proxy_host'])) {
                     $post_url = $components['path'] . '?' . $data;
@@ -488,10 +404,10 @@ class Http
                 }
 
             } else {
-                $post_url = $components['path'] . (!empty($components['query']) ? '?' . $components['query'] : '');
+                $post_url = $components['path'];
             }
 
-            fputs($sh, "$method $post_url HTTP/1.1\r\n");
+            fputs($sh, "$method $post_url HTTP/1.0\r\n");
             fputs($sh, "Host: $components[host]\r\n");
 
             if (!empty($req_settings['proxy_user'])) {
@@ -516,7 +432,7 @@ class Http
                 fputs($sh, 'Cookie: ' . implode('; ', $extra['cookies']) . "\r\n");
             }
 
-            if ($method == self::POST) {
+            if ($method == 'POST') {
                 if (empty($content_type_set)) {
                     fputs($sh, 'Content-type: application/x-www-form-urlencoded' ."\r\n");
                 }
@@ -582,16 +498,11 @@ class Http
             curl_setopt($ch, CURLOPT_BINARYTRANSFER, 1);
         }
 
-        if ($method == self::GET) {
+        if ($method == 'GET') {
             curl_setopt($ch, CURLOPT_HTTPGET, 1);
             $url .= '?' . $data;
-
-        } elseif ($method == self::POST) {
-            curl_setopt($ch, CURLOPT_POST, 1);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-
         } else {
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+            curl_setopt($ch, CURLOPT_POST, 1);
             curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
         }
 
@@ -621,7 +532,6 @@ class Http
         $content = curl_exec($ch);
         $errno = curl_errno($ch);
         $error = curl_error($ch);
-
         curl_close($ch);
 
         if (!empty($content)) {

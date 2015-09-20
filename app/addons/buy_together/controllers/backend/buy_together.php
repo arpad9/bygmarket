@@ -23,15 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($mode == 'update') {
         fn_buy_together_update_chain($_REQUEST['item_id'], $_REQUEST['product_id'], $_REQUEST['item_data'], $auth, DESCR_SL);
 
-        return array(CONTROLLER_STATUS_OK, 'products.update?selected_section=buy_together&product_id=' . $_REQUEST['product_id']);
-    }
-
-    if ($mode == 'delete') {
-        if (!empty($_REQUEST['chain_id'])) {
-            $product_id = fn_buy_together_delete_chain($_REQUEST['chain_id']);
-
-            return array(CONTROLLER_STATUS_REDIRECT, 'products.update?selected_section=buy_together&product_id=' . $product_id);
-        }
+        return array(CONTROLLER_STATUS_OK, "products.update?product_id=" . $_REQUEST['product_id'] . "&selected_section=buy_together");
     }
 
     return;
@@ -47,5 +39,12 @@ if ($mode == 'update') {
 
     $chain = fn_buy_together_get_chains($params, array(), DESCR_SL);
 
-    Tygh::$app['view']->assign('item', $chain);
+    Registry::get('view')->assign('item', $chain);
+
+} elseif ($mode == 'delete') {
+    if (!empty($_REQUEST['chain_id'])) {
+        $product_id = fn_buy_together_delete_chain($_REQUEST['chain_id']);
+
+        return array(CONTROLLER_STATUS_REDIRECT, "products.update?product_id=$product_id&selected_section=buy_together");
+    }
 }

@@ -34,13 +34,13 @@ if ($mode == 'view') {
     }
 
     if (!empty($page['meta_description']) || !empty($page['meta_keywords'])) {
-        Tygh::$app['view']->assign('meta_description', $page['meta_description']);
-        Tygh::$app['view']->assign('meta_keywords', $page['meta_keywords']);
+        Registry::get('view')->assign('meta_description', $page['meta_description']);
+        Registry::get('view')->assign('meta_keywords', $page['meta_keywords']);
     }
 
     // If page title for this page is exist than assign it to template
     if (!empty($page['page_title'])) {
-        Tygh::$app['view']->assign('page_title', $page['page_title']);
+        Registry::get('view')->assign('page_title', $page['page_title']);
     }
 
     $parent_ids = explode('/', $page['id_path']);
@@ -49,5 +49,5 @@ if ($mode == 'view') {
         fn_add_breadcrumb($_page['page'], ($p_id == $page['page_id']) ? '' : ($_page['page_type'] == PAGE_TYPE_LINK && !empty($_page['link']) ? $_page['link'] : "pages.view?page_id=$p_id"));
     }
 
-    Tygh::$app['view']->assign('page', $page);
+    Registry::get('view')->assign('page', $page);
 }

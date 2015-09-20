@@ -11,7 +11,7 @@
 
     <div class="tabs cm-j-tabs">
         <ul class="nav nav-tabs">
-            <li id="tab_general_{$id}" class="cm-js active"><a>{__("general")}</a></li>
+            <li id="tab_general_{$id}" class="cm-js cm-active active"><a>{__("general")}</a></li>
             <li id="tab_links_{$id}" class="cm-js"><a>{__("section_links")}</a></li>
         </ul>
     </div>

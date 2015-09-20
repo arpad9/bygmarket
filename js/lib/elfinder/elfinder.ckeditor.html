@@ -6,9 +6,8 @@
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 	<title>elFinder</title>
 
-	<link rel="stylesheet" href="../../../design/backend/css/ui/jqueryui.css" type="text/css" media="screen" title="no title" charset="utf-8">
-	<link rel="stylesheet" href="css/elfinder.min.css" type="text/css" media="screen" title="no title" charset="utf-8">
-	<link rel="stylesheet" href="css/theme.css" type="text/css" media="screen" title="no title" charset="utf-8">
+	<link rel="stylesheet" href="js/ui-themes/base/ui.all.css" type="text/css" media="screen" title="no title" charset="utf-8">
+	<link rel="stylesheet" href="css/elfinder.css" type="text/css" media="screen" title="no title" charset="utf-8">
 
 	<script src="../jquery/jquery.min.js" type="text/javascript" charset="utf-8"></script>
 	<script src="../../../js/tygh/core.js" type="text/javascript" charset="utf-8"></script>
@@ -20,12 +19,14 @@
 		var funcNum = window.location.search.replace(/^.*CKEditorFuncNum=(\d+).*$/, "$1");
 
 		Tygh.$('#finder').elfinder({
-			url : window.opener.fn_url('elf_connector.images?security_hash=' + window.opener.Tygh.security_hash),
+			url : window.opener.fn_url('elf_connector.images?ajax_custom=1'),
+			cutURL: window.opener.current_location + '/',
 			lang : 'en',
-            getFileCallback: function(file) {
-				window.opener.CKEDITOR.tools.callFunction(funcNum, file.url + '?' + new Date().getTime());
+
+			editorCallback : function(url) {
+				window.opener.CKEDITOR.tools.callFunction(funcNum, url);
 				window.close();
-            }
+			}
 		});
 	});
 	</script>

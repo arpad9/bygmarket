@@ -28,5 +28,5 @@ if ($mode == 'list') {
 
     list($promotions) = fn_get_promotions($params);
 
-    Tygh::$app['view']->assign('promotions', $promotions);
+    Registry::get('view')->assign('promotions', $promotions);
 }

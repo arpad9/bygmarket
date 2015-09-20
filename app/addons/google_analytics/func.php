@@ -18,27 +18,24 @@ use Tygh\Settings;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
-function fn_ga_get_main_category($product_id, $lang_code = DESCR_SL)
+function fn_google_analytics_get_order_info(&$order, &$additional_data)
 {
-    $category = '';
-    if (!empty($product_id)) {
-        $category = db_get_field("SELECT ?:category_descriptions.category FROM ?:category_descriptions RIGHT JOIN ?:products_categories ON ?:category_descriptions.category_id = ?:products_categories.category_id AND ?:products_categories.product_id = ?i AND link_type = 'M' WHERE lang_code = ?s", $product_id, $lang_code);
+    if (!empty($additional_data['A'])) {
+        $order['google_analitycs_info'] = unserialize($additional_data['A']);
     }
-
-    return $category;
 }
 
-function fn_ga_get_order_status_sign($order_status)
+function fn_google_analytics_place_order(&$order_id, &$action, &$order_status, &$cart)
 {
-    $sign = '-';
-    if (!empty($order_status)) {
-        $paid_statuses = fn_get_order_paid_statuses();
-        if (in_array($order_status, $paid_statuses)) {
-            $sign = '';
-        }
-    }
-
-    return $sign;
+    $data = db_get_field("SELECT data FROM ?:order_data WHERE order_id = ?i AND type = 'A'", $order_id);
+    $data = !empty($data) ? unserialize($data) : array();
+    $data['ga_cookies'] = fn_google_analytics_cookies();
+    $_data = array (
+        'order_id' => $order_id,
+        'type' => 'A', //addons information
+        'data' => serialize($data),
+    );
+    db_query("REPLACE INTO ?:order_data ?e", $_data);
 }
 
 /**
@@ -56,14 +53,9 @@ function fn_google_analytics_get_tracking_code($company_id = null)
     return Settings::instance()->getValue('tracking_code', 'google_analytics', $company_id);
 }
 
-function fn_google_analytics_get_order_items_info_post(&$order, &$v, &$k)
-{
-    $order['products'][$k]['ga_category_name'] = fn_ga_get_main_category($v['product_id'], $order['lang_code']);
-}
-
 function fn_google_analytics_change_order_status(&$status_to, &$status_from, &$order_info)
 {
-    if (Registry::get('addons.google_analytics.track_ecommerce') == 'N' || AREA != 'A') {
+    if (Registry::get('addons.google_analytics.track_ecommerce') == 'N') {
         return false;
     }
 
@@ -81,36 +73,82 @@ function fn_google_analytics_change_order_status(&$status_to, &$status_from, &$o
 
 function fn_google_anaylitics_send($account, $order_info, $refuse = false)
 {
-    $url = 'http://www.google-analytics.com/collect';
+    $_uwv = '1';
+
+    $url = "http://www.google-analytics.com/__utm.gif";
+
     $sign = ($refuse == true) ? '-' : '';
 
-    //Common data which should be sent with any request
-    $required_data = array(
-        'v' => '1',
-        'tid' => $account,
-        'cid' => md5($order_info['email']),
-        'ti' => $order_info['order_id'],
-        'cu' => $order_info['secondary_currency']
+    $cookies = !empty($order_info['google_analitycs_info']['ga_cookies']) ? $order_info['google_analitycs_info']['ga_cookies'] : fn_google_analytics_cookies();
+
+    // Transaction request
+    // http://www.google-analytics.com/__utm.gif?utmwv=1&utmt=tran&utmn=262780020&utmtid=80&utmtto=3.96&utmttx=0&utmtsp=0.00&utmtci=Boston&utmtrg=MA&utmtco=United%20States&utmac=ASSASAS&utmcc=__utma%3D81851599.2062069588.1182951649.1183008786.1183012376.3%3B%2B__utmb%3D81851599%3B%2B__utmc%3D81851599%3B%2B__utmz%3D81851599.1182951649.1.1.utmccn%3D(direct)%7Cutmcsr%3D(direct)%7Cutmcmd%3D(none)%3B%2B
+
+    $transaction = array (
+        'utmwv' => $_uwv,
+        'utmt' => 'tran',
+        'utmn' => rand(0, 2147483647),
+        'utmtid' => $order_info['order_id'],
+        'utmtto' => $sign . $order_info['total'],
+        'utmttx' => $order_info['tax_subtotal'],
+        'utmtsp' => $order_info['shipping_cost'],
+        'utmtci' => $order_info['b_city'],
+        'utmtrg' => $order_info['b_state'],
+        'utmtco' => $order_info['b_country_descr'],
+        'utmac' => $account,
+        'utmcc' => $cookies
     );
 
-    $transaction = array(
-        't' => 'transaction',
-        'tr' => $sign . $order_info['total'],
-        'ts' => $sign . $order_info['shipping_cost'],
-        'tt' => $sign . $order_info['tax_subtotal'],
-    );
+    $result = Http::get($url, $transaction);
 
-    $result = Http::get($url, fn_array_merge($required_data, $transaction));
-
+    // Items request
+    //http://www.google-analytics.com/__utm.gif?utmwv=1&utmt=item&utmn=812678190&utmtid=80&utmipc=B00078MG5M&utmipn=100%25%20Cotton%20Adult%2FYouth%20Beefy%20T-Shirt%20by%20Hanes%20(Style%23%205180)&utmipr=4.50&utmiqt=1&utmac=ASSASAS&utmcc=
     foreach ($order_info['products'] as $item) {
-        $item = array(
-            't' => 'item',
-            'in' => $item['product'],
-            'ip' => fn_format_price($item['subtotal'] / $item['amount']),
-            'iq' => $sign . $item['amount'],
-            'ic' => $item['product_code'],
-            'iv' => fn_ga_get_main_category($item['product_id'], $order_info['lang_code']),
+        $cat_id = db_get_field("SELECT category_id FROM ?:products_categories WHERE product_id = ?i AND link_type = 'M'", $item['product_id']);
+        $i = array (
+            'utmwv' => $_uwv,
+            'utmt' => 'item',
+            'utmn' => rand(0, 2147483647),
+            'utmtid' => $order_info['order_id'],
+            'utmipc' => $item['product_code'],
+            'utmipn' => $item['product'],
+            'utmiva' => fn_get_category_name($cat_id, $order_info['lang_code']),
+            'utmipr' => $sign . fn_format_price($item['subtotal'] / $item['amount']),
+            'utmiqt' => $item['amount'],
+            'utmac' => $account,
+            'utmcc' => $cookies,
         );
-        $result = Http::get($url, fn_array_merge($required_data, $item));
+
+        $result = Http::get($url, $i);
     }
+}
+
+function fn_google_analytics_cookies()
+{
+    $c = '';
+
+    if (isset($_COOKIE['__utma'])) {
+        $c .= "__utma=" . $_COOKIE['__utma'] . ";+";
+    }
+    if (isset($_COOKIE['__utmb'])) {
+        $c .= "__utmb=" . $_COOKIE['__utmb'] . ";+";
+    }
+    if (isset($_COOKIE['__utmc'])) {
+        $c .= "__utmc=" . $_COOKIE['__utmc'] . ";+";
+    }
+    if (isset($_COOKIE['__utmx'])) {
+        $c .= "__utmx=" . $_COOKIE['__utmx'] . ";+";
+    }
+    if (isset($_COOKIE['__utmz'])) {
+        $c .= "__utmz=" . $_COOKIE['__utmz'] . ";+";
+    }
+    if (isset($_COOKIE['__utmv'])) {
+        $c .= "__utmv=" . $_COOKIE['__utmv'] . ";+";
+    }
+
+    if (substr($c, strlen($c) - 1, 1) == "+") {
+        $c = substr($c, 0, strlen($c) - 1);
+    }
+
+    return $c;
 }

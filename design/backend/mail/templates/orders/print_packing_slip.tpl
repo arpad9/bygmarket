@@ -34,7 +34,7 @@ body {
 {/literal}
 {include file="common/scripts.tpl"}
 {if !$company_placement_info}
-{assign var="company_placement_info" value=$order_info.company_id|fn_get_company_placement_info:$smarty.const.CART_LANGUAGE}
+{assign var="company_placement_info" value=$order_info.company_id|fn_get_company_placement_info}
 {/if}
 <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f4f6f8; height: 100%;">
 <tr>
@@ -281,7 +281,7 @@ body {
 
         {elseif $shipment.comments}
             <div style="float: left; padding-top: 20px;"><strong>{__("comments")}:</strong></div>
-            <div style="padding-left: 7px; padding-bottom: 15px; overflow-x: auto; clear: both; width: 505px; height: 100%; padding-bottom: 20px; overflow-y: hidden;">{$shipment.comments|wordwrap:90:"\n":true|nl2br nofilter}</div>
+            <div style="padding-left: 7px; padding-bottom: 15px; overflow-x: auto; clear: both; width: 505px; height: 100%; padding-bottom: 20px; overflow-y: hidden;">{$shipment.comments|wordwrap:90:"\n":true|nl2br}</div>
         {/if}
         
         {hook name="orders:invoice"}

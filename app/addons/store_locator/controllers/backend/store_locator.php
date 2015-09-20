@@ -24,68 +24,53 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         $store_location_id = fn_update_store_location($_REQUEST['store_location_data'], $_REQUEST['store_location_id'], DESCR_SL);
 
-        if (empty($store_location_id)) {
-            $suffix = ".manage";
-        } else {
-            $suffix = ".update?store_location_id=$store_location_id";
-        }
-    }
-
-    if ($mode == 'delete') {
-        if (!empty($_REQUEST['store_location_id'])) {
-            fn_delete_store_location($_REQUEST['store_location_id']);
-        }
-        $suffix = '.manage';
+        $suffix .= '.manage';
     }
 
     return array (CONTROLLER_STATUS_OK, 'store_locator' . $suffix);
 }
 
-if ($mode == 'manage') {
+if ($mode == 'delete') {
+    if (!empty($_REQUEST['store_location_id'])) {
+        db_query('DELETE FROM ?:store_locations WHERE store_location_id = ?i', $_REQUEST['store_location_id']);
+        db_query('DELETE FROM ?:store_location_descriptions WHERE store_location_id = ?i', $_REQUEST['store_location_id']);
+
+        $count = db_get_field("SELECT COUNT(*) FROM ?:store_locations");
+        if (empty($count)) {
+            Registry::get('view')->display('addons/store_locator/views/store_locator/manage.tpl');
+        }
+    }
+    exit;
+
+} elseif ($mode == 'manage') {
 
     list($store_locations, $search) = fn_get_store_locations($_REQUEST, Registry::get('settings.Appearance.admin_elements_per_page'), DESCR_SL);
 
-    Tygh::$app['view']->assign('sl_settings', fn_get_store_locator_settings());
-    Tygh::$app['view']->assign('store_locations', $store_locations);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('store_locations', $store_locations);
+    Registry::get('view')->assign('search', $search);
+}
 
-} elseif ($mode == 'add') {
+function fn_update_store_location($store_location_data, $store_location_id, $lang_code = DESCR_SL)
+{
+    $store_location_data['localization'] = empty($store_location_data['localization']) ? '' : fn_implode_localizations($store_location_data['localization']);
 
-    // [Page sections]
-    Registry::set('navigation.tabs', array (
-        'detailed' => array (
-            'title' => __('general'),
-            'js' => true
-        ),
-        'addons' => array (
-            'title' => __('addons'),
-            'js' => true
-        )
-    ));
-    // [/Page sections]
-} elseif ($mode == 'update') {
+    if (empty($store_location_id)) {
+        if (empty($store_location_data['position'])) {
+            $store_location_data['position'] = db_get_field('SELECT MAX(position) FROM ?:store_locations');
+            $store_location_data['position'] += 10;
+        }
 
-    $store_location = fn_get_store_location($_REQUEST['store_location_id'], DESCR_SL);
+        $store_location_id = db_query('INSERT INTO ?:store_locations ?e', $store_location_data);
 
-    if (empty($store_location)) {
-        return array(CONTROLLER_STATUS_NO_PAGE);
+        $store_location_data['store_location_id'] = $store_location_id;
+
+        foreach (fn_get_translation_languages() as $store_location_data['lang_code'] => $v) {
+            db_query("INSERT INTO ?:store_location_descriptions ?e", $store_location_data);
+        }
+    } else {
+        db_query('UPDATE ?:store_locations SET ?u WHERE store_location_id = ?i', $store_location_data, $store_location_id);
+        db_query('UPDATE ?:store_location_descriptions SET ?u WHERE store_location_id = ?i AND lang_code = ?s', $store_location_data, $store_location_id, $lang_code);
     }
 
-    Tygh::$app['view']->assign('store_location', $store_location);
-
-    // [Page sections]
-    $tabs = array (
-        'detailed' => array (
-            'title' => __('general'),
-            'js' => true
-        ),
-        'addons' => array (
-            'title' => __('addons'),
-            'js' => true
-        )
-    );
-
-    Registry::set('navigation.tabs', $tabs);
-    // [/Page sections]
-
+    return $store_location_id;
 }

@@ -37,20 +37,20 @@ if ($mode == 'update') {
                 'js' => true
             ));
 
-            Tygh::$app['view']->assign('discussion', $discussion);
+            Registry::get('view')->assign('discussion', $discussion);
         }
     }
 
 } elseif ($mode == 'manage') {
 
-    $selected_fields = Tygh::$app['view']->getTemplateVars('selected_fields');
+    $selected_fields = Registry::get('view')->getTemplateVars('selected_fields');
 
     $selected_fields[] = array(
         'name' => '[products_data][discussion_type]',
         'text' => __('discussion_title_product')
     );
 
-    Tygh::$app['view']->assign('selected_fields', $selected_fields);
+    Registry::get('view')->assign('selected_fields', $selected_fields);
 
 } elseif ($mode == 'm_update') {
 
@@ -58,22 +58,22 @@ if ($mode == 'update') {
 
     if (!empty($selected_fields['products_data'])) {
 
-        $field_groups = Tygh::$app['view']->getTemplateVars('field_groups');
-        $filled_groups = Tygh::$app['view']->getTemplateVars('filled_groups');
+        $field_groups = Registry::get('view')->getTemplateVars('field_groups');
+        $filled_groups = Registry::get('view')->getTemplateVars('filled_groups');
 
         $field_groups['S']['discussion_type'] = array(
             'name' => 'products_data',
                 'variants' => array (
-                    'D' => 'disabled',
-                    'C' => 'communication',
-                    'R' => 'rating',
-                    'B' => 'all'
+                    'D' => __('disabled'),
+                    'C' => __('communication'),
+                    'R' => __('rating'),
+                    'B' => __('all')
                 )
         );
 
         $filled_groups['S']['discussion_type'] = __('discussion_title_product');
 
-        Tygh::$app['view']->assign('field_groups', $field_groups);
-        Tygh::$app['view']->assign('filled_groups', $filled_groups);
+        Registry::get('view')->assign('field_groups', $field_groups);
+        Registry::get('view')->assign('filled_groups', $filled_groups);
     }
 }

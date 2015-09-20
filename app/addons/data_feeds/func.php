@@ -12,7 +12,6 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-use Tygh\Enum\ProductFeatures;
 use Tygh\Registry;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
@@ -95,7 +94,7 @@ function fn_data_feeds_export($datafeed_id, $options = array(), $pattern = '')
     $datafeed_data = fn_data_feeds_get_data($params, DESCR_SL);
 
     if (empty($pattern) || empty($params['datafeed_id'])) {
-        fn_set_notification('E', __('error'), __('data_feed.error_exim_no_data_exported'));
+        fn_set_notification('E', __('error'), __('error_exim_no_data_exported'));
 
         return false;
     }
@@ -123,7 +122,7 @@ function fn_data_feeds_export($datafeed_id, $options = array(), $pattern = '')
 
         if (!empty($datafeed_data['categories'])) {
             $params['cid'] = explode(',', $datafeed_data['categories']);
-            $params['subcats'] = 'Y';
+            $params['subcats'] = 'N';
             $params['skip_view'] = 'Y';
             $params['extend'] = array('categories');
 
@@ -136,12 +135,6 @@ function fn_data_feeds_export($datafeed_id, $options = array(), $pattern = '')
         }
 
         $pids = array_unique($pids);
-    }
-
-    if (empty($pids)) {
-        fn_set_notification('E', __('error'), __('data_feed.error_exim_no_data_exported'));
-
-        return false;
     }
 
     $pattern['condition']['conditions']['product_id'] = $pids;
@@ -181,15 +174,8 @@ function fn_data_feeds_export($datafeed_id, $options = array(), $pattern = '')
             $export_location = empty($params['location']) ? $datafeed_data['export_location'] : $params['location'];
 
             if ($export_location == 'S') {
-                $datafeed_data['save_dir'] = fn_get_files_dir_path() . $datafeed_data['save_dir'];
-
-                $is_valid_path = fn_is_valid_path(fn_get_files_dir_path(), $datafeed_data['save_dir']);
-                if ($is_valid_path && !is_dir($datafeed_data['save_dir'])) {
-                    fn_mkdir($datafeed_data['save_dir']);
-                }
-
-                if ($is_valid_path && file_exists(fn_get_files_dir_path() . $datafeed_data['file_name']) && is_dir($datafeed_data['save_dir'])) {
-                    fn_rename(fn_get_files_dir_path() . $datafeed_data['file_name'], $datafeed_data['save_dir'] . '/' . $datafeed_data['file_name']);
+                if (file_exists(Registry::get('config.dir.exim') . $datafeed_data['file_name']) && is_dir($datafeed_data['save_dir'])) {
+                    fn_rename(Registry::get('config.dir.exim') . $datafeed_data['file_name'], $datafeed_data['save_dir'] . '/' . $datafeed_data['file_name']);
                 } else {
                     $errors = true;
 
@@ -218,7 +204,7 @@ function fn_data_feeds_export($datafeed_id, $options = array(), $pattern = '')
                         @ftp_chdir($conn_id, $url);
                     }
 
-                    $filename = fn_get_files_dir_path() . $datafeed_data['file_name'];
+                    $filename = Registry::get('config.dir.exim') . $datafeed_data['file_name'];
 
                     if ($result) {
                         if (@ftp_put($conn_id, $datafeed_data['file_name'], $filename, FTP_ASCII)) {
@@ -244,13 +230,13 @@ function fn_data_feeds_export($datafeed_id, $options = array(), $pattern = '')
                 return true;
 
             } else {
-                unlink(fn_get_files_dir_path() . $datafeed_data['file_name']);
+                unlink(Registry::get('config.dir.exim') . $datafeed_data['file_name']);
 
                 return false;
             }
 
         } else {
-            fn_set_notification('E', __('error'), __('data_feed.error_exim_no_data_exported'));
+            fn_set_notification('E', __('error'), __('error_exim_no_data_exported'));
 
             return false;
         }
@@ -268,20 +254,9 @@ function fn_data_feeds_get_product_features($product_id, $field, $lang_code)
 
     $result = false;
     if (!empty($feature_id)) {
-        $feature_values = db_get_array('SELECT var_descr.variant, feature_val.value, feature_val.value_int FROM ?:product_feature_variant_descriptions AS var_descr RIGHT JOIN ?:product_features_values AS feature_val ON (feature_val.variant_id = var_descr.variant_id) WHERE feature_val.feature_id = ?i AND feature_val.product_id = ?i AND feature_val.lang_code = ?s GROUP BY var_descr.variant_id', $feature_id, $product_id, $lang_code);
-        $variants = array();
+        $variants = db_get_fields('SELECT IFNULL(var_descr.variant, IFNULL(feature_val.value, feature_val.value_int)) as value FROM ?:product_feature_variant_descriptions AS var_descr RIGHT JOIN ?:product_features_values AS feature_val ON (feature_val.variant_id = var_descr.variant_id) WHERE feature_val.feature_id = ?i AND feature_val.product_id = ?i AND feature_val.lang_code = ?s GROUP BY var_descr.variant_id', $feature_id, $product_id, $lang_code);
 
-        foreach ($feature_values as $value) {
-            if ($value['variant']) {
-                $variants[] = $value['variant'];
-            } elseif ($value['value']) {
-                $variants[] = $value['value'];
-            } else {
-                $variants[] = ($value['value_int'] ? floatval($value['value_int']) : 0);
-            }
-        }
-
-        if ($variants) {
+        if (!empty($variants)) {
             $result = implode(', ', $variants);
         }
     }
@@ -291,7 +266,7 @@ function fn_data_feeds_get_product_features($product_id, $field, $lang_code)
 
 function fn_data_feeds_get_features_fields()
 {
-    $features = db_get_array('SELECT ?:product_features_descriptions.feature_id, ?:product_features_descriptions.description FROM ?:product_features_descriptions LEFT JOIN ?:product_features ON (?:product_features_descriptions.feature_id = ?:product_features.feature_id) WHERE ?:product_features.feature_type <> ?s AND lang_code = ?s', ProductFeatures::GROUP, DESCR_SL);
+    $features = db_get_array('SELECT ?:product_features_descriptions.feature_id, ?:product_features_descriptions.description FROM ?:product_features_descriptions LEFT JOIN ?:product_features ON (?:product_features_descriptions.feature_id = ?:product_features.feature_id) WHERE ?:product_features.feature_type <> ?s AND lang_code = ?s', 'G', DESCR_SL);
     $features_fields = array();
 
     if (!empty($features)) {

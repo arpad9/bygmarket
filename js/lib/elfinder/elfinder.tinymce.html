@@ -6,29 +6,44 @@
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 	<title>elFinder</title>
 
-	<link rel="stylesheet" href="../../../design/backend/css/ui/jqueryui.css" type="text/css" media="screen" title="no title" charset="utf-8">
-	<link rel="stylesheet" href="css/elfinder.min.css" type="text/css" media="screen" title="no title" charset="utf-8">
-	<link rel="stylesheet" href="css/theme.css" type="text/css" media="screen" title="no title" charset="utf-8">
-
+	<link rel="stylesheet" href="js/ui-themes/base/ui.all.css" type="text/css" media="screen" title="no title" charset="utf-8">
+	<link rel="stylesheet" href="css/elfinder.css" type="text/css" media="screen" title="no title" charset="utf-8">
+	
 	<script src="../jquery/jquery.min.js" type="text/javascript" charset="utf-8"></script>
 	<script src="../../../js/tygh/core.js" type="text/javascript" charset="utf-8"></script>
 	<script src="../jqueryui/jquery-ui.custom.min.js" type="text/javascript" charset="utf-8"></script>
 
 	<script src="js/elfinder.min.js" type="text/javascript" charset="utf-8"></script>
+	<script type="text/javascript" src="../tinymce/tiny_mce_popup.js"></script>
 
 	<script type="text/javascript" charset="utf-8">
 		Tygh.$(function() {
-
-			var params = top.tinymce.activeEditor.windowManager.getParams();
-
-			Tygh.$('#finder').elfinder({
-				url : params.connector_url,
+			
+			var f = Tygh.$('#finder').elfinder({
+				url : tinyMCEPopup.getWindowArg('connector_url'),
+				cutURL: tinyMCEPopup.getWindowArg('current_location') + '/',
 				lang : 'en',
-				getFileCallback : function(file) {
-					var url = file.url + '?' + new Date().getTime();
-					params.callback(url);
-			        top.tinymce.activeEditor.windowManager.close();
-				}
+
+				editorCallback : function(url) {
+					var win = tinyMCEPopup.getWindowArg('window');
+
+					// insert information now
+					win.document.getElementById(tinyMCEPopup.getWindowArg('input')).value = url;
+
+					// are we an image browser
+					if (typeof(win.ImageDialog) != 'undefined') {
+						// we are, so update image dimensions...
+						if (win.ImageDialog.getImageData)
+							win.ImageDialog.getImageData();
+
+						// ... and preview if necessary
+						if (win.ImageDialog.showPreviewImage)
+							win.ImageDialog.showPreviewImage(url);
+					}
+
+			        tinyMCEPopup.close();
+				},
+				closeOnEditorCallback : true
 			})
 		});
 	</script>

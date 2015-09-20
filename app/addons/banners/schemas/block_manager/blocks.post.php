@@ -45,6 +45,24 @@ $schema['banners'] = array (
     ),
     'templates' => array (
         'addons/banners/blocks/original.tpl' => array(),
+        'addons/banners/blocks/bootstrap_carousel.tpl' => array(
+            'settings' => array (
+                'navigation' => array (
+                    'type' => 'selectbox',
+                    'values' => array (
+                        'N' => 'none',
+                        'D' => 'dots',
+                        'P' => 'pages',
+                        'A' => 'arrows',
+                    ),
+                    'default_value' => 'D'
+                ),
+                'delay' => array (
+                    'type' => 'input',
+                    'default_value' => '3'
+                ),
+            ),
+        ),
         'addons/banners/blocks/carousel.tpl' => array(
             'settings' => array (
                 'navigation' => array (
@@ -53,7 +71,7 @@ $schema['banners'] = array (
                         'N' => 'none',
                         'D' => 'dots',
                         'P' => 'pages',
-                        'A' => 'arrows'
+                        'A' => 'arrows',
                     ),
                     'default_value' => 'D'
                 ),
@@ -65,11 +83,6 @@ $schema['banners'] = array (
         )
     ),
     'wrappers' => 'blocks/wrappers',
-    'cache' => array(
-        'update_handlers' => array(
-            'banners', 'banner_descriptions', 'banner_images'
-        )
-    )
 );
 
 return $schema;

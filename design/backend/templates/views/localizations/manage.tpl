@@ -34,7 +34,7 @@
     <td class="nowrap right">
         {capture name="tools_list"}
             <li>{btn type="list" text=__("edit") href="localizations.update?localization_id=`$localization.localization_id`"}</li>
-            <li>{btn type="text" text=__("delete") href="localizations.delete?localization_id=`$localization.localization_id`" class="cm-confirm cm-ajax cm-post cm-comet" data=['data-ca-target-id'=>'localizations_table']}</li>
+            <li>{btn type="text" text=__("delete") href="localizations.delete?localization_id=`$localization.localization_id`" class="cm-confirm cm-ajax cm-comet" data=['data-ca-target-id'=>'localizations_table']}</li>
         {/capture}
         <div class="hidden-tools">
             {dropdown content=$smarty.capture.tools_list}
@@ -52,11 +52,11 @@
 <!--localizations_table--></div>
 </form>
 
-{capture name="adv_buttons"}
-    {include file="common/tools.tpl" tool_href="localizations.add" prefix="top" title=__("add_localization") icon="icon-plus"}
+{capture name="buttons"}
+    {include file="common/tools.tpl" tool_href="localizations.add" prefix="top" link_text=__("add_localization") link_text=__("add_localization") hide_tools=true icon="icon-plus"}
 {/capture}
 
-{capture name="buttons"}
+{capture name="adv_buttons"}
     {capture name="tools_list"}
         {if $localizations}
             <li>{btn type="delete_selected" dispatch="dispatch[localizations.m_delete]" form="localizations_form"}</li>

@@ -12,9 +12,7 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-use Tygh\Enum\ProductTracking;
 use Tygh\Registry;
-use Tygh\Tools\SecurityHelper;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -23,8 +21,6 @@ function fn_buy_together_update_chain($item_id, $product_id, $item_data, $auth, 
     if (empty($product_id) || $product_id == 0) {
         return false;
     }
-
-    SecurityHelper::sanitizeObjectData('buy_together_chain', $item_data);
 
     $show_notice = true;
     $item_data['product_id'] = $product_id;
@@ -144,13 +140,7 @@ function fn_buy_together_get_chains($params = array(), $auth = array(), $lang_co
 
     $fields = implode(', ', $fields);
 
-    $chains = db_get_array(
-        "SELECT $fields FROM ?:buy_together AS items"
-        . " LEFT JOIN ?:products AS p ON p.product_id = items.product_id"
-        . " LEFT JOIN ?:buy_together_descriptions AS descr"
-        . "  ON items.chain_id = descr.chain_id AND descr.lang_code = ?s $condition",
-        $lang_code
-    );
+    $chains = db_get_array("SELECT $fields FROM ?:buy_together AS items LEFT JOIN ?:products AS p ON p.product_id = items.product_id LEFT JOIN ?:buy_together_descriptions AS descr ON items.chain_id = descr.chain_id AND descr.lang_code = ?s $condition", $lang_code);
 
     if (!empty($chains)) {
         foreach ($chains as $key => $chain) {
@@ -174,10 +164,7 @@ function fn_buy_together_get_chains($params = array(), $auth = array(), $lang_co
                         continue;
                     }
 
-                    $_product['selected_options'] = isset($params['selected_options'][$_product['product_id']]['selected_options']) ? $params['selected_options'][$_product['product_id']]['selected_options'] : '';
-                    $_product['changed_option'] = isset($params['selected_options'][$_product['product_id']]['changed_option']) ? $params['selected_options'][$_product['product_id']]['changed_option'] : '';
-
-                    fn_gather_additional_product_data($_product, true, true, true);
+                    fn_gather_additional_product_data($_product, true, true);
 
                     $chains[$key]['product_name'] = $_product['product'];
                     $chains[$key]['chain_amount'] = ($_product['min_qty'] > 0) ? $_product['min_qty'] : 1;
@@ -190,7 +177,8 @@ function fn_buy_together_get_chains($params = array(), $auth = array(), $lang_co
                     list($chains[$key]['discount'], $chains[$key]['discounted_price']) = fn_buy_together_calculate_discount($_product['price'], $chain['modifier'], $chain['modifier_type']);
                     $chains[$key]['options_type'] = $_product['options_type'];
                     $chains[$key]['exceptions_type'] = $_product['exceptions_type'];
-                    $chains[$key]['options_update'] = isset($_product['options_update']) ? $_product['options_update'] : false;
+
+                    isset($_product['options_update']) ? $chains[$key]['options_update'] = $_product['options_update'] : $chains[$key]['options_update'] = false;
 
                     $total_price = $_product['price'];
                     $chain_price = $chains[$key]['discounted_price'];
@@ -214,25 +202,13 @@ function fn_buy_together_get_chains($params = array(), $auth = array(), $lang_co
                             unset($chains[$key]['products'][$hash]);
                             unset($chains[$key]['products_info'][$hash]);
                             continue;
-                        } elseif (AREA == 'C'
-                            && ($_product['status'] == 'H'
-                                || (
-                                    isset($_product['tracking'])
-                                    && $_product['tracking'] != ProductTracking::DO_NOT_TRACK
-                                    && Registry::get('settings.General.show_out_of_stock_products') == 'N'
-                                    && empty($_product['amount'])
-                                )
-                            )
-                        ) {
-                            $is_valid = false;
-                            break;
                         }
 
                         if (!empty($product['product_options'])) {
                             $_product['selected_options'] = $product['product_options'];
                         }
 
-                        fn_gather_additional_product_data($_product, true, true, true);
+                        fn_gather_additional_product_data($_product, true, true);
 
                         $_product['min_qty'] = ($_product['min_qty'] > 0) ? $_product['min_qty'] : 1;
 
@@ -243,7 +219,7 @@ function fn_buy_together_get_chains($params = array(), $auth = array(), $lang_co
                         $chains[$key]['products'][$hash]['main_pair'] = $_product['main_pair'];
                         $chains[$key]['products'][$hash]['options_type'] = $_product['options_type'];
                         $chains[$key]['products'][$hash]['exceptions_type'] = $_product['exceptions_type'];
-                        $chains[$key]['products'][$hash]['options_update'] = isset($_product['options_update']) ? $_product['options_update'] : false;
+                        isset($_product['options_update']) ? $chains[$key]['products'][$hash]['options_update'] = $_product['options_update'] : $chains[$key]['products'][$hash]['options_update'] = false;
 
                         list($chains[$key]['products'][$hash]['discount'], $chains[$key]['products'][$hash]['discounted_price']) = fn_buy_together_calculate_discount($_product['price'], empty($product['modifier']) ? 0 : $product['modifier'], empty($product['modifier_type']) ? 'to_fixed' : $product['modifier_type']);
 
@@ -277,7 +253,9 @@ function fn_buy_together_get_chains($params = array(), $auth = array(), $lang_co
             }
 
             if (!empty($params['simple'])) {
-                return $chains[$key];
+                if ($params['simple']) {
+                    return $chains[$key];
+                }
             }
 
         }
@@ -492,11 +470,6 @@ function fn_buy_together_add_to_cart(&$cart, &$product_id, &$cart_id)
 
         if (!$found) {
             unset($cart['products'][$cart_id]);
-            foreach ($cart['product_groups'] as $key_group => $group) {
-                if (in_array($cart_id, array_keys($group['products']))) {
-                    unset($cart['product_groups'][$key_group]['products'][$cart_id]);
-                }
-            }
 
             fn_set_notification('E', __('error'), __('buy_together_combination_cannot_be_added'));
 
@@ -686,11 +659,6 @@ function fn_buy_together_delete_cart_product(&$cart, &$cart_id, &$full_erase)
         foreach ($cart['products'] as $key => $item) {
             if (!empty($item['extra']['parent']['buy_together']) && $item['extra']['parent']['buy_together'] == $cart_id) {
                 unset($cart['products'][$key]);
-                foreach ($cart['product_groups'] as $key_group => $group) {
-                    if (in_array($key, array_keys($group['products']))) {
-                        unset($cart['product_groups'][$key_group]['products'][$key]);
-                    }
-                }
             }
         }
     }
@@ -821,7 +789,7 @@ function fn_buy_together_calculate_cart_items(&$cart, &$cart_products, &$auth)
 
             $_product = fn_get_product_data($product['product_id'], $auth, CART_LANGUAGE, '', false, false, false, false);
 
-            if (empty($_product) || ($check_amount && $product['amount'] > $_product['amount'] && $_product['tracking'] != ProductTracking::DO_NOT_TRACK)) {
+            if (empty($_product) || ($check_amount && $product['amount'] > $_product['amount'] && $_product['tracking'] != 'D')) {
                 $allowed = false;
             }
 
@@ -837,7 +805,7 @@ function fn_buy_together_calculate_cart_items(&$cart, &$cart_products, &$auth)
                     if ($allowed) {
                         $_product = fn_get_product_data($v['product_id'], $auth, CART_LANGUAGE, '', false, false, false, false);
 
-                        if (empty($_product) || ($check_amount && $v['amount'] > $_product['amount']) && !defined('ORDER_MANAGEMENT') && $_product['tracking'] != ProductTracking::DO_NOT_TRACK) {
+                        if (empty($_product) || ($check_amount && $v['amount'] > $_product['amount']) && !defined('ORDER_MANAGEMENT') && $_product['tracking'] != 'D') {
                             fn_set_notification('E', __('notice'), __('buy_together_product_was_removed', array(
                                 '[product]' => $_product['product'],
                                 '[amount]' => $v['amount']
@@ -846,24 +814,22 @@ function fn_buy_together_calculate_cart_items(&$cart, &$cart_products, &$auth)
                             $allowed = false;
                         }
 
-                        if (AREA != 'A') {
+                        if (AREA != 'A' && Registry::get('runtime.mode') != 'place_order') {
                             if (isset($chain['products'][$v['extra']['chain']['hash']]['discounted_price'])) {
                                 $discounted_price = $cart_products[$k]['price'] - $chain['products'][$v['extra']['chain']['hash']]['discount'];
                                 $discounted_price = $discounted_price < 0 ? 0 : $discounted_price;
 
                                 $cart_products[$k]['price'] = $cart_products[$k]['base_price'] = $discounted_price;
                             }
+
                             $cart_products[$k]['price'] = ($cart_products[$k]['price'] < 0) ? 0 : $cart_products[$k]['price'];
                             $cart_products[$k]['base_price'] = ($cart_products[$k]['base_price'] < 0) ? 0 : $cart_products[$k]['base_price'];
                             $cart_products[$k]['original_price'] = $cart_products[$k]['price'];
                             $cart_products[$k]['subtotal'] = $cart_products[$k]['price'] * $cart_products[$k]['amount'];
-
-                            if (Registry::get('runtime.mode') == 'place_order') {
-                                $cart_products[$k]['discount'] = 0;
-                                $cart_products[$k]['base_price'] = $cart_products[$k]['price'] - $cart_products[$k]['modifiers_price'];
-                            }
+                        } elseif (AREA != 'A' && Registry::get('runtime.mode') == 'place_order') {
+                            $cart_products[$k]['discount'] = 0;
+                            $cart_products[$k]['base_price'] = $cart_products[$k]['price'] - $cart_products[$k]['modifiers_price'];
                         }
-
                     }
                 }
 
@@ -873,36 +839,32 @@ function fn_buy_together_calculate_cart_items(&$cart, &$cart_products, &$auth)
 
             }
 
-            if (AREA != 'A') {
+            if (AREA != 'A' && (!$allowed || (count($_products) != count($product['extra']['buy_together'])))) {
+                $_products[] = $key;
+                $cart['amount'] -= $product['amount'];
 
-                if (!$allowed || (count($_products) != count($product['extra']['buy_together']))) {
-                    $_products[] = $key;
-                    $cart['amount'] -= $product['amount'];
-
-                    foreach ($_products as $c_key) {
-                        unset($cart['products'][$c_key]);
-                        unset($cart_products[$c_key]);
-                    }
-
-                    $is_valid = false;
-                } else {
-                    $cart_products[$key]['price'] -= empty($chain['discount']) ? 0 : $chain['discount'];
-
-                    if ($cart_products[$key]['price'] < 0) {
-                        $cart_products[$key]['price'] = 0;
-                    }
-
-                    $cart_products[$key]['base_price'] -= $chain['discount'];
-                    $cart_products[$key]['base_price'] = ($cart_products[$key]['base_price'] < 0) ? 0 : $cart_products[$key]['base_price'];
-
-                    $cart_products[$key]['original_price'] = $cart_products[$key]['price'];
-                    $cart_products[$key]['subtotal'] = $cart_products[$key]['price'] * $cart_products[$key]['amount'];
-
-                    if (Registry::get('runtime.mode') == 'place_order') {
-                        $cart_products[$key]['discount'] = 0;
-                    }
+                foreach ($_products as $c_key) {
+                    unset($cart['products'][$c_key]);
+                    unset($cart_products[$c_key]);
                 }
 
+                $is_valid = false;
+
+            } elseif (AREA != 'A' && Registry::get('runtime.mode') != 'place_order') {
+                $cart_products[$key]['price'] -= empty($chain['discount']) ? 0 : $chain['discount'];
+
+                if ($cart_products[$key]['price'] < 0) {
+                    $cart_products[$key]['price'] = 0;
+                }
+
+                $cart_products[$key]['base_price'] -= $chain['discount'];
+                $cart_products[$key]['base_price'] = ($cart_products[$key]['base_price'] < 0) ? 0 : $cart_products[$key]['base_price'];
+
+                $cart_products[$key]['original_price'] = $cart_products[$key]['price'];
+                $cart_products[$key]['subtotal'] = $cart_products[$key]['price'] * $cart_products[$key]['amount'];
+
+            } elseif (AREA != 'A' && Registry::get('runtime.mode') == 'place_order') {
+                $cart_products[$key]['discount'] = 0;
             }
         }
     }
@@ -1015,12 +977,6 @@ function fn_buy_together_update_cart_products_post(&$cart, &$product_data, &$aut
                     unset($upd_product['update_c_id']);
                     $cart['products'][$new_id] = $upd_product;
                     unset($cart['products'][$upd_id]);
-                    foreach ($cart['product_groups'] as $key_group => $group) {
-                        if (in_array($upd_id, array_keys($group['products']))) {
-                            unset($cart['product_groups'][$key_group]['products'][$upd_id]);
-                            $cart['product_groups'][$key_group]['products'][$new_id] = $upd_product;
-                        }
-                    }
 
                     // update taxes
                     fn_update_stored_cart_taxes($cart, $upd_id, $new_id, false);

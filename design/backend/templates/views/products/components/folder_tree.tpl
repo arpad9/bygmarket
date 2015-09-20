@@ -8,20 +8,16 @@
 
     <td width="10%" class="right nowrap">
         <div class="pull-right hidden-tools">
-            {capture name="items_tools"}
-                {if $tool_items}
-                    {$tool_items nofilter}
-                {/if}
+            {if $tool_items}{$tool_items nofilter}{/if}
 
-                {if !$non_editable}
-                    <li>{include file="common/popupbox.tpl" id="group_folder_`$id`" text="{__("editing_folder")}: `$folder.folder_name`" act=$act|default:"edit" opener_ajax_class="cm-ajax"}</li>
-                {/if}
+            {include file="common/popupbox.tpl" id="group_folder_`$id`" text="{__("editing_folder")}: `$folder.folder_name`" act=$act|default:"edit" opener_ajax_class="cm-ajax"}
 
-                {if !$non_editable && !$skip_delete}
-                    <li>{btn type="text" text=__("delete") href={"products.delete_folder?folder_id=`$folder.folder_id`&product_id=`$product_data.product_id`"|fn_url} class="cm-confirm cm-tooltip cm-ajax cm-post cm-ajax-force cm-ajax-full-render cm-delete-row" data=["data-ca-target-id" => "product_files_list"]}</li>
+            {if !$non_editable}
+                {if !$skip_delete}
+                    <a class="cm-confirm cm-tooltip cm-ajax cm-ajax-full-render cm-delete-row" 
+                    href={"products.delete_folder?folder_id=`$folder.folder_id`&product_id=`$product_data.product_id`"|fn_url} data-ca-target-id="product_files_list" title="{__("delete")}"><i class="icon-trash"></i></a>
                 {/if}
-            {/capture}
-            {dropdown content=$smarty.capture.items_tools}
+            {/if}
         </div></td>
 
     <td width="15%">

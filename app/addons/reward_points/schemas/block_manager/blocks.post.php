@@ -13,7 +13,5 @@
 ****************************************************************************/
 
 $schema['products']['cache']['update_handlers'][] = 'product_point_prices';
-$schema['main']['cache_overrides_by_dispatch']['products.view']['update_handlers'][] = 'reward_points';
-$schema['main']['cache_overrides_by_dispatch']['products.view']['update_handlers'][] = 'product_point_prices';
 
 return $schema;

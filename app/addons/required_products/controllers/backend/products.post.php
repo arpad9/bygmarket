@@ -60,5 +60,5 @@ if ($mode == 'update') {
 
     $required_products = db_get_fields('SELECT required_id FROM ?:product_required_products WHERE product_id = ?i', $product_id);
 
-    Tygh::$app['view']->assign('required_products', $required_products);
+    Registry::get('view')->assign('required_products', $required_products);
 }

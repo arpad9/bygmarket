@@ -19,6 +19,5 @@ fn_register_hooks(
     'update_page_post',
     'get_page_data',
     'clone_page',
-    'page_object_by_type',
-    'settings_variants_image_verification_use_for'
+    'page_object_by_type'
 );

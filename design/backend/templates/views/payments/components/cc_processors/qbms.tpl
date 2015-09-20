@@ -18,18 +18,10 @@
 
 <div class="control-group">
     <label class="control-label" for="certificate_filename">{__("certificate_filename")}:</label>
-    <div class="controls" id="certificate_file">
-        {if $processor_params.certificate_filename}
-            <div class="text-type-value pull-left">
-                {$processor_params.certificate_filename}
-                <a href="{'payments.delete_certificate?payment_id='|cat:$payment_id|fn_url}" class="cm-ajax cm-post" data-ca-target-id="certificate_file">
-                    <i class="icon-remove-sign cm-tooltip hand" title="{__('remove')}"></i>
-                </a>
-            </div>
-        {/if}
-
-        <div {if $processor_params.certificate_filename}class="clear"{/if}>{include file="common/fileuploader.tpl" var_name="payment_certificate[]"}</div>
-    <!--certificate_file--></div>
+    <div class="controls">
+        <div class="text-type-value pull-left">{$smarty.const.DIR_ROOT}/app/payments/certificates/&nbsp;</div>
+        <input type="text" name="payment_data[processor_params][certificate_filename]" id="certificate_filename" value="{$processor_params.certificate_filename}"  size="30" class="pull-left">
+    </div>
 </div>
 
 <div class="control-group">

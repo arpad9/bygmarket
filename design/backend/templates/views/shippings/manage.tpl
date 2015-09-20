@@ -14,10 +14,6 @@
     {if !"ULTIMATE:FREE"|fn_allowed_for}
         <th>{__("usergroups")}</th>
     {/if}
-
-    {hook name="shippings:manage_header"}
-    {/hook}
-
     <th width="5%">&nbsp;</th>
     <th width="10%" class="right">{__("status")}</th>
 </tr>
@@ -35,7 +31,6 @@
 {/if}
 
 <tr class="cm-row-status-{$shipping.status|lower} {if !$allow_save}cm-hide-inputs{else}cm-no-hide-input{/if}">
-<input type="hidden" name="shipping_data[{$shipping.shipping_id}][tax_ids][{$shipping.tax_ids}]" value="{$shipping.tax_ids}" />
     <td>
         <input type="checkbox" name="shipping_ids[]" value="{$shipping.shipping_id}" class="cm-item" /></td>
     <td>
@@ -53,25 +48,19 @@
             {include file="common/select_usergroups.tpl" select_mode=true title=__("usergroup") id="ship_data_`$shipping.shipping_id`" name="shipping_data[`$shipping.shipping_id`][usergroup_ids]" usergroups=$usergroups usergroup_ids=$shipping.usergroup_ids input_extra=""}
         </td>
     {/if}
-
-    {hook name="shippings:manage_data"}
-    {/hook}
-
     <td class="nowrap">
         {capture name="tools_list"}
-            {hook name="shippings:list_extra_links"}
-                <li>{btn type="list" text=$link_text href="shippings.update?shipping_id=`$shipping.shipping_id`"}</li>
-                {if $allow_save}
-                    <li>{btn type="list" text=__("delete") class="cm-confirm cm-post" href="shippings.delete?shipping_id=`$shipping.shipping_id`"}</li>
-                {/if}
-            {/hook}
+            <li>{btn type="list" text=$link_text href="shippings.update?shipping_id=`$shipping.shipping_id`"}</li>
+            {if $allow_save}
+                <li>{btn type="list" text=__("delete") class="cm-confirm" href="shippings.delete?shipping_id=`$shipping.shipping_id`"}</li>
+            {/if}
         {/capture}
         <div class="hidden-tools">
             {dropdown content=$smarty.capture.tools_list}
         </div>
     </td>
     <td class="right">
-        {include file="common/select_popup.tpl" id=$shipping.shipping_id display=$status_display status=$shipping.status hidden="" object_id_name="shipping_id" table="shippings"}
+        {include file="common/select_popup.tpl" id=$shipping.shipping_id display=$status_display status=$shipping.status hidden="" object_id_name="shipping_id" table="shippings"}        
     </td>
 </tr>
 {/foreach}
@@ -83,11 +72,9 @@
 
 {capture name="buttons"}
     {capture name="tools_list"}
-        {hook name="shippings:manage_tools_list"}
         {if $shippings}
             <li>{btn type="delete_selected" dispatch="dispatch[shippings.m_delete]" form="shippings_form"}</li>
         {/if}
-        {/hook}
     {/capture}
     {dropdown content=$smarty.capture.tools_list}
 
@@ -100,5 +87,16 @@
     {include file="common/tools.tpl" tool_href="shippings.add" prefix="top" hide_tools=true link_text="" title=__("add_shipping_method") icon="icon-plus"}
 {/capture}
 
+{capture name="sidebar"}
+    {capture name="content_sidebar"}
+        {if !$runtime.company_id}
+            <ul class="nav nav-list">
+                <li><a href="{"settings.manage?section_id=Shippings"|fn_url}"><i class="exicon-car"></i>{__("realtime_shippings")}</a></li>
+            </ul>
+        {/if}
+    {/capture}
+    {include file="common/sidebox.tpl" content=$smarty.capture.content_sidebar title=__("settings")}
 {/capture}
-{include file="common/mainbox.tpl" title=__("manage_shippings") content=$smarty.capture.mainbox buttons=$smarty.capture.buttons adv_buttons=$smarty.capture.adv_buttons select_languages=true}
+
+{/capture}
+{include file="common/mainbox.tpl" title=__("manage_shippings") content=$smarty.capture.mainbox buttons=$smarty.capture.buttons adv_buttons=$smarty.capture.adv_buttons sidebar=$smarty.capture.sidebar select_languages=true}

@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (!empty($_REQUEST['category_id']) && !fn_check_company_id('categories', 'category_id', $_REQUEST['category_id'])) {
                 fn_company_access_denied_notification();
 
-                return array(CONTROLLER_STATUS_OK, 'categories.update?category_id=' . $_REQUEST['category_id']);
+                return array(CONTROLLER_STATUS_OK, "categories.update?category_id=$_REQUEST[category_id]");
             }
         }
 
@@ -100,15 +100,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($mode == 'm_delete') {
 
         if (isset($_REQUEST['category_ids'])) {
-
-            $category_deletion_queue = fn_filter_redundant_deleting_category_ids((array)$_REQUEST['category_ids']);
-
-            foreach ($category_deletion_queue as $category_id) {
-                if (fn_allowed_for('MULTIVENDOR')
-                    ||
-                    (fn_allowed_for('ULTIMATE') && fn_check_company_id('categories', 'category_id', $category_id))
-                ) {
-                    fn_delete_category($category_id, true);
+            foreach ($_REQUEST['category_ids'] as $v) {
+                if (fn_allowed_for('MULTIVENDOR') || (fn_allowed_for('ULTIMATE') && fn_check_company_id('categories', 'category_id', $v))) {
+                    fn_delete_category($v);
                 }
             }
         }
@@ -135,21 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    //
-    // Delete category
-    //
-    if ($mode == 'delete') {
-
-        if (!empty($_REQUEST['category_id'])) {
-            fn_delete_category($_REQUEST['category_id']);
-        }
-
-        fn_set_notification('N', __('notice'), __('text_category_has_been_deleted'));
-
-        $suffix = ".manage";
-    }
-
-    return array(CONTROLLER_STATUS_OK, 'categories' . $suffix);
+    return array(CONTROLLER_STATUS_OK, "categories$suffix");
 }
 
 //
@@ -167,8 +147,8 @@ if ($mode == 'add') {
             'title' => __('addons'),
             'js' => true
         ),
-        'views' => array(
-            'title' => __('views'),
+        'layout' => array(
+            'title' => __('layout'),
             'js' => true
         ),
     ));
@@ -177,7 +157,7 @@ if ($mode == 'add') {
 
     if (!empty($_REQUEST['parent_id'])) {
         $category_data['parent_id'] = $_REQUEST['parent_id'];
-        Tygh::$app['view']->assign('category_data', $category_data);
+        Registry::get('view')->assign('category_data', $category_data);
     }
 
 //
@@ -190,9 +170,8 @@ if ($mode == 'add') {
 //
 } elseif ($mode == 'update') {
 
-    $category_id = $_REQUEST['category_id'];
     // Get current category data
-    $category_data = fn_get_category_data($category_id, DESCR_SL);
+    $category_data = fn_get_category_data($_REQUEST['category_id'], DESCR_SL);
 
     if (empty($category_data)) {
         return array(CONTROLLER_STATUS_NO_PAGE);
@@ -211,24 +190,13 @@ if ($mode == 'add') {
         'js' => true
     );
 
-    $tabs['views'] = array (
-        'title' => __('views'),
+    $tabs['layout'] = array (
+        'title' => __('layout'),
         'js' => true
     );
     Registry::set('navigation.tabs', $tabs);
     // [/Page sections]
-    Tygh::$app['view']->assign('category_data', $category_data);
-
-    $params = array (
-        'active_category_id' => $category_id,
-    );
-    $category_count = db_get_field("SELECT COUNT(*) FROM ?:categories");
-    if ($category_count > CATEGORY_THRESHOLD) {
-        $params['current_category_id'] = $category_id;
-        $params['visible'] = true;
-    }
-    list($categories_tree, ) = fn_get_categories($params, DESCR_SL);
-    Tygh::$app['view']->assign('categories_tree', $categories_tree);
+    Registry::get('view')->assign('category_data', $category_data);
 
 //
 // 'Mulitple categories updating' page
@@ -239,7 +207,7 @@ if ($mode == 'add') {
     $selected_fields = $_SESSION['selected_fields'];
 
     if (empty($category_ids) || empty($selected_fields) || empty($selected_fields['object']) || $selected_fields['object'] != 'category') {
-        return array(CONTROLLER_STATUS_REDIRECT, 'categories.manage');
+        return array(CONTROLLER_STATUS_REDIRECT, "categories.manage");
     }
 
     $field_groups = array (
@@ -310,13 +278,26 @@ if ($mode == 'add') {
         $categories_data[$value] = fn_get_category_data($value, DESCR_SL, '?:categories.category_id, ?:categories.company_id' . $data_search_fields, $get_main_pair);
     }
 
-    Tygh::$app['view']->assign('field_groups', $field_groups);
-    Tygh::$app['view']->assign('filled_groups', $filled_groups);
+    Registry::get('view')->assign('field_groups', $field_groups);
+    Registry::get('view')->assign('filled_groups', $filled_groups);
 
-    Tygh::$app['view']->assign('fields2update', $fields2update);
-    Tygh::$app['view']->assign('field_names', $field_names);
+    Registry::get('view')->assign('fields2update', $fields2update);
+    Registry::get('view')->assign('field_names', $field_names);
 
-    Tygh::$app['view']->assign('categories_data', $categories_data);
+    Registry::get('view')->assign('categories_data', $categories_data);
+}
+//
+// Delete category
+//
+elseif ($mode == 'delete') {
+
+    if (!empty($_REQUEST['category_id'])) {
+        fn_delete_category($_REQUEST['category_id']);
+    }
+
+    fn_set_notification('N', __('notice'), __('text_category_has_been_deleted'));
+
+    return array(CONTROLLER_STATUS_REDIRECT, "categories.manage");
 
 //
 // 'Management' page
@@ -326,7 +307,6 @@ if ($mode == 'add') {
     if ($mode == 'manage') {
         unset($_SESSION['category_ids']);
         unset($_SESSION['selected_fields']);
-        Tygh::$app['view']->assign('categories_stats', fn_get_categories_stats());
     }
 
     $category_count = db_get_field("SELECT COUNT(*) FROM ?:categories");
@@ -334,7 +314,7 @@ if ($mode == 'add') {
     $except_id = 0;
     if (!empty($_REQUEST['except_id'])) {
         $except_id = $_REQUEST['except_id'];
-        Tygh::$app['view']->assign('except_id', $_REQUEST['except_id']);
+        Registry::get('view')->assign('except_id', $_REQUEST['except_id']);
     }
     if ($category_count < CATEGORY_THRESHOLD) {
         $params = array (
@@ -345,8 +325,8 @@ if ($mode == 'add') {
             'company_ids' => !empty($_REQUEST['company_ids']) ? $_REQUEST['company_ids'] : '',
             'save_view_results' => !empty($_REQUEST['save_view_results']) ? $_REQUEST['save_view_results'] : ''
         );
-        list($categories_tree, ) = fn_get_categories($params, DESCR_SL);
-        Tygh::$app['view']->assign('show_all', true);
+        list($categories_tree, ) = fn_get_categories($params);
+        Registry::get('view')->assign('show_all', true);
     } else {
         $params = array (
             'category_id' => $category_id,
@@ -359,18 +339,18 @@ if ($mode == 'add') {
             'company_ids' => !empty($_REQUEST['company_ids']) ? $_REQUEST['company_ids'] : '',
             'save_view_results' => !empty($_REQUEST['save_view_results']) ? $_REQUEST['save_view_results'] : ''
         );
-        list($categories_tree, ) = fn_get_categories($params, DESCR_SL);
+        list($categories_tree, ) = fn_get_categories($params);
     }
 
-    Tygh::$app['view']->assign('categories_tree', $categories_tree);
+    Registry::get('view')->assign('categories_tree', $categories_tree);
     if ($category_count < CATEGORY_SHOW_ALL) {
-        Tygh::$app['view']->assign('expand_all', true);
+        Registry::get('view')->assign('expand_all', true);
     }
     if (defined('AJAX_REQUEST')) {
         if (!empty($_REQUEST['random'])) {
-            Tygh::$app['view']->assign('random', $_REQUEST['random']);
+            Registry::get('view')->assign('random', $_REQUEST['random']);
         }
-        Tygh::$app['view']->assign('category_id', $category_id);
+        Registry::get('view')->assign('category_id', $category_id);
     }
 }
 
@@ -378,6 +358,6 @@ if ($mode == 'add') {
 // Categories picker
 //
 if ($mode == 'picker') {
-    Tygh::$app['view']->display('pickers/categories/picker_contents.tpl');
+    Registry::get('view')->display('pickers/categories/picker_contents.tpl');
     exit;
 }

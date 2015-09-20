@@ -49,11 +49,6 @@ class Settings
     private $_root_mode = false;
 
     /**
-     * Instance company ID
-     */
-    private $_company_id = null;
-
-    /**
      * Loads sections data and settings schema from DB
      */
     private function __construct()
@@ -78,28 +73,15 @@ class Settings
      *
      * @return Settings Instance of class
      */
-    public static function instance($company_id = null)
+    public static function instance()
     {
         if (empty(self::$_instance)) {
             self::$_instance = new Settings();
         }
 
-        if (!is_null($company_id)) {
-            self::$_instance->_root_mode = false;
-
-        } elseif (Registry::get('runtime.simple_ultimate') && !Registry::get('runtime.forced_company_id')) {
+        if (Registry::get('runtime.simple_ultimate')) {
             self::$_instance->_root_mode = true;
-
-        } elseif (Registry::get('runtime.simple_ultimate') && Registry::get('runtime.forced_company_id')) {
-            self::$_instance->_root_mode = true;
-            $company_id = Registry::get('runtime.forced_company_id');
-
-        } else {
-            $company_id = Registry::get('runtime.company_id');
-            self::$_instance->_root_mode = false;
         }
-
-        self::$_instance->_company_id = $company_id;
 
         return self::$_instance;
     }
@@ -176,29 +158,13 @@ class Settings
     }
 
     /**
-     * Returns true if specified section have visible options
-     *
-     * @param  string $section_name Section name
-     * @param  string $section_type Section type
-     * @return bool   True if visible options exists, false otherwise
-     */
-    public function optionsExists($section_name, $section_type)
-    {
-        $section_data = $this->getSectionByName($section_name, $section_type);
-        $options = $this->_get_list(array('?:settings_objects.object_id'), $section_data['section_id'], '', false, ' AND ?:settings_objects.type <> "D"');
-
-        return !empty($options);
-    }
-
-    /**
      * Gets all core setting sections
      *
-     * @param  string $lang_code 2-letters Language identifier
-     * @return array  List of setting sections
+     * @return array List of setting sections
      */
-    public function getCoreSections($lang_code = CART_LANGUAGE)
+    public function getCoreSections()
     {
-        $_sections = $this->_getSections(Settings::CORE_SECTION, 0, true, true, $lang_code);
+        $_sections = $this->_getSections(Settings::CORE_SECTION, 0, true, true, CART_LANGUAGE);
         $sections = Array();
 
         foreach ($_sections as &$section) {
@@ -364,12 +330,12 @@ class Settings
      *
      * Section data must be array in this format (example):
      * Array (
-     *      'section_id'   => 1,
-     *      'parent_id'    => 3,
-     *      'edition_type' => 'ROOT,VENDOR',
-     *      'name'         => 'Appearance',
-     *      'position'     => 10,
-     *      'type'         => 'CORE',
+     * 		'section_id'   => 1,
+     * 		'parent_id'    => 3,
+     * 		'edition_type' => 'ROOT,VENDOR',
+     * 		'name'         => 'Appearance',
+     * 		'position'     => 10,
+     * 		'type'         => 'CORE',
      * );
      *
      * If some parameter will be skipped and function not update it field.
@@ -400,29 +366,23 @@ class Settings
     {
         if (!empty($section_id)) {
             $sections = db_get_fields("SELECT section_id FROM ?:settings_sections WHERE section_id = ?i OR parent_id = ?i", $section_id, $section_id);
-            if (!empty($sections)) {
-                db_query("DELETE FROM ?:settings_sections WHERE section_id IN (?n)", $sections);
-                db_query("DELETE FROM ?:settings_descriptions WHERE object_id IN (?n) AND object_type = ?s", $sections, Settings::SECTION_DESCRIPTION);
+            db_query("DELETE FROM ?:settings_sections WHERE section_id IN (?n)", $sections);
+            db_query("DELETE FROM ?:settings_descriptions WHERE object_id IN (?n) AND object_type = ?s", $sections, Settings::SECTION_DESCRIPTION);
 
-                $setting_ids = db_get_fields("SELECT object_id FROM ?:settings_objects WHERE section_id IN (?n)", $sections);
-                if (!empty($setting_ids)) {
-                    db_query("DELETE FROM ?:settings_descriptions WHERE object_id IN (?n) AND object_type = ?s", $setting_ids, Settings::SETTING_DESCRIPTION);
+            $setting_ids = db_get_fields("SELECT object_id FROM ?:settings_objects WHERE section_id IN (?n)", $sections);
+            db_query("DELETE FROM ?:settings_descriptions WHERE object_id IN (?n) AND object_type = ?s", $setting_ids, Settings::SETTING_DESCRIPTION);
 
-                    $variant_ids =  db_get_fields("SELECT variant_id FROM ?:settings_variants WHERE object_id IN (?n)",$setting_ids);
-                    if (!empty($variant_ids)) {
-                        db_query("DELETE FROM ?:settings_variants WHERE object_id IN (?n)", $setting_ids);
-                        db_query("DELETE FROM ?:settings_descriptions WHERE object_id IN (?n) AND object_type = ?s", $variant_ids, Settings::VARIANT_DESCRIPTION);
-                    }
+            $variants_ids =  db_get_fields("SELECT object_id FROM ?:settings_variants WHERE object_id IN (?n)",$setting_ids);
+            db_query("DELETE FROM ?:settings_variants WHERE object_id IN (?n)", $setting_ids);
+            db_query("DELETE FROM ?:settings_descriptions WHERE object_id IN (?n) AND object_type = ?s", $variants_ids, Settings::VARIANT_DESCRIPTION);
 
-                    if (fn_allowed_for('ULTIMATE')) {
-                        db_query("DELETE FROM ?:settings_vendor_values WHERE object_id IN (?n)", $setting_ids);
-                    }
-
-                    db_query("DELETE FROM ?:settings_objects WHERE object_id IN (?n)", $setting_ids);
-                }
-
-                $this->_sections = $this->_getSections();
+            if (fn_allowed_for('ULTIMATE')) {
+                db_query("DELETE FROM ?:settings_vendor_values WHERE object_id IN (?n)", $setting_ids);
             }
+
+            db_query("DELETE FROM ?:settings_objects WHERE object_id IN (?n)", $setting_ids);
+
+            $this->_sections = $this->_getSections();
         } else {
             $this->_generateError(__('unable_to_delete_setting_description'), __('empty_key_value'));
 
@@ -446,8 +406,6 @@ class Settings
     {
         $settings = array();
 
-        $company_id = $this->_getCompanyId($company_id);
-
         $edition_condition = $this->_generateEditionCondition('?:settings_objects', true);
 
         $_settings = $this->_get_list(
@@ -460,8 +418,7 @@ class Settings
                 'edition_type',
                 'position',
                 'is_global',
-                'handler',
-                'parent_id'
+                'handler'
             ),
             $section_id, $section_tab_id, false, $edition_condition, false, $company_id, $lang_code
         );
@@ -498,8 +455,6 @@ class Settings
      */
     public function getSettingDataByName($setting_name, $company_id = null, $lang_code = CART_LANGUAGE)
     {
-        $company_id = $this->_getCompanyId($company_id);
-
         $edition_condition = $this->_generateEditionCondition('?:settings_objects', true);
 
         $condition = db_quote(' AND name = ?s', $setting_name);
@@ -514,8 +469,7 @@ class Settings
                 'edition_type',
                 'position',
                 'is_global',
-                'handler',
-                'parent_id'
+                'handler'
             ),
             '', '', false, $condition, false, $company_id, $lang_code
         );
@@ -537,14 +491,14 @@ class Settings
      * @param array $setting Setting data (example):
      *
      * Array (
-     *      'handler' => '',
-     *      'section_id' => '5',
-     *      'section_tab_id' => '0',
-     *      'edition_type' => 'ROOT,ULT:VENDOR',
-     *      'name' => 'secure_connection',
-     *      'object_id' => '34',
-     *      'type' => 'C',
-     *      'value' => 'Y',
+     * 		'handler' => '',
+     * 		'section_id' => '5',
+     * 		'section_tab_id' => '0',
+     * 		'edition_type' => 'ROOT,ULT:VENDOR',
+     * 		'name' => 'secure_connection',
+     * 		'object_id' => '34',
+     * 		'type' => 'C',
+     * 		'value' => 'Y',
      * )
      *
      * @return array Prepared setting data
@@ -597,7 +551,6 @@ class Settings
     public function getValues($section_name = '', $section_type = Settings::CORE_SECTION, $hierarchy = true, $company_id = null)
     {
         $settings = array();
-        $company_id = $this->_getCompanyId($company_id);
 
         $section_id = '';
         $section_tab_id = '';
@@ -668,8 +621,6 @@ class Settings
      */
     public function getValue($setting_name, $section_name, $company_id = null)
     {
-        $company_id = $this->_getCompanyId($company_id);
-
         if (!empty($setting_name)) {
             $id = $this->getId($setting_name, $section_name);
             $condition = db_quote(' AND ?:settings_objects.object_id = ?i', $id);
@@ -698,33 +649,26 @@ class Settings
      * @param  int        $company_id Company identifier
      * @return array|bool Setting data on success, false otherwise
      */
-    public function getData($object_id, $company_id = null, $lang_code = CART_LANGUAGE)
+    public function getData($object_id, $company_id = null)
     {
-        $company_id = $this->_getCompanyId($company_id);
-
         if (!empty($object_id)) {
             $condition = db_quote(' AND ?:settings_objects.object_id = ?i', $object_id);
             $_setting = $this->_get_list(
                 array(
                     '?:settings_objects.object_id as object_id',
-                    '?:settings_objects.name as name',
                     'section_id',
                     'section_tab_id',
-                    'type',
-                    'edition_type',
-                    'position',
-                    'is_global',
-                    'handler',
-                    'parent_id'
+                    'name'
                 ),
-                '', '', false, $condition, false, $company_id, $lang_code
+                '', '', false, $condition, false, $company_id
             );
 
             if (!isset($_setting[0])) {
                 return false;
             }
             $_setting = $_setting[0];
-            $_setting = $this->_processSettingData($_setting, $lang_code);
+            $_setting['section_id'] = ($_setting['section_id'] == 0) ? 'General' : $this->_sections[$_setting['section_id']]['name'];
+            $_setting['section_tab_id'] = ($_setting['section_tab_id'] == 0) ? 'main' : $this->_sections[$_setting['section_tab_id']]['name'];
 
             return $_setting;
         } else {
@@ -802,13 +746,13 @@ class Settings
      * Settings data must be array in this format (example):
      *
      * Array (
-     *      'object_id' =>      2,
-     *      'name' =>           'use_shipments',
-     *      'section_id' =>     2,
-     *      'section_tab_id' => 0,
-     *      'type' =>           'C',
-     *      'position' =>       55,
-     *      'is_global' =>      'Y'
+     * 		'object_id' =>      2,
+     *		'name' =>           'use_shipments',
+     * 		'section_id' =>     2,
+     * 		'section_tab_id' => 0,
+     * 		'type' =>           'C',
+     * 		'position' =>       55,
+     * 		'is_global' =>      'Y'
      * )
      *
      * If some parameter will be skipped and function not update it field.
@@ -847,11 +791,11 @@ class Settings
      * @param  int    $company_id          Company identifier
      * @return bool   Always true
      */
-    public function updateValue($setting_name, $setting_value, $section_name = '', $force_cache_cleanup = false, $company_id = null, $execute_functions = true)
+    public function updateValue($setting_name, $setting_value, $section_name = '', $force_cache_cleanup = false, $company_id = null)
     {
         if (!empty($setting_name)) {
             $object_id = $this->getId($setting_name, $section_name);
-            $this->updateValueById($object_id, $setting_value, $company_id, $execute_functions);
+            $this->updateValueById($object_id, $setting_value, $company_id);
 
             if ($force_cache_cleanup) {
                 Registry::cleanup();
@@ -869,10 +813,8 @@ class Settings
      * @param  string $company_id Company identifier
      * @return bool   True on success, false otherwise
      */
-    public function updateValueById($object_id, $value, $company_id = null, $execute_functions = true)
+    public function updateValueById($object_id, $value, $company_id = null)
     {
-        $company_id = $this->_getCompanyId($company_id);
-
         if (!empty($object_id)) {
             fn_get_schema('settings', 'actions.functions', 'php', true);
 
@@ -886,7 +828,7 @@ class Settings
                 'value'     => $value,
             );
 
-            if (fn_allowed_for('ULTIMATE') && $company_id && !$this->isRootMode()) {
+            if (fn_allowed_for('ULTIMATE') && $this->_getCompanyId($company_id)) {
                 $need_edition_types = array(
                     Settings::VENDOR,
                     $this->_getCurrentEdition() . Settings::VENDOR,
@@ -894,7 +836,7 @@ class Settings
                 );
                 if (array_intersect($need_edition_types, explode(',', $edition_types))) {
                     $table = "settings_vendor_values";
-                    $data['company_id'] = $company_id;
+                    $data['company_id'] = $this->_getCompanyId($company_id);
                 }
             } else {
                 if (strpos($edition_types, $this->_getCurrentEdition() . Settings::NONE) === false) {
@@ -915,24 +857,19 @@ class Settings
                 }
 
                 // If option value was changed execute user function if it exists
-                if (isset($old_data['value']) && $old_data['value'] !== $value && $execute_functions) {
-                    $core_func_name = 'fn_settings_actions_' . fn_strtolower($old_data['section_name']) . '_' . (!empty($old_data['section_tab_name']) && $old_data['section_tab_name'] != 'main' ? $old_data['section_tab_name'] . '_' : '') . $old_data['name'];
+                if (isset($old_data['value']) && $old_data['value'] !== $value) {
+                    $core_func_name = 'fn_settings_actions_' . fn_strtolower($old_data['section_id']) . '_' . (!empty($old_data['section_tab_id']) && $old_data['section_tab_id'] != 'main' ? $old_data['section_tab_id'] . '_' : '') . $old_data['name'];
                     if (function_exists($core_func_name)) {
                         $core_func_name($data['value'], $old_data['value']);
                     }
 
-                    $addon_func_name  = 'fn_settings_actions_addons_'  . fn_strtolower($old_data['section_name']) . '_' . fn_strtolower($old_data['name']);
+                    $addon_func_name  = 'fn_settings_actions_addons_'  . fn_strtolower($old_data['section_id']) . '_' . fn_strtolower($old_data['name']);
                     if (function_exists($addon_func_name)) {
                         $addon_func_name($data['value'], $old_data['value']);
                     }
                 }
 
                 db_replace_into($table, $data);
-
-                // Clear storefront value if we are in a root mode
-                if ($this->isRootMode()) {
-                    db_query('DELETE FROM ?:settings_vendor_values WHERE object_id = ?i AND company_id = ?i', $object_id, $company_id);
-                }
 
             } else {
                 $message = __('unable_to_update_setting_value') . ' (' . $object_id . ')';
@@ -1013,56 +950,20 @@ class Settings
     }
 
     /**
-     * Gets setting value for all vendors
-     *
-     * @param string $setting_name Setting name
-     * @param string $section_name Section name
-     *
-     * @return array|bool Array of setting values with company_ids as keys on success, false otherwise
-     */
-    public function getAllVendorsValues($setting_name, $section_name = '')
-    {
-        if (fn_allowed_for('ULTIMATE') && !empty($setting_name)) {
-            $settings = array();
-
-            $fields = array(
-                '?:companies.company_id',
-                '?:settings_objects.object_id as object_id',
-                '?:settings_objects.type as object_type',
-                'IF(?:settings_vendor_values.value IS NULL, ?:settings_objects.value, ?:settings_vendor_values.value) as value'
-            );
-
-            $id = $this->getId($setting_name, $section_name);
-
-            $join = db_quote('LEFT JOIN ?:settings_objects ON ?:settings_objects.object_id = ?i', $id);
-            $join .= ' LEFT JOIN ?:settings_vendor_values ON ?:settings_vendor_values.object_id = ?:settings_objects.object_id AND ?:settings_vendor_values.company_id = ?:companies.company_id';
-
-            $group = ' GROUP BY ?:companies.company_id';
-
-            $fields = implode(', ', $fields);
-            $settings = db_get_hash_single_array("SELECT ?p FROM ?:companies ?p WHERE 1 ?p ORDER BY ?:companies.company", array('company_id', 'value'), $fields, $join, $group);
-
-            return $settings;
-        } else {
-            return false;
-        }
-    }
-
-    /**
      * Function retuns variants for setting objects
      *
      * Usage (examples):
-     *  // Addons
-     *  Settings::instance->get_variants('affiliate', 'payment_period');
+     *	// Addons
+     *	Settings::instance->get_variants('affiliate', 'payment_period');
      *
-     *  // Core same as addons but if $section_tab_name is empty it will be setted to 'main'
-     *  Settings::instance->get_variants('general', 'feedback_type');
+     *	// Core same as addons but if $section_tab_name is empty it will be setted to 'main'
+     *	Settings::instance->get_variants('general', 'feedback_type');
      *
-     *  // Return variants only by setting id, but function not check custom variant functions
-     *  Settings::instance->get_variants('', '', '', 40);
+     *	// Return variants only by setting id, but function not check custom variant functions
+     *	Settings::instance->get_variants('', '', '', 40);
      *
-     *  // Return variants only by setting id, and checks custom variant functions
-     *  Settings::instance->get_variants('affiliate', 'payment_period', '', 40);
+     *	// Return variants only by setting id, and checks custom variant functions
+     *	Settings::instance->get_variants('affiliate', 'payment_period', '', 40);
      *
      * @param  string $section_name     Setting name
      * @param  string $setting_name     Section name
@@ -1097,34 +998,23 @@ class Settings
                 $object_id = $this->getId($setting_name, $section_name);
             }
 
-            if (($object_id !== null && $object_id !== 0) || $object_id == 'all') {
-                if ($object_id == 'all') {
-                    $object_condition = '';
-                } else {
-                    $object_condition = db_quote('?:settings_variants.object_id = ?i AND', $object_id);
-                }
+            if ($object_id !== null && $object_id !== 0) {
                 $_variants = db_get_array(
                     "SELECT ?:settings_variants.*, ?:settings_descriptions.value, ?:settings_descriptions.object_type "
                     . "FROM ?:settings_variants "
                         . "INNER JOIN ?:settings_descriptions "
                             ."ON ?:settings_descriptions.object_id = ?:settings_variants.variant_id AND object_type = ?s "
-                    . "WHERE ?p ?:settings_descriptions.lang_code = ?s ORDER BY ?:settings_variants.position"
-                    , Settings::VARIANT_DESCRIPTION, $object_condition, $lang_code
+                    . "WHERE ?:settings_variants.object_id = ?i AND ?:settings_descriptions.lang_code = ?s ORDER BY ?:settings_variants.position"
+                    , Settings::VARIANT_DESCRIPTION, $object_id, $lang_code
                 );
 
                 fn_update_lang_objects('variants', $_variants);
 
                 foreach ($_variants as $variant) {
-                    if ($object_id == 'all') {
-                        $variants[$variant['name']] = array(
-                            'value' => $variant['value'],
-                        );
-                    } else {
-                        $variants[$variant['name']] = $variant['value'];
-                    }
+                    $variants[$variant['name']] = $variant['value'];
                 }
             } else {
-                if (Debugger::isActive() || fn_is_development()) {
+                if (defined('DEVELOPMENT')) {
                     $message = str_replace("[option_id]", $setting_name, __('setting_has_no_variants'));
                     fn_set_notification('E', __('error'), $message);
                 }
@@ -1136,33 +1026,15 @@ class Settings
         return $variants;
     }
 
-
-    public function getVariant($section_name, $setting_name, $variant_name, $lang_code = CART_LANGUAGE)
-    {
-        $object_id = $this->getId($setting_name, $section_name);
-        $object_condition = db_quote('?:settings_variants.object_id = ?i AND', $object_id);
-
-        $variant = db_get_row(
-            "SELECT ?:settings_variants.*, ?:settings_descriptions.value, ?:settings_descriptions.object_type "
-            . "FROM ?:settings_variants "
-                . "LEFT JOIN ?:settings_descriptions "
-                    . "ON ?:settings_descriptions.object_id = ?:settings_variants.variant_id AND object_type = ?s AND ?:settings_descriptions.lang_code = ?s"
-            . "WHERE ?p ?:settings_variants.name = BINARY ?s"
-            , Settings::VARIANT_DESCRIPTION, $lang_code, $object_condition, $variant_name
-        );
-
-        return $variant;
-    }
-
     /**
      * Updates variant of setting.
      *
      * Variant data must be array in this format (example):
      * Array (
-     *      'variant_id' => 1
-     *      'object_id'  => 3,
-     *      'name'       => 'hide',
-     *      'position'   => 10,
+     * 		'variant_id' => 1
+     * 		'object_id'  => 3,
+     * 		'name'       => 'hide',
+     * 		'position'   => 10,
      * );
      *
      * If some parameter will be skipped and function not update it field.
@@ -1246,13 +1118,13 @@ class Settings
      * If $object_id, $object_type or $lang_code or value is empty function return false and generate error notification.
      *
      * Description data must be array in this format (example):
-     *  array(
-     *      'value'     => 'General',
-     *      'tooltip'   => 'General tab',
-     *      'object_id' => '1',
-     *      'object_type' => 'S',
-     *      'lang_code' => 'en'
-     *  )
+     *	array(
+     *		'value'     => 'General',
+     *		'tooltip'   => 'General tab',
+     * 		'object_id' => '1',
+     *		'object_type' => 'S',
+     *		'lang_code' => 'en'
+     *	)
      *
      * If some parameter will be skipped and function not update it field.
      * If name or lang_code skipped function adds new description and returns true.
@@ -1304,47 +1176,6 @@ class Settings
     }
 
     /**
-     * Verifying access to the settings section under the company ID
-     *
-     * @param  string $section_id Section identifier
-     * @param  int    $company_id company ID
-     * @return bool   true on success, false otherwise
-     */
-    public function checkPermissionCompanyId($section_id, $company_id)
-    {
-        $allow = true;
-
-        if (fn_allowed_for('ULTIMATE')) {
-            $section = $this->getSectionByName($section_id, Settings::CORE_SECTION, false);
-
-            if (!empty($section['edition_type'])) {
-                $edition_names = $this->_getCurrentEdition();
-                $setting_editions = explode(",", $section['edition_type']);
-
-                if (array_search("NONE", $setting_editions) === false) {
-                    if ($company_id) {
-
-                        if (array_search("VENDOR", $setting_editions) === false
-                             && array_search($edition_names . "VENDOR", $setting_editions) === false
-                             && $company_id != 0
-                        ) {
-                            $allow = false;
-                        }
-
-                    } else {
-
-                        if (array_search("ROOT", $setting_editions) === false) {
-                            $allow = false;
-                        }
-                    }
-                }
-            }
-        }
-
-        return $allow;
-    }
-
-    /**
      * Generates error notification
      *
      * @param  string $action Action thae was happen
@@ -1361,7 +1192,7 @@ class Settings
 
         fn_log_event('settings', 'error', $message);
 
-        if (Debugger::isActive() || fn_is_development()) {
+        if (defined('DEVELOPMENT')) {
             fn_set_notification('E', __('error'), $message);
         }
 
@@ -1383,8 +1214,6 @@ class Settings
      */
     private function _get_list($fields, $section_id = '', $section_tab_id = '', $no_headers = false, $extra_condition = '', $is_global = true, $company_id = null, $lang_code = '')
     {
-        $company_id = $this->_getCompanyId($company_id);
-
         $global_condition = $is_global ? " AND is_global = 'Y'" : '';
         $condition = (!empty($section_id)) ? db_quote(" AND section_id = ?s", $section_id) : $global_condition;
         $condition .= (!empty($section_tab_id)) ? db_quote(" AND section_tab_id = ?s", $section_tab_id) : '';
@@ -1432,7 +1261,7 @@ class Settings
     {
         $edition_conditions = $_edition_conditions = array();
 
-        if ($use_access_level && $this->_getCompanyId() && !$this->isRootMode() && fn_allowed_for('ULTIMATE')) {
+        if ($use_access_level && $this->_getCompanyId() && fn_allowed_for('ULTIMATE')) {
             $_edition_conditions[] = 'VENDOR';
         } else {
             $_edition_conditions[] = 'ROOT';
@@ -1510,34 +1339,61 @@ class Settings
     }
 
     /**
+     * Verifying access to the settings section under the company ID
+     *
+     * @param  string $section_id Section identifier
+     * @param  int    $company_id company ID
+     * @return bool   true on success, false otherwise
+     */
+    public function checkPermissionCompanyId($section_id, $company_id)
+    {
+        $allow = true;
+
+        if (fn_allowed_for('ULTIMATE')) {
+            $section = $this->getSectionByName($section_id, Settings::CORE_SECTION, false);
+
+            if (!empty($section['edition_type'])) {
+                $edition_names = $this->_getCurrentEdition();
+                $setting_editions = explode(",", $section['edition_type']);
+
+                if (array_search("NONE", $setting_editions) === false) {
+                    if ($company_id) {
+
+                        if (array_search("VENDOR", $setting_editions) === false
+                             && array_search($edition_names . "VENDOR", $setting_editions) === false
+                             && $company_id != 0
+                        ) {
+                            $allow = false;
+                        }
+
+                    } else {
+
+                        if (array_search("ROOT", $setting_editions) === false) {
+                            $allow = false;
+                        }
+                    }
+                }
+            }
+        }
+
+        return $allow;
+    }
+
+    /**
      * Gets company ID
      * @param  int   $company_id company ID
      * @return mixed company ID if defined, false otherwise
      */
     private function _getCompanyId($company_id = null)
     {
-        if ($this->_root_mode && empty($this->_company_id)) {
+        if ($this->_root_mode) {
             return false;
         }
 
         if (!empty($company_id)) {
             return $company_id;
-
-        } elseif (!empty($this->_company_id)) {
-            return $this->_company_id;
-
         } elseif (Registry::get('runtime.company_id')) {
             return Registry::get('runtime.company_id');
         }
-    }
-
-    /**
-     * Gets current Settings class mode
-     *
-     * @return bool true is Settings class in the "Root mode"
-     */
-    protected function isRootMode()
-    {
-        return $this->_root_mode;
     }
 }

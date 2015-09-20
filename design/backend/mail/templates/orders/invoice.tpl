@@ -61,7 +61,7 @@
                     {if $company_data.company_orders_department}
                     <tr valign="top">
                         <td style="font-size: 12px; font-family: verdana, helvetica, arial, sans-serif; text-transform: uppercase; color: #000000; padding-right: 10px; white-space: nowrap;">{__("email")}:</td>
-                        <td width="100%" style="font-size: 12px; font-family: Arial;"><a href="mailto:{$company_data.company_orders_department}">{$company_data.company_orders_department|replace:",":"<br>"|replace:" ":"" nofilter}</a></td>
+                        <td width="100%" style="font-size: 12px; font-family: Arial;"><a href="mailto:{$company_data.company_orders_department}">{$company_data.company_orders_department|replace:",":"<br>"|replace:" ":""}</a></td>
                     </tr>
                     {/if}
                     </table>
@@ -89,15 +89,15 @@
                         <td style="font-size: 12px; font-family: Arial;">
                             {foreach from=$order_info.shipping item="shipping" name="f_shipp"}
                                 {$shipping.shipping}{if !$smarty.foreach.f_shipp.last}, {/if}
-                                {if $shipments[$shipping.group_key].tracking_number}{assign var="tracking_number_exists" value="Y"}{/if}
+                                {if $shipping.tracking_number}{assign var="tracking_number_exists" value="Y"}{/if}
                             {/foreach}</td>
                     </tr>
-                    {if $tracking_number_exists && !$use_shipments}
+                    {if $tracking_number_exists}
                         <tr valign="top">
                             <td style="font-size: 12px; font-family: verdana, helvetica, arial, sans-serif; text-transform: uppercase; color: #000000; padding-right: 10px; white-space: nowrap;">{__("tracking_number")}:</td>
                             <td style="font-size: 12px; font-family: Arial;">
                                 {foreach from=$order_info.shipping item="shipping" name="f_shipp"}
-                                    {if $shipments[$shipping.group_key].tracking_number}{$shipments[$shipping.group_key].tracking_number}{if !$smarty.foreach.f_shipp.last},{/if}{/if}
+                                    {if $shipping.tracking_number}{$shipping.tracking_number}{if !$smarty.foreach.f_shipp.last},{/if}{/if}
                                 {/foreach}</td>
                         </tr>
                     {/if}
@@ -221,9 +221,9 @@
                     <td style="padding: 5px 10px; background-color: #ffffff; font-size: 12px; font-family: Arial;">
                         {$oi.product|default:__("deleted_product") nofilter}
                         {hook name="orders:product_info"}
-                        {if $oi.product_code}<p style="margin: 2px 0px 3px 0px;">{__("sku")}: {$oi.product_code}</p>{/if}
+                            {if $oi.product_code}<p style="margin: 2px 0px 3px 0px;">{__("sku")}: {$oi.product_code}</p>{/if}
+                            {if $oi.product_options}<br/>{include file="common/options_info.tpl" product_options=$oi.product_options}{/if}
                         {/hook}
-                        {if $oi.product_options}<br/>{include file="common/options_info.tpl" product_options=$oi.product_options}{/if}
                     </td>
                     <td style="padding: 5px 10px; background-color: #ffffff; text-align: center; font-size: 12px; font-family: Arial;">{$oi.amount}</td>
                     <td style="padding: 5px 10px; background-color: #ffffff; text-align: right; font-size: 12px; font-family: Arial;">{if $oi.extra.exclude_from_calculate}{__("free")}{else}{include file="common/price.tpl" value=$oi.original_price}{/if}</td>
@@ -334,10 +334,10 @@
             {if $order_info.notes}
             <table cellpadding="0" cellspacing="0" border="0" width="100%">
             <tr valign="top">
-                <td style="font-size: 12px; font-family: Arial;"><strong>{__("customer_notes")}:</strong></td>
+                <td style="font-size: 12px; font-family: Arial;"><strong>{__("notes")}:</strong></td>
             </tr>
             <tr valign="top">
-                <td><div style="overflow-x: auto; clear: both; width: 510px; height: 100%; padding-bottom: 20px; overflow-y: hidden; font-size: 12px; font-family: Arial;">{$order_info.notes|nl2br nofilter}</div></td>
+                <td><div style="overflow-x: auto; clear: both; width: 510px; height: 100%; padding-bottom: 20px; overflow-y: hidden; font-size: 12px; font-family: Arial;">{$order_info.notes|nl2br}</div></td>
             </tr>
             </table>
             {/if}

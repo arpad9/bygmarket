@@ -1,54 +1,57 @@
 <script type="text/javascript">
-(function(_, $) {
+//<![CDATA[
+    {literal}
 
-    function getFieldType(element) {
-        if ($(element).is('input[type=radio], input[type=checkbox], select')) {
+    function fn_get_field_type (element) {
+        if (Tygh.$(element).is('input[type=radio], input[type=checkbox], select')) {
             return 'elm-disabled';
-        } else if ($(element).is('div')){
+        } else if (Tygh.$(element).is('div')){
             return '';
         } else {
             return 'input-text-disabled';
         }
     }
 
-    $(document).ready(function(){
-        $(_.doc).on('click', '[id*=elements-switcher-]', function(){
-            var id = $(this).prop('id');
-            var id_template = /elements-switcher-(\S+)/i;
-            id = 'field_' + id.match(id_template)[1];
+    (function($) {
+        $(document).ready(function(){
+            $('[id*=elements-switcher-]').click(function(){
+                id = $(this).prop('id');
+                id_template = /elements-switcher-(\S+)/i;
+                id = 'field_' + id.match(id_template)[1];
 
-            var checked = $(this).prop('checked');
-            $('[id*=' + id + ']').each(function(index, element){
-                $el = $(element);
-                $el.toggleClass(getFieldType(element), !checked);
-                $el.prop('disabled', !checked);
-                if (!checked) {
-                    $el.prop('checked', false);
-                }
+                var checked = $(this).prop('checked');
+                $('[id*=' + id + ']').each(function(index, element){
+                    $(element).toggleClass(fn_get_field_type(element), !checked);
+                    $(element).prop('disabled', !checked);
+                    if (!checked) {
+                        $(element).prop('checked', false);
+                    }
+                });
+                $('#' + id + ' .correct-picker-but input').prop('disabled', !checked);
+                $('#' + id + ' .correct-picker-but a').toggle(checked);
             });
-            $('#' + id + ' .correct-picker-but input').prop('disabled', !checked);
-            $('#' + id + ' .correct-picker-but a').toggle(checked);
+            $('[id*=field_] .correct-picker-but a').hide();
+
+            // Double scroll
+            var elm_orig = $("#scrolled_div");
+            var elm_scroller = $("#scrolled_div_top");
+
+            var dummy = $("<div></div>");
+            dummy.width(elm_orig.get(0).scrollWidth);
+            dummy.height(24);
+            elm_scroller.append(dummy);
+
+
+            elm_scroller.scroll(function(){
+                elm_orig.scrollLeft(elm_scroller.scrollLeft());
+            });
+            elm_orig.scroll(function(){
+                elm_scroller.scrollLeft(elm_orig.scrollLeft());
+            });
         });
-
-        $('[id*=field_] .correct-picker-but a').hide();
-
-        // Double scroll
-        var elm_orig = $("#scrolled_div");
-        var elm_scroller = $("#scrolled_div_top");
-
-        var dummy = $("<div></div>");
-        dummy.width(elm_orig.get(0).scrollWidth);
-        dummy.height(24);
-        elm_scroller.append(dummy);
-
-        elm_scroller.scroll(function(){
-            elm_orig.scrollLeft(elm_scroller.scrollLeft());
-        });
-        elm_orig.scroll(function(){
-            elm_scroller.scrollLeft(elm_orig.scrollLeft());
-        });
-    });
-}(Tygh, Tygh.$));
+    }(Tygh.$));
+    {/literal}
+//]]>
 </script>
 
 {assign var="all_categories_list" value=0|fn_get_plain_categories_tree:false}
@@ -119,7 +122,7 @@
                         {elseif $type == "E"} {* Categories *}
                         <div class="clear" id="field_{$field}__">
                             <div class="correct-picker-but">
-                                {include file="pickers/categories/picker.tpl" data_id="categories" input_name="override_`$name`[category_ids]" radio_input_name="override_`$name`[main_category]" item_ids="" hide_link=true display_input_id="category_ids" view_mode="list"}
+                                {include file="pickers/categories/picker.tpl" data_id="categories" input_name="override_`$name`[categories]" radio_input_name="override_`$name`[main_category]" item_ids="" hide_link=true display_input_id="category_ids" view_mode="list"}
                             </div>
                         </div>
                         {elseif $type == "W"} {* Product details layout *}
@@ -154,9 +157,9 @@
                         </table>
                     {elseif $field == "tracking"}
                         <select    id="field_{$field}__" name="override_products_data[{$field}]" class="elm-disabled" disabled="disabled">
-                            <option value="{"ProductTracking::TRACK_WITH_OPTIONS"|enum}">{__("track_with_options")}</option>
-                            <option value="{"ProductTracking::TRACK_WITHOUT_OPTIONS"|enum}">{__("track_without_options")}</option>
-                            <option value="{"ProductTracking::DO_NOT_TRACK"|enum}">{__("dont_track")}</option>
+                            <option value="O">{__("track_with_options")}</option>
+                            <option value="B">{__("track_without_options")}</option>
+                            <option value="D">{__("dont_track")}</option>
                         </select>
                     {elseif $field == "zero_price_action"}
                         <select id="field_{$field}__" name="override_products_data[{$field}]" class="elm-disabled" disabled="disabled">
@@ -173,12 +176,33 @@
                         {/foreach}
                     {elseif $field == "features"}
                         {if $all_product_features}
-                            {include file="views/products/components/products_m_update_features.tpl"
-                                product_features=$all_product_features
-                                features_search=$all_features_search
-                                product_id=0
-                                over=true
-                                data_name="override_products_data"}
+                        <table>
+                        {foreach from=$all_product_features item="pf"}
+                        {if $pf.feature_type !== "G"}
+                        <tr>
+                            <td><label class="checkbox" for="elements-switcher-{$field}__{$pf.feature_id}_"><input type="checkbox" id="elements-switcher-{$field}__{$pf.feature_id}_" />&nbsp;{$pf.description}:&nbsp;</label></td>
+                            <td>
+                                {include file="views/products/components/products_m_update_feature.tpl" feature=$pf data_name="override_products_data" over=true}
+                            </td>
+                        </tr>
+                        {/if}
+                        {/foreach}
+                        {foreach from=$all_product_features item="pf"}
+                        {if $pf.subfeatures}
+                        <tr>
+                            <td colspan="2"><span>{$pf.description}</span></td>
+                        </tr>
+                        {foreach from=$pf.subfeatures item="subfeature"}
+                        <tr>
+                            <td class="nowrap"><label class="checkbox" for="elements-switcher-{$field}__{$subfeature.feature_id}_"><input type="checkbox" id="elements-switcher-{$field}__{$subfeature.feature_id}_"/>&nbsp;{$subfeature.description}</label></td>
+                            <td>
+                                {include file="views/products/components/products_m_update_feature.tpl" feature=$subfeature data_name="override_products_data" over=true}
+                            </td>
+                        </tr>
+                        {/foreach}
+                        {/if}
+                        {/foreach}
+                        </table>
                         {/if}
                     {elseif $field == "timestamp"}
                         <div class="correct-picker-but">
@@ -188,7 +212,7 @@
                         {include file="views/localizations/components/select.tpl" no_div=true data_name="products_data[`$product.product_id`][localization]" data_from=$product.localization}
                     {elseif $field == "usergroup_ids"}
                         {if !"ULTIMATE:FREE"|fn_allowed_for}
-                            {include file="common/select_usergroups.tpl" id="field_`$field`_" name="override_products_data[`$field`]" usergroups=["type"=>"C", "status"=>["A", "H"]]|fn_get_usergroups:$smarty.const.DESCR_SL usergroup_ids="" input_extra=" disabled=\"disabled\"" list_mode=true}
+                            {include file="common/select_usergroups.tpl" id="field_`$field`_" name="override_products_data[`$field`]" usergroups="C"|fn_get_usergroups:$smarty.const.DESCR_SL usergroup_ids="" input_extra=" disabled=\"disabled\"" list_mode=true}
                         {/if}
                     {elseif $field == "company_id"}
                         <div class="clear" id="field_{$field}__">
@@ -285,7 +309,7 @@
                             {include file="views/localizations/components/select.tpl" no_div=true data_from=$product.localization data_name="products_data[`$product.product_id`][localization]"}
                         {elseif $type == "E"} {* Categories *}
                             <div class="correct-picker-but">
-                                {include file="pickers/categories/picker.tpl" data_id="categories" input_name="`$name`[`$product.product_id`][category_ids]" radio_input_name="`$name`[`$product.product_id`][main_category]" item_ids=$product.category_ids main_category=$product.main_category hide_link=true display_input_id="category_ids" view_mode="list"}
+                                {include file="pickers/categories/picker.tpl" data_id="categories" input_name="`$name`[`$product.product_id`][categories]" radio_input_name="`$name`[`$product.product_id`][main_category]" item_ids=$product.category_ids main_category=$product.main_category hide_link=true display_input_id="category_ids" view_mode="list"}
                             </div>
                         {elseif $type == "W"} {* Product details layout *}
                             <select name="{$name}[{$product.product_id}][{$field}]">
@@ -310,9 +334,9 @@
                         <table width="420"><tr><td>{include file="common/attach_images.tpl" image_name="product_main" image_key=$product.product_id image_pair=$product.main_pair image_object_id=$product.product_id image_object_type="product" image_type="M" no_thumbnail=true}</td></tr></table>
                     {elseif $field == "tracking"}
                         <select    name="products_data[{$product.product_id}][{$field}]">
-                            <option value="{"ProductTracking::TRACK_WITH_OPTIONS"|enum}" {if $product.tracking == "ProductTracking::TRACK_WITH_OPTIONS"|enum}selected="selected"{/if}>{__("track_with_options")}</option>
-                            <option value="{"ProductTracking::TRACK_WITHOUT_OPTIONS"|enum}" {if $product.tracking == "ProductTracking::TRACK_WITHOUT_OPTIONS"|enum}selected="selected"{/if}>{__("track_without_options")}</option>
-                            <option value="{"ProductTracking::DO_NOT_TRACK"|enum}" {if $product.tracking == "ProductTracking::DO_NOT_TRACK"|enum}selected="selected"{/if}>{__("dont_track")}</option>
+                            <option value="O" {if $product.tracking == "O"}selected="selected"{/if}>{__("track_with_options")}</option>
+                            <option value="B" {if $product.tracking == "B"}selected="selected"{/if}>{__("track_without_options")}</option>
+                            <option value="D" {if $product.tracking == "D"}selected="selected"{/if}>{__("dont_track")}</option>
                         </select>
                     {elseif $field == "zero_price_action"}
                         <select name="products_data[{$product.product_id}][{$field}]">
@@ -324,15 +348,37 @@
                         <input type="hidden" name="products_data[{$product.product_id}][tax_ids]" value="" />
                         {foreach from=$taxes item="tax"}
                         <div class="select-field nowrap">
-                            <label class="checkbox" for="products_taxes_{$product.product_id}_{$tax.tax_id}"><input type="checkbox" name="products_data[{$product.product_id}][tax_ids][{$tax.tax_id}]" id="products_taxes_{$product.product_id}_{$tax.tax_id}" {if $tax.tax_id|in_array:$product.tax_ids}checked="checked"{/if}  value="{$tax.tax_id}" />
+                            <label class="checkbox" for="products_taxes_{$product.product_id}_{$tax.tax_id}"><input type="checkbox" name="products_data[{$product.product_id}][tax_ids][{$tax.tax_id}]" id="products_taxes_{$product.product_id}_{$tax.tax_id}" {if $tax.tax_id|in_array:$product.taxes}checked="checked"{/if}  value="{$tax.tax_id}" />
                             {$tax.tax}</label>
                         </div>
                         {/foreach}
                     {elseif $field == "features"}
-                        {if $product_features[$product.product_id]}
-
-                        {include file="views/products/components/products_m_update_features.tpl" product_features=$product_features[$product.product_id] features_search=$features_search[$product.product_id] product_id=$product.product_id data_name="products_data[`$product.product_id`]"}
-
+                        {if $product.product_features}
+                        <table >
+                        {foreach from=$product.product_features item="pf" key="feature_id"}
+                        {if $pf.feature_type != "G"}
+                        <tr>
+                            <td>{$pf.description}:</td>
+                            <td >
+                                {include file="views/products/components/products_m_update_feature.tpl" feature=$pf data_name="products_data[`$product.product_id`]" pid=$product.product_id}
+                            </td>
+                        </tr>
+                        {/if}
+                        {/foreach}
+                        {foreach from=$product.product_features item="pf" key="feature_id"}
+                        {if $pf.feature_type == "G" && $pf.subfeatures}
+                        <tr>
+                            <td colspan="2"><span>{$pf.description}</span></td>
+                        </tr>
+                        {foreach from=$pf.subfeatures item=subfeature}
+                        <tr>
+                            <td>{$subfeature.description}:</td>
+                            <td>{include file="views/products/components/products_m_update_feature.tpl" feature=$subfeature data_name="products_data[`$product.product_id`]" pid=$product.product_id}</td>
+                        </tr>
+                        {/foreach}
+                        {/if}
+                        {/foreach}
+                        </table>
                         <input type="hidden" name="products_data[{$product.product_id}][features_exist]" value="Y" />
                         {/if}
                     {elseif $field == "timestamp"}
@@ -343,7 +389,7 @@
                         {include file="views/localizations/components/select.tpl" no_div=true data_name="products_data[`$product.product_id`][localization]" data_from=$product.localization}
                     {elseif $field == "usergroup_ids"}
                         {if !"ULTIMATE:FREE"|fn_allowed_for}
-                            {include file="common/select_usergroups.tpl" id="product_ug_`$product.product_id`" name="products_data[`$product.product_id`][`$field`]" usergroups=["type"=>"C", "status"=>["A", "H"]]|fn_get_usergroups:$smarty.const.DESCR_SL usergroup_ids=$product.usergroup_ids input_extra="" list_mode=true}
+                            {include file="common/select_usergroups.tpl" id="product_ug_`$product.product_id`" name="products_data[`$product.product_id`][`$field`]" usergroups="C"|fn_get_usergroups:$smarty.const.DESCR_SL usergroup_ids=$product.usergroup_ids input_extra="" list_mode=true}
                         {/if}
                     {elseif $field == "company_id"}
                         {include file="views/products/components/products_m_update_company.tpl"}

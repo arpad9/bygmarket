@@ -45,16 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $suffix = '.manage';
     }
 
-    if ($mode == 'delete') {
-
-        if (!empty($_REQUEST['localization_id'])) {
-            fn_delete_localization((array) $_REQUEST['localization_id']);
-        }
-
-        $suffix = '.manage';
-    }
-
-    return array(CONTROLLER_STATUS_OK, 'localizations' . $suffix);
+    return array(CONTROLLER_STATUS_OK, "localizations$suffix");
 }
 
 if ($mode == 'update') {
@@ -65,11 +56,11 @@ if ($mode == 'update') {
         return array(CONTROLLER_STATUS_NO_PAGE);
     }
 
-    Tygh::$app['view']->assign('localization' , $localizaton);
-    Tygh::$app['view']->assign('localization_countries', array_diff(fn_get_simple_countries() , $localizaton['countries']));
-    Tygh::$app['view']->assign('localization_currencies' , array_diff(fn_get_simple_currencies() , $localizaton['currencies']));
-    Tygh::$app['view']->assign('localization_languages' , array_diff(fn_get_simple_languages(true) , $localizaton['languages']));
-    Tygh::$app['view']->assign('default_localization' , fn_get_default_localization(DESCR_SL));
+    Registry::get('view')->assign('localization' , $localizaton);
+    Registry::get('view')->assign('localization_countries', array_diff(fn_get_simple_countries() , $localizaton['countries']));
+    Registry::get('view')->assign('localization_currencies' , array_diff(fn_get_simple_currencies() , $localizaton['currencies']));
+    Registry::get('view')->assign('localization_languages' , array_diff(fn_get_simple_languages(true) , $localizaton['languages']));
+    Registry::get('view')->assign('default_localization' , fn_get_default_localization(DESCR_SL));
 
     Registry::set('navigation.tabs', array (
         'general' => array (
@@ -84,10 +75,10 @@ if ($mode == 'update') {
 
 } elseif ($mode == 'add') {
 
-    Tygh::$app['view']->assign('localization_countries', fn_get_simple_countries());
-    Tygh::$app['view']->assign('localization_currencies' , fn_get_simple_currencies());
-    Tygh::$app['view']->assign('localization_languages' , fn_get_simple_languages(true));
-    Tygh::$app['view']->assign('default_localization' , fn_get_default_localization(DESCR_SL));
+    Registry::get('view')->assign('localization_countries', fn_get_simple_countries());
+    Registry::get('view')->assign('localization_currencies' , fn_get_simple_currencies());
+    Registry::get('view')->assign('localization_languages' , fn_get_simple_languages(true));
+    Registry::get('view')->assign('default_localization' , fn_get_default_localization(DESCR_SL));
 
     Registry::set('navigation.tabs', array (
         'general' => array (
@@ -102,7 +93,15 @@ if ($mode == 'update') {
 
 } elseif ($mode == 'manage') {
 
-    Tygh::$app['view']->assign('localizations' , fn_get_localizations(DESCR_SL));
+    Registry::get('view')->assign('localizations' , fn_get_localizations(DESCR_SL));
+
+} elseif ($mode == 'delete') {
+
+    if (!empty($_REQUEST['localization_id'])) {
+        fn_delete_localization((array) $_REQUEST['localization_id']);
+    }
+
+    return array(CONTROLLER_STATUS_OK, "localizations.manage");
 }
 
 function fn_delete_localization($localization_ids)

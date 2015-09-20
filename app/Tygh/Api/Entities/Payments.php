@@ -23,7 +23,7 @@ class Payments extends AEntity
 
     public function index($id = 0, $params = array())
     {
-        $lang_code = $this->safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
+        $lang_code = $this->_safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
 
         if (!empty($id)) {
             $data = fn_get_payment_method_data($id, $lang_code);
@@ -35,24 +35,7 @@ class Payments extends AEntity
             }
 
         } else {
-            $items_per_page = $this->safeGet($params, 'items_per_page', Registry::get('settings.Appearance.admin_elements_per_page'));
-            $page = $this->safeGet($params, 'page', 1);
-
             $data = fn_get_payments($lang_code);
-
-            if ($items_per_page) {
-                $data = array_slice($data, ($page - 1) * $items_per_page, $items_per_page);
-            }
-
-            $data = array(
-                'payments' => $data,
-                'params' => array(
-                    'items_per_page' => $items_per_page,
-                    'page' => $page,
-                    'total_items' => count($data),
-                ),
-            );
-
             $status = Response::STATUS_OK;
         }
 
@@ -67,11 +50,9 @@ class Payments extends AEntity
         $status = Response::STATUS_BAD_REQUEST;
         $data = array();
 
-        $this->correctCompanyID($params);
+        $params['company_id'] = Registry::get('runtime.company_id');
 
-        unset($params['payment_id']);
-
-        if (!empty($params['payment'])) {
+        if (!empty($params['payment']) && $params['company_id'] != 0) {
 
             $payment_id = fn_update_payment($params, 0);
 
@@ -81,10 +62,6 @@ class Payments extends AEntity
                     'payment_id' => $payment_id,
                 );
             }
-        } else {
-            $data['message'] = __('api_required_field', array(
-                '[field]' => 'payment'
-            ));
         }
 
         return array(
@@ -98,16 +75,7 @@ class Payments extends AEntity
         $status = Response::STATUS_BAD_REQUEST;
         $data = array();
 
-        $lang_code = $this->safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
-
-        if (isset($params['processor_params']['certificate_filename']) && !$params['processor_params']['certificate_filename']) {
-            fn_rm(Registry::get('config.dir.certificates') . $id);
-        }
-
-        $this->correctCompanyID($params);
-
-        unset($params['payment_id']);
-
+        $lang_code = $this->_safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
         $payment_id = fn_update_payment($params, $id, $lang_code);
 
         if ($payment_id) {
@@ -126,10 +94,11 @@ class Payments extends AEntity
     public function delete($id)
     {
         $data = array();
-        $status = Response::STATUS_NOT_FOUND;
+        $status = Response::STATUS_BAD_REQUEST;
 
         if (fn_delete_payment($id)) {
-            $status = Response::STATUS_NO_CONTENT;
+            $status = Response::STATUS_OK;
+            $data['message'] = 'Ok';
         }
 
         return array(
@@ -138,7 +107,7 @@ class Payments extends AEntity
         );
     }
 
-    public function privileges()
+    public function priveleges()
     {
         return array(
             'create' => 'manage_payments',
@@ -148,14 +117,4 @@ class Payments extends AEntity
         );
     }
 
-    public function correctCompanyID(&$params)
-    {
-        if (fn_allowed_for('ULTIMATE')) {
-            if (empty($params['company_id'])) {
-                $params['company_id'] = fn_get_default_company_id();
-            }
-        } elseif (fn_allowed_for('MULTIVENDOR')) {
-            $params['company_id'] = 0;
-        }
-    }
 }

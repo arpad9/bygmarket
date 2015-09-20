@@ -1,6 +1,5 @@
 <?php
 
-use Tygh\Embedded;
 use Tygh\Registry;
 
 /**
@@ -14,12 +13,11 @@ function smarty_block_styles($params, $content, &$smarty, &$repeat)
         return;
     }
 
-    $prepend_prefix = Embedded::isEnabled() ? 'html#tygh_html body#tygh_body .tygh' : '';
-    $current_location = Registry::get('config.current_location');
+    $prepend = $smarty->getTemplateVars('prepend_css');
+    $prepend_prefix = !empty($prepend) ? 'html#tygh_html body#tygh_body #tygh_container' : '';
 
     $styles = array();
-    $inline_styles = '';
-    $external_styles = array();
+    $internal_styles = '';
 
     //if (preg_match_all('/\<link(.*?href ?= ?"([^"]+)")?[^\>]*\>/is', $content, $m)) {
     if (preg_match_all('/\<link(.*?href\s?=\s?(?:"|\')([^"]+)(?:"|\'))?[^\>]*\>/is', $content, $m)) {
@@ -30,34 +28,24 @@ function smarty_block_styles($params, $content, &$smarty, &$repeat)
                 $media = $_m[1];
             }
 
-            if (strpos($v, $current_location) === false) { // Location is different
-                $external_styles[] = $m[0][$k];
-            } else {
-                $styles[] = array(
-                    'file' => str_replace($current_location, Registry::get('config.dir.root'), $v),
-                    'relative' => str_replace($current_location . '/', '', $v),
-                    'media' => $media
-                );
-            }
+            $styles[] = array(
+                'file' => str_replace(Registry::get('config.current_location'), Registry::get('config.dir.root'), $v),
+                'relative' => str_replace(Registry::get('config.current_location') . '/', '', $v),
+                'media' => $media
+            );
         }
     }
 
     if (preg_match_all('/\<style.*\>(.*)\<\/style\>/isU', $content, $m)) {
-        $inline_styles = implode("\n\n", $m[1]);
+        $internal_styles = implode("\n\n", $m[1]);
     }
 
-    if (!empty($styles) || !empty($inline_styles)) {
+    if (!empty($styles) || !empty($internal_styles)) {
         fn_set_hook('styles_block_files', $styles);
 
-        list($_area) = Tygh::$app['view']->getArea();
-        $params['compressed'] = true;
-        $filename = fn_merge_styles($styles, $inline_styles, $prepend_prefix, $params, $_area);
+        $filename = fn_merge_styles($styles, $internal_styles, $prepend_prefix, $params);
 
         $content = '<link type="text/css" rel="stylesheet" href="' . $filename . '" />';
-
-        if (!empty($external_styles)) {
-            $content .= PHP_EOL . implode(PHP_EOL, $external_styles);
-        }
     }
 
     return $content;

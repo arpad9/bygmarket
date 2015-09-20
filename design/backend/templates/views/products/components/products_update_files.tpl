@@ -15,12 +15,12 @@
 <div class="items-container" id="product_files_list">
 {if !$hide_for_vendor}
 <div class="btn-toolbar clearfix">
-    <div class="pull-right">
-        <div class="pull-left shift-right">
-            {include file="common/popupbox.tpl" id="add_new_files" text=__("new_file") href="products.update_file?product_id=`$product_id`" link_text=__("add_file") act="general" icon="icon-plus"}
-        </div>
-        <div class="pull-right">
-            {include file="common/popupbox.tpl" id="add_new_folders" text=__("new_folder") href="products.update_folder?product_id=`$product_id`" link_text=__("add_folder") act="general" icon="icon-plus"}</div>
+    <div class="pull-right cm-toggle-button">
+        {capture name="tools_list"}
+            <li>{include file="common/popupbox.tpl" id="add_new_files" text=__("new_file") href="products.update_file?product_id=`$product_id`" link_text=__("add_file") act="link"}</li>
+            <li>{include file="common/popupbox.tpl" id="add_new_folders" text=__("new_folder") href="products.update_folder?product_id=`$product_id`" link_text=__("add_folder") act="link"}</li>
+        {/capture}
+        {dropdown content=$smarty.capture.tools_list class="dropleft" icon="icon-plus" no_caret=true}
     </div>
 </div>
 {/if}

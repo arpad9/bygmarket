@@ -18,9 +18,9 @@
 <tr class="table-row" id="box_new_product">
     <td>
         {if "categories"|fn_show_picker:$smarty.const.CATEGORY_THRESHOLD}
-            {include file="pickers/categories/picker.tpl" data_id="location_category" input_name="products_data[0][category_ids][]" item_ids=$default_category_id hide_link=true hide_delete_button=true prepend=true}
+            {include file="pickers/categories/picker.tpl" data_id="location_category" input_name="products_data[0][main_category]" item_ids=$default_category_id hide_link=true hide_delete_button=true prepend=true}
         {else}
-            {include file="common/select_category.tpl" name="products_data[0][category_ids][]" select_class="input-medium" hide_root=true id=""}
+            {include file="common/select_category.tpl" name="products_data[0][main_category]" select_class="input-medium" hide_root=true id=""}
         {/if}
     </td>
     <td><input type="text" name="products_data[0][product]" value="" class="input-medium" /></td>

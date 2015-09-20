@@ -1,3 +1,7 @@
+{assign var="url" value=$config.https_location}
+<p>{__("text_totalweb_notice", ["[cart_url]" => $url])}</p>
+<hr>
+
 <div class="control-group">
     <label class="control-label" for="vendor">{__("vendor_name")}:</label>
     <div class="controls">

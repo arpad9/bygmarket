@@ -39,14 +39,19 @@ if ($mode == 'add' && Registry::get('addons.tags.tags_for_products') == 'Y') {
         ));
     }
 
-    $product = Tygh::$app['view']->getTemplateVars('product_data');
+    $product = Registry::get('view')->getTemplateVars('product_data');
 
-    list($tags) = fn_get_tags(array(
-        'object_type' => 'P', 
-        'object_id' => $product['product_id']
-    ));
+    $product['tags']['popular'] = $product['tags']['user'] = array();
+    list($tags) = fn_get_tags(array('object_type' => 'P', 'object_id' => $product['product_id'], 'user_and_popular' => $auth['user_id'], 'skip_view' => 'Y'));
 
-    $product['tags'] = $tags;
+    foreach ($tags as $k => $v) {
+        if (!empty($v['my_tag'])) {
+            $product['tags']['user'][$v['tag_id']] = $v;
+        }
+        if ($v['status'] == 'A') {
+            $product['tags']['popular'][$v['tag_id']] = $v;
+        }
+    }
 
-    Tygh::$app['view']->assign('product_data', $product);
+    Registry::get('view')->assign('product_data', $product);
 }

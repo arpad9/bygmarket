@@ -91,19 +91,6 @@ return array(
         ),
     ),
 
-    'product_features.update' => array(
-        array(
-            'type' => 'search',
-            'prev_dispatch' => 'product_features.manage',
-            'title' => 'search_results',
-            'link' => 'product_features.manage.last_view'
-        ),
-        array(
-            'title' => 'features',
-            'link' => 'product_features.manage'
-        ),
-    ),
-
     'product_options.inventory' => array(
         array(
             'title' => array(
@@ -269,6 +256,12 @@ return array(
         ),
     ),
 
+    'usergroups.privileges' => array(
+        array(
+            'title' => 'languages',
+            'link' => 'languages.manage'
+        ),
+    ),
     'usergroups.requests' => array(
         array(
             'title' => 'usergroups',

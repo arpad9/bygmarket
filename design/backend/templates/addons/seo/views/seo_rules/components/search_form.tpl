@@ -9,7 +9,7 @@
 </div>
 <div class="sidebar-field">
     <label>{__("dispatch_value")}</label>
-    <input type="text" name="rule_params" size="20" value="{$search.rule_params}" class="input-text" />
+    <input type="text" name="rule_dispatch" size="20" value="{$search.rule_dispatch}" class="input-text" />
 </div>
 {/capture}
 

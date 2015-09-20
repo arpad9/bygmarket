@@ -14,7 +14,6 @@
         {include file="common/check_items.tpl"}</th>
     <th width="20%">{__("usergroup")}</th>
     <th width="45%">{__("type")}</th>
-    {hook name="usergroups:manage_header"}{/hook}
     <th width="5%">&nbsp;</th>
     <th class="right" width="15%">{__("status")}</th>
 </tr>
@@ -34,9 +33,6 @@
         {if $usergroup.type == "C"}{__("customer")}{/if}
         {if $usergroup.type == "A"}{__("administrator")}{/if}
     </td>
-
-    {hook name="usergroups:manage_data"}{/hook}
-
     <td class="row-status">
         {if $usergroup.type == "A"}
             {assign var="_href" value="usergroups.assign_privileges?usergroup_id=`$usergroup.usergroup_id`"}
@@ -46,10 +42,8 @@
             {assign var="_link_text" value=""}
         {/if}
         {capture name="tools_list"}
-            {hook name="usergroups:list_extra_links"}
-                <li>{include file="common/popupbox.tpl" id="group`$usergroup.usergroup_id`" text=$usergroup.usergroup link_text=__("edit") act="link" href="usergroups.update?usergroup_id=`$usergroup.usergroup_id`&group_type=`$usergroup.type`"}</li>
-                <li>{btn type="list" text=__("delete") class="cm-confirm cm-post" href="usergroups.delete?usergroup_id=`$usergroup.usergroup_id`"}</li>
-            {/hook}
+            <li>{include file="common/popupbox.tpl" id="group`$usergroup.usergroup_id`" text=$usergroup.usergroup link_text=__("edit") act="link" href="usergroups.update?usergroup_id=`$usergroup.usergroup_id`&group_type=`$usergroup.type`"}</li>
+            <li>{btn type="list" text=__("delete") class="cm-confirm" href="usergroups.delete?usergroup_id=`$usergroup.usergroup_id`"}</li>
         {/capture}
         <div class="hidden-tools cm-hide-with-inputs">
             {dropdown content=$smarty.capture.tools_list}
@@ -75,13 +69,11 @@
 {capture name="buttons"}
     {if "usergroups.update"|fn_check_view_permissions}
         {capture name="tools_list"}
-            {hook name="usergroups:manage_tools_list"}
-                <li>{btn type="list" text=__("user_group_requests") href="usergroups.requests"}</li>
-                {if $usergroups}
-                    <li class="divider"></li>
-                    <li>{btn type="delete_selected" dispatch="dispatch[usergroups.m_delete]" form="usergroups_form"}</li>
-                {/if}
-            {/hook}
+            <li>{btn type="list" text=__("user_group_requests") href="usergroups.requests"}</li>
+            {if $usergroups}
+                <li class="divider"></li>
+                <li>{btn type="delete_selected" dispatch="dispatch[usergroups.m_delete]" form="usergroups_form"}</li>
+            {/if}
         {/capture}
         {dropdown content=$smarty.capture.tools_list}
     {/if}

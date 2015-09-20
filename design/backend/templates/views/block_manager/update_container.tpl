@@ -11,12 +11,22 @@
 
 <div class="tabs cm-j-tabs">
     <ul class="nav nav-tabs">
-        <li class="cm-js active"><a>{__("general")}</a></li>
+        <li class="cm-js cm-active active"><a>{__("general")}</a></li>
     </ul>
 </div>
 
 <div class="cm-tabs-content">
 <fieldset>
+    <div class="control-group cm-no-hide-input">
+        <label class="control-label" for="elm_container_width_{$id}">{__("width")}</label>
+        <div class="controls">
+        <select id="elm_container_width_{$id}" name="container_data[width]">
+            <option value="12" {if $container.width == 12}selected="selected"{/if}>12</option>
+            <option value="16" {if $container.width == 16}selected="selected"{/if}>16</option>
+        </select>
+        </div>
+    </div>
+
     <div class="control-group cm-no-hide-input">
         <label class="control-label" for="elm_container_user_class_{$id}">{__("user_class")}</label>
         <div class="controls">

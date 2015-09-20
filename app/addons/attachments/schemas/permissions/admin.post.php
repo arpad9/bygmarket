@@ -20,6 +20,6 @@ $schema['attachments'] = array (
         )
     ),
 );
-$schema['tools']['modes']['update_status']['param_permissions']['table']['attachments'] = 'manage_catalog';
+$schema['tools']['modes']['update_status']['param_permissions']['table_names']['attachments'] = 'manage_catalog';
 
 return $schema;

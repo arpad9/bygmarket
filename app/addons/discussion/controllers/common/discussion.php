@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($mode == 'add') {
         $suffix = '&selected_section=discussion';
         if (AREA == 'C') {
-            if (fn_image_verification('discussion', $_REQUEST) == false) {
+            if (fn_image_verification('use_for_discussion', $_REQUEST) == false) {
                 fn_save_post_data('post_data');
 
                 return array(CONTROLLER_STATUS_REDIRECT, $_REQUEST['redirect_url'] . $suffix);
@@ -45,12 +45,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $object_name = $discussion_object_types[$object['object_type']];
             $object_data = fn_get_discussion_object_data($object['object_id'], $object['object_type']);
             $ip = fn_get_ip();
-            $post_data['ip_address'] = fn_ip_to_db($ip['host']);
+            $post_data['ip_address'] = $ip['host'];
             $post_data['status'] = 'A';
 
             // Check if post is permitted from this IP address
             if (AREA != 'A' && !empty($discussion_settings[$object_name . '_post_ip_check']) && $discussion_settings[$object_name . '_post_ip_check'] == 'Y') {
-                $is_exists = db_get_field("SELECT COUNT(*) FROM ?:discussion_posts WHERE thread_id = ?i AND ip_address = ?s", $post_data['thread_id'], $post_data['ip_address']);
+                $is_exists = db_get_field("SELECT COUNT(*) FROM ?:discussion_posts WHERE thread_id = ?i AND ip_address = ?s", $post_data['thread_id'], $ip['host']);
                 if (!empty($is_exists)) {
                     fn_set_notification('E', __('error'), __('error_already_posted'));
 
@@ -66,11 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             }
 
-            if (!empty($post_data['date'])) {
-                $post_data['timestamp'] = fn_discussion_parse_datetime($post_data['date'] . ' ' . $post_data['time']);
-            } else {
-                $post_data['timestamp'] = TIME;
-            }
+            $post_data['timestamp'] = TIME;
             $post_data['user_id'] = $auth['user_id'];
             $post_data['post_id'] = db_query("INSERT INTO ?:discussion_posts ?e", $post_data);
 
@@ -247,16 +243,13 @@ if ($mode == 'view') {
     }
 
     if (!empty($_SESSION['discussion_post_id'])) {
-        Tygh::$app['view']->assign('current_post_id', $_SESSION['discussion_post_id']);
+        Registry::get('view')->assign('current_post_id', $_SESSION['discussion_post_id']);
         unset($_SESSION['discussion_post_id']);
     }
 
-    $discussion = fn_get_discussion($data['object_id'], $data['object_type'], true, $_REQUEST);
-
-    Tygh::$app['view']->assign('search', $discussion['search']);
-    Tygh::$app['view']->assign('object_id', $data['object_id']);
-    Tygh::$app['view']->assign('title', $discussion_object_data['description']);
-    Tygh::$app['view']->assign('object_type', $data['object_type']);
+    Registry::get('view')->assign('object_id', $data['object_id']);
+    Registry::get('view')->assign('title', $discussion_object_data['description']);
+    Registry::get('view')->assign('object_type', $data['object_type']);
 }
 
 function fn_discussion_get_object_by_thread($thread_id)

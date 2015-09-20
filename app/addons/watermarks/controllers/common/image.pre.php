@@ -13,7 +13,6 @@
 ****************************************************************************/
 
 use Tygh\Settings;
-use Tygh\Registry;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
@@ -26,7 +25,7 @@ if ($mode == 'delete_image') {
 
             $images_data =  db_get_row("SELECT image_id, detailed_id FROM ?:images_links WHERE pair_id = ?i AND object_type = ?s", $_REQUEST['pair_id'], 'watermark');
 
-            if (!empty($images_data) && (!fn_allowed_for('ULTIMATE') ||Registry::get('runtime.company_id'))) {
+            if (!empty($images_data)) {
                 if ($_REQUEST['image_id'] == $images_data['image_id']) {
                     $type = 'icons';
                 } elseif ($_REQUEST['image_id'] == $images_data['detailed_id']) {
@@ -38,18 +37,22 @@ if ($mode == 'delete_image') {
                     $unset_options = array();
                     $is_unset =  false;
                     foreach ($option_types[$type] as $name => $option_id) {
+                        $unset_options =  array (
+                            $option_id => 'N'
+                        );
                         if (Settings::instance()->getValue($name, '') == 'Y') {
-                            Settings::instance()->updateValueById($option_id, 'N');
                             $is_unset = true;
                         }
                     }
-                    
+
                     if ($is_unset) {
                         fn_set_notification('E', __('error'), __('wt_fail_apply_graphic_watermark', array(
                             '[image_type]' => __('wt_' . $type)
                         )));
-                        
+
+                        fn_update_addon(array('options' => $unset_options));
                         fn_delete_watermarks(array($type => true));
+
                     }
 
                 }

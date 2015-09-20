@@ -4,10 +4,6 @@
     {assign var="id" value=0}
 {/if}
 
-{if $id && $page_type != $smarty.const.PAGE_TYPE_LINK && (!"ULTIMATE"|fn_allowed_for || $runtime.company_id)}
-    {$view_uri = "pages.view?page_id=`$id`"|fn_get_preview_url:$page_data:$auth.user_id}
-{/if}
-
 {assign var="allow_save" value=true}
 {if "ULTIMATE"|fn_allowed_for}
     {assign var="allow_save" value=$page_data|fn_allow_save_object:"pages"}
@@ -17,7 +13,7 @@
 
 {capture name="tabsbox"}
 
-<form action="{""|fn_url}" method="post" name="page_update_form" class="form-horizontal form-edit  {if !$allow_save}cm-hide-inputs{/if}" enctype="multipart/form-data">
+<form action="{""|fn_url}" method="post" name="page_update_form" class="form-horizontal form-edit  {if !$allow_save}cm-hide-inputs{/if}">
 
 <div id="update_page_form_{$page_data.page_id}">
     <input type="hidden" class="cm-no-hide-input" id="selected_section" name="selected_section" value="{$selected_section}"/>
@@ -62,16 +58,6 @@
             <label class="control-label" for="elm_page_descr">{__("description")}:</label>
             <div class="controls">
                 <textarea id="elm_page_descr" name="page_data[description]" cols="55" rows="8" class="cm-wysiwyg input-large">{$page_data.description}</textarea>
-
-                {if $view_uri}
-                    {include
-                        file="buttons/button.tpl"
-                        but_href="customization.update_mode?type=live_editor&status=enable&frontend_url={$view_uri|urlencode}{if "ULTIMATE"|fn_allowed_for}&switch_company_id={$page_data.company_id}{/if}"
-                        but_text=__("edit_content_on_site")
-                        but_role="action"
-                        but_meta="btn-small btn-live-edit cm-post"
-                        but_target="_blank"}
-                {/if}
             </div>
         </div>
         {/if}
@@ -83,6 +69,18 @@
         {/hook}
 
         {include file="common/select_status.tpl" input_name="page_data[status]" id="elm_page_status" obj=$page_data hidden=true}
+
+        {if $page_type != $smarty.const.PAGE_TYPE_LINK}
+        <div class="control-group">
+            <label class="control-label" for="elm_page_show_in_popup">{__("show_page_in_popup")}:</label>
+            <div class="controls">
+                <input type="hidden" name="page_data[show_in_popup]" value="N" />
+                <span class="checkbox">
+                    <input type="checkbox" name="page_data[show_in_popup]" id="elm_page_show_in_popup" {if $page_data.show_in_popup == "Y"}checked="checked"{/if} value="Y">
+                </span>
+            </div>
+        </div>
+        {/if}
 
     </fieldset>
     </div>
@@ -118,104 +116,92 @@
     {/if}
 
     {include file="common/subheader.tpl" title=__("availability") target="#pages_availability_setting"}
-
+    <fieldset>
   <div id="pages_availability_setting" class="in collapse">
       <fieldset>
-          {if !"ULTIMATE:FREE"|fn_allowed_for}
-              <div class="control-group">
-                  <label class="control-label">{__("usergroups")}:</label>
-                      <div class="controls">
-                          {include file="common/select_usergroups.tpl" id="ug_id" name="page_data[usergroup_ids]" usergroups=["type"=>"C", "status"=>["A", "H"]]|fn_get_usergroups:$smarty.const.DESCR_SL usergroup_ids=$page_data.usergroup_ids input_extra="" list_mode=false}
-                      </div>
-              </div>
-          {/if}
-          <div class="control-group">
-              <label class="control-label" for="elm_page_date">{__("creation_date")}:</label>
-              <div class="controls">
-                  {include file="common/calendar.tpl" date_id="elm_page_date" date_name="page_data[timestamp]" date_val=$page_data.timestamp|default:$smarty.const.TIME start_year=$settings.Company.company_start_year}
-              </div>
-          </div>
+        {if !"ULTIMATE:FREE"|fn_allowed_for}
+            <div class="control-group">
+                <label class="control-label">{__("usergroups")}:</label>
+                    <div class="controls">
+                        {include file="common/select_usergroups.tpl" id="ug_id" name="page_data[usergroup_ids]" usergroups="C"|fn_get_usergroups:$smarty.const.DESCR_SL usergroup_ids=$page_data.usergroup_ids input_extra="" list_mode=false}
+                    </div>
+            </div>
+        {/if}
+        <div class="control-group">
+            <label class="control-label" for="elm_page_date">{__("creation_date")}:</label>
+                <div class="controls">
+                    {include file="common/calendar.tpl" date_id="elm_page_date" date_name="page_data[timestamp]" date_val=$page_data.timestamp|default:$smarty.const.TIME start_year=$settings.Company.company_start_year}
+                </div>
+        </div>
 
-          {include file="views/localizations/components/select.tpl" data_name="page_data[localization]" data_from=$page_data.localization}
+        {include file="views/localizations/components/select.tpl" data_name="page_data[localization]" data_from=$page_data.localization}
 
-          <div class="control-group">
-              <label class="control-label" for="elm_page_use_avail_period">{__("use_avail_period")}:</label>
-              <div class="controls">
-                  <input type="hidden" name="page_data[use_avail_period]" value="N">
+        <div class="control-group">
+            <label class="control-label" for="elm_page_use_avail_period">{__("use_avail_period")}:</label>
+                <div class="controls">
+                    <input type="hidden" name="page_data[use_avail_period]" value="N">
                     <span class="checkbox">
                         <input type="checkbox" name="page_data[use_avail_period]" id="elm_page_use_avail_period" {if $page_data.use_avail_period == "Y"}checked="checked"{/if} value="Y"  onclick="fn_activate_calendar(this);">
                     </span>
-              </div>
-          </div>
+                </div>
+        </div>
 
-          {capture name="calendar_disable"}{if $page_data.use_avail_period != "Y"}disabled="disabled"{/if}{/capture}
+        {capture name="calendar_disable"}{if $page_data.use_avail_period != "Y"}disabled="disabled"{/if}{/capture}
 
-          <div class="control-group">
-              <label class="control-label" for="elm_page_avail_from">{__("avail_from")}:</label>
-              <div class="controls">
-                  {include file="common/calendar.tpl" date_id="elm_page_avail_from" date_name="page_data[avail_from_timestamp]" date_val=$page_data.avail_from_timestamp|default:$smarty.const.TIME start_year=$settings.Company.company_start_year extra=$smarty.capture.calendar_disable}
-              </div>
-          </div>
+        <div class="control-group">
+            <label class="control-label" for="elm_page_avail_from">{__("avail_from")}:</label>
+            <div class="controls">
+                {include file="common/calendar.tpl" date_id="elm_page_avail_from" date_name="page_data[avail_from_timestamp]" date_val=$page_data.avail_from_timestamp|default:$smarty.const.TIME start_year=$settings.Company.company_start_year extra=$smarty.capture.calendar_disable}
+            </div>
+        </div>
 
-          <div class="control-group">
-              <label class="control-label" for="elm_page_avail_till">{__("avail_till")}:</label>
-              <div class="controls">
-                  {include file="common/calendar.tpl" date_id="elm_page_avail_till" date_name="page_data[avail_till_timestamp]" date_val=$page_data.avail_till_timestamp|default:$smarty.const.TIME start_year=$settings.Company.company_start_year extra=$smarty.capture.calendar_disable}
-              </div>
-          </div>
+        <div class="control-group">
+            <label class="control-label" for="elm_page_avail_till">{__("avail_till")}:</label>
+            <div class="controls">
+                {include file="common/calendar.tpl" date_id="elm_page_avail_till" date_name="page_data[avail_till_timestamp]" date_val=$page_data.avail_till_timestamp|default:$smarty.const.TIME start_year=$settings.Company.company_start_year extra=$smarty.capture.calendar_disable}
+            </div>
+        </div>
+
     </fieldset>
   </div>
-        {literal}
-            <script language="javascript">
-                function fn_activate_calendar(el)
-                {
-                    Tygh.$('#elm_page_avail_from').prop('disabled', !el.checked);
-                    Tygh.$('#elm_page_avail_till').prop('disabled', !el.checked);
-                }
-            </script>
-        {/literal}
+    {literal}
+    <script language="javascript">
+    //<![CDATA[
+    function fn_activate_calendar(el)
+    {
+        Tygh.$('#elm_page_avail_from').prop('disabled', !el.checked);
+        Tygh.$('#elm_page_avail_till').prop('disabled', !el.checked);
+    }
+    //[[>
+    </script>
+    {/literal}
 
     </div>
 
     <div id="content_addons">
-        {if $page_type != $smarty.const.PAGE_TYPE_LINK}
-            {hook name="pages:detailed_content"}
-            {/hook}
-        {/if}
+    {if $page_type != $smarty.const.PAGE_TYPE_LINK}
+    {hook name="pages:detailed_content"}
+    {/hook}
+    {/if}
     </div>
 
     {hook name="pages:tabs_content"}
     {/hook}
 
-{if !$id}
-    {assign var="_title" value=__($page_type_data.new_name)}
-{else}
-    {assign var="_title" value="{__($page_type_data.edit_name)}: `$page_data.page`"}
-    {assign var="select_languages" value=true}
-    {if $view_uri}
-        {capture name="preview"}
-            <li>{btn type="list" target="_blank" text=__("preview") href=$view_uri}</li>
-        {/capture}
-    {/if}
-{/if}
-
 {capture name="buttons"}
     {if $id}
         {capture name="tools_list"}
-
-            {foreach from=$page_types key="_k" item="_p"}
-                <li>{btn type="list" text=__($_p.add_name) href="pages.add?page_type=`$_k`&parent_id=$id&come_from=$come_from"}</li>
-            {/foreach}
-
             {hook name="pages:tools_list"}
+                <li>{btn type="list" text=__("add_page") href="pages.add?page_type=T&parent_id=$id"}</li>
+                <li>{btn type="list" text=__("add_link") href="pages.add?page_type=L&parent_id=$id"}</li>
             {/hook}
             <li class="divider"></li>
             {$smarty.capture.preview nofilter}
             {if $id}
-                <li>{btn type="list" class="cm-post" text=__("clone_this_page") href="pages.clone?page_id=$id&come_from=$come_from"}</li>
+                <li>{btn type="list" text=__("clone_this_page") href="pages.clone?page_id=$id"}</li>
             {/if}
             {if $allow_save}
-                <li>{btn type="list" text=__("delete_this_page") class="cm-confirm cm-post" href="pages.delete?page_id=$id&come_from=$come_from"}</li>
+                <li>{btn type="list" text=__("delete_this_page") class="cm-confirm" href="pages.delete?page_id=$id&come_from=$come_from"}</li>
             {/if}
         {/capture}
     {/if}
@@ -228,6 +214,36 @@
     {include file="buttons/save_cancel.tpl" but_name="dispatch[pages.update]" hide_first_button=$hide_first_button hide_second_button=$hide_second_button but_target_form="page_update_form" save=$id}
 {/capture}
 
+{if !$id}
+    {assign var="_title" value=__($page_type_data.new_name)}
+{else}
+    {assign var="_title" value="{__($page_type_data.edit_name)}: `$page_data.page`"}
+    {assign var="select_languages" value=true}
+    {if $page_type != $smarty.const.PAGE_TYPE_LINK}
+        {capture name="preview"}
+            {if !"ULTIMATE"|fn_allowed_for}
+                {assign var="view_uri" value="pages.view?page_id=`$id`"}
+                {assign var="view_uri_escaped" value="`$view_uri`&action=preview"|fn_url:'C':'http':$smarty.const.DESCR_SL|escape:"url"}
+            {/if}
+
+            {if "ULTIMATE"|fn_allowed_for}
+                {if $runtime.company_id}
+                    {assign var="company_id" value=$runtime.company_id}
+                {else}
+                    {assign var="company_id" value=$page_data.company_id}
+                {/if}
+                {assign var="view_uri" value="pages.view?page_id=`$id`&company_id=`$company_id`"}
+                {assign var="view_uri_escaped" value="`$view_uri`&action=preview"|fn_url:'C':'http':$smarty.const.DESCR_SL|escape:"url"}
+            {/if}
+
+            {if !"ULTIMATE"|fn_allowed_for || $runtime.company_id}
+                {$view_uri=$view_uri|fn_url:'C':'http':$smarty.const.DESCR_SL}
+                <li>{btn type="list" target="_blank" text=__("preview") href=$view_uri}</li>
+            {/if}
+        {/capture}
+    {/if}
+{/if}
+    
 <!--update_page_form_{$page_data.page_id}--></div>
 </form>
 
@@ -239,15 +255,4 @@
 
 {/capture}
 
-{capture name="sidebar"}
-{if $pages_tree}
-    <div class="sidebar-row">
-        <h6>{__("pages")}</h6>
-        <div class="nested-tree">
-            {include file="views/pages/components/pages_links_tree.tpl" show_all=false pages_tree=$pages_tree}
-        </div>
-    </div>
-{/if}
-{/capture}
-
-{include file="common/mainbox.tpl" title=$_title sidebar=$smarty.capture.sidebar sidebar_position="left" content=$smarty.capture.mainbox buttons=$smarty.capture.buttons adv_buttons=$smarty.capture.adv_buttons}
+{include file="common/mainbox.tpl" title=$_title content=$smarty.capture.mainbox buttons=$smarty.capture.buttons adv_buttons=$smarty.capture.adv_buttons}

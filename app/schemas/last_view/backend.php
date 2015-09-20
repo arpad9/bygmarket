@@ -42,9 +42,5 @@ return array(
         'update_mode' => 'update',
         'func' => 'fn_get_categories',
         'item_id' => 'category_id'
-    ),
-    'product_features' => array(
-        'func' => 'fn_get_product_features',
-        'item_id' => 'feature_id'
     )
 );

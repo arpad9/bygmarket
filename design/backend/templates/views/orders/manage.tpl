@@ -38,16 +38,12 @@
     <th  class="left">
     {include file="common/check_items.tpl" check_statuses=$order_status_descr}
     </th>
-    <th width="17%"><a class="cm-ajax" href="{"`$c_url`&sort_by=order_id&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{__("id")}{if $search.sort_by == "order_id"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
-    <th width="17%"><a class="cm-ajax" href="{"`$c_url`&sort_by=status&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{__("status")}{if $search.sort_by == "status"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
+    <th width="20%"><a class="cm-ajax" href="{"`$c_url`&sort_by=order_id&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{__("id")}{if $search.sort_by == "order_id"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
+    <th width="20%"><a class="cm-ajax" href="{"`$c_url`&sort_by=status&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{__("status")}{if $search.sort_by == "status"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
     <th width="15%"><a class="cm-ajax" href="{"`$c_url`&sort_by=date&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{__("date")}{if $search.sort_by == "date"}{$c_icon nofilter}{else}{$c_dummy nofilter}{/if}</a></th>
-    <th width="20%"><a class="cm-ajax" href="{"`$c_url`&sort_by=customer&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{__("customer")}{if $search.sort_by == "customer"}{$c_icon nofilter}{/if}</a></th>
-    <th width="15%"><a class="cm-ajax" href="{"`$c_url`&sort_by=phone&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{__("phone")}{if $search.sort_by == "phone"}{$c_icon nofilter}{/if}</a></th>
-
-    {hook name="orders:manage_header"}{/hook}
-
+    <th width="23%"><a class="cm-ajax" href="{"`$c_url`&sort_by=customer&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{__("customer")}{if $search.sort_by == "customer"}{$c_icon nofilter}{/if}</a></th>
     <th>&nbsp;</th>
-    <th width="14%" class="right"><a class="cm-ajax{if $search.sort_by == "total"} sort-link-{$search.sort_order_rev}{/if}" href="{"`$c_url`&sort_by=total&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{__("total")}</a></th>
+    <th width="20%" class="right"><a class="cm-ajax{if $search.sort_by == "total"} sort-link-{$search.sort_order_rev}{/if}" href="{"`$c_url`&sort_by=total&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id={$rev}>{__("total")}</a></th>
 
 </tr>
 </thead>
@@ -71,25 +67,24 @@
         {else}
             {assign var="notify_vendor" value=false}
         {/if}
-
-        {include file="common/select_popup.tpl" suffix="o" order_info=$o id=$o.order_id status=$o.status items_status=$order_status_descr update_controller="orders" notify=true notify_department=true notify_vendor=$notify_vendor status_target_id="orders_total,`$rev`" extra="&return_url=`$extra_status`" statuses=$order_statuses btn_meta="btn btn-info o-status-`$o.status` btn-small"|lower}
+        {* FIXME CORE SUPPLIERS
+        {if $o.have_suppliers == "Y"}
+            {assign var="notify_supplier" value=true}
+        {else}
+            {assign var="notify_supplier" value=false}
+        {/if}
+        *}
+        {include file="common/select_popup.tpl" suffix="o" id=$o.order_id status=$o.status items_status=$order_status_descr update_controller="orders" notify=true notify_department=true notify_vendor=$notify_vendor status_target_id="orders_total,`$rev`" extra="&return_url=`$extra_status`" statuses=$order_statuses btn_meta="btn btn-info o-status-`$o.status` btn-small"|lower}
     </td>
-    <td>{$o.timestamp|date_format:"`$settings.Appearance.date_format`, `$settings.Appearance.time_format`"}</td>
-    <td>
-        {if $o.email}<a href="mailto:{$o.email|escape:url}">@</a> {/if}
-        {if $o.user_id}<a href="{"profiles.update?user_id=`$o.user_id`"|fn_url}">{/if}{$o.lastname} {$o.firstname}{if $o.user_id}</a>{/if}
-    </td>
-    <td>{$o.phone}</td>
-
-    {hook name="orders:manage_data"}{/hook}
-
+    <td>{$o.timestamp|date_format:"`$settings.Appearance.date_format`, `$settings.Appearance.time_format`"}</td></td>
+    <td>{if $o.user_id}<a href="{"profiles.update?user_id=`$o.user_id`"|fn_url}">{/if}{$o.lastname} {$o.firstname}{if $o.user_id}</a>{/if}</td>
     <td width="5%" class="center">
         {capture name="tools_items"}
             <li>{btn type="list" href="orders.details?order_id=`$o.order_id`" text={__("view")}}</li>
             {hook name="orders:list_extra_links"}
                 <li>{btn type="list" href="order_management.edit?order_id=`$o.order_id`" text={__("edit")}}</li>
                 {assign var="current_redirect_url" value=$config.current_url|escape:url}
-                <li>{btn type="list" href="orders.delete?order_id=`$o.order_id`&redirect_url=`$current_redirect_url`" class="cm-confirm cm-post" text={__("delete")}}</li>
+                <li>{btn type="list" href="orders.delete?order_id=`$o.order_id`&redirect_url=`$current_redirect_url`" class="cm-confirm" text={__("delete")}}</li>
             {/hook}
         {/capture}
         <div class="hidden-tools">
@@ -132,13 +127,13 @@
                 </tr>
             {/if}
             <tr>
-                <td class="shift-right">{__("gross_total")}:</td>
+                <td>{__("gross_total")}:</td>
                 <td>{include file="common/price.tpl" value=$totals.gross_total}</td>
             </tr>
             {hook name="orders:totals_stats"}
                 {if !$incompleted_view}
                     <tr>
-                        <td class="shift-right"><h4>{__("totally_paid")}:</h4></td>
+                        <td><h4>{__("totally_paid")}:</h4></td>
                         <td class="price">{include file="common/price.tpl" value=$totals.totally_paid}</td>
                     </tr>
                 {/if}
@@ -160,38 +155,29 @@
 </form>
 {/capture}
 
-{capture name="incomplete_button"}
-    {if $incompleted_view}
-        <li>{btn type="list" href="orders.manage" text={__("view_all_orders")}}</li>
-    {else}
-        <li>{btn type="list" href="orders.manage?skip_view=Y&status=`$smarty.const.STATUS_INCOMPLETED_ORDER`" text={__("incompleted_orders")} form="orders_list_form"}</li>
-    {/if}
-{/capture}
-
 {capture name="buttons"}
-    {capture name="tools_list"}
-        {if $orders}
-            <li>{btn type="list" text={__("bulk_print_invoice")} dispatch="dispatch[orders.bulk_print]" form="orders_list_form" class="cm-new-window"}</li>
-            <li>{btn type="list" text="{__("bulk_print_pdf")}" dispatch="dispatch[orders.bulk_print..pdf]" form="orders_list_form"}</li>            
-            <li>{btn type="list" text="{__("bulk_print_packing_slip")}" dispatch="dispatch[orders.packing_slip]" form="orders_list_form" class="cm-new-window"}</li>
+    {if $orders}
+        {capture name="tools_list"}
+            <li>{btn type="list" text={__("bulk_print")} dispatch="dispatch[orders.bulk_print]" form="orders_list_form" class="cm-new-window"}</li>
+            <li>{btn type="list" text="{__("bulk_print")} ({__("packing_slip")})" dispatch="dispatch[orders.packing_slip]" form="orders_list_form" class="cm-new-window"}</li>
+            <li>{btn type="list" text="{__("bulk_print")} (PDF)" dispatch="dispatch[orders.bulk_print..pdf]" form="orders_list_form"}</li>
             <li>{btn type="list" text={__("view_purchased_products")} dispatch="dispatch[orders.products_range]" form="orders_list_form"}</li>
-            
+            {hook name="orders:list_tools"}
+            {/hook}
             <li class="divider"></li>
             <li>{btn type="list" text={__("export_selected")} dispatch="dispatch[orders.export_range]" form="orders_list_form"}</li>
-
-            {$smarty.capture.incomplete_button nofilter}
-
+            {if $incompleted_view}
+                <li>{btn type="list" href="orders.manage" text={__("view_all_orders")}}</li>
+            {else}
+                <li>{btn type="list" href="orders.manage?skip_view=Y&status=`$smarty.const.STATUS_INCOMPLETED_ORDER`" text={__("incompleted_orders")} form="orders_list_form"}</li>
+            {/if}
             {if $orders && !$runtime.company_id}
                 <li class="divider"></li>
                 <li>{btn type="delete_selected" dispatch="dispatch[orders.m_delete]" form="orders_list_form"}</li>
             {/if}
-        {else}
-            {$smarty.capture.incomplete_button nofilter}
-        {/if}
-        {hook name="orders:list_tools"}
-        {/hook}
-    {/capture}
-    {dropdown content=$smarty.capture.tools_list}
+        {/capture}
+        {dropdown content=$smarty.capture.tools_list}
+    {/if}
 {/capture}
 
 {include file="common/mainbox.tpl" title=$page_title sidebar=$smarty.capture.sidebar content=$smarty.capture.mainbox buttons=$smarty.capture.buttons adv_buttons=$smarty.capture.adv_buttons content_id="manage_orders"}

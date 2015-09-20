@@ -12,10 +12,14 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-function fn_settings_actions_addons_searchanise($new_status, $old_status)
+function fn_settings_actions_addons_searchanise($new_status, $old_status, $on_install)
 {
-    if (fn_se_is_registered() == true) {
-        if ($new_status == 'A') {
+    if (!empty($on_install)) {
+        return;
+    }
+
+    if ($new_status == 'A') {
+        if (fn_se_is_registered() == true) {
             fn_se_signup();
             fn_se_queue_import();
         }

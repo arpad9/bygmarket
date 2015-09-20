@@ -18,6 +18,6 @@ $schema['pages']['modes']['delete_question'] = array (
 $schema['pages']['modes']['delete_vote'] = array (
     'permissions' => 'manage_pages'
 );
-$schema['tools']['modes']['update_status']['param_permissions']['table']['poll_questions'] = 'manage_pages';
+$schema['tools']['modes']['update_status']['param_permissions']['table_names']['poll_questions'] = 'manage_pages';
 
 return $schema;

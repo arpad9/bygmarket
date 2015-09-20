@@ -19,29 +19,29 @@ namespace Tygh\Api;
  */
 class FormatManager
 {
-    protected static $instance = null;
+    private static $_instance = null;
 
     /**
      * Instances of formatter objects
      *
-     * @var array $format_objects
+     * @var array $_format_objects
      */
-    protected $format_objects =  array();
+    private $_format_objects =  array();
 
     /**
      * Available mime types. Each key in array is mime type name, value - format name
      *
-     * @var array $available_mime_types
+     * @var array $_available_mime_types
      */
-    protected $available_mime_types = array();
+    private $_available_mime_types = array();
 
     public static function instance()
     {
-        if (self::$instance == null) {
-            self::$instance = new self();
+        if (self::$_instance == null) {
+            self::$_instance = new self();
         }
 
-        return self::$instance;
+        return self::$_instance;
     }
 
     /**
@@ -63,10 +63,10 @@ class FormatManager
      *
      * @return FormatManager
      */
-    protected function __construct() {}
+    private function __construct() {}
 
     /**
-     * Loads format objects and fill available mime types
+     * Loads format obejcts and fill available mime types
      *
      * @param  array $formats Formats will be used
      * @return void
@@ -74,25 +74,25 @@ class FormatManager
     public function loadFormatters($formats)
     {
         foreach ($formats as $format_name) {
-            $class_name = $this->getFormatterClassName($format_name);
+            $class_name = $this->_getFormatterClassName($format_name);
 
             if (class_exists($class_name)) {
-                $this->format_objects[$format_name] = new $class_name;
+                $this->_format_objects[$format_name] = new $class_name;
 
-                $mime_types = $this->format_objects[$format_name]->getMimetypes();
+                $mime_types = $this->_format_objects[$format_name]->getMimetypes();
 
                 if (is_array($mime_types)) {
                     foreach ($mime_types as $mime_type) {
-                        $this->available_mime_types[$mime_type] = $format_name;
+                        $this->_available_mime_types[$mime_type] = $format_name;
                     }
                 } else {
-                    $this->available_mime_types[$mime_types] = $format_name;
+                    $this->_available_mime_types[$mime_types] = $format_name;
                 }
             }
         }
     }
 
-    protected function getFormatterClassName($format_name)
+    private function _getFormatterClassName($format_name)
     {
         return 'Tygh\\Api\\Formats\\' . ucfirst($format_name);
     }
@@ -107,9 +107,9 @@ class FormatManager
     public function encode($data, $mime_type)
     {
         if ($this->isMimeTypeSupported($mime_type)) {
-            $format_name = $this->available_mime_types[$mime_type];
+            $format_name = $this->_available_mime_types[$mime_type];
 
-            return $this->format_objects[$format_name]->encode($data);
+            return $this->_format_objects[$format_name]->encode($data);
         }
 
         return false;
@@ -125,9 +125,9 @@ class FormatManager
     public function decode($data, $mime_type)
     {
         if ($this->isMimeTypeSupported($mime_type)) {
-            $format_name = $this->available_mime_types[$mime_type];
+            $format_name = $this->_available_mime_types[$mime_type];
 
-            return $this->format_objects[$format_name]->decode($data);
+            return $this->_format_objects[$format_name]->decode($data);
         }
 
         return false;
@@ -135,6 +135,6 @@ class FormatManager
 
     public function isMimeTypeSupported($mime_type)
     {
-        return isset($this->available_mime_types[$mime_type]);
+        return isset($this->_available_mime_types[$mime_type]);
     }
 }

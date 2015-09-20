@@ -84,7 +84,6 @@ class SchemesManager
         return array(
             '1.0' => 'Tygh\\Addons\\XmlScheme1',
             '2.0' => 'Tygh\\Addons\\XmlScheme2',
-            '3.0' => 'Tygh\\Addons\\XmlScheme3',
         );
     }
 

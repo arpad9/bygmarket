@@ -2,7 +2,7 @@
 
 {if $style == "graphic"}
 <div class="btn-group {$class}" {if $select_container_id}id="{$select_container_id}"{/if}>
-    <a class="btn btn-text dropdown-toggle " id="sw_select_{$selected_id}_wrap_{$suffix}" data-toggle="dropdown">
+    <a class="btn-text dropdown-toggle " id="sw_select_{$selected_id}_wrap_{$suffix}" data-toggle="dropdown">
         {if $display_icons == true}
             <i class="flag flag-{$items.$selected_id.country_code|lower}" data-ca-target-id="sw_select_{$selected_id}_wrap_{$suffix}"></i>
         {/if}
@@ -20,7 +20,7 @@
 </div>
 {elseif $style == "dropdown"}
     <li class="dropdown dropdown-top-menu-item {$class}" {if $select_container_id}id="{$select_container_id}"{/if}>
-        <a class="dropdown-toggle cm-combination" data-toggle="dropdown" id="sw_select_{$selected_id}_wrap_{$suffix}">
+        <a class="dropdown-toggle cm-combo-on cm-combination" data-toggle="dropdown" id="sw_select_{$selected_id}_wrap_{$suffix}">
             {if $key_selected}
                 {if $items.$selected_id.symbol}
                     {$items.$selected_id.symbol nofilter}
@@ -46,7 +46,7 @@
         </ul>
     </li>
 {elseif $style == "field"}
-<div class="cm-popup-box btn-group {if $class}{$class}{/if}">
+<div class="cm-popup-box btn-group dropleft {if $class}{$class}{/if}">
     {if !$selected_key}
     {assign var="selected_key" value=$items|key}
     {/if}
@@ -54,13 +54,13 @@
     {assign var="selected_name" value=$items[$selected_key]}
     {/if}
     <input type="hidden" name="{$select_container_name}" {if $select_container_id}id="{$select_container_id}"{/if} value="{$selected_key}" />
-    <a id="sw_{$select_container_name}" class="dropdown-toggle btn-text btn" data-toggle="dropdown">
+    <a id="sw_{$select_container_name}" class="dropdown-toggle btn-text" data-toggle="dropdown">
     {$selected_name}
     <span class="caret"></span>
     </a>
     <ul class="dropdown-menu cm-select">
         {foreach from=$items item="value" key="key"}
-            <li {if $selected_key == $key}class="disabled"{/if}><a class="{if $selected_key == $key}active {/if}cm-select-option" data-ca-list-item="{$key}">{$value nofilter}</a></li>
+            <li {if $selected_key == $key}class="disabled"{/if}><a class="{if $selected_key == $key}cm-active {/if}cm-select-option" data-ca-list-item="{$key}">{$value nofilter}</a></li>
         {/foreach}
     </ul>
 </div>

@@ -44,6 +44,7 @@
             <option value="T">{__("table")}</option>
             <option value="B" {if $table.type == "B"}selected="selected"{/if}>{__("graphic")} [{__("bar")}] </option>
             <option value="P" {if $table.type == "P"}selected="selected"{/if}>{__("graphic")} [{__("pie_3d")}] </option>
+            <option value="C" {if $table.type == "C"}selected="selected"{/if}>{__("graphic")} [{__("pie")}] </option>
         </select>
     </div>
 </div>
@@ -86,7 +87,7 @@
     </div>
 </div>
 
-{if $table.type != "P"}
+{if $table.type != "C" && $table.type != "P"}
 <div class="control-group">
     <label class="control-label" for="elm_table_interval_id">{__("time_interval")}:</label>
     <div class="controls">
@@ -247,7 +248,7 @@
     {capture name="tools_list"}
         {if $table_id}
             <li>{btn type="list" text=__("view_report") href="sales_reports.view?report_id=$report_id&table_id=`$table_id`"}</li>
-            <li>{btn type="list" class="cm-confirm cm-post" text=__("clear_conditions") href="sales_reports.clear_conditions?table_id=`$table_id`&report_id=`$report_id`"}</li>
+            <li>{btn type="list" text=__("clear_conditions") href="sales_reports.clear_conditions?table_id=`$table_id`&report_id=`$report_id`"}</li>
             {assign var="select_languages" value="true"}
         {/if}
     {/capture}

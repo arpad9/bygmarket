@@ -13,6 +13,3 @@
 ****************************************************************************/
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
-
-define('STORE_LOCATOR_DEFAULT_LATITUDE', '54.3');
-define('STORE_LOCATOR_DEFAULT_LONGITUDE', '48.4');

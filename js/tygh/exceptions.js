@@ -68,9 +68,9 @@ function fn_change_options(obj_id, id, option_id)
     });
     
     var url = fn_url('products.options?changed_option[' + id + ']=' + option_id);
-
-    for (var i = 0; i < params.length; i++) {
-        url += '&' + params[i]['name'] + '=' + encodeURIComponent(params[i]['value']);
+    
+    for (i in params) {
+        url += '&' + params[i]['name'] + '=' + encodeURI(params[i]['value']);
     }
 
     $.ceAjax('request', url, {
@@ -162,9 +162,9 @@ function fn_pre_process_form_files(data, params)
         
         // Move files blocks to the temporarily created container
         for (var k in data.html) {
-            $('#' + k + ' .fileuploader ,' + '#' + k + ' .ty-fileuploader').each(function(idx, elm){
+            $('#' + k + ' .fileuploader').each(function(idx, elm){
                 var jelm = $(elm);
-                var jparent = jelm.parents('.control-group, .ty-control-group');
+                var jparent = jelm.parents('.control-group');
                 jparent.appendTo(container);
                 jparent.prop('id', 'moved_' + jparent.prop('id'));
             });
@@ -178,7 +178,7 @@ function fn_post_process_form_files(data, params)
     var container = {};
     container = $('#file_container');
     
-    $('div.control-group, div.ty-control-group', container).each(function(idx, elm){
+    $('div.control-group', container).each(function(idx, elm){
         var jelm = $(elm);
         var elm_id = jelm.prop('id').replace('moved_', '');
         var target = $('#' + elm_id);

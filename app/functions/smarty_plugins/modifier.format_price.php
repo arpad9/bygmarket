@@ -1,7 +1,4 @@
 <?php
-
-use Tygh\Registry;
-
 /**
  * Smarty plugin
  * @package Smarty
@@ -19,42 +16,27 @@ use Tygh\Registry;
  * -------------------------------------------------------------
  */
 
-function smarty_modifier_format_price($price, $currency, $span_id = '', $class = '', $is_secondary = false, $live_editor_name = '', $live_editor_phrase = '')
+function smarty_modifier_format_price($price, $currency, $span_id, $class = '', $is_secondary = false)
 {
+    $value = fn_format_rate_value($price, $number_type, $currency['decimals'], $currency['decimals_separator'], $currency['thousands_separator'], $currency['coefficient']);
 
-    $value = fn_format_rate_value(
-        $price,
-        $number_type,
-        $currency['decimals'],
-        $currency['decimals_separator'],
-        $currency['thousands_separator'],
-        $currency['coefficient']
-    );
+    if (!empty($class)) {
+        $currency['symbol'] = '<span class="' . $class . '">' . $currency['symbol'] . '</span>';
+    }
 
-    if (!empty($span_id) && $is_secondary) {
+    if (!empty($span_id) && $is_secondary == true) {
         $span_id = 'sec_' . $span_id;
     }
 
-    $span_id = !empty($span_id) ? ' id="' . $span_id . '"' : '';
-    $class = !empty($class) ? ' class="' . $class . '"' : '';
-
-    $live_editor_attrs = '';
-    if (Registry::get('runtime.customization_mode.live_editor') && !empty($live_editor_name)) {
-        $live_editor_attrs = ' data-ca-live-editor-obj="' . $live_editor_name . '"';
-        if (!empty($live_editor_phrase)) {
-            $live_editor_attrs .= ' data-ca-live-editor-phrase="' . $live_editor_phrase . '"';
-        }
+    if (!empty($class) || !empty($span_id)) {
+        $data = array (
+            '<span' . (!empty($span_id) ? ' id="' . $span_id . '"' : '') . (!empty($class) ? ' class="' . $class . '"' : '') . '>',
+            $value,
+            '</span>',
+        );
+    } else {
+        $data = array($value);
     }
-
-    if ($class) {
-        $currency['symbol'] = '<span' . $class . '>' . $currency['symbol'] . '</span>';
-    }
-
-    $data = array (
-        '<span' . $span_id . $class . $live_editor_attrs . '>',
-        $value,
-        '</span>',
-    );
 
     if ($currency['after'] == 'Y') {
         array_push($data, '&nbsp;' . $currency['symbol']);

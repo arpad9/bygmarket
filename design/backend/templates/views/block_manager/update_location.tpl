@@ -12,7 +12,7 @@
 
     <div class="tabs cm-j-tabs">
         <ul class="nav nav-tabs">
-            <li id="location_general_{$html_id}" class="cm-js active"><a>{__("general")}</a></li>
+            <li id="location_general_{$html_id}" class="cm-js cm-active active"><a>{__("general")}</a></li>
             {if $dynamic_object_scheme}
                 <li id="location_object_{$dynamic_object_scheme.object_type}" class="cm-js"><a>{__($dynamic_object_scheme.object_type)}</a></li>
             {/if}
@@ -45,42 +45,17 @@
                     <label for="location_title" class="control-label">{__("page_title")}: </label>
                     <div class="controls">
                         <input id="location_title" type="text" name="location_data[title]" value="{$location.title}">
-                        {if $location.is_default}
-                        <div>
-                        <label class="checkbox inline"><input type="checkbox" name="location_data[copy_translated][]" value="title" />{__("copy_to_other_locations")}</label>
-                        </div>
-                        {/if}                        
                     </div>
                 </div>
 
                 <div class="control-group">
                     <label for="location_meta_descr" class="control-label">{__("meta_description")}: </label>
-                    <div class="controls">
-                        <textarea id="location_meta_descr" name="location_data[meta_description]" class="span9" cols="55" rows="4">{$location.meta_description}</textarea>
-                        {if $location.is_default}
-                        <label class="checkbox inline"><input type="checkbox" name="location_data[copy_translated][]" value="meta_description" />{__("copy_to_other_locations")}</label>
-                        {/if}
-                    </div>
+                    <div class="controls"><textarea id="location_meta_descr" name="location_data[meta_description]" class="span9" cols="55" rows="8">{$location.meta_description}</textarea></div>
                 </div>
 
                 <div class="control-group">
                     <label for="location_meta_key" class="control-label">{__("meta_keywords")} </label>
-                    <div class="controls">
-                        <textarea id="location_meta_key" name="location_data[meta_keywords]" class="span9" cols="55" rows="4">{$location.meta_keywords}</textarea>
-                        {if $location.is_default}
-                        <label class="checkbox inline"><input type="checkbox" name="location_data[copy_translated][]" value="meta_keywords" />{__("copy_to_other_locations")}</label>
-                        {/if}
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <label for="location_custom_html" class="control-label">{__("head_custom_html")}</label>
-                    <div class="controls">
-                        <textarea id="location_custom_html" name="location_data[custom_html]" class="span9" cols="55" rows="4">{$location.custom_html}</textarea>
-                        {if $location.is_default}
-                        <label class="checkbox inline"><input type="checkbox" name="location_data[copy][]" value="custom_html" />{__("copy_to_other_locations")}</label>
-                        {/if}
-                    </div>
+                    <div class="controls"><textarea id="location_meta_key" name="location_data[meta_keywords]" class="span9" cols="55" rows="8">{$location.meta_keywords}</textarea></div>
                 </div>
 
                 <div class="control-group">
@@ -116,7 +91,7 @@
 <div class="buttons-container">
     {if !$location.is_default && $location.location_id > 0}
         <div class="botton-picker-remove pull-left">
-            <a class="cm-confirm cm-post btn cm-tooltip" href="{"block_manager.delete_location?location_id=`$location.location_id`"|fn_url}" title="Remove current location">
+            <a class="cm-confirm btn cm-tooltip" href="{"block_manager.delete_location?location_id=`$location.location_id`"|fn_url}" title="Remove current location">
                 <i class="icon-trash"></i>
             </a>
         </div>

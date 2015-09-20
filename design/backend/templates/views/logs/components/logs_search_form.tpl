@@ -40,6 +40,7 @@
     {include file="common/advanced_search.tpl" advanced_search=$smarty.capture.advanced_search simple_search=$smarty.capture.simple_search dispatch="logs.manage" view_type="logs"}
     
     <script type="text/javascript">
+    //<![CDATA[
     var types = new Array();
     {foreach from=$log_types item="o"}
     types['{$o.type}'] = new Array();
@@ -69,6 +70,7 @@
     Tygh.$(document).ready(function() {$ldelim}
         fn_logs_build_options('{$search.q_action}');
     {$rdelim});
+    //]]>
     </script>
 </form>
 </div>

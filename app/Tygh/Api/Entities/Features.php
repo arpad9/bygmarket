@@ -16,24 +16,24 @@ namespace Tygh\Api\Entities;
 
 use Tygh\Api\AEntity;
 use Tygh\Api\Response;
-use Tygh\Registry;
 
 class Features extends AEntity
 {
+
     public function index($id = 0, $params = array())
     {
-        $lang_code = $this->safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
+        $lang_code = $this->_safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
 
         if ($this->getParentName() == 'products') {
             $parent_product = $this->getParentData();
             $params['product_id'] = $parent_product['product_id'];
-            $params['existent_only'] = $this->safeGet($params, 'existent_only', true);
-            $params['exclude_group'] = $this->safeGet($params, 'exclude_group', true);
-            $params['variants'] = $this->safeGet($params, 'variants', true);
+            $params['existent_only'] = $this->_safeGet($params, 'existent_only', true);
+            $params['exclude_group'] = $this->_safeGet($params, 'exclude_group', true);
+            $params['variants'] = $this->_safeGet($params, 'variants', true);
         }
 
         if (!empty($id)) {
-            $params['variants'] = $this->safeGet($params, 'variants', true);
+            $params['variants'] = $this->_safeGet($params, 'variants', true);
             $data = fn_get_product_feature_data($id, $params['variants'], false, $lang_code);
 
             if (empty($data)) {
@@ -43,17 +43,12 @@ class Features extends AEntity
             }
 
         } else {
-            $items_per_page = $this->safeGet($params, 'items_per_page', Registry::get('settings.Appearance.admin_elements_per_page'));
-            $params['exclude_group'] =  $this->safeGet($params, 'exclude_group', false);
-            $params['get_descriptions'] = $this->safeGet($params, 'get_descriptions', true);
-            $params['plain'] = $this->safeGet($params, 'plain', true);
-            $params['variants'] = $this->safeGet($params, 'variants', false);
+            $params['exclude_group'] =  $this->_safeGet($params, 'exclude_group', false);
+            $params['get_descriptions'] = $this->_safeGet($params, 'get_descriptions', true);
+            $params['plain'] = $this->_safeGet($params, 'plain', true);
+            $params['variants'] = $this->_safeGet($params, 'variants', false);
 
-            list($features, $params) = fn_get_product_features($params, $items_per_page, $lang_code);
-            $data = array(
-                'features' => array_values($features),
-                'params' => $params,
-            );
+            list($data) = fn_get_product_features($params, 0, $lang_code);
             $status = Response::STATUS_OK;
         }
 
@@ -67,41 +62,16 @@ class Features extends AEntity
     {
         $status = Response::STATUS_BAD_REQUEST;
         $data = array();
-        $valid_params = true;
 
         unset($params['category_id']);
 
-        if (empty($params['feature_type'])) {
-            $data['message'] = __('api_required_field', array(
-                '[field]' => 'feature_type'
-            ));
-            $valid_params = false;
-        }
+        $feature_id = fn_update_product_feature($params, 0);
 
-        if (empty($params['description'])) {
-            $data['message'] = __('api_required_field', array(
-                '[field]' => 'description'
-            ));
-            $valid_params = false;
-        }
-
-        if (fn_allowed_for('ULTIMATE')) {
-            if ((empty($params['company_id'])) && Registry::get('runtime.company_id') == 0) {
-                $data['message'] = __('api_need_store');
-                $valid_params = false;
-            }
-        }
-
-        if ($valid_params) {
-
-            $feature_id = fn_update_product_feature($params, 0);
-
-            if ($feature_id) {
-                $status = Response::STATUS_CREATED;
-                $data = array(
-                    'feature_id' => $feature_id,
-                );
-            }
+        if ($feature_id) {
+            $status = Response::STATUS_CREATED;
+            $data = array(
+                'feature_id' => $feature_id,
+            );
         }
 
         return array(
@@ -122,7 +92,7 @@ class Features extends AEntity
             $params['original_var_ids'] = implode(',', array_keys($variants));
         }
 
-        $lang_code = $this->safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
+        $lang_code = $this->_safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
         $feature_id = fn_update_product_feature($params, $id, $lang_code);
 
         if ($feature_id) {
@@ -141,10 +111,11 @@ class Features extends AEntity
     public function delete($id)
     {
         $data = array();
-        $status = Response::STATUS_NOT_FOUND;
+        $status = Response::STATUS_BAD_REQUEST;
 
         if (fn_delete_feature($id)) {
-            $status = Response::STATUS_NO_CONTENT;
+            $status = Response::STATUS_OK;
+            $data['message'] = 'Ok';
         }
 
         return array(
@@ -153,7 +124,7 @@ class Features extends AEntity
         );
     }
 
-    public function privileges()
+    public function priveleges()
     {
         return array(
             'create' => 'manage_catalog',

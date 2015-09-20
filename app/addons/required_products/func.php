@@ -34,8 +34,12 @@ function fn_required_products_get_product_data_post(&$product, &$auth)
         if (count($required)) {
             $product['have_required'] = 'Y';
 
-            $ids = fn_array_column($required, 'product_id');
-            $have = fn_required_products_get_existent($auth, $ids);
+            $ids = array ();
+            foreach ($required as $entry) {
+                $ids[] = $entry['product_id'];
+            }
+
+            $have = fn_required_products_get_existent($auth, $ids, false);
 
             $product['required_products'] = array ();
 
@@ -59,20 +63,16 @@ function fn_required_products_get_product_data_post(&$product, &$auth)
     }
 }
 
-function fn_required_products_in_cart($cart, $ids)
+function fn_required_products_in_cart($auth, $ids)
 {
     $data = array ();
-    if (!empty($cart)) {
+
+    if (!empty($_SESSION['cart']) && !empty($_SESSION['cart']['products'])) {
         foreach ($ids as $id) {
-            if (!empty($cart['products'])) {
-                foreach ($cart['products'] as $entry) {
-                    if ($entry['product_id'] == $id) {
-                        $data[] = $id;
-                    }
+            foreach ($_SESSION['cart']['products'] as $entry) {
+                if ($entry['product_id'] == $id) {
+                    $data[] = $id;
                 }
-            }
-            if (isset($cart['all_order_product_ids']) && in_array($id, $cart['all_order_product_ids'])) {
-                $data[] = $id;
             }
         }
     }
@@ -82,7 +82,7 @@ function fn_required_products_in_cart($cart, $ids)
     return $data;
 }
 
-function fn_required_products_get_existent($auth, $ids, $cart = array())
+function fn_required_products_get_existent($auth, $ids, $look_in_cart = true)
 {
     if (empty($ids)) {
         return false;
@@ -94,8 +94,8 @@ function fn_required_products_get_existent($auth, $ids, $cart = array())
         $data = array();
     }
 
-    if (!empty($cart)) {
-        $data = array_merge($data, fn_required_products_in_cart($cart, $ids));
+    if ($look_in_cart) {
+        $data = array_merge($data, fn_required_products_in_cart($auth, $ids));
         $data = array_unique($data);
     }
 
@@ -119,7 +119,7 @@ function fn_get_required_products_ids($product_id)
         $condition .= fn_get_company_condition('?:categories.company_id');
     }
 
-    $ids = db_get_fields("SELECT req_prod.required_id FROM ?:product_required_products as req_prod $join WHERE $condition GROUP BY req_prod.required_id");
+    $ids = db_get_fields("SELECT req_prod.required_id FROM ?:product_required_products as req_prod $join WHERE $condition");
 
     return $ids;
 }
@@ -129,14 +129,12 @@ function fn_get_required_products_ids($product_id)
  *
  * @param array $product_data Products data
  * @param mixed $auth Array with authorization data
- * @param array $cart
  * @param array $added_products Products that are checked for further products that need to be added
  * @return bool False if some products were removed, otherwise - true
  */
-function fn_check_added_required_products(&$product_data, $auth, &$cart, $added_products = array())
+function fn_check_added_required_products(&$product_data, $auth, $added_products = array())
 {
     $result = true;
-
     foreach ($product_data as $key => $entry) {
         if (!empty($entry['amount']) && !empty($key)) {
             $product_id = !empty($entry['product_id']) ? $entry['product_id'] : $key;
@@ -145,7 +143,8 @@ function fn_check_added_required_products(&$product_data, $auth, &$cart, $added_
             $ids = fn_get_required_products_ids($product_id);
 
             if (!empty($ids)) {
-                $have = fn_required_products_get_existent($auth, $ids, $cart);
+                $have = fn_required_products_get_existent($auth, $ids);
+
                 if (empty($have) || count($have) != count($ids)) {
                     $products_to_cart = array_diff($ids, $have);
                     $out_of_stock = array();
@@ -164,8 +163,7 @@ function fn_check_added_required_products(&$product_data, $auth, &$cart, $added_
                         }
                     }
 
-                    if (empty($out_of_stock) && fn_check_added_required_products($check_products, $auth, $cart, $added_products)) {
-                        $cart['change_cart_products'] = true;
+                    if (empty($out_of_stock) && fn_check_added_required_products($check_products, $auth, $added_products)) {
                         $msg = __('required_products_added');
 
                         foreach ($check_products as $id => $v) {
@@ -173,8 +171,6 @@ function fn_check_added_required_products(&$product_data, $auth, &$cart, $added_
                                 $added_products[$id] = $v;
                                 $product_data[$id] = $v;
                                 $msg .= "<br />" . fn_get_product_name($id);
-
-                                $cart['amount'] = !isset($cart['amount']) ? $v['amount'] : $cart['amount'] + $v['amount'];
                             }
                         }
                     } else {
@@ -197,14 +193,9 @@ function fn_check_added_required_products(&$product_data, $auth, &$cart, $added_
 
 function fn_required_products_pre_add_to_cart(&$product_data, &$cart, &$auth, &$update)
 {
-    fn_check_added_required_products($product_data, $auth, $cart);
+    fn_check_added_required_products($product_data, $auth);
 
     return true;
-}
-
-function fn_required_products_form_cart_pre_fill(&$order_id, &$cart, &$auth, &$order_info)
-{
-    $cart['all_order_product_ids'] = db_get_fields("SELECT product_id FROM ?:order_details WHERE order_id = ?i", $order_info['order_id']);
 }
 
 /**
@@ -226,16 +217,11 @@ function fn_check_deleted_required_products(&$cart, $cart_id)
         if (count($products)) {
             foreach ($cart['products'] as $key => $product) {
                 if (in_array($product['product_id'], $products)) {
-                    $haved = fn_required_products_get_existent($auth, array($product_id));
+                    $haved = fn_required_products_get_existent($auth, array($product_id), false);
 
                     if (!empty($haved)) {
                         fn_check_deleted_required_products($cart, $key);
                         unset($cart['products'][$key]);
-                        foreach ($cart['product_groups'] as $key_group => $group) {
-                            if (in_array($key, array_keys($group['products']))) {
-                                unset($cart['product_groups'][$key_group]['products'][$key]);
-                            }
-                        }
                     }
                 }
             }
@@ -277,20 +263,13 @@ function fn_check_calculated_required_products(&$cart, &$cart_products, $auth)
                 $ids = fn_get_required_products_ids($entry['product_id']);
 
                 if (!empty($ids)) {
-                    $have = fn_required_products_get_existent($auth, $ids, $cart);
+                    $have = fn_required_products_get_existent($auth, $ids);
                     if (empty($have) || count($have) != count($ids)) {
                         if (empty($entry['extra']['parent'])) {
                             $cart['amount'] -= $entry['amount'];
                         }
                         unset($cart['products'][$key]);
                         unset($cart_products[$key]);
-                        if (isset($cart['product_groups'])) {
-                            foreach ($cart['product_groups'] as $key_group => $group) {
-                                if (in_array($key, array_keys($group['products']))) {
-                                    unset($cart['product_groups'][$key_group]['products'][$key]);
-                                }
-                            }
-                        }
                         fn_check_calculated_required_products($cart, $cart_products, $auth);
                     }
                 }

@@ -1,6 +1,7 @@
 {script src="js/tygh/tabs.js"}
 {literal}
     <script type="text/javascript">
+    //<![CDATA[
     function fn_check_option_type(value, tag_id)
     {
         var id = tag_id.replace('option_type_', '').replace('elm_', '');
@@ -24,6 +25,7 @@
             Tygh.$('#extra_options_' + id).show(); // show "add new variants" box
         }
     }
+    //]]>
     </script>
 {/literal}
 
@@ -51,10 +53,10 @@
                 {assign var="position" value="pull-right"}
             {/if}
             {if $view_mode == "embed"}
-                {include file="common/popupbox.tpl" id="add_new_option" text=__("new_option") link_text=__("add_option") act="general" content=$smarty.capture.add_new_picker meta=$position icon="icon-plus"}
+                {include file="common/popupbox.tpl" id="add_new_option" text=__("new_option") link_text=__("add_option") act="general" content=$smarty.capture.add_new_picker meta=$position}
 
             {else}
-                {include file="common/popupbox.tpl" id="add_new_option" text=__("new_option") title=__("add_option") act="general" content=$smarty.capture.add_new_picker meta=$position icon="icon-plus"}
+                {include file="common/popupbox.tpl" id="add_new_option" text=__("new_option") title=__("add_option") icon="icon-plus" act="general" content=$smarty.capture.add_new_picker meta=$position}
             {/if}
 
         {/capture}

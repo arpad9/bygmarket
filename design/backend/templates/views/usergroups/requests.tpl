@@ -1,8 +1,8 @@
-<form action="{""|fn_url}" method="post" name="usergroup_requests_form" class="form-table">
 {capture name="mainbox"}
 {assign var="c_icon" value="<i class=\"exicon-`$search.sort_order_rev`\"></i>"}
 {assign var="c_dummy" value="<i class=\"exicon-dummy\"></i>"}
 
+<form action="{""|fn_url}" method="post" name="usergroup_requests_form">
 {include file="common/pagination.tpl" save_current_page=true save_current_url=true}
 {assign var="c_url" value=$config.current_url|fn_query_remove:"sort_by":"sort_order"}
 
@@ -38,7 +38,7 @@
 {if $usergroup_requests}
 {capture name="buttons"}
     {capture name="list_list"}
-        <li>{btn type="list" text=__("approve_selected") dispatch="dispatch[usergroups.bulk_update_status.approve]" class="cm-confirm" form="usergroup_requests_form"}</li>
+        <li>{btn type="list" text=__("approve_selected") dispatch="dispatch[usergroups.bulk_update_status.approve]" class="cm-process-items cm-confirm" }</li>
         <li>
             <a>
                 <label for="notify_user">
@@ -53,7 +53,7 @@
 {/capture}
 
 {/if}
+</form>
 
 {/capture}
 {include file="common/mainbox.tpl" buttons=$smarty.capture.buttons adv_buttons=$smarty.capture.adv_buttons title=__("user_group_requests") content=$smarty.capture.mainbox}
-</form>

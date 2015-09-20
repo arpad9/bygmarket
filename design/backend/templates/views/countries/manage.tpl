@@ -30,8 +30,7 @@
     <td class="center row-status">
         {*<input type="text" name="country_data[{$country.code}][region]" size="3" value="{$country.region}" class="input-medium input-hidden" />*}{$country.region}</td>
     <td class="right">
-        {$has_permission = fn_check_permissions("tools", "update_status", "admin", "GET", ["table" => "countries"])}
-        {include file="common/select_popup.tpl" id=$country.code status=$country.status hidden="" object_id_name="code" table="countries" non_editable=!$has_permission}
+        {include file="common/select_popup.tpl" id=$country.code status=$country.status hidden="" object_id_name="code" table="countries"}
     </td>
 </tr>
 {/foreach}

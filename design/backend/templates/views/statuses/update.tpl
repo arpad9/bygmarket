@@ -20,7 +20,7 @@
 
 <div class="tabs cm-j-tabs">
     <ul class="nav nav-tabs">
-        <li class="cm-js active"><a>{__("general")}</a></li>
+        <li class="cm-js cm-active active"><a>{__("general")}</a></li>
     </ul>
 </div>
 
@@ -35,7 +35,7 @@
 
     {if $id}
         <div class="control-group">
-            <label for="status_{$id}" class="cm-required control-label">{__("status")}:</label>
+            <label for="status_{$id}" class="cm-required control-label">{__("status")}:</label>            
                 <div class="controls">
                     <input type="hidden" name="status_data[status]" value="{$status_data.status}">
                     <p class="shift-top">{$status_data.status}</p>
@@ -45,20 +45,20 @@
 
     <div class="control-group">
         <label for="email_subj_{$id}" class="control-label">{__("email_subject")}:</label>
-        <div class="controls cm-no-hide-input" id="container_email_subj_{$id}">
+        <div class="controls cm-no-hide-input">
             <input type="text" size="40" name="status_data[email_subj]" id="email_subj_{$id}" value="{$status_data.email_subj}" {if $disable_input}disabled="disabled"{/if}>
             {if "ULTIMATE"|fn_allowed_for}
-            {include file="buttons/update_for_all.tpl" display=$show_update_for_all object_id="`$id`_email_subj" name="update_all_vendors[email_subj]" hide_element="email_subj_`$id`"}
+            {include file="buttons/update_for_all.tpl" display=$show_update_for_all object_id=$id name="update_all_vendors[email_subj]" hide_element="email_subj_`$id`"}
             {/if}
         </div>
     </div>
 
     <div class="control-group">
         <label for="email_header_{$id}" class="control-label">{__("email_header")}:</label>
-        <div class="controls cm-no-hide-input" id="container_email_header_{$id}">
+        <div class="controls cm-no-hide-input">
             <textarea id="email_header_{$id}" name="status_data[email_header]" class="cm-wysiwyg input-textarea-long" {if $disable_input}disabled="disabled"{/if}>{$status_data.email_header}</textarea>
             {if "ULTIMATE"|fn_allowed_for}
-            {include file="buttons/update_for_all.tpl" display=$show_update_for_all object_id="`$id`_email_header" name="update_all_vendors[email_header]" hide_element="email_header_`$id`"}
+            {include file="buttons/update_for_all.tpl" display=$show_update_for_all object_id=$id name="update_all_vendors[email_header]" hide_element="email_header_`$id`"}
             {/if}
         </div>
     </div>
@@ -95,14 +95,9 @@
                 {elseif $data.type == "color"}
                     {include file="common/colorpicker.tpl" cp_name="status_data[params][`$name`]" cp_id="status_param_`$id`_`$name`" cp_value=$param_value}
                 {/if}
-
-                {hook name="statuses:status_type"}{/hook}
-
             </div>
         </div>
     {/foreach}
-
-    {hook name="statuses:update"}{/hook}
 </fieldset>
 </div>
 

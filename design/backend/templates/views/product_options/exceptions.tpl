@@ -43,10 +43,10 @@
     </td>
     <td class="nowrap">
         {capture name="tools_list"}
-            <li>{btn type="list" class="cm-confirm cm-post" text=__("delete") href="product_options.delete_exception?exception_id=`$i.exception_id`&product_id=`$product_id`"}</li>
+            <li>{btn type="list" class="cm-confirm" text=__("delete") href="product_options.delete_exception?exception_id=`$i.exception_id`&product_id=`$product_id`"}</li>
         {/capture}
         <div class="hidden-tools">
-            {dropdown content=$smarty.capture.tools_list}
+            {dropdown content=$smarty.capture.tools_list class="dropleft"}
         </div>
     </td>
 </tr>

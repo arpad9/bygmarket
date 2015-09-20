@@ -16,7 +16,6 @@ namespace Tygh\Api\Entities;
 
 use Tygh\Api\AEntity;
 use Tygh\Api\Response;
-use Tygh\Registry;
 
 class Orders extends AEntity
 {
@@ -32,12 +31,7 @@ class Orders extends AEntity
             }
 
         } else {
-            $items_per_page = $this->safeGet($params, 'items_per_page', Registry::get('settings.Appearance.admin_orders_per_page'));
-            list($data, $params) =  fn_get_orders($params, $items_per_page);
-            $data = array(
-                'orders' => $data,
-                'params' => $params,
-            );
+            list($data, ) =  fn_get_orders($params);
             $status = Response::STATUS_OK;
         }
 
@@ -59,29 +53,24 @@ class Orders extends AEntity
         } elseif (!empty($params['user_data'])) {
             $cart['user_data'] = $params['user_data'];
         }
-        $cart['user_data'] = array_merge($cart['user_data'], $params);
 
         if (empty($params['user_id']) && empty($params['user_data'])) {
-            $data['message'] = __('api_required_field', array(
-                '[field]' => 'user_id/user_data'
-            ));
+            $data['message'] = __('api_orders_need_user_info');
             $valid_params = false;
 
         } elseif (empty($params['payment_id'])) {
-            $data['message'] = __('api_required_field', array(
-                '[field]' => 'payment_id'
-            ));
+            $data['message'] = __('api_need_payment_id');
             $valid_params = false;
 
         }
 
         if ($valid_params) {
-
             $cart['payment_id'] = $params['payment_id'];
 
             $customer_auth = fn_fill_auth($cart['user_data']);
 
             fn_add_product_to_cart($params['products'], $cart, $customer_auth);
+
             fn_calculate_cart_content($cart, $customer_auth);
 
             if (!empty($cart['product_groups']) && !empty($params['shipping_ids'])) {
@@ -102,7 +91,7 @@ class Orders extends AEntity
 
                 fn_update_payment_surcharge($cart, $customer_auth);
 
-                list($order_id, ) = fn_place_order($cart, $customer_auth, 'save', $this->auth['user_id']);
+                list($order_id, ) = fn_place_order($cart, $customer_auth, 'save', $this->_auth['user_id']);
 
                 if (!empty($order_id)) {
                     $status = Response::STATUS_CREATED;
@@ -187,13 +176,12 @@ class Orders extends AEntity
                     $cart['parent_order_id'] = 0;
                     fn_update_payment_surcharge($cart, $customer_auth);
 
-                    list($order_id, $order_status) = fn_update_order($cart, $id);
+                    list($order_id, ) = fn_update_order($cart, $id);
 
                     if ($order_id) {
-                        if (!empty($params['status']) && fn_check_permissions('orders', 'update_status', 'admin')) {
-                            fn_change_order_status($order_id, $params['status'], '', fn_get_notification_rules($params, false));
-                        } elseif (!empty($order_status)) {
-                            fn_change_order_status($order_id, $order_status, '', fn_get_notification_rules($params, false));
+
+                        if (!empty($params['status'])) {
+                            fn_change_order_status($order_id, $params['status'], '', fn_get_notification_rules(array(), false));
                         }
 
                         $status = Response::STATUS_OK;
@@ -214,10 +202,10 @@ class Orders extends AEntity
     public function delete($id)
     {
         $data = array();
-        $status = Response::STATUS_NOT_FOUND;
-
+        $status = Response::STATUS_BAD_REQUEST;
         if (fn_delete_order($id)) {
-            $status = Response::STATUS_NO_CONTENT;
+           $status = Response::STATUS_OK;
+            $data['message'] = 'Ok';
         }
 
         return array(
@@ -226,12 +214,12 @@ class Orders extends AEntity
         );
     }
 
-    public function privileges()
+    public function priveleges()
     {
         return array(
             'create' => 'create_order',
             'update' => 'edit_order',
-            'delete' => 'delete_orders',
+            'delete' => 'delete_order',
             'index'  => 'view_orders'
         );
     }

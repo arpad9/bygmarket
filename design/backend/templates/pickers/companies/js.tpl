@@ -5,8 +5,8 @@
 {/if}
 {if $multiple}
     <tr {if !$clone}id="{$holder}_{$company_id}" {/if}class="cm-js-item {if $clone} cm-clone hidden{/if}">
-        {if $position_field}<td><input type="text" name="{$input_name}[{$company_id}]" value="{math equation="a*b" a=$position b=10}" size="3" class="input-micro"{if $clone} disabled="disabled"{/if} /></td>{/if}
-        <td>{if $hidden_field}<input type="hidden" name="{$input_name}[]" value="{$company_id}" size="3" class="input-micro"{if $clone} disabled="disabled"{/if} />{/if}{if !$view_only}<a href="{"companies.update?company_id=`$company_id`"|fn_url}">{/if}{$company}{if !$view_only}</a>{/if}</td>
+        {if $position_field}<td><input type="text" name="{$input_name}[{$company_id}]" value="{math equation="a*b" a=$position b=10}" size="3" class="input-text-short"{if $clone} disabled="disabled"{/if} /></td>{/if}
+        <td>{if $hidden_field}<input type="hidden" name="{$input_name}[]" value="{$company_id}" size="3" class="input-text-short"{if $clone} disabled="disabled"{/if} />{/if}{if !$view_only}<a href="{"companies.update?company_id=`$company_id`"|fn_url}">{/if}{$company}{if !$view_only}</a>{/if}</td>
         <td class="nowrap">
         {if !$hide_delete_button && !$view_only}
             {capture name="tools_list"}
@@ -16,7 +16,7 @@
                 {/if}
             {/capture}
             <div class="hidden-tools">
-                {dropdown content=$smarty.capture.tools_list}
+                {dropdown content=$smarty.capture.tools_list class="dropleft"}
             </div>
         {/if}
         </td>

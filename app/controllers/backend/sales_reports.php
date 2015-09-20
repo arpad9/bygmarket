@@ -19,7 +19,7 @@ if (!defined('BOOTSTRAP')) { die('Access denied'); }
 require_once(Registry::get('config.dir.functions') . 'fn.sales_reports.php');
 
 $order_status_descr = fn_get_simple_statuses(STATUSES_ORDER, true, true);
-Tygh::$app['view']->assign('order_status_descr', $order_status_descr);
+Registry::get('view')->assign('order_status_descr', $order_status_descr);
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
@@ -92,35 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $suffix = ".update_table?report_id=$_REQUEST[report_id]&table_id=$table_id";
     }
 
-    // Delete report table
-    if ($mode == 'delete_table') {
-        if (!empty($_REQUEST['table_id'])) {
-            fn_delete_report_data('table', $_REQUEST['table_id']);
-        }
-
-        $suffix = ".update?report_id=$_REQUEST[report_id]&selected_section=tables";
-    }
-
-    // Clear table conditions
-    if ($mode == 'clear_conditions') {
-        db_query("DELETE FROM ?:sales_reports_table_conditions WHERE table_id = ?i", $_REQUEST['table_id']);
-
-        fn_set_notification('N', __('notice'), __('text_conditions_cleared'));
-
-        $suffix = ".update_table?report_id=$_REQUEST[report_id]&table_id=$_REQUEST[table_id]";
-    }
-
-    // Delete single report
-    if ($mode == 'delete') {
-
-        if (!empty($_REQUEST['report_id'])) {
-            fn_delete_report_data('report', $_REQUEST['report_id']);
-        }
-
-        $suffix = '.manage';
-    }
-
-    return array(CONTROLLER_STATUS_OK, 'sales_reports' . $suffix);
+    return array(CONTROLLER_STATUS_OK, "sales_reports$suffix");
 }
 
 $depend_items = fn_get_depended();
@@ -128,7 +100,16 @@ $depend_items = fn_get_depended();
 // The list of all reports
 if ($mode == 'manage') {
 
-    Tygh::$app['view']->assign('reports', fn_get_order_reports());
+    Registry::get('view')->assign('reports', fn_get_order_reports());
+
+// Delete single report
+} elseif ($mode == 'delete') {
+
+    if (!empty($_REQUEST['report_id'])) {
+        fn_delete_report_data('report', $_REQUEST['report_id']);
+    }
+
+    return array(CONTROLLER_STATUS_REDIRECT, "sales_reports.manage");
 
 // Edit report
 } elseif ($mode == 'update' || $mode == 'add') {
@@ -145,7 +126,7 @@ if ($mode == 'manage') {
         ));
 
         $report_data = fn_get_report_data($_REQUEST['report_id']);
-        Tygh::$app['view']->assign('report', $report_data);
+        Registry::get('view')->assign('report', $report_data);
     }
 
 // Update table
@@ -163,21 +144,21 @@ if ($mode == 'manage') {
         ));
     }
 
-    Tygh::$app['view']->assign('search_condition', true);
-    Tygh::$app['view']->assign('intervals', db_get_array("SELECT * FROM ?:sales_reports_intervals ORDER BY interval_id"));
+    Registry::get('view')->assign('search_condition', true);
+    Registry::get('view')->assign('intervals', db_get_array("SELECT * FROM ?:sales_reports_intervals ORDER BY interval_id"));
 
     // Payments
-    Tygh::$app['view']->assign('payment_processors', db_get_array("SELECT processor_id, processor FROM ?:payment_processors"));
-    Tygh::$app['view']->assign('payments', db_get_array("SELECT ?:payments.*, ?:payment_descriptions.* FROM ?:payments LEFT JOIN ?:payment_descriptions ON ?:payment_descriptions.payment_id = ?:payments.payment_id AND ?:payment_descriptions.lang_code = ?s ORDER BY ?:payments.position", DESCR_SL));
+    Registry::get('view')->assign('payment_processors', db_get_array("SELECT processor_id, processor FROM ?:payment_processors"));
+    Registry::get('view')->assign('payments', db_get_array("SELECT ?:payments.*, ?:payment_descriptions.* FROM ?:payments LEFT JOIN ?:payment_descriptions ON ?:payment_descriptions.payment_id = ?:payments.payment_id AND ?:payment_descriptions.lang_code = ?s ORDER BY ?:payments.position", DESCR_SL));
 
     // Users Location
-    Tygh::$app['view']->assign('usergroups', fn_get_usergroups(array('type' => 'C', 'status' => array('A', 'H')), CART_LANGUAGE));
-    Tygh::$app['view']->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
-    Tygh::$app['view']->assign('states', fn_get_all_states());
-    Tygh::$app['view']->assign('destinations', fn_get_destinations(CART_LANGUAGE));
+    Registry::get('view')->assign('usergroups', fn_get_usergroups('C', CART_LANGUAGE));
+    Registry::get('view')->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
+    Registry::get('view')->assign('states', fn_get_all_states());
+    Registry::get('view')->assign('destinations', fn_get_destinations(CART_LANGUAGE));
 
     // Locations
-    Tygh::$app['view']->assign('destinations', fn_get_destinations(CART_LANGUAGE));
+    Registry::get('view')->assign('destinations', fn_get_destinations(CART_LANGUAGE));
 
     if (!empty($_REQUEST['table_id'])) {
         $table_data = fn_get_report_data($_REQUEST['report_id'], $_REQUEST['table_id']);
@@ -187,9 +168,25 @@ if ($mode == 'manage') {
             $conditions = array();
         }
 
-        Tygh::$app['view']->assign('conditions', $conditions);
-        Tygh::$app['view']->assign('table', $table_data);
+        Registry::get('view')->assign('conditions', $conditions);
+        Registry::get('view')->assign('table', $table_data);
     }
+
+// Delete report table
+} elseif ($mode == 'delete_table') {
+    if (!empty($_REQUEST['table_id'])) {
+        fn_delete_report_data('table', $_REQUEST['table_id']);
+    }
+
+    return array(CONTROLLER_STATUS_REDIRECT, "sales_reports.update?report_id=$_REQUEST[report_id]&selected_section=tables");
+
+// Clear table conditions
+} elseif ($mode == 'clear_conditions') {
+    db_query("DELETE FROM ?:sales_reports_table_conditions WHERE table_id = ?i", $_REQUEST['table_id']);
+
+    fn_set_notification('N', __('notice'), __('text_conditions_cleared'));
+
+    return array(CONTROLLER_STATUS_REDIRECT, "sales_reports.update_table?report_id=$_REQUEST[report_id]&table_id=$_REQUEST[table_id]");
 
 // View report
 } elseif ($mode == 'view') {
@@ -245,42 +242,55 @@ if ($mode == 'manage') {
                         $report['tables'][$table_id]['pages'] = ceil(count($table['intervals']) / $intervals_limits[count($table['elements'])]);
                     }
                 // Chart and Pie
-                } elseif (!empty($table['elements']) && !empty($table['intervals']) && $table['type'] == 'P') {
+                } elseif (!empty($table['elements']) && !empty($table['intervals']) && ($table['type'] == 'C' || $table['type'] == 'P')) {
                     $_values = fn_get_report_statistics($table);
                     foreach ($table['elements'] as $key => $value) {
                         foreach ($_values[$value['element_hash']] as $k => $v) {
-                            $_new_array[] = array(
+                            $_new_array[$key] = array(
+                                'title' => $value['description'],
+                                'value' => $v
+                            );
+                            $__new_array[$key] = array(
                                 'label' => $value['description'],
-                                'full_descr' => $value['full_description'],
                                 'count' => $v
                             );
                         }
                     }
-                    $new_array['pie_data'] = $_new_array;
-                    $new_array['title'] = $table['description'];
-                    Tygh::$app['view']->assign('new_array', $new_array);
+                    $new_array[$table['description']] = $__new_array;
+                    $new_array['pie_data'] = fn_amcharts_data('pie', $_new_array);
+                    $new_array['pie_height'] = fn_calc_height_ampie($_new_array, 20);
+                    Registry::get('view')->assign('new_array', $new_array);
                 // Bar
                 } elseif (!empty($table['elements']) && !empty($table['intervals']) && ($table['type'] == 'B')) {
                     $_values = fn_get_report_statistics($table);
                     foreach ($table['elements'] as $key => $value) {
                         foreach ($_values[$value['element_hash']] as $k => $v) {
-                            $_new_array[] = array(
+                            $_new_array[$key][$k] = array(
                                     'title' => $value['description'],
-                                    'full_descr' => $value['full_description'],
-                                    'value' => $v,
-                                    'color' => fn_sr_get_random_color()
+                                    'value' => $v
+                                );
+                            $__new_array[$key][$k] = array(
+                                    'label' => $value['description'],
+                                    'count' => $v
                                 );
                         }
                     }
-                    $new_array['title'] = $table['description'];
-                    $new_array['column_data'] = $_new_array;
-                    Tygh::$app['view']->assign('new_array', $new_array);
+                    $new_array[$table['description']] = $__new_array;
+                    $new_array['column_data'] = fn_amcharts_data('column', $_new_array, $table['intervals']);
+                    $new_array['column_height'] = 450;//fn_calc_height_amcolumn($_new_array);
+                    if (count($table['intervals']) > 1) {
+                        $new_array['column_width'] = count($table['intervals']) * count($table['elements']) * 20 + 100;
+                        $new_array['column_width'] = ($new_array['column_width'] > 650) ? $new_array['column_width'] : 650;
+                    }
+                    $new_array['column_height'] = 450;//fn_calc_height_amcolumn($_new_array);
+                    Registry::get('view')->assign('new_array', $new_array);
                 }
+
             }
         }
 
         if (!empty($table_conditions)) {
-            Tygh::$app['view']->assign('table_conditions', $table_conditions);
+            Registry::get('view')->assign('table_conditions', $table_conditions);
         }
         // Periods
 
@@ -306,34 +316,23 @@ if ($mode == 'manage') {
         }
         // [/Page sections]
 
-        Tygh::$app['view']->assign('report_id', $report_id);
-        Tygh::$app['view']->assign('intervals', $intervals);
-        Tygh::$app['view']->assign('table', $report['tables'][$table_id]); // FIX IT
-        Tygh::$app['view']->assign('report', $report);
+        Registry::get('view')->assign('report_id', $report_id);
+        Registry::get('view')->assign('intervals', $intervals);
+        Registry::get('view')->assign('table', $report['tables'][$table_id]); // FIX IT
+        Registry::get('view')->assign('report', $report);
     }
 }
 
 // ********************************* // ********************************
 if (!empty($_REQUEST['report_id'])) {
-    Tygh::$app['view']->assign('report_elements', fn_get_parameters($_REQUEST['report_id']));
-    Tygh::$app['view']->assign('report_id', $_REQUEST['report_id']);
+    Registry::get('view')->assign('report_elements', fn_get_parameters($_REQUEST['report_id']));
+    Registry::get('view')->assign('report_id', $_REQUEST['report_id']);
 }
 
 $colors = array('pink', 'peru', 'plum', 'azure', 'aquamarine', 'blueviolet', 'firebrick', 'royalblue', 'darkgreen', 'darkorange', 'deepskyblue', 'gold ', 'darkseagreen ', 'tomato', 'wheat', 'seagreen');
 
-Tygh::$app['view']->assign('colors', $colors);
-Tygh::$app['view']->assign('depend_items', $depend_items);
-
-function fn_sr_get_random_color()
-{
-    $numbers = array('1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'A', 'B', 'C', 'D', 'E', 'F');
-    $color = '';
-    for ($i = 0; $i < 6; $i++) {
-        $color .= $numbers[rand(0, 15)];
-    }
-
-    return '#' . $color;
-}
+Registry::get('view')->assign('colors', $colors);
+Registry::get('view')->assign('depend_items', $depend_items);
 
 function fn_update_sales_report($report_data, $report_id = 0, $lang_code = DESCR_SL)
 {
@@ -362,7 +361,7 @@ function fn_update_sales_report($report_data, $report_id = 0, $lang_code = DESCR
             db_query("UPDATE ?:sales_reports_tables SET ?u WHERE table_id = ?i", $value, $k);
             db_query('UPDATE ?:sales_reports_table_descriptions SET ?u WHERE table_id = ?i AND lang_code = ?s', $value, $k, $lang_code);
 
-            if ($value['type'] == 'P') {
+            if ($value['type'] == 'P' || $value['type'] == 'C') {
                 db_query("UPDATE ?:sales_reports_tables SET interval_id = 1 WHERE table_id = ?i", $k);
             }
         }
@@ -373,7 +372,7 @@ function fn_update_sales_report($report_data, $report_id = 0, $lang_code = DESCR
 
 function fn_sales_report_update_table($table_data, $table_id = 0, $lang_code = DESCR_SL)
 {
-    if ($table_data['type'] == 'P') {
+    if ($table_data['type'] == 'P' || $table_data['type'] == 'C') {
         $table_data['interval_id'] = '1';
     }
 

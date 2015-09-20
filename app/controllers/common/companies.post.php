@@ -19,11 +19,6 @@ if (!defined('BOOTSTRAP')) { die('Access denied'); }
 // Ajax content
 if ($mode == 'get_companies_list') {
 
-    // Check if we trying to get list by non-ajax
-    if (!defined('AJAX_REQUEST')) {
-        return array(CONTROLLER_STATUS_REDIRECT, fn_url());
-    }
-
     //TODO make single function
 
     $params = $_REQUEST;
@@ -41,7 +36,7 @@ if ($mode == 'get_companies_list') {
     $objects = db_get_hash_array("SELECT company_id as value, company AS name, CONCAT('switch_company_id=', company_id) as append FROM ?:companies WHERE 1 $condition AND company LIKE ?l ORDER BY company LIMIT ?i, ?i", 'value', $pattern . '%', $start, $limit);
 
     if (defined('AJAX_REQUEST') && sizeof($objects) < $limit) {
-        Tygh::$app['ajax']->assign('completed', true);
+        Registry::get('ajax')->assign('completed', true);
     } else {
         array_pop($objects);
     }
@@ -60,14 +55,14 @@ if ($mode == 'get_companies_list') {
     }
 
     if (defined('AJAX_REQUEST') && !empty($params['action'])) {
-        Tygh::$app['ajax']->assign('action', $params['action']);
+        Registry::get('ajax')->assign('action', $params['action']);
     }
 
     if (!empty($params['onclick'])) {
-        Tygh::$app['view']->assign('onclick', $params['onclick']);
+        Registry::get('view')->assign('onclick', $params['onclick']);
     }
-    Tygh::$app['view']->assign('objects', $objects);
-    Tygh::$app['view']->assign('id', $params['result_ids']);
-    Tygh::$app['view']->display('common/ajax_select_object.tpl');
+    Registry::get('view')->assign('objects', $objects);
+    Registry::get('view')->assign('id', $params['result_ids']);
+    Registry::get('view')->display('common/ajax_select_object.tpl');
     exit;
 }

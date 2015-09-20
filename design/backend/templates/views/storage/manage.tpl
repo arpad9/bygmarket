@@ -17,7 +17,7 @@
         <div class="control-group">
             <label for="elm_amazon_region" class="control-label cm-required">{__("region")}:</label>
             <div class="controls">
-                <select id="elm_amazon_region" name="storage_data[region]" {if $current_storage == "amazon"}disabled="disabled"{/if}>
+                <select id="elm_amazon_region" name="storage_data[region]">
                     {foreach from=$amazon_data.regions key="region_addr" item="region"}
                     <option value="{$region_addr}" {if $region_addr == $storage_data.region}selected="selected"{/if}>{$region}</option>
                     {/foreach}
@@ -28,21 +28,21 @@
         <div class="control-group">
             <label for="elm_amazon_key" class="control-label cm-required">{__("key")}:</label>
             <div class="controls">
-                <input type="text" name="storage_data[key]" id="elm_amazon_key" size="55" value="{$storage_data.key}" {if $current_storage == "amazon"}disabled="disabled"{/if} class="input-large" />
+                <input type="text" name="storage_data[key]" id="elm_amazon_key" size="55" value="{$storage_data.key}" class="input-large" />
             </div>
         </div>
 
         <div class="control-group">
             <label for="elm_amazon_secret" class="control-label cm-required">{__("secret_key")}:</label>
             <div class="controls">
-                <input type="text" name="storage_data[secret]" id="elm_amazon_secret" size="55" value="{$storage_data.secret}" {if $current_storage == "amazon"}disabled="disabled"{/if} class="input-large" />
+                <input type="text" name="storage_data[secret]" id="elm_amazon_secret" size="55" value="{$storage_data.secret}" class="input-large" />
             </div>
         </div>
 
         <div class="control-group">
             <label for="elm_amazon_bucket" class="control-label cm-required">{__("bucket")}:</label>
             <div class="controls">
-                <input type="text" name="storage_data[bucket]" id="elm_amazon_bucket" size="55" value="{$storage_data.bucket}" {if $current_storage == "amazon"}disabled="disabled"{/if} class="input-large" />
+                <input type="text" name="storage_data[bucket]" id="elm_amazon_bucket" size="55" value="{$storage_data.bucket}" class="input-large" />
             </div>
         </div>        
     </div>

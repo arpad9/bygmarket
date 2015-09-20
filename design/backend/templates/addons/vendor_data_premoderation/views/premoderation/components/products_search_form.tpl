@@ -24,7 +24,7 @@
                 {else}
                     {assign var="s_cid" value="0"}
                 {/if}
-                {include file="pickers/categories/picker.tpl" data_id="location_category" input_name="cid" item_ids=$s_cid hide_link=true hide_delete_button=true default_name=__("all_categories") extra=""}
+                {include file="pickers/categories/picker.tpl" data_id="location_category" input_name="cid" item_ids=$s_cid hide_link=true hide_delete_button=true show_root=true default_name=__("all_categories") extra=""}
             {else}
                 {include file="common/select_category.tpl" name="cid" id=$search.cid}
             {/if}
@@ -40,9 +40,7 @@
             </select>
         </div>
         
-        <div class="sidebar-field">
-            {include file="common/select_vendor.tpl"}
-        </div>
+        {include file="common/select_vendor.tpl"}
 
         <div class="sidebar-field">
             {include file="buttons/search.tpl" but_name="dispatch[$dispatch]"}

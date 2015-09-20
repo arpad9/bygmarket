@@ -14,7 +14,7 @@
 
 use Tygh\Registry;
 
-function fn_exim_get_product_combination($product_id, $combination, $set_delimiter, $lang_code = CART_LANGUAGE)
+function fn_exim_get_product_combination($product_id, $combination, $lang_code = CART_LANGUAGE)
 {
     $selected_options = fn_get_product_options_by_combination($combination);
     $options = fn_get_selected_product_options($product_id, $selected_options, $lang_code);
@@ -29,12 +29,16 @@ function fn_exim_get_product_combination($product_id, $combination, $set_delimit
         }
     }
 
-    return implode($set_delimiter, $return);
+    return implode(', ', $return);
 }
 
-function fn_exim_put_product_combination($product_id, $product_name, $combination_code, $combination, $amount, &$counter, $set_delimiter, $lang_code)
+function fn_exim_put_product_combination($product_id, $product_name, $combination_code, $combination, $amount, &$counter)
 {
     $pair_delimiter = ':';
+    $set_delimiter = ',';
+
+    $multi_lang = array_keys($combination);
+    $main_lang = reset($multi_lang);
 
     if (!empty($combination)) {
         // Get product_id
@@ -47,7 +51,7 @@ function fn_exim_put_product_combination($product_id, $product_name, $combinatio
         }
 
         if (empty($object_id) && !empty($product_name)) {
-            $object_id = db_get_field('SELECT product_id FROM ?:product_descriptions WHERE product = ?s AND lang_code = ?s', $product_name[$lang_code], $lang_code);
+            $object_id = db_get_field('SELECT product_id FROM ?:product_descriptions WHERE product = ?s AND lang_code = ?s', $product_name[$main_lang], $main_lang);
         }
 
         if (empty($object_id)) {
@@ -57,31 +61,27 @@ function fn_exim_put_product_combination($product_id, $product_name, $combinatio
         }
 
         $options = array();
+        foreach ($multi_lang as $lang_code) {
+            $_options = explode($set_delimiter, $combination[$lang_code]);
 
-        $_options = explode($set_delimiter, $combination);
-
-        foreach ($_options as $key => $value) {
-            $options[$key][$lang_code] = $value;
+            foreach ($_options as $key => $value) {
+                $options[$key][$lang_code] = $value;
+            }
         }
 
         if (!empty($options)) {
             $_combination = array();
 
             foreach ($options as $option_pair) {
-                $pair = explode($pair_delimiter, $option_pair[$lang_code]);
+                $pair = explode($pair_delimiter, $option_pair[$main_lang]);
                 if (is_array($pair)) {
                     array_walk($pair, 'fn_trim_helper');
-                    $option_id = db_get_field("SELECT o.option_id FROM ?:product_options_descriptions as d INNER JOIN ?:product_options as o ON o.option_id = d.option_id AND o.product_id = ?i WHERE d.option_name = ?s AND d.lang_code = ?s LIMIT 1", $object_id, $pair[0], $lang_code);
+                    $option_id = db_get_field("SELECT o.option_id FROM ?:product_options_descriptions as d INNER JOIN ?:product_options as o ON o.option_id = d.option_id AND o.product_id = ?i WHERE d.option_name = ?s AND d.lang_code = ?s LIMIT 1", $object_id, $pair[0], $main_lang);
                     if (empty($option_id)) {
                         // Search for the global product options
-                        $option_id = db_get_field("SELECT o.option_id FROM ?:product_options_descriptions as d INNER JOIN ?:product_options as o ON o.option_id = d.option_id AND o.product_id = ?i WHERE d.option_name = ?s AND d.lang_code = ?s LIMIT 1", 0, $pair[0], $lang_code);
+                        $option_id = db_get_field("SELECT o.option_id FROM ?:product_options_descriptions as d INNER JOIN ?:product_options as o ON o.option_id = d.option_id AND o.product_id = ?i WHERE d.option_name = ?s AND d.lang_code = ?s LIMIT 1", 0, $pair[0], $main_lang);
                     }
-                    $variant_id = db_get_field("SELECT v.variant_id FROM ?:product_option_variants_descriptions as d INNER JOIN ?:product_option_variants as v ON v.variant_id = d.variant_id AND v.option_id = ?i WHERE d.variant_name = ?s AND d.lang_code = ?s LIMIT 1", $option_id, $pair[1], $lang_code);
-
-                    // Checkboxed do not have descriptions
-                    if (empty($variant_id) && in_array($pair[1], array('Yes', 'No'))) {
-                        $variant_id = db_get_field("SELECT variant_id FROM ?:product_option_variants WHERE option_id = ?i AND position = ?i LIMIT 1", $option_id, ($pair[1] == 'Yes' ? 1 : 0));
-                    }
+                    $variant_id = db_get_field("SELECT v.variant_id FROM ?:product_option_variants_descriptions as d INNER JOIN ?:product_option_variants as v ON v.variant_id = d.variant_id AND v.option_id = ?i WHERE d.variant_name = ?s AND d.lang_code = ?s LIMIT 1", $option_id, $pair[1], $main_lang);
 
                     if (empty($option_id) || empty($variant_id)) {
                         $counter['S']++;
@@ -123,7 +123,7 @@ function fn_exim_put_product_combination($product_id, $product_name, $combinatio
 
             fn_set_progress('echo', '<b>' . $object_id . '</b>.<br />', false);
 
-            return $combination_hash;
+            return $combination;
         }
     }
 
@@ -132,26 +132,28 @@ function fn_exim_put_product_combination($product_id, $product_name, $combinatio
     return false;
 }
 
-function fn_import_check_product_combination_company_id(&$primary_object_id, &$object, &$pattern, &$options, &$processed_data, &$processing_groups, &$skip_record)
-{
-    if (Registry::get('runtime.company_id')) {
-        if (empty($primary_object_id) && empty($object['product_id'])) {
-            $processed_data['S']++;
-            $skip_record = true;
+if (fn_allowed_for('ULTIMATE')) {
+    function fn_import_check_product_combination_company_id(&$primary_object_id, &$object, &$pattern, &$options, &$processed_data, &$processing_groups, &$skip_record)
+    {
+        if (Registry::get('runtime.company_id')) {
+            if (empty($primary_object_id) && empty($object['product_id'])) {
+                $processed_data['S']++;
+                $skip_record = true;
 
-            return false;
-        }
+                return false;
+            }
 
-        if (!empty($primary_object_id)) {
-            list($field, $value) = each($primary_object_id);
-            $company_id = db_get_field('SELECT company_id FROM ?:products WHERE ' . $field . ' = ?s', $value);
-        } else {
-            $company_id = db_get_field('SELECT company_id FROM ?:products WHERE product_id = ?i', $object['product_id']);
-        }
+            if (!empty($primary_object_id)) {
+                list($field, $value) = each($primary_object_id);
+                $company_id = db_get_field('SELECT company_id FROM ?:products WHERE ' . $field . ' = ?s', $value);
+            } else {
+                $company_id = db_get_field('SELECT company_id FROM ?:products WHERE product_id = ?i', $object['product_id']);
+            }
 
-        if ($company_id != Registry::get('runtime.company_id')) {
-            $processed_data['S']++;
-            $skip_record = true;
+            if ($company_id != Registry::get('runtime.company_id')) {
+                $processed_data['S']++;
+                $skip_record = true;
+            }
         }
     }
 }

@@ -14,7 +14,7 @@
 
 <div class="tabs cm-j-tabs">
     <ul class="nav nav-tabs">
-        <li class="cm-js active"><a>{__("general")}</a></li>
+        <li class="cm-js cm-active active"><a>{__("general")}</a></li>
     </ul>
 </div>
 

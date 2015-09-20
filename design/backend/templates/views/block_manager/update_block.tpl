@@ -38,11 +38,6 @@
     <input type="hidden" name="block_data[type]" value="{$block.type}" class="cm-no-hide-input"/>
     <input type="hidden" name="block_data[block_id]" value="{$id}" class="cm-no-hide-input"/>
     <input type="hidden" name="block_data[content_data][snapping_id]" value="{$snapping_data.snapping_id}" class="cm-no-hide-input"/>    
-
-    {if !$block_scheme.multilanguage}
-        <input type="hidden" name="block_data[apply_to_all_langs]" value="Y" />
-    {/if}
-    
     <input type="hidden" name="snapping_data[snapping_id]" value="{$snapping_data.snapping_id}" class="cm-no-hide-input"/>
     <input type="hidden" name="snapping_data[grid_id]" value="{$snapping_data.grid_id}" class="cm-no-hide-input"/>
     <input type="hidden" name="selected_location" value="{$smarty.request.selected_location|default:0}" class="cm-no-hide-input" />
@@ -58,13 +53,13 @@
     {/if}
     <div class="tabs cm-j-tabs cm-track">
         <ul class="nav nav-tabs">
-            <li id="block_general_{$html_id}" class="cm-js {if $active_tab == "block_general_`$html_id`"} active{/if}"><a>{__("general")}</a></li>
-            {if $smarty.capture.block_content|trim}<li id="block_contents_{$html_id}" class="cm-js{if $active_tab == "block_contents_`$html_id`"} active{/if}"><a>{__("content")}</a></li>{/if}
+            <li id="block_general_{$html_id}" class="cm-js{if $active_tab == "block_general_`$html_id`"} cm-active active{/if}"><a>{__("general")}</a></li>
+            {if $smarty.capture.block_content|trim}<li id="block_contents_{$html_id}" class="cm-js{if $active_tab == "block_contents_`$html_id`"} cm-active active{/if}"><a>{__("content")}</a></li>{/if}
             {if $block_scheme.settings}
-                <li id="block_settings_{$html_id}" class="cm-js{if $active_tab == "block_settings_`$html_id`"} active{/if}"><a>{__("block_settings")}</a></li>
+                <li id="block_settings_{$html_id}" class="cm-js{if $active_tab == "block_settings_`$html_id`"} cm-active active{/if}"><a>{__("block_settings")}</a></li>
             {/if}
             {if $dynamic_object_scheme && !$hide_status}
-                <li id="block_status_{$html_id}" class="cm-js{if $active_tab == "block_status_`$html_id`"} active{/if}"><a>{__("status")}</a></li>
+                <li id="block_status_{$html_id}" class="cm-js{if $active_tab == "block_status_`$html_id`"} cm-active active{/if}"><a>{__("status")}</a></li>
             {/if}
         </ul>
     </div>
@@ -96,7 +91,7 @@
                         <input type="hidden" name="block_data[properties][template]" value="{$block.properties.template}" class="cm-no-hide-input" />
                     {/if}
                     {if $block_scheme.templates[$block.properties.template].settings|is_array}
-                        <a href="#" id="sw_case_settings_{$html_id}" class="open cm-combination" onclick="return false">
+                        <a href="#" id="sw_case_settings_{$html_id}" class="cm-combo-off cm-combination" onclick="return false">
                             {__("settings")}
                             <span class="combo-arrow"></span>
                         </a>

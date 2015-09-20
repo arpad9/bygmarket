@@ -12,7 +12,7 @@
 <span style="margin-left:20px;">&nbsp;</span>{$supplier.data.name}<br />
 <span style="margin-left:20px;">&nbsp;</span>{if $supplier.data.address}{$supplier.data.address}, {/if}
                   {if $supplier.data.zipcode}{$supplier.data.zipcode}, {/if}
-                  {if $supplier.data.city}{$supplier.data.city}, {/if}
+                  {if $supplier.data.city}{$company_data.company_city}, {/if}
                   {if $supplier.data.state && $supplier.data.country}{$supplier.data.state|fn_get_state_name:$supplier.data.country}, {/if}
                   {$supplier.data.country|fn_get_country_name}<br />
 <span style="margin-left:20px;">&nbsp;</span>{if $supplier.data.phone}{__("phone")}:&nbsp;{$supplier.data.phone}{if $supplier.data.fax}, {/if}{/if}{if $supplier.data.fax}{__("fax")}:&nbsp;{$supplier.data.fax}{/if}.<br />

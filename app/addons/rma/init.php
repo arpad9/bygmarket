@@ -21,6 +21,5 @@ fn_register_hooks(
     'get_product_data',
     'add_to_cart',
     'get_status_params_definition',
-    'delete_order',
-    'paypal_get_ipn_order_ids'
+    'delete_order'
 );

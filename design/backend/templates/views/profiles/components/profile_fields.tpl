@@ -5,38 +5,25 @@
 {/if}
 
 {if $shipping_flag}
-    <div class="shipping-flag">
-        <input class="hidden" id="elm_ship_to_another" type="checkbox" name="ship_to_another" value="1" {if $ship_to_another}checked="checked"{/if} />
-        
-        <span class="shipping-flag-title">
-            {if $section == "S"}
-                {__("shipping_same_as_billing")}
-            {else}
-                {__("text_billing_same_with_shipping")}
-            {/if}
+<label for="elm_ship_to_another">
+     <input class="hidden" id="elm_ship_to_another" type="checkbox" name="ship_to_another" value="1" {if $ship_to_another}checked="checked"{/if} />
+        <span {if $ship_to_another}class="hidden"{/if} id="on_sta_notice">
+            {__("text_ship_to_billing")}.&nbsp;<a class="cm-combination dashed cm-hide-with-inputs" onclick="Tygh.$('#sa').switchAvailability(false); Tygh.$('#elm_ship_to_another').click();">{__("ship_to_another")}</a>
         </span>
-
-        <label class="radio inline">
-            <input class="cm-switch-availability cm-switch-inverse " type="radio" name="ship_to_another" value="0" id="sw_{$body_id}_suffix_yes" {if !$ship_to_another}checked="checked"{/if} />
-            {__("yes")}
-        </label>
-        
-        <label class="radio inline">
-            <input class=" cm-switch-availability" type="radio" name="ship_to_another" value="1" id="sw_{$body_id}_suffix_no" {if $ship_to_another}checked="checked"{/if} />
-            {__("no")}
-        </label>
-    </div>
-    
+        <span {if !$ship_to_another}class="hidden"{/if} id="off_sta_notice">
+            <a class="cm-combination dashed cm-hide-with-inputs" onclick="Tygh.$('#sa').switchAvailability(true); Tygh.$('#elm_ship_to_another').click();">{__("text_ship_to_billing")}</a>
+        </span>
+</label>
 {elseif $section == "S"}
     {assign var="ship_to_another" value=true}
     <input type="hidden" name="ship_to_another" value="1" />
 {/if}
 
 {if $body_id}
-    <div id="{$body_id}" {if !$ship_to_another}class="hiddens"{/if}>
+    <div id="{$body_id}" {if !$ship_to_another}class="hidden"{/if}>
 {/if}
 
-{if $shipping_flag && !$ship_to_another}
+{if $section == "S" && !$ship_to_another}
     {assign var="disabled_param" value="disabled=\"disabled\""}
 {else}
     {assign var="disabled_param" value=""}
@@ -56,7 +43,7 @@
     </select>
     </div>
     {if $cart.user_data.profile_id && $cart.user_data.profile_type != "P"}
-        <a class="cm-post {if $use_ajax}cm-ajax{/if}" href="{"profiles.delete_profile?profile_id=`$cart.profile_id`"|fn_url}" data-ca-target-id="checkout_steps,cart_items,checkout_totals">{__("delete")}</a>
+        <a {if $use_ajax}class="cm-ajax"{/if} href="{"profiles.delete_profile?profile_id=`$cart.profile_id`"|fn_url}" data-ca-target-id="checkout_steps,cart_items,checkout_totals">{__("delete")}</a>
     {/if}
 </div>
 {/if}
@@ -111,7 +98,7 @@
         <textarea class="input-large" id="{$id_prefix}elm_{$field.field_id}" name="{$data_name}[{$data_id}]" cols="32" rows="3" {$disabled_param nofilter}>{$value}</textarea>
 
     {elseif $field.field_type == "D"}  {* Date *}
-        {include file="common/calendar.tpl" date_id="elm_`$field.field_id`" date_name="`$data_name`[`$data_id`]" date_val=$value extra=$disabled_param}
+        {include file="common/calendar.tpl" date_id="elm_`$field.field_id`" date_name="`$data_name`[`$data_id`]" date_val=$value start_year="1902" end_year="0" extra=$disabled_param}
 
     {elseif $field.field_type == "S"}  {* Selectbox *}
         <select id="{$id_prefix}elm_{$field.field_id}" name="{$data_name}[{$data_id}]" {$disabled_param nofilter}>

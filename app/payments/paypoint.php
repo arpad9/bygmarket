@@ -92,7 +92,13 @@ if (defined('PAYMENT_NOTIFICATION')) {
     $_order_id = ($order_info['repaid']) ? ($order_id . '_' . $order_info['repaid']) : $order_id;
     $md5_hash = (!empty($processor_data["processor_params"]["password"])) ? md5($processor_data['processor_params']['order_prefix'] . $_order_id . $order_info['total'] . $processor_data["processor_params"]["password"]) : '';
 
+    $msg = __('text_cc_processor_connection', array(
+        '[processor]' => 'PayPoint server'
+    ));
+
     //$processor_data['processor_params']['merchant_id'] .= "-jredir";  // unsupported way to get worked redirection from the paypoint server
+
+    $deferred = !empty($processor_data['processor_params']['deferred']) ? '<input type="hidden" name="deferred" value="' . $processor_data['processor_params']['deferred'] . '">' : '';
 
     $options = 'test_status=' . $processor_data['processor_params']['mode'] . ',cb_post=true,dups=false,md_flds=trans_id:amount:callback';
     if (!empty($order_info['payment_info']['cvv2'])) {
@@ -101,49 +107,55 @@ if (defined('PAYMENT_NOTIFICATION')) {
 
     $callback_url = fn_url("payment_notification.process?payment=paypoint&order_id={$order_id}", AREA, 'current');
 
-    $post_data = array(
-        'merchant' => $processor_data['processor_params']['merchant_id'],
-        'trans_id' => $processor_data['processor_params']['order_prefix'] . $_order_id,
-        'amount' => $order_info['total'],
-        'callback' => $callback_url,
-        'currency' => $processor_data['processor_params']['currency'],
-        'options' => $options,
-        'mail_subject' => $processor_data['processor_params']['mail_subject'],
-        'mail_message' => $processor_data['processor_params']['mail_message'],
+echo <<<EOT
+  <form action="https://www.secpay.com/java-bin/ValCard" method="POST" name="process">
+    <input type="hidden" name="merchant" value="{$processor_data['processor_params']['merchant_id']}">
+    <input type="hidden" name="trans_id" value="{$processor_data['processor_params']['order_prefix']}{$_order_id}">
+    <input type="hidden" name="amount" value="{$order_info['total']}">
+    <input type="hidden" name="callback" value="{$callback_url}">
+    <input type="hidden" name="currency" value="{$processor_data['processor_params']['currency']}">
+    <input type="hidden" name="options" value="{$options}">
+    $deferred
+    <input type="hidden" name="mail_subject" value="{$processor_data['processor_params']['mail_subject']}">
+    <input type="hidden" name="mail_message" value="{$processor_data['processor_params']['mail_message']}">
 
-        'bill_name' => $order_info['firstname'] . ' ' . $order_info['lastname'],
-        'bill_company' => $order_info['company'],
-        'bill_addr_1' => $order_info['b_address'],
-        'bill_addr_2' => $order_info['b_address_2'],
-        'bill_city' => $order_info['b_city'],
-        'bill_state' => $order_info['b_state_descr'],
-        'bill_country' => $order_info['b_country_descr'],
-        'bill_post_code' => $order_info['b_zipcode'],
-        'bill_tel' => $order_info['phone'],
-        'bill_email' => $order_info['email'],
-        'bill_url' => $order_info['url'],
+EOT;
+if ($md5_hash) {
+    echo "<input type=\"hidden\" name=\"digest\" value=\"$md5_hash\">";
+}
+echo <<<EOT
+    <input type="hidden" name="bill_name" value="{$order_info['firstname']} {$order_info['lastname']}">
+    <input type="hidden" name="bill_company" value="{$order_info['company']}">
+    <input type="hidden" name="bill_addr_1" value="{$order_info['b_address']}">
+    <input type="hidden" name="bill_addr_2" value="{$order_info['b_address_2']}">
+    <input type="hidden" name="bill_city" value="{$order_info['b_city']}">
+    <input type="hidden" name="bill_state" value="{$order_info['b_state_descr']}">
+    <input type="hidden" name="bill_country" value="{$order_info['b_country_descr']}">
+    <input type="hidden" name="bill_post_code" value="{$order_info['b_zipcode']}">
+    <input type="hidden" name="bill_tel" value="{$order_info['phone']}">
+    <input type="hidden" name="bill_email" value="{$order_info['email']}">
+    <input type="hidden" name="bill_url" value="{$order_info['url']}">
 
-        'ship_name' => $order_info['firstname'] . ' ' . $order_info['lastname'],
-        'ship_company' => $order_info['company'],
-        'ship_addr_1' => $order_info['s_address'],
-        'ship_addr_2' => $order_info['s_address_2'],
-        'ship_city' => $order_info['s_city'],
-        'ship_state' => $order_info['s_state_descr'],
-        'ship_country' => $order_info['s_country_descr'],
-        'ship_post_code' => $order_info['s_zipcode'],
-        'ship_tel' => $order_info['phone'],
-        'ship_email' => $order_info['email'],
-        'ship_url' => $order_info['url'],        
-    );
-
-    if ($md5_hash) {
-        $post_data['digest'] = $md5_hash;
-    }
-
-    if (!empty($processor_data['processor_params']['deferred'])) {
-        $post_data['deferred'] = $processor_data['processor_params']['deferred'];
-    }
-
-    fn_create_payment_form('https://www.secpay.com/java-bin/ValCard', $post_data, 'PayPoint');
-    exit;
+    <input type="hidden" name="ship_name" value="{$order_info['firstname']} {$order_info['lastname']}">
+    <input type="hidden" name="ship_company" value="{$order_info['company']}">
+    <input type="hidden" name="ship_addr_1" value="{$order_info['s_address']}">
+    <input type="hidden" name="ship_addr_2" value="{$order_info['s_address_2']}">
+    <input type="hidden" name="ship_city" value="{$order_info['s_city']}">
+    <input type="hidden" name="ship_state" value="{$order_info['s_state_descr']}">
+    <input type="hidden" name="ship_country" value="{$order_info['s_country_descr']}">
+    <input type="hidden" name="ship_post_code" value="{$order_info['s_zipcode']}">
+    <input type="hidden" name="ship_tel" value="{$order_info['phone']}">
+    <input type="hidden" name="ship_email" value="{$order_info['email']}">
+    <input type="hidden" name="ship_url" value="{$order_info['url']}">
+  </form>
+  <p><div align=center>{$msg}</div></p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
+exit;
 }

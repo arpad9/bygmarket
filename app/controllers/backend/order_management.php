@@ -32,7 +32,7 @@ if (empty($customer_auth)) {
     $customer_auth = fn_fill_auth(array(), array(), false, 'C');
 }
 
-$suffix = !empty($cart['order_id']) ? '.update' : '.add';
+$_suffix = !empty($cart['order_id']) ? 'update' : 'add';
 
 if (fn_allowed_for('ULTIMATE') && $mode != 'edit' && $mode != 'new') {
     if (
@@ -43,7 +43,9 @@ if (fn_allowed_for('ULTIMATE') && $mode != 'edit' && $mode != 'new') {
             fn_set_notification('W', __('warning'), __('orders_not_allow_to_change_company'));
         }
 
-        if (fn_get_available_company_ids($cart['order_company_id'])) {
+        $is_exists = db_get_field("SELECT COUNT(*) FROM ?:companies WHERE company_id = ?i", $cart['order_company_id']);
+
+        if ($is_exists) {
             return array(CONTROLLER_STATUS_REDIRECT, fn_link_attach(Registry::get('config.current_url'), 'switch_company_id=' . $cart['order_company_id']));
         } else {
             return array(CONTROLLER_STATUS_DENIED);
@@ -73,21 +75,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         fn_add_product_to_cart($_REQUEST['product_data'], $_SESSION['cart'], $customer_auth);
-        foreach ($cart['products'] as $id => $product) {
-            if (!empty($product['extra']['promotions'])) {
-                unset($cart['products'][$id]['extra']['promotions']);
-            }
-        }
-
-        $cart['recalculate_catalog_promotions'] = true;
-        fn_calculate_cart_content($cart, $customer_auth);
     }
 
     // Delete products from the cart
     if ($mode == 'delete') {
         if (!empty($_REQUEST['cart_ids'])) {
             foreach ($_REQUEST['cart_ids'] as $cart_id) {
-                fn_delete_cart_product($cart, $cart_id);
+                unset($cart['products'][$cart_id]);
             }
         }
     }
@@ -109,10 +103,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     if ($mode == 'customer_info') {
 
-        if (!empty($_REQUEST['profile_id'])) {
-            $cart['profile_id'] = $_REQUEST['profile_id'];
-        }
-
         $profile_fields = fn_get_profile_fields('O', $customer_auth);
         // Clean up saved shipping rates
         unset($_SESSION['shipping_rates']);
@@ -120,28 +110,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // Fill shipping info with billing if needed
             if (empty($_REQUEST['ship_to_another'])) {
-                fn_fill_address(
-                    $_REQUEST['user_data'],
-                    $profile_fields,
-                    !fn_compare_shipping_billing($profile_fields)
-                );
+                fn_fill_address($_REQUEST['user_data'], $profile_fields, true);
             }
             // Add descriptions for countries and states
             fn_add_user_data_descriptions($_REQUEST['user_data']);
             $cart['user_data'] = $_REQUEST['user_data'];
             $cart['ship_to_another'] = !empty($_REQUEST['ship_to_another']);
 
-            if (empty($cart['order_id']) && (Registry::get('settings.Checkout.disable_anonymous_checkout') == 'Y' && !empty($_REQUEST['user_data']['password1']))) {
+            if (empty($cart['order_id']) && (Registry::get('settings.General.disable_anonymous_checkout') == 'Y' && !empty($_REQUEST['user_data']['password1']))) {
                 $cart['profile_registration_attempt'] = true;
-                list($user_id) = fn_update_user(0, $cart['user_data'], $customer_auth, !empty($_REQUEST['ship_to_another']), true);
-
-                if ($user_id == false) {
+                if (fn_update_user(0, $cart['user_data'], $customer_auth, !empty($_REQUEST['ship_to_another']), true) == false) {
                     $action = '';
-                } else {
-                    $cart['user_id'] = $user_id;
-                    $u_data = db_get_row("SELECT user_id, tax_exempt, user_type FROM ?:users WHERE user_id = ?i", $cart['user_id']);
-                    $customer_auth = fn_fill_auth($u_data, array(), false, 'C');
-                    $cart['user_data'] = array();
                 }
             }
         }
@@ -174,6 +153,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (!empty($order_id)) {
             if ($action != 'save') {
                 $action = 'route';
+                Registry::get('view')->assign('order_action', __('placing_order'));
+                Registry::get('view')->display('views/orders/components/placing_order.tpl');
+                fn_flush();
             }
 
             if ($process_payment == true) {
@@ -181,13 +163,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 fn_start_payment($order_id, fn_get_notification_rules($_REQUEST), $payment_info);
             }
 
-            if (!empty($_REQUEST['update_order']['details'])) {
-                db_query('UPDATE ?:orders SET details = ?s WHERE order_id = ?i', $_REQUEST['update_order']['details'], $order_id);
+            if (!empty($_REQUEST['order_details'])) {
+                db_query('UPDATE ?:orders SET details = ?s WHERE order_id = ?i', $_REQUEST['order_details'], $order_id);
             }
 
             $notification_rules = fn_get_notification_rules($_REQUEST);
             // change status if it posted
-            if (!empty($_REQUEST['order_status']) && fn_check_permissions('orders', 'update_status', 'admin')) {
+            if (!empty($_REQUEST['order_status'])) {
                 $order_info = fn_get_order_short_info($order_id);
 
                 if ($order_info['status'] != $_REQUEST['order_status']) {
@@ -200,28 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             fn_set_notification('W', __('warning'), __('status_changed'));
                         }
                     } else {
-                        $error = false;
-
-                        if ($order_info['is_parent_order'] == 'Y') {
-                            $suborders = fn_get_suborders_info($order_id);
-
-                            if ($suborders) {
-                                foreach ($suborders as $suborder) {
-                                    if ($suborder['status'] != $_REQUEST['order_status']) {
-                                        $error = true;
-                                        break;
-                                    }
-                                }
-                            } else {
-                                $error = true;
-                            }
-                        } else {
-                            $error = true;
-                        }
-
-                        if ($error) {
-                            fn_set_notification('E', __('error'), __('error_status_not_changed'));
-                        }
+                        fn_set_notification('E', __('error'), __('error_status_not_changed'));
                     }
                 }
             }
@@ -229,57 +190,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             fn_order_placement_routines($action, $order_id, $notification_rules, true);
 
         } else {
-            return array(CONTROLLER_STATUS_REDIRECT, 'order_management' . $suffix);
+            return array(CONTROLLER_STATUS_REDIRECT, "order_management.$_suffix");
         }
     }
 
-    // Delete discount coupon
-    if ($mode == 'delete_coupon') {
-        unset($cart['coupons'][$_REQUEST['c_id']], $cart['pending_coupon']);
-    }
-
-    //
-    // Delete saved custom file
-    //
-    if ($mode == 'delete_file' && isset($_REQUEST['cart_id'])) {
-
-        if (isset($cart['products'][$_REQUEST['cart_id']]['extra']['custom_files'][$_REQUEST['option_id']][$_REQUEST['file']])) {
-            $file = $cart['products'][$_REQUEST['cart_id']]['extra']['custom_files'][$_REQUEST['option_id']][$_REQUEST['file']];
-
-            Storage::instance('custom_files')->delete($file['path']);
-            Storage::instance('custom_files')->delete($file['path'] . '_thumb');
-
-            unset($cart['products'][$_REQUEST['cart_id']]['extra']['custom_files'][$_REQUEST['option_id']][$_REQUEST['file']]);
-        }
-
-        fn_save_cart_content($cart, $customer_auth['user_id']);
-
-    }
-
-    //
-    // Update payment method
-    //
-    if ($mode == 'update_payment') {
-        $cart['payment_id'] = (!empty($_REQUEST['payment_id'])) ? $_REQUEST['payment_id'] : 0;
-    }
-
-    //
-    // Update shipping method
-    //
-    if ($mode == 'update_shipping' && isset($_REQUEST['shipping_ids'])) {
-        fn_checkout_update_shipping($cart, $_REQUEST['shipping_ids']);
-    }
-
-    return array(CONTROLLER_STATUS_OK, 'order_management' . $suffix);
+    return array(CONTROLLER_STATUS_OK, "order_management.$_suffix");
 }
 
-if ($mode == 'customer_info') {
-    if (!empty($_REQUEST['profile_id'])) {
-        $user_data = fn_get_user_info($customer_auth['user_id'], true, $_REQUEST['profile_id']);
-        Tygh::$app['view']->assign('user_data', $user_data);
-    }
+// Delete discount coupon
+if ($mode == 'delete_coupon') {
+    unset($cart['coupons'][$_REQUEST['c_id']], $cart['pending_coupon']);
 
-    return array(CONTROLLER_STATUS_OK, 'order_management' . $suffix);
+    return array(CONTROLLER_STATUS_REDIRECT, "order_management.$_suffix");
 }
 
 //
@@ -311,7 +233,7 @@ if ($mode == 'edit' && !empty($_REQUEST['order_id'])) {
     }
     $cart['order_id'] = $_REQUEST['order_id'];
 
-    return array(CONTROLLER_STATUS_REDIRECT, 'order_management.update');
+    return array(CONTROLLER_STATUS_REDIRECT, "order_management.update");
 
 //
 // Create new order
@@ -321,14 +243,14 @@ if ($mode == 'edit' && !empty($_REQUEST['order_id'])) {
     fn_clear_cart($cart, true);
     $customer_auth = fn_fill_auth(array(), array(), false, 'C');
 
-    return array(CONTROLLER_STATUS_REDIRECT, 'order_management.add');
+    return array(CONTROLLER_STATUS_REDIRECT, "order_management.add");
 //
 // Update order page
 //
 } elseif ($mode == 'update' || $mode == 'add') {
 
     if ($mode == 'update' && empty($cart['order_id'])) {
-        return array(CONTROLLER_STATUS_REDIRECT, 'order_management.new');
+        return array(CONTROLLER_STATUS_REDIRECT, "order_management.new");
     }
 
     //
@@ -348,7 +270,7 @@ if ($mode == 'edit' && !empty($_REQUEST['order_id'])) {
         }
     }
     $order_statuses = fn_get_simple_statuses(STATUSES_ORDER, $get_additional_statuses, true);
-    Tygh::$app['view']->assign('order_statuses', $order_statuses);
+    Registry::get('view')->assign('order_statuses', $order_statuses);
 
     //
     // Prepare customer info
@@ -356,16 +278,16 @@ if ($mode == 'edit' && !empty($_REQUEST['order_id'])) {
     $profile_fields = fn_get_profile_fields('O', $customer_auth);
 
     $cart['profile_id'] = empty($cart['profile_id']) ? 0 : $cart['profile_id'];
-    Tygh::$app['view']->assign('profile_fields', $profile_fields);
+    Registry::get('view')->assign('profile_fields', $profile_fields);
 
     //Get user profiles
     $user_profiles = fn_get_user_profiles($customer_auth['user_id']);
-    Tygh::$app['view']->assign('user_profiles', $user_profiles);
+    Registry::get('view')->assign('user_profiles', $user_profiles);
 
     //Get countries and states
-    Tygh::$app['view']->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
-    Tygh::$app['view']->assign('states', fn_get_all_states());
-    Tygh::$app['view']->assign('usergroups', fn_get_usergroups(array('type' => 'C', 'status' => array('A', 'H')), DESCR_SL));
+    Registry::get('view')->assign('countries', fn_get_simple_countries(true, CART_LANGUAGE));
+    Registry::get('view')->assign('states', fn_get_all_states());
+    Registry::get('view')->assign('usergroups', fn_get_usergroups('C', DESCR_SL));
 
     if (!empty($customer_auth['user_id']) && (empty($cart['user_data']) || (!empty($_REQUEST['profile_id']) && $cart['profile_id'] != $_REQUEST['profile_id']))) {
         $cart['profile_id'] = !empty($_REQUEST['profile_id']) ? $_REQUEST['profile_id'] : 0;
@@ -389,27 +311,29 @@ if ($mode == 'edit' && !empty($_REQUEST['order_id'])) {
         define('CACHED_SHIPPING_RATES', true);
     }
 
-    $cart['calculate_shipping'] = true;
+    if (empty($cart['stored_shipping'])) {
+        $cart['calculate_shipping'] = true;
+    }
 
     // calculate cart - get products with options, full shipping rates info and promotions
     list ($cart_products, $product_groups) = fn_calculate_cart_content($cart, $customer_auth);
-    Tygh::$app['view']->assign('product_groups', $product_groups);
+    Registry::get('view')->assign('product_groups', $product_groups);
 
     if (fn_allowed_for('MULTIVENDOR') && !empty($cart['order_id'])) {
         $order_info = fn_get_order_info($cart['order_id']);
         if (isset($order_info['company_id'])) {
-            Tygh::$app['view']->assign('order_company_id', $order_info['company_id']);
+            Registry::get('view')->assign('order_company_id', $order_info['company_id']);
         }
     }
 
     fn_gather_additional_products_data($cart_products, array('get_icon' => false, 'get_detailed' => false, 'get_options' => true, 'get_discounts' => false));
 
-    Tygh::$app['view']->assign('cart_products', $cart_products);
+    Registry::get('view')->assign('cart_products', $cart_products);
 
     //
     //Get payment methods
     //
-    $payment_methods = fn_get_payments(array('usergroup_ids' => $customer_auth['usergroup_ids']));
+    $payment_methods = fn_get_payment_methods($customer_auth);
 
     // Check if payment method has surcharge rates
     foreach ($payment_methods as $k => $v) {
@@ -433,21 +357,30 @@ if ($mode == 'edit' && !empty($_REQUEST['order_id'])) {
     //Get payment method info
     if (!empty($cart['payment_id'])) {
         $payment_data = fn_get_payment_method_data($cart['payment_id']);
-        Tygh::$app['view']->assign('payment_method', $payment_data);
+        Registry::get('view')->assign('payment_method', $payment_data);
     }
 
-    Tygh::$app['view']->assign('payment_methods', $payment_methods);
+    Registry::get('view')->assign('payment_methods', $payment_methods);
 
     //
     // Check if order information is complete
     //
     if (fn_cart_is_empty($cart)) {
-        Tygh::$app['view']->assign('is_empty_cart', true);
+        Registry::get('view')->assign('is_empty_cart', true);
     }
 
     if (empty($cart['user_data']) || !fn_check_profile_fields($cart['user_data'], 'O', $customer_auth)) {
-        Tygh::$app['view']->assign('is_empty_user_data', true);
+        Registry::get('view')->assign('is_empty_user_data', true);
     }
+
+} elseif ($mode == 'delete' && isset($_REQUEST['cart_id'])) {
+    //
+    // Delete product from the cart
+    //
+
+    unset($cart['products'][$_REQUEST['cart_id']]);
+
+    return array(CONTROLLER_STATUS_REDIRECT, "order_management.$_suffix");
 
 } elseif ($mode == 'get_custom_file' && isset($_REQUEST['cart_id']) && isset($_REQUEST['option_id']) && isset($_REQUEST['file'])) {
     if (isset($cart['products'][$_REQUEST['cart_id']]['extra']['custom_files'][$_REQUEST['option_id']][$_REQUEST['file']])) {
@@ -455,12 +388,40 @@ if ($mode == 'edit' && !empty($_REQUEST['order_id'])) {
 
         Storage::instance('custom_files')->get($file['path'], $file['name']);
     }
+
+} elseif ($mode == 'delete_file' && isset($_REQUEST['cart_id'])) {
+
+    if (isset($cart['products'][$_REQUEST['cart_id']]['extra']['custom_files'][$_REQUEST['option_id']][$_REQUEST['file']])) {
+        // Delete saved custom file
+        $file = $cart['products'][$_REQUEST['cart_id']]['extra']['custom_files'][$_REQUEST['option_id']][$_REQUEST['file']];
+
+        Storage::instance('custom_files')->delete($file['path']);
+        Storage::instance('custom_files')->delete($file['path'] . '_thumb');
+
+        unset($cart['products'][$_REQUEST['cart_id']]['extra']['custom_files'][$_REQUEST['option_id']][$_REQUEST['file']]);
+    }
+
+    fn_save_cart_content($cart, $customer_auth['user_id']);
+
+    return array(CONTROLLER_STATUS_REDIRECT, "order_management.$_suffix");
+
+} elseif ($mode == "update_payment") {
+    //
+    // Update payment method
+    //
+    $cart['payment_id'] = (!empty($_REQUEST['payment_id'])) ? $_REQUEST['payment_id'] : 0;
+
+    return array(CONTROLLER_STATUS_REDIRECT, "order_management.$_suffix");
+
+} elseif ($mode == "update_shipping" && isset($_REQUEST['shipping_id'])) {
+    //
+    // Update shipping method
+    //
+    $supplier_id = !empty($_REQUEST['supplier_id']) ? $_REQUEST['supplier_id'] : 0;
+    fn_checkout_update_shipping($cart, array($supplier_id => $_REQUEST['shipping_id']));
+
+    return array(CONTROLLER_STATUS_REDIRECT, "order_management.$_suffix");
 }
 
-Tygh::$app['view']->assign('cart', $cart);
-
-if (!Tygh::$app['view']->getTemplateVars('user_data') && !empty($cart['user_data'])) {
-    Tygh::$app['view']->assign('user_data', $cart['user_data']);
-}
-
-Tygh::$app['view']->assign('customer_auth', $customer_auth);
+Registry::get('view')->assign('cart', $cart);
+Registry::get('view')->assign('customer_auth', $customer_auth);

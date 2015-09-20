@@ -64,7 +64,7 @@
                                 <li class="divider"></li>
                                 <li>{btn type="list" text=__($link_text) href="suppliers.update?supplier_id=`$supplier.supplier_id`"}</li>
                                 {assign var="return_current_url" value=$config.current_url|escape:url}
-                                <li>{btn type="list" class="cm-confirm cm-post" text=__("delete") href="suppliers.delete?supplier_id=`$supplier.supplier_id`&redirect_url=`$return_current_url`"}</li>
+                                <li>{btn type="list" class="cm-confirm" text=__("delete") href="suppliers.delete?supplier_id=`$supplier.supplier_id`&redirect_url=`$return_current_url`"}</li>
                             {/hook}
                         {/capture}
                         {dropdown content=$smarty.capture.tools_list}

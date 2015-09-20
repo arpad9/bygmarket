@@ -80,24 +80,38 @@ if (defined('PAYMENT_NOTIFICATION')) {
     $_key = $processor_data['processor_params']['key'];
     $_mac = fn_cmcic_hmac_sha1($_key, $data);
 
-    $post_data = array(
-        'version' => '3.0',
-        'TPE' => $processor_data['processor_params']['merchant_id'],
-        'date' => $_date,
-        'montant' => $_amount,
-        'reference' => $_refernce,
-        'MAC' => $_mac,
-        'url_retour' => $return_url,
-        'url_retour_ok' => $return_url,
-        'url_retour_err' => $return_url,
-        'lgue' => $processor_data['processor_params']['language'],
-        'societe' => $soc,
-        'texte-libre' => $processor_data['processor_params']['payment_desc'],
-        'mail' => $order_info['email']        
-    );
+echo <<<EOT
+<form action="{$post_url}" method="post" name="process" target="_top">
+    <input type="hidden" name="version"        value="3.0">
+    <input type="hidden" name="TPE"            value="{$processor_data['processor_params']['merchant_id']}">
+    <input type="hidden" name="date"           value="{$_date}">
+    <input type="hidden" name="montant"        value="{$_amount}">
+    <input type="hidden" name="reference"      value="{$_refernce}">
+    <input type="hidden" name="MAC"            value="{$_mac}">
+    <input type="hidden" name="url_retour"     value="{$return_url}">
+    <input type="hidden" name="url_retour_ok"  value="{$return_url}">
+    <input type="hidden" name="url_retour_err" value="{$return_url}">
+    <input type="hidden" name="lgue"           value="{$processor_data['processor_params']['language']}">
+    <input type="hidden" name="societe"        value="{$soc}">
+    <input type="hidden" name="texte-libre"    value="{$processor_data['processor_params']['payment_desc']}">
+    <input type="hidden" name="mail"           value="{$order_info['email']}" />
+EOT;
 
-    fn_create_payment_form($post_url, $post_data, 'CM CIC');
-    exit;
+$msg = __('text_cc_processor_connection', array(
+    '[processor]' => 'Payment server'
+));
+
+echo <<<EOT
+    </form>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
+exit;
 }
 
 function fn_cmcic_get_usable_key($key)
@@ -118,7 +132,7 @@ function fn_cmcic_get_usable_key($key)
     return pack('H*', $hexStrKey);
 }
 
-function fn_cmcic_hmac_sha1($key, $data)
+function fn_cmcic_hmac_sha1 ($key, $data)
 {
     $key = fn_cmcic_get_usable_key($key);
 

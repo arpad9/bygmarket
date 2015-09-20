@@ -232,7 +232,7 @@ abstract class ACommon
             $view_tools['links_label'] = __($this->_schema['links_label']);
         }
 
-        \Tygh::$app['view']->assign('view_tools', $view_tools);
+        Registry::get('view')->assign('view_tools', $view_tools);
 
         return true;
     }
@@ -343,7 +343,7 @@ abstract class ACommon
             $_ids[$page][] = $v[$this->_schema['item_id']];
         }
 
-//         \Tygh::$app['view']->assign('pagination', array()); //Unset pagination
+//         Registry::get('view')->assign('pagination', array()); //Unset pagination
         return $_ids;
     }
 

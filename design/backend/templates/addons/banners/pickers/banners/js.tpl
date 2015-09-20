@@ -7,7 +7,7 @@
 <tr {if !$clone}id="{$holder}_{$banner_id}" {/if}class="cm-js-item{if $clone} cm-clone hidden{/if}">
     {if $position_field}
         <td>
-            <input type="text" name="{$input_name}[{$banner_id}]" value="{math equation="a*b" a=$position b=10}" size="3" class="input-micro" {if $clone}disabled="disabled"{/if} />
+            <input type="text" name="{$input_name}[{$banner_id}]" value="{math equation="a*b" a=$position b=10}" size="3" class="input-text-short" {if $clone}disabled="disabled"{/if} />
         </td>
     {/if}
     <td><a href="{"banners.update?banner_id=`$banner_id`"|fn_url}">{$banner}</a></td>
@@ -18,7 +18,7 @@
             {/if}
         {/capture}
         <div class="hidden-tools">
-            {dropdown content=$smarty.capture.tools_list}
+            {dropdown content=$smarty.capture.tools_list class="dropleft"}
         </div>
     </td>
 </tr>

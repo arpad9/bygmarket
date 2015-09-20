@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             'return_id' => $return_id,
                             'item_id' => $item_id,
                             'product_id' => $v['product_id'],
-                            'reason' => !empty($v['reason']) ? $v['reason'] : '',
+                            'reason' => $v['reason'],
                             'amount' => $v['amount'],
                             'product_options' => !empty($extra['product_options_value']) ? serialize($extra['product_options_value']) : '',
                             'price' => fn_format_price((((!isset($extra['exclude_from_calculate'])) ? $_item['price'] : 0) * $_item['amount']) / $_item['amount']),
@@ -84,12 +84,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             fn_send_return_mail($return_info, $order_info, array('C' => true, 'A' => true, 'S' => true));
         }
 
-        return array(CONTROLLER_STATUS_OK, 'rma.details?return_id=' . $return_id);
+        return array(CONTROLLER_STATUS_OK, "rma.details?return_id=$return_id");
     }
 }
 
 if (empty($auth['user_id']) && !isset($auth['order_ids']) && AREA == 'C') {
-    return array(CONTROLLER_STATUS_REDIRECT, 'auth.login_form?return_url=' . urlencode(Registry::get('config.current_url')));
+    return array(CONTROLLER_STATUS_REDIRECT, "auth.login_form?return_url=" . urlencode(Registry::get('config.current_url')));
 }
 
 if ($mode == 'details' && !empty($_REQUEST['return_id'])) {
@@ -129,17 +129,17 @@ if ($mode == 'details' && !empty($_REQUEST['return_id'])) {
             'js' => true
         ));
 
-        Tygh::$app['view']->assign('is_refund', fn_is_refund_action($return_info['action']));
-        Tygh::$app['view']->assign('order_info', fn_get_order_info($return_info['order_id']));
+        Registry::get('view')->assign('is_refund', fn_is_refund_action($return_info['action']));
+        Registry::get('view')->assign('order_info', fn_get_order_info($return_info['order_id']));
     }
     $return_info['extra'] = !empty($return_info['extra']) ? unserialize($return_info['extra']) : array();
     if (!is_array($return_info['extra'])) {
         $return_info['extra'] = array();
     }
 
-    Tygh::$app['view']->assign('reasons', fn_get_rma_properties( RMA_REASON ));
-    Tygh::$app['view']->assign('actions', fn_get_rma_properties( RMA_ACTION ));
-    Tygh::$app['view']->assign('return_info', $return_info);
+    Registry::get('view')->assign('reasons', fn_get_rma_properties( RMA_REASON ));
+    Registry::get('view')->assign('actions', fn_get_rma_properties( RMA_ACTION ));
+    Registry::get('view')->assign('return_info', $return_info);
 
 } elseif ($mode == 'print_slip' && !empty($_REQUEST['return_id'])) {
 
@@ -165,12 +165,12 @@ if ($mode == 'details' && !empty($_REQUEST['return_id'])) {
     }
 
     list($return_requests, $search) = fn_get_rma_returns($params, Registry::get('settings.Appearance.' . (AREA == 'A' ? 'admin_' : '') . 'elements_per_page'));
-    Tygh::$app['view']->assign('return_requests', $return_requests);
-    Tygh::$app['view']->assign('search', $search);
+    Registry::get('view')->assign('return_requests', $return_requests);
+    Registry::get('view')->assign('search', $search);
 
     fn_rma_generate_sections('requests');
 
-    Tygh::$app['view']->assign('actions', fn_get_rma_properties(RMA_ACTION));
+    Registry::get('view')->assign('actions', fn_get_rma_properties(RMA_ACTION));
 
 } elseif ($mode == 'create_return' && !empty($_REQUEST['order_id'])) {
     $order_id = intval($_REQUEST['order_id']);
@@ -190,9 +190,9 @@ if ($mode == 'details' && !empty($_REQUEST['return_id'])) {
         return array(CONTROLLER_STATUS_DENIED);
     }
 
-    Tygh::$app['view']->assign('order_info', $order_info);
-    Tygh::$app['view']->assign('reasons', fn_get_rma_properties( RMA_REASON ));
-    Tygh::$app['view']->assign('actions', fn_get_rma_properties( RMA_ACTION ));
+    Registry::get('view')->assign('order_info', $order_info);
+    Registry::get('view')->assign('reasons', fn_get_rma_properties( RMA_REASON ));
+    Registry::get('view')->assign('actions', fn_get_rma_properties( RMA_ACTION ));
 }
 
 function fn_get_rma_returns($params, $items_per_page = 0)
@@ -305,7 +305,7 @@ function fn_get_rma_returns($params, $items_per_page = 0)
     $limit = '';
     if (!empty($params['items_per_page'])) {
         $params['total_items'] = db_get_field("SELECT COUNT(DISTINCT ?:rma_returns.return_id) FROM ?:rma_returns LEFT JOIN ?:rma_return_products ON ?:rma_return_products.return_id = ?:rma_returns.return_id LEFT JOIN ?:rma_property_descriptions ON ?:rma_property_descriptions.property_id = ?:rma_returns.action LEFT JOIN ?:users ON ?:rma_returns.user_id = ?:users.user_id LEFT JOIN ?:orders ON ?:rma_returns.order_id = ?:orders.order_id $join WHERE 1 $condition $group");
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+        $limit = db_paginate($params['page'], $params['items_per_page']);
     }
 
     $return_requests = db_get_array("SELECT " . implode(', ', $fields) . " FROM ?:rma_returns LEFT JOIN ?:rma_return_products ON ?:rma_return_products.return_id = ?:rma_returns.return_id LEFT JOIN ?:rma_property_descriptions ON (?:rma_property_descriptions.property_id = ?:rma_returns.action AND ?:rma_property_descriptions.lang_code = ?s) LEFT JOIN ?:users ON ?:rma_returns.user_id = ?:users.user_id LEFT JOIN ?:orders ON ?:rma_returns.order_id = ?:orders.order_id $join WHERE 1 $condition $group $sorting $limit", (AREA == 'C') ? CART_LANGUAGE : DESCR_SL);

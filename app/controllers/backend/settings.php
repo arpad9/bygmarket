@@ -43,13 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
         $_suffix = ".manage";
-        if (defined('AJAX_REQUEST')) {
-            exit();
-        }
 
-    }
-
-    if ($mode == 'change_store_mode') {
+    } elseif ($mode == 'change_store_mode') {
         if ($_REQUEST['store_mode'] == 'full') {
             if (empty($_REQUEST['license_number'])) {
                 fn_set_storage_data('store_mode_errors', serialize(array('empty_number' => array(
@@ -87,12 +82,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Free or Trial mode
             if (in_array($_REQUEST['store_mode'], array('free', 'trial'))) {
                 fn_set_storage_data('store_mode', $_REQUEST['store_mode']);
-
-                if ($_REQUEST['store_mode'] == 'free') {
-                    fn_set_notification('I', __('store_mode_changed'), __('text_' . $_REQUEST['store_mode'] . '_mode_activated'));
-
-                    fn_subscribe_admin();
-                }
             }
 
             $_SESSION['mode_recheck'] = true;
@@ -113,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         return array(CONTROLLER_STATUS_REDIRECT, $redirect_url);
     }
 
-    return array(CONTROLLER_STATUS_OK, 'settings' . $_suffix . '?section_id=' . Settings::instance()->getSectionTextId($section_id));
+    return array(CONTROLLER_STATUS_OK, "settings{$_suffix}?section_id=" . Settings::instance()->getSectionTextId($section_id));
 }
 
 //
@@ -143,13 +132,13 @@ if ($mode == 'manage') {
 
     // Set navigation menu
     $sections = Registry::get('navigation.static.top.settings.items');
-    fn_update_lang_objects('sections', $sections);
+    fn_update_lang_objects('sections', Registry::get('navigation.static.top.settings.items'));
 
     Registry::set('navigation.dynamic.sections', $sections);
     Registry::set('navigation.dynamic.active_section', Settings::instance()->getSectionTextId($section_id));
 
-    Tygh::$app['view']->assign('options', $options);
-    Tygh::$app['view']->assign('subsections', $subsections);
-    Tygh::$app['view']->assign('section_id', Settings::instance()->getSectionTextId($section_id));
-    Tygh::$app['view']->assign('settings_title', Settings::instance()->getSectionName($section_id));
+    Registry::get('view')->assign('options', $options);
+    Registry::get('view')->assign('subsections', $subsections);
+    Registry::get('view')->assign('section_id', Settings::instance()->getSectionTextId($section_id));
+    Registry::get('view')->assign('settings_title', Settings::instance()->getSectionName($section_id));
 }

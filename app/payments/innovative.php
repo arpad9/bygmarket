@@ -87,9 +87,7 @@ foreach ($response_ as $v) {
 
 // Form an order result data
 $pp_response['order_status'] = (empty($response['error']) && !empty($response['approval'])) ? 'P' : 'F';
-if (isset($response['anatransid'])) {
-    $pp_response['transaction_id'] = $response['anatransid'];
-}
+$pp_response['transaction_id'] = $response['anatransid'];
 if (!empty($response['avs'])) {
     $pp_response['descr_avs'] =  $avs_responses[$response['avs']];
 }

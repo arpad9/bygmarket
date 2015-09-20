@@ -14,9 +14,8 @@
 
 namespace Tygh\Backend\Storage;
 
-use Tygh\Cdn;
-use Tygh\Registry;
 use Tygh\Storage;
+use Tygh\Registry;
 
 class File extends ABackend
 {
@@ -53,6 +52,7 @@ class File extends ABackend
         $file = $this->prefix($file);
 
         if (!empty($params['compress'])) {
+            $file .= '.gz';
             if (!empty($params['contents'])) {
                 $params['contents'] = gzencode($params['contents']);
             }
@@ -124,34 +124,14 @@ class File extends ABackend
             return $file;
         }
 
-        if ($this->getOption('cdn') && Cdn::instance()->getOption('is_enabled')) {
-            if ($protocol == 'http') {
-                $prefix = 'http:';
-            } elseif ($protocol == 'https') {
-                $prefix = 'https:';
-            } elseif ($protocol == 'short') {
-                $prefix = '';
-            } else {
-                $prefix = defined('HTTPS') ? 'https:' : 'http:';
-            }
-
-            $prefix .= '//' . Cdn::instance()->getHost('host');
-
+        if ($protocol == 'http') {
+            $prefix = Registry::get('config.http_location');
+        } elseif ($protocol == 'https') {
+            $prefix = Registry::get('config.https_location');
+        } elseif ($protocol == 'short') {
+            $prefix = '//' . Registry::get('config.http_host') . Registry::get('config.http_path'); // FIXME
         } else {
-            if ($protocol == 'http') {
-                $prefix = Registry::get('config.http_location');
-            } elseif ($protocol == 'https') {
-                $prefix = Registry::get('config.https_location');
-            } elseif ($protocol == 'short') {
-                $prefix = '//' . Registry::get('config.http_host') . Registry::get('config.http_path'); // FIXME
-            } else {
-                $prefix = Registry::get('config.current_location');
-            }
-        }
-
-        $real_file = $this->getAbsolutePath($file);
-        if (is_file($real_file)) { // add timestamp to files only, skip dirs
-            $file .= '?t=' . filemtime($real_file);
+            $prefix = Registry::get('config.current_location');;
         }
 
         $path = str_replace(Registry::get('config.dir.root'), '', $this->prefix($file));

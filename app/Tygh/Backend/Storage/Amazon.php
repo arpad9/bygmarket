@@ -14,8 +14,6 @@
 
 namespace Tygh\Backend\Storage;
 
-use Tygh\Exceptions\ClassNotFoundException;
-use Tygh\Exceptions\ExternalException;
 use Tygh\Storage;
 use Tygh\Registry;
 
@@ -417,7 +415,7 @@ class Amazon extends ABackend
     {
         // This is workaround to composer autoloader
         if (!class_exists('CFLoader')) {
-            throw new ClassNotFoundException('Amazon: autoload failed');
+            die('Amazon: autoload failed');
         }
 
         if (empty($this->_s3)) {
@@ -430,7 +428,7 @@ class Amazon extends ABackend
 
             $this->_s3 = new \AmazonS3();
             $this->_s3->use_ssl = false;
-            $this->_buckets = fn_array_combine($this->_s3->get_bucket_list(), true);
+            $this->_buckets = $this->_s3->get_bucket_list();
         }
 
         $message = '';
@@ -463,7 +461,7 @@ class Amazon extends ABackend
                 return $message;
             }
 
-            throw new ExternalException('Amazon: ' . $message);
+            die($message);
         }
 
         return $this->_s3;

@@ -18,8 +18,6 @@ use Tygh\Registry;
 
 class CompanySingleton
 {
-    public $params = array(); // addon can pass params here to use them in hooks later
-
     /**
      * @var array Array of object instances
      */
@@ -31,10 +29,32 @@ class CompanySingleton
     protected $_company_id;
 
     /**
-     * Gets part of SQL query with company condition
-     * @param  string $db_field database field which holds company ID
-     * @return string part of SQL query
+     * Returns object instance of this class or create it if it is not exists.
+     * @static
+     * @param  int              $company_id Company identifier
+     * @return CompanySingleton
      */
+    public static function instance($company_id = 0)
+    {
+        $class_name = get_called_class();
+        if (empty(self::$_instance[$class_name])) {
+            self::$_instance[$class_name] = new $class_name();
+        }
+
+        self::$_instance[$class_name]->setCompany($company_id);
+
+        return self::$_instance[$class_name];
+    }
+
+    public function setCompany($company_id)
+    {
+        if (empty($company_id) && Registry::get('runtime.company_id')) {
+            $this->_company_id = Registry::get('runtime.company_id');
+        } else {
+            $this->_company_id = $company_id;
+        }
+    }
+
     public function getCompanyCondition($db_field)
     {
         $company_id = $this->_company_id;
@@ -44,43 +64,6 @@ class CompanySingleton
         }
 
         return fn_get_company_condition($db_field, true, $company_id);
-    }
-
-    /**
-     * Returns object instance of this class or create it if it is not exists.
-     * @static
-     * @param  int              $company_id Company identifier
-     * @param  array            $params     additional params
-     * @return CompanySingleton
-     */
-    public static function instance($company_id = 0, $params = array())
-    {
-        $class_name = get_called_class();
-        $company_id = self::getCompany($company_id);
-        $instance_key = $class_name . $company_id;
-
-        if (empty(self::$_instance[$instance_key])) {
-            self::$_instance[$instance_key] = new $class_name();
-            self::$_instance[$instance_key]->_company_id = $company_id;
-        }
-
-        self::$_instance[$instance_key]->params = $params;
-
-        return self::$_instance[$instance_key];
-    }
-
-    /**
-     * Gets current company ID
-     * @param  integer $company_id company ID
-     * @return integer company ID
-     */
-    private static function getCompany($company_id = 0)
-    {
-        if (empty($company_id) && Registry::get('runtime.company_id')) {
-            $company_id = Registry::get('runtime.company_id');
-        }
-
-        return intval($company_id);
     }
 
     /**

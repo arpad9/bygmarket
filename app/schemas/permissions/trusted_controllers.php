@@ -17,8 +17,7 @@ return array(
         'allow' => true
     ),
     'image' => array (
-        'allow' => true,
-        'areas' => array('A', 'C')
+        'allow' => true
     ),
     'payment_notification' => array (
         'allow' => true

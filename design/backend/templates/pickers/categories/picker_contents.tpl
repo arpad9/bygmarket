@@ -1,5 +1,6 @@
 {if !$smarty.request.extra}
 <script type="text/javascript">
+//<![CDATA[
 (function(_, $) {
     _.tr('text_items_added', '{__("text_items_added")|escape:"javascript"}');
     var display_type = '{$smarty.request.display|escape:javascript nofilter}';
@@ -33,6 +34,7 @@
         return false;
     });
 }(Tygh, Tygh.$));
+//]]>
 </script>
 {/if}
 

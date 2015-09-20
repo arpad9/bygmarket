@@ -158,7 +158,7 @@ class Frontend extends ACommon
      */
     public function _initViewTools($params)
     {
-        if (!empty($params['n_items']) && !empty($params['n_plain'])) {
+        if (!empty($params['n_items'])) {
             $items = explode(",", $params['n_items']);
             $current_id = $params[$this->_schema['item_id']];
             $prev_id = $next_id = $current_pos = 0;
@@ -168,13 +168,16 @@ class Frontend extends ACommon
 
                 for ($i = 0; $i < count($items); $i++) {
                     if ($items[$i] == $current_id) {
-
                         $prev_id = !empty($items[$i - 1]) ? $items[$i - 1] : 0;
                         $next_id = !empty($items[$i + 1]) ? $items[$i + 1] : 0;
-                        $current_pos = $i + 1;
+                        $current_pos = $i;
                         break;
                     }
                 }
+            }
+
+            if (empty($params['n_plain']) && (empty($next_id) || empty($prev_id))) {
+                return parent::_initViewTools($params);
             }
 
             if (!empty($next_id) || !empty($prev_id)) {

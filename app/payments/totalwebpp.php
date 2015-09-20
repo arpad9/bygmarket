@@ -52,22 +52,35 @@ if (defined('PAYMENT_NOTIFICATION')) {
 } else {
     $post_address = ($processor_data['processor_params']['testmode'] != "N") ? "https://testsecure.totalwebsecure.com/paypage/clear.asp" : "https://secure.totalwebsecure.com/paypage/clear.asp";
 
+    $msg = __('text_cc_processor_connection', array(
+        '[processor]' => 'Total Web Solutions Pay Page server'
+    ));
+
     $failed_url = fn_url("payment_notification.notify?payment=totalwebpp&order_id={$order_id}", AREA, 'current');
     $success_url = fn_url("payment_notification.notify?payment=totalwebpp&order_id={$order_id}", AREA, 'current');
 
-    $post_data = array(
-        'CustomerID' => $processor_data['processor_params']['vendor'],
-        'Notes' => $processor_data['processor_params']['order_prefix'] . $order_id,
-        'TransactionAmount' => $order_info['total'],
-        'Amount' => $order_info['total'],
-        'TransactionCurrency' => $processor_data['processor_params']['currency'],
-        'redirectorfailed' => $failed_url,
-        'PayPageType' => '4',
-        'redirectorsuccess' => $success_url,
-        'CustomerEmail' => $order_info['email'],        
-    );
-
-    fn_create_payment_form($post_address, $post_data, 'Total Web Solutions Pay Page');
+echo <<<EOT
+  <form action="{$post_address}" method="POST" name="process">
+    <input type="hidden" name="CustomerID" value="{$processor_data['processor_params']['vendor']}" />
+    <input type="hidden" name="Notes" value="{$processor_data['processor_params']['order_prefix']}{$order_id}" />
+    <input type="hidden" name="TransactionAmount" value="{$order_info['total']}" />
+    <input type="hidden" name="Amount" value="{$order_info['total']}" />
+    <input type="hidden" name="TransactionCurrency" value="{$processor_data['processor_params']['currency']}" />
+    <input type="hidden" name="redirectorfailed" value="{$failed_url}" />
+    <input type="hidden" name="PayPageType" value="4"/>
+    <input type="hidden" name="redirectorsuccess" value="{$success_url}" />
+    <input type="hidden" name="CustomerEmail" value="{$order_info['email']}" />
+    <p>
+    <div align=center>{$msg}</div>
+    </p>
+    <script type="text/javascript">
+    window.onload = function(){
+        document.process.submit();
+    };
+    </script>
+ </body>
+</html>
+EOT;
 }
 
 exit;

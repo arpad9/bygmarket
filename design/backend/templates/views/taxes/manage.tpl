@@ -12,10 +12,6 @@
     <th>{__("priority")}</th>
     <th>{__("rates_depend_on")}</th>
     <th class="center">{__("price_includes_tax")}</th>
-
-    {hook name="taxes:manage_header"}
-    {/hook}
-
     <th width="5%">&nbsp;</th>
     <th width="10%" class="right">{__("status")}</th>
 </tr>
@@ -40,24 +36,17 @@
         <input type="hidden" name="tax_data[{$tax.tax_id}][price_includes_tax]" value="N" />
         <input type="checkbox" name="tax_data[{$tax.tax_id}][price_includes_tax]" value="Y" {if $tax.price_includes_tax == "Y"}checked="checked"{/if} class="checkbox" />
     </td>
-
-    {hook name="taxes:manage_data"}
-    {/hook}
-
     <td class="nowrap">
         {capture name="tools_list"}
-            {hook name="taxes:list_extra_links"}
-                <li>{btn type="list" text=__("edit") href="taxes.update?tax_id=`$tax.tax_id`"}</li>
-                <li>{btn type="list" text=__("delete") class="cm-confirm cm-post" href="taxes.delete?tax_id=`$tax.tax_id`"}</li>
-            {/hook}
+            <li>{btn type="list" text=__("edit") href="taxes.update?tax_id=`$tax.tax_id`"}</li>
+            <li>{btn type="list" text=__("delete") class="cm-confirm" href="taxes.delete?tax_id=`$tax.tax_id`"}</li>
         {/capture}
         <div class="hidden-tools">
             {dropdown content=$smarty.capture.tools_list}
         </div>
     </td>
     <td class="right nowrap">
-        {$has_permission = fn_check_permissions("tools", "update_status", "admin", "GET", ["table" => "taxes"])}
-        {include file="common/select_popup.tpl" id=$tax.tax_id status=$tax.status object_id_name="tax_id" table="taxes" non_editable=!$has_permission}
+        {include file="common/select_popup.tpl" id=$tax.tax_id status=$tax.status object_id_name="tax_id" table="taxes"}
     </td>
 </tr>
 {/foreach}
@@ -71,12 +60,10 @@
 {capture name="buttons"}
     {if $taxes}
         {capture name="tools_list"}
-            {hook name="taxes:manage_tools_list"}
-                <li>{btn type="list" text=__("apply_tax_to_products") dispatch="dispatch[taxes.apply_selected_taxes]" form="taxes_form"}</li>
-                <li>{btn type="list" text=__("unset_tax_to_products") dispatch="dispatch[taxes.unset_selected_taxes]" form="taxes_form"}</li>
-                <li class="divider"></li>
-                <li>{btn type="delete_selected" dispatch="dispatch[taxes.m_delete]" form="taxes_form"}</li>
-            {/hook}
+            <li>{btn type="list" text=__("apply_tax_to_products") dispatch="dispatch[taxes.apply_selected_taxes]" form="taxes_form"}</li>
+            <li>{btn type="list" text=__("unset_tax_to_products") dispatch="dispatch[taxes.unset_selected_taxes]" form="taxes_form"}</li>
+            <li class="divider"></li>
+            <li>{btn type="delete_selected" dispatch="dispatch[taxes.m_delete]" form="taxes_form"}</li>
         {/capture}
         {dropdown content=$smarty.capture.tools_list}
     {/if}

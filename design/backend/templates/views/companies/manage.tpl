@@ -7,6 +7,7 @@
 
 {include file="common/pagination.tpl" save_current_page=true save_current_url=true}
 
+{assign var="return_current_url" value=$config.current_url|escape:url}
 {assign var="c_url" value=$config.current_url|fn_query_remove:"sort_by":"sort_order"}
 {assign var="c_icon" value="<i class=\"exicon-`$search.sort_order_rev`\"></i>"}
 {assign var="c_dummy" value="<i class=\"exicon-dummy\"></i>"}
@@ -33,7 +34,7 @@
 </tr>
 </thead>
 {foreach from=$companies item=company}
-<tr class="cm-row-status-{$company.status|lower}" data-ct-company-id="{$company.company_id}">
+<tr class="cm-row-status-{$company.status|lower}">
     <td class="left">
         <input type="checkbox" name="company_ids[]" value="{$company.company_id}" class="cm-item" /></td>
     <td class="row-status"><a href="{"companies.update?company_id=`$company.company_id`"|fn_url}">&nbsp;<span>{$company.company_id}</span>&nbsp;</a></td>
@@ -42,7 +43,7 @@
         <td class="row-status"><a href="mailto:{$company.email}">{$company.email}</a></td>
     {/if}
     {if "ULTIMATE"|fn_allowed_for}
-        <td><a href="http://{$company.storefront}">{$company.storefront|unpuny}</a></td>
+        <td><a href="http://{$company.storefront}">{$company.storefront}</a></td>
     {/if}
     <td class="row-status">{$company.timestamp|date_format:"`$settings.Appearance.date_format`, `$settings.Appearance.time_format`"}</td>
     <td class="nowrap">
@@ -54,14 +55,10 @@
             {if !"ULTIMATE"|fn_allowed_for && !$runtime.company_id}
                 <li>{btn type="list" href="companies.merge?company_id=`$company.company_id`" text=__("merge")}</li>
             {/if}
-            {if !$runtime.company_id && fn_check_view_permissions("companies.update", "POST")}
-                <li>{btn type="list" href="companies.update?company_id=`$company.company_id`" text=__("edit")}</li>
+            {if !$runtime.company_id}
                 <li class="divider"></li>
-                {if $runtime.simple_ultimate}
-                    <li class="disabled"><a>{__("delete")}</a></li>
-                {else}
-                    <li>{btn type="list" class="cm-confirm cm-post" href="companies.delete?company_id=`$company.company_id`&redirect_url=`$return_current_url`" text=__("delete")}</li>
-                {/if}
+                <li>{btn type="list" href="companies.update?company_id=`$company.company_id`" text=__("edit")}</li>
+                <li>{btn type="list" class="cm-confirm" href="companies.delete?company_id=`$company.company_id`&redirect_url=`$return_current_url`" text=__("delete")}</li>
             {/if}
         {/hook}
         {/capture}
@@ -107,11 +104,9 @@
 {/capture}
 {capture name="buttons"}
     {capture name="tools_items"}
-        {hook name="companies:manage_tools_list"}
-            {if !$runtime.company_id && fn_check_view_permissions("companies.update", "POST")}
-                <li>{btn type="delete_selected" dispatch="dispatch[companies.m_delete]" form="companies_form"}</li>
-            {/if}
-        {/hook}
+        {if !$runtime.company_id}
+            <li>{btn type="delete_selected" dispatch="dispatch[companies.m_delete]" form="companies_form"}</li>
+        {/if}
     {/capture}
     {dropdown content=$smarty.capture.tools_items}
 

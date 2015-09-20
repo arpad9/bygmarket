@@ -13,17 +13,14 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-use Tygh\Enum\ProductFeatures;
-use Tygh\Database;
-use Tygh\Exceptions\DeveloperException;
-use Tygh\Mailer;
-use Tygh\Navigation\LastView;
 use Tygh\Registry;
+use Tygh\Mailer;
+use Tygh\Database;
+use Tygh\Navigation\LastView;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
 
 fn_define('COUPON_CODE_LENGTH', 8);
-fn_define('PROMOTION_MIN_MATCHES', 5);
 
 /**
  * Get promotions
@@ -89,11 +86,7 @@ function fn_get_promotions($params, $items_per_page = 0, $lang_code = CART_LANGU
     }
 
     if (!empty($params['coupon_code'])) {
-        $condition .= db_quote(
-            " AND (CONCAT(LOWER(?:promotions.conditions_hash), ';') LIKE ?l OR CONCAT(LOWER(?:promotions.conditions_hash), ';') LIKE ?l)",
-            "%coupon_code={$params['coupon_code']};%",
-            "%auto_coupons={$params['coupon_code']};%"
-        );
+        $condition .= db_quote(" AND (CONCAT(?:promotions.conditions_hash, ';') LIKE ?l OR CONCAT(?:promotions.conditions_hash, ';') LIKE ?l)", "%coupon_code=$params[coupon_code];%", "%auto_coupons=$params[coupon_code];%");
     }
 
     if (!empty($params['coupons'])) {
@@ -113,7 +106,7 @@ function fn_get_promotions($params, $items_per_page = 0, $lang_code = CART_LANGU
     $limit = '';
     if (!empty($params['items_per_page'])) {
         $params['total_items'] = db_get_field("SELECT COUNT(*) FROM ?:promotions $join WHERE 1 $condition $group");
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+        $limit = db_paginate($params['page'], $params['items_per_page']);
     }
 
     if (!empty($params['simple'])) {
@@ -220,7 +213,7 @@ function fn_promotion_apply($zone, &$data, &$auth = NULL, &$cart_products = NULL
     }
     foreach ($promotions[$zone] as $promotion) {
         // Rule is valid and can be applied
-        if (fn_check_promotion_conditions($promotion, $data, $auth, $cart_products)) {
+        if (fn_promotion_check($promotion['promotion_id'], $promotion['conditions'], $data, $auth, $cart_products)) {
             if (fn_promotion_apply_bonuses($promotion, $data, $auth, $cart_products)) {
                 $applied_promotions[$promotion['promotion_id']] = $promotion;
 
@@ -258,9 +251,9 @@ function fn_promotion_apply($zone, &$data, &$auth = NULL, &$cart_products = NULL
                 }
 
                 if (!empty($_text)) {
+                    fn_set_notification('W', __('important'), __('text_applied_promotions') . ': ' . implode(', ', $_text), '', 'applied_promotions');
                     $_SESSION['promotion_notices']['promotion']['applied'] = true;
-                    $_SESSION['promotion_notices']['promotion']['messages'][] = 'text_applied_promotions';
-                    $_SESSION['promotion_notices']['promotion']['applied_promotions'] = $_text;
+                    $_SESSION['promotion_notices']['promotion']['messages'][] = 'applied_promotions';
                 }
 
                 $data['applied_promotions'] = $applied_promotions;
@@ -283,6 +276,8 @@ function fn_promotion_apply($zone, &$data, &$auth = NULL, &$cart_products = NULL
                 $data['coupons'] = array();
             }
         }
+
+        fn_check_promotion_notices();
     }
 
     return $applied_promotions;
@@ -295,36 +290,25 @@ function fn_promotion_apply($zone, &$data, &$auth = NULL, &$cart_products = NULL
  */
 function fn_check_promotion_notices()
 {
-    $was_applied = false;
+    $was_applied = !empty($_SESSION['promotion_notices']['promotion']['applied']);
 
-    if (isset($_SESSION['promotion_notices']) && !empty($_SESSION['promotion_notices'])) {
-        foreach ($_SESSION['promotion_notices'] as $key => $value) {
-            if ($value['applied']) {
-                foreach ($value['messages'] as $message) {
-                    if (!empty($message) && !empty($value['applied_promotions'])) {
-                        fn_set_notification('N', __('notice'), __($message) . ': ' . implode(', ', $value['applied_promotions']), '', $message);
-                    } elseif (!empty($message) && empty($value['applied_promotions'])) {
-                        fn_set_notification('N', __('notice'), __($message), '', $message);
-                    }
-                }
+    if (!$was_applied && !empty($_SESSION['promotion_notices'])) {
+        foreach ($_SESSION['promotion_notices'] as $addon => $notices) {
+            if ($notices['applied']) {
                 $was_applied = true;
-                unset($_SESSION['promotion_notices']);
-                break;
             }
         }
     }
 
-    if (!$was_applied && !empty($_SESSION['promotion_notices'])) {
-        foreach ($_SESSION['promotion_notices'] as $addon => $notices) {
-            if (!empty($notices['messages'])) {
+    if ($was_applied) {
+        foreach ($_SESSION['promotion_notices'] as $group => $notices) {
+            if (!$notices['applied'] && !empty($notices['messages'])) {
                 foreach ($notices['messages'] as $message_key) {
-                    fn_set_notification('W', __('warning'), __($message_key), '', $message_key);
-                    break;
+                    fn_delete_notification($message_key);
                 }
-                unset($_SESSION['promotion_notices']);
-                break;
             }
         }
+
     }
 
     return true;
@@ -333,16 +317,14 @@ function fn_check_promotion_notices()
 /**
  * Apply discount to the product
  *
- * @param int        $promotion_id   Promotion ID
- * @param array      $bonus          Promotion bonus data
- * @param array      $product        Product data
- * @param bool       $use_base       Whether to use base price (true) or with applied discounts (false)
- * @param array|null &$cart          Cart data
- * @param array|null &$cart_products Cart products list
- *
- * @return bool Whether rule can be applied
+ * @param int $promotion_id promotion ID
+ * @param array $bonus promotion bonus
+ * @param array $product product array (product - for catalog rules, cart - for cart rules)
+ * @param bool $use_base use base price or with applied discounts
+ * @return bool true if rule can be applied, false - otherwise
  */
-function fn_promotion_apply_discount($promotion_id, $bonus, &$product, $use_base = true, &$cart = null, &$cart_products = null)
+
+function fn_promotion_apply_discount($promotion_id, $bonus, &$product, $use_base = true)
 {
     if (!isset($product['promotions'])) {
         $product['promotions'] = array();
@@ -377,13 +359,6 @@ function fn_promotion_apply_discount($promotion_id, $bonus, &$product, $use_base
 
     if (isset($product['subtotal'])) {
         $product['subtotal'] = $product['price'] * $product['amount'];
-
-        if (is_array($cart) && is_array($cart_products)) {
-            $cart['subtotal'] = 0;
-            foreach ($cart_products as $cart_product_code => $cart_product) {
-                $cart['subtotal'] += $cart_product['subtotal'];
-            }
-        }
     }
 
     if (!empty($base_price)) {
@@ -406,9 +381,7 @@ function fn_promotion_apply_discount($promotion_id, $bonus, &$product, $use_base
 function fn_promotion_apply_catalog_rule($bonus, &$product, &$auth)
 {
     if ($bonus['bonus'] == 'product_discount') {
-        if (!isset($product['extra']['promotions'][$bonus['promotion_id']]) && !isset($product['promotions'][$bonus['promotion_id']])) {
-            fn_promotion_apply_discount($bonus['promotion_id'], $bonus, $product);
-        }
+        fn_promotion_apply_discount($bonus['promotion_id'], $bonus, $product);
     }
 
     return true;
@@ -457,8 +430,8 @@ function fn_promotion_apply_cart_rule($bonus, &$cart, &$auth, &$cart_products)
                 continue;
             }
 
-            if (fn_promotion_validate_attribute($v['product_id'], $bonus['value'], 'in') && !isset($cart['products'][$k]['extra']['promotions'][$bonus['promotion_id']])) {
-                if (fn_promotion_apply_discount($bonus['promotion_id'], $bonus, $cart_products[$k], true, $cart, $cart_products)) {
+            if (fn_promotion_validate_attribute($v['product_id'], $bonus['value'], 'in')) {
+                if (fn_promotion_apply_discount($bonus['promotion_id'], $bonus, $cart_products[$k])) {
                     $cart['use_discount'] = true;
                 }
             }
@@ -470,8 +443,8 @@ function fn_promotion_apply_cart_rule($bonus, &$cart, &$auth, &$cart_products)
                 continue;
             }
 
-            if (fn_promotion_validate_attribute($v['category_ids'], $bonus['value'], 'in') && !isset($cart['products'][$k]['extra']['promotions'][$bonus['promotion_id']])) {
-                if (fn_promotion_apply_discount($bonus['promotion_id'], $bonus, $cart_products[$k], true, $cart, $cart_products)) {
+            if (fn_promotion_validate_attribute($v['category_ids'], $bonus['value'], 'in')) {
+                if (fn_promotion_apply_discount($bonus['promotion_id'], $bonus, $cart_products[$k])) {
                     $cart['use_discount'] = true;
                 }
             }
@@ -540,134 +513,14 @@ function fn_promotion_apply_cart_rule($bonus, &$cart, &$auth, &$cart_products)
 }
 
 /**
- * Checks whether promotion can be applied by checking promotion conditions. After all checks are made,
- * it calls "after_conditions_check_function" functions specified at promotions schema.
- * This function is mainly used at {{fn_promotion_apply()}} function.
- *
- * @see fn_promotion_apply(), fn_get_promotion_data(), fn_get_promotions()
- *
- * @param array $promotion_data Promotion data fetched with {{fn_get_promotion_data()}} or {{fn_get_promotions()}}
- * @param array $context_data   Cart data for "cart" promotions zone or product data for "catalog" promotions zone
- * @param array $auth           Auth data (for "cart" zone)
- * @param array $cart_products  Cart products list (for "cart" zone)
- *
- * @return bool Whether promotion can be applied
- */
-function fn_check_promotion_conditions($promotion_data, &$context_data, &$auth, &$cart_products)
-{
-    list ($result, $checked_conditions) = fn_check_promotion_condition_groups_recursive(
-        $promotion_data['conditions'],  // Pass root group
-        $promotion_data,
-        $context_data,
-        $auth,
-        $cart_products
-    );
-
-    if (!empty($checked_conditions)) {
-        $schema = fn_promotion_get_schema('conditions');
-
-        foreach ($checked_conditions as $condition_name => $check_data) {
-            if (!empty($schema[$condition_name]['after_conditions_check_function'])
-                && is_callable($schema[$condition_name]['after_conditions_check_function'])
-            ) {
-                call_user_func($schema[$condition_name]['after_conditions_check_function'], $check_data, $checked_conditions, $result);
-            }
-        }
-    }
-
-    return $result;
-}
-
-/**
- * Recursively iterates through promotions condition groups and checks containing conditions.
- *
- * @param array $promotion_data Promotion data fetched with {{fn_get_promotion_data()}} or {{fn_get_promotions()}}
- * @param array $context_data   Cart data for "cart" promotions zone or product data for "catalog" promotions zone
- * @param array $auth           Auth data (for "cart" zone)
- * @param array $cart_products  Cart products list (for "cart" zone)
- *
- * @return array Two items list: 0) boolean result of checking all conditions; 1) list of all checked conditions
- */
-function fn_check_promotion_condition_groups_recursive($conditions_group, $promotion_data, &$context_data, &$auth, &$cart_products)
-{
-    if (empty($conditions_group['conditions'])) {
-        return array(true, array());
-    }
-    $checked_conditions = array();
-
-    if ($conditions_group['set'] == 'any') {
-        $result = false;
-    } else {
-        $result = null;
-    }
-
-    foreach ($conditions_group['conditions'] as $i => $group_item) {
-        // This is a nested group
-        if (isset($group_item['conditions'])) {
-            list($tmp_result, $nested_checked_conditions) = fn_check_promotion_condition_groups_recursive(
-                $group_item,
-                $promotion_data,
-                $context_data,
-                $auth,
-                $cart_products
-            );
-            $checked_conditions = array_merge($checked_conditions, $nested_checked_conditions);
-        } // Or this is an ordinary condition - check it directly
-        else {
-            if (!empty($group_item['condition'])
-                && ($group_item['condition'] == 'coupon_code' || $group_item['condition'] == 'auto_coupons')
-            ) {
-                $context_data['has_coupons'] = true;
-            }
-            $tmp_result = fn_promotion_validate(
-                $promotion_data['promotion_id'],
-                $group_item,
-                $context_data,
-                $auth,
-                $cart_products
-            );
-            if (!empty($group_item['condition'])) {
-                $checked_conditions[$group_item['condition']][] = array(
-                    'condition' => $group_item,
-                    'result' => $tmp_result,
-                    'parent_group' => $conditions_group,
-                    'promotion_data' => $promotion_data,
-                    'context_data' => &$context_data,
-                    'auth' => &$auth,
-                    'cart_products' => &$cart_products
-                );
-            }
-        }
-
-        // If we just need ANY correct condition and found it
-        if ($conditions_group['set'] == 'any' && $tmp_result == $conditions_group['set_value']) {
-            $result = true;
-            break;
-        } // Or we need to compare ALL conditions
-        elseif ($conditions_group['set'] == 'all') {
-            $result = ($result === null) ? $tmp_result : $result & $tmp_result;
-        }
-    }
-
-    $result = $conditions_group['set_value'] ? $result : !$result;
-
-    return array($result, $checked_conditions);
-}
-
-
-/**
  * Check promotiontion conditions
  *
- * @param int   $promotion_id  promotion ID
- * @param array $condition     conditions set
- * @param array $data          data array
- * @param array $auth          auth array (for cart rules)
+ * @param int $promotion_id promotion ID
+ * @param array $condition conditions set
+ * @param array $data data array
+ * @param array $auth auth array (for cart rules)
  * @param array $cart_products cart products array (for cart rules)
- *
  * @return bool true if promotion can be applied, false - otherwise
- *
- * @deprecated since 4.3.1, use fn_check_promotion_conditions() instead
- * @todo remove in 4.3.2
  */
 function fn_promotion_check($promotion_id, $condition, &$data, &$auth, &$cart_products)
 {
@@ -728,8 +581,6 @@ function fn_promotion_validate($promotion_id, $promotion, &$data, &$auth, &$cart
     $stop_validating = false;
     $result = true;
 
-    static $parent_orders = array();
-
     fn_set_hook('pre_promotion_validate', $promotion_id, $promotion, $data, $stop_validating, $result, $auth, $cart_products);
 
     if ($stop_validating) {
@@ -745,23 +596,6 @@ function fn_promotion_validate($promotion_id, $promotion, &$data, &$auth, &$cart
 
     if (!empty($schema[$promotion['condition']])) {
         $value = '';
-        $parent_order_value = '';
-
-        if (!empty($data['parent_order_id']) && empty($parent_orders[$data['parent_order_id']])) {
-
-            $parent_orders[$data['parent_order_id']] = array(
-                'cart' => array(),
-                'cart_products' => array(),
-                'product_groups' => array(),
-            );
-
-            fn_form_cart($data['parent_order_id'], $parent_orders[$data['parent_order_id']]['cart'], $auth);
-            list (
-                $parent_orders[$data['parent_order_id']]['cart_products'],
-                $parent_orders[$data['parent_order_id']]['product_groups']
-            ) = fn_calculate_cart_content($parent_orders[$data['parent_order_id']]['cart'], $auth);
-
-        }
 
         // Ordinary field
         if (!empty($schema[$promotion['condition']]['field'])) {
@@ -793,37 +627,29 @@ function fn_promotion_validate($promotion_id, $promotion, &$data, &$auth, &$cart
                 }
 
                 $value = $data[$schema[$promotion['condition']]['field']];
-
-                if (!empty($data['parent_order_id']) && !empty($parent_orders[$data['parent_order_id']]['cart'][$schema[$promotion['condition']]['field']])) {
-                    $parent_order_value = $parent_orders[$data['parent_order_id']]['cart'][$schema[$promotion['condition']]['field']];
-                }
             }
 
         // Field is the result of function
         } elseif (!empty($schema[$promotion['condition']]['field_function'])) {
-            $function_args = $schema[$promotion['condition']]['field_function'];
-            $function_name = array_shift($function_args);
-            $function_args_definitions = $function_args;
+            $p = $schema[$promotion['condition']]['field_function'];
+            $func = array_shift($p);
+            $p_orig = $p;
 
             // If field can be used in both zones, it means that we're using products
-            if (
-                in_array('catalog', $schema[$promotion['condition']]['zones'])
-                && in_array('cart', $schema[$promotion['condition']]['zones'])
-                && !empty($cart_products)
-            ) { // this is the "cart" zone. FIXME!!!
+            if (in_array('catalog', $schema[$promotion['condition']]['zones']) && in_array('cart', $schema[$promotion['condition']]['zones']) && !empty($cart_products)) { // this is the "cart" zone. FIXME!!!
                 foreach ($cart_products as $product) {
-                    $function_args = $function_args_definitions;
-                    foreach ($function_args as $k => $v) {
+                    $p = $p_orig;
+                    foreach ($p as $k => $v) {
                         if (strpos($v, '@') !== false) {
-                           $function_args[$k] = & fn_promotion_get_object_value($v, $product, $auth, $cart_products);
+                           $p[$k] = & fn_promotion_get_object_value($v, $product, $auth, $cart_products);
                         } elseif ($v == '#this') {
-                            $function_args[$k] = & $promotion;
+                            $p[$k] = & $promotion;
                         } elseif ($v == '#id') {
-                            $function_args[$k] = & $promotion_id;
+                            $p[$k] = & $promotion_id;
                         }
                     }
 
-                    $value = call_user_func_array($function_name, $function_args);
+                    $value = call_user_func_array($func, $p);
 
                     if ($promotion['operator'] == 'nin') {
                         if (fn_promotion_validate_attribute($value, $promotion['value'], 'in')) {
@@ -839,47 +665,21 @@ function fn_promotion_validate($promotion_id, $promotion, &$data, &$auth, &$cart
                 return $promotion['operator'] == 'nin' ? true : false;
             }
 
-            foreach ($function_args as $k => $v) {
+            foreach ($p as $k => $v) {
                 if (strpos($v, '@') !== false) {
-                   $function_args[$k] = & fn_promotion_get_object_value($v, $data, $auth, $cart_products);
+                   $p[$k] = & fn_promotion_get_object_value($v, $data, $auth, $cart_products);
                 } elseif ($v == '#this') {
-                    $function_args[$k] = & $promotion;
+                    $p[$k] = & $promotion;
                 } elseif ($v == '#id') {
-                    $function_args[$k] = & $promotion_id;
+                    $p[$k] = & $promotion_id;
                 }
             }
 
-            $value = call_user_func_array($function_name, $function_args);
-
-            if (!empty($data['parent_order_id']) && !empty($parent_orders[$data['parent_order_id']])) {
-                $parent_p = $function_args_definitions;
-                foreach ($parent_p as $k => $v) {
-                    if (strpos($v, '@') !== false) {
-                        $parent_p[$k] = & fn_promotion_get_object_value(
-                            $v,
-                            $parent_orders[$data['parent_order_id']]['cart'],
-                            $auth,
-                            $parent_orders[$data['parent_order_id']]['cart_products']
-                        );
-                    } elseif ($v == '#this') {
-                        $parent_p[$k] = & $promotion;
-                    } elseif ($v == '#id') {
-                        $parent_p[$k] = & $promotion_id;
-                    }
-                }
-
-                $parent_order_value = call_user_func_array($function_name, $parent_p);
-            }
+            $value = call_user_func_array($func, $p);
         }
 
         // Value is validated
-        $result = fn_promotion_validate_attribute($value, $promotion['value'], $promotion['operator']);
-
-        if ($parent_order_value) {
-            $result = $result || fn_promotion_validate_attribute($parent_order_value, $promotion['value'], $promotion['operator']);
-        }
-
-        return $result;
+        return fn_promotion_validate_attribute($value, $promotion['value'], $promotion['operator']);
     }
 
     return false;
@@ -905,7 +705,7 @@ function & fn_promotion_get_object_value($path, &$data, &$auth, &$cart_products 
     } elseif ($object == '@cart_products') {
         $obj = & $cart_products;
     } else {
-        throw new DeveloperException("Promotions : object '$object' is not implemented");
+        die("promotion:object_not_implemented[$object]");
     }
 
     foreach ($p as $v) {
@@ -933,9 +733,9 @@ function fn_promotion_validate_attribute($value, $condition, $op)
 
     fn_set_hook('pre_validate_promotion_attribute', $value, $condition, $op, $result);
 
-    // Modified at hook handler
-    if ($result) {
-        return true;
+    if (!isset($condition)) { // condition can't be empty, I think...
+
+        return false;
     }
 
     $val = !is_array($value) ? array($value) : $value;
@@ -945,9 +745,74 @@ function fn_promotion_validate_attribute($value, $condition, $op)
     }
 
     foreach ($val as $v) {
-        $result = fn_compare_values_by_operator($v, $op, $condition);
+        if ($op == 'eq') {
+            $result = ($v == $condition);
 
-        if ($result) {
+        } elseif ($op == 'lte') {
+            $result = ($v <= $condition);
+
+        } elseif ($op == 'lt') {
+            $result = ($v < $condition);
+
+        } elseif ($op == 'gte') {
+            $result = ($v >= $condition);
+
+        } elseif ($op == 'gt') {
+            $result = ($v > $condition);
+
+        } elseif ($op == 'cont') {
+            $result = (stripos((string) $v, (string) $condition) !== false);
+
+        } elseif ($op == 'ncont') {
+            $result = (stripos((string) $v, (string) $condition) === false);
+
+        } elseif ($op == 'in') {
+            $condition = is_array($condition) ? $condition : fn_explode(',', $condition);
+            if (is_array($v)) {
+                foreach ($condition as $item) {
+                    if (sizeof($v) != sizeof($item)) {
+                        if (sizeof(array_intersect_assoc($v, $item)) == sizeof($item)) {
+                            $result = true;
+                            break;
+                        }
+                    } else {
+                        array_multisort($v);
+                        array_multisort($item);
+                        if ($v == $item) {
+                            $result = true;
+                            break;
+                        }
+                    }
+                }
+            } else {
+                $result = in_array($v, $condition, is_bool($v));
+            }
+
+        } elseif ($op == 'nin') {
+            $condition = is_array($condition) ? $condition : fn_explode(',', $condition);
+            if (is_array($v)) {
+                $result = true;
+                foreach ($condition as $item) {
+                    if (sizeof($v) != sizeof($item)) {
+                        if (sizeof(array_intersect_assoc($v, $item)) == sizeof($item)) {
+                            $result = false;
+                            break;
+                        }
+                    } else {
+                        array_multisort($v);
+                        array_multisort($item);
+                        if ($v == $item) {
+                            $result = false;
+                            break;
+                        }
+                    }
+                }
+            } else {
+                $result = !in_array($v, $condition);
+            }
+        }
+
+        if (!empty($result)) {
             return true;
         }
     }
@@ -1065,20 +930,6 @@ function fn_promotion_distribute_discount(&$cart_products, $value, $use_base = t
 }
 
 /**
- * Determines if the status is positive or negative
- *
- * @param array $status status
- * @param bool $exclude_open Do not consider the "Open" status as decreased
- * @return boolean if status inventory param is 'Decreasing' and status is not 'Open' then true
- */
-function fn_status_is_positive($status, $exclude_open = false)
-{
-    $extra_condition = $exclude_open ? true : $status['status'] != 'O';
-
-    return isset($status['params']) && isset($status['status']) && $status['params']['inventory'] == 'D' && $extra_condition;
-}
-
-/**
  * Promotions post processing
  *
  * @param string $status_to new order status
@@ -1093,24 +944,19 @@ function fn_promotion_post_processing($status_to, $status_from, $order_info, $fo
 
     $notify_user = isset($force_notification['C']) ? $force_notification['C'] : (!empty($order_statuses[$status_to]['params']['notify']) && $order_statuses[$status_to]['params']['notify'] == 'Y' ? true : false);
 
-    $status_from_is_positive = fn_status_is_positive($order_statuses[$status_from]);
-    $status_to_is_positive = fn_status_is_positive($order_statuses[$status_to]);
+    if ($status_to != $status_from && $order_statuses[$status_to]['params']['inventory'] != $order_statuses[$status_from]['params']['inventory']) {
 
-    if (empty($order_info['promotions'])) {
-        return false;
-    }
+        if (empty($order_info['promotions'])) {
+            return false;
+        }
 
-    // Process numbers of usage for Open statuses
-    if ($status_to != $status_from && fn_status_is_positive($order_statuses[$status_from], true) != fn_status_is_positive($order_statuses[$status_to], true)) {
         // Post processing
-        if (fn_status_is_positive($order_statuses[$status_to], true)) {
+        if ($order_statuses[$status_to]['params']['inventory'] == 'D' && $order_statuses[$status_from]['params']['inventory'] == 'I') {
             db_query("UPDATE ?:promotions SET number_of_usages = number_of_usages + 1 WHERE promotion_id IN (?n)", array_keys($order_info['promotions']));
         } else {
             db_query("UPDATE ?:promotions SET number_of_usages = number_of_usages - 1 WHERE promotion_id IN (?n)", array_keys($order_info['promotions']));
         }
-    }
 
-    if ($status_to != $status_from && $status_from_is_positive != $status_to_is_positive) {
         // Apply pending actions
         foreach ($order_info['promotions'] as $k => $v) {
             if (!empty($v['bonuses'])) {
@@ -1123,20 +969,15 @@ function fn_promotion_post_processing($status_to, $status_from, $order_info, $fo
                         }
 
                         // Don't assing a disabled usergroup
-                        $system_usergroups = fn_get_usergroups(array('type' => 'C', 'status' => array('A', 'H')), CART_LANGUAGE);
-                        if (!empty($system_usergroups[$bonus['value']]['status'])
-                            && in_array($system_usergroups[$bonus['value']]['status'], array('A', 'H'))
-                        ) {
-                            if ($order_statuses[$status_to]['params']['inventory'] == 'D') {
+                        $system_usergroups = fn_get_usergroups('C', CART_LANGUAGE);
+                        if (!empty($system_usergroups[$bonus['value']]['status']) && $system_usergroups[$bonus['value']]['status'] == 'A') {
+                            if ($order_statuses[$status_to]['params']['inventory'] == 'D' && $order_statuses[$status_from]['params']['inventory'] == 'I') {
 
                                 // Don't assing the usergroup to the user if it's already assigned
                                 $current_user_usergroups = fn_get_user_usergroups($order_info['user_id']);
 
                                 foreach ($current_user_usergroups as $ug) {
-                                    if (isset($ug['usergroup_id'])
-                                        && $bonus['value'] == $ug['usergroup_id']
-                                        && in_array($ug['status'], array('A', 'H'))
-                                    ) {
+                                    if (isset($ug['usergroup_id']) && $bonus['value'] == $ug['usergroup_id'] && $ug['status'] == 'A') {
                                         $is_ug_already_assigned = true;
                                         break;
                                     }
@@ -1158,7 +999,7 @@ function fn_promotion_post_processing($status_to, $status_from, $order_info, $fo
                                     'from' => 'company_users_department',
                                     'data' => array(
                                         'user_data' => fn_get_user_info($order_info['user_id']),
-                                        'usergroups' => fn_get_usergroups(array('status' => array('A', 'H')), $order_info['lang_code']),
+                                        'usegroups' => fn_get_usergroups('F', $order_info['lang_code']),
                                         'usergroup_ids' => (array) $bonus['value']
                                     ),
                                     'tpl' => 'profiles/usergroup_' . $prefix . '.tpl',
@@ -1178,7 +1019,8 @@ function fn_promotion_post_processing($status_to, $status_from, $order_info, $fo
                             continue;
                         }
 
-                        if ($status_to_is_positive) {
+
+                        if ($order_statuses[$status_to]['params']['inventory'] == 'D' && $order_statuses[$status_from]['params']['inventory'] == 'I') {
 
                             fn_promotion_update_condition($promotion_data['conditions']['conditions'], 'add', 'auto_coupons', $bonus['coupon_code']);
 
@@ -1221,20 +1063,29 @@ function fn_promotion_post_processing($status_to, $status_from, $order_info, $fo
  */
 function fn_promotion_check_coupon(&$cart, $initial_check, $applied_promotions = array())
 {
+
     $result = true;
 
     // Pre-check: find if coupon is already used or only single coupon is allowed
     if ($initial_check == true) {
+        unset($cart['google_co_already_applied_coupon']);
         fn_set_hook('pre_promotion_check_coupon', $cart['pending_coupon'], $cart);
 
         if (!empty($cart['coupons'][$cart['pending_coupon']])) {
-            $_SESSION['promotion_notices']['promotion']['messages'][] = 'coupon_already_used';
+            fn_set_notification('W', __('warning'), __('coupon_already_used'), '', 'promotion_coupon_already_used');
+            $_SESSION['promotion_notices']['promotion']['messages'][] = 'promotion_coupon_already_used';
             unset($cart['pending_coupon']);
+
+            if (!empty($cart['google_co_pending_coupon'])) {
+                $cart['google_co_already_applied_coupon'][$cart['google_co_pending_coupon']] = true;
+                unset($cart['google_co_pending_coupon']);
+            }
 
             $result = false;
 
-        } elseif (Registry::get('settings.General.use_single_coupon') == 'Y' && sizeof($cart['coupons']) > 0) {
-            $_SESSION['promotion_notices']['promotion']['messages'][] = 'single_coupon_is_allowed';
+        } elseif (Registry::get('settings.General.use_single_coupon') == 'Y' && !empty($cart['coupons'])) {
+            fn_set_notification('W', __('warning'), __('single_coupon_is_allowed'), '', 'promotion_single_coupon_is_allowed');
+            $_SESSION['promotion_notices']['promotion']['messages'][] = 'promotion_single_coupon_is_allowed';
             unset($cart['pending_coupon']);
             $result = false;
 
@@ -1258,7 +1109,8 @@ function fn_promotion_check_coupon(&$cart, $initial_check, $applied_promotions =
 
             if (empty($coupon)) {
                 if (!fn_notification_exists('extra', 'error_coupon_already_used')) {
-                    $_SESSION['promotion_notices']['promotion']['messages'][] = 'no_such_coupon';
+                    fn_set_notification('W', __('warning'), __('no_such_coupon'), '', 'promotion_no_such_coupon');
+                    $_SESSION['promotion_notices']['promotion']['messages'][] = 'promotion_no_such_coupon';
                 }
                 unset($cart['coupons'][$cart['pending_coupon']]);
 
@@ -1268,7 +1120,7 @@ function fn_promotion_check_coupon(&$cart, $initial_check, $applied_promotions =
                 fn_set_hook('promotion_check_coupon', $cart['pending_coupon'], $cart);
             }
 
-            unset($cart['pending_coupon'], $cart['pending_original_coupon']);
+            unset($cart['pending_coupon'], $cart['pending_original_coupon'], $cart['google_co_pending_coupon']);
         }
     }
 
@@ -1282,7 +1134,7 @@ function fn_promotion_check_coupon(&$cart, $initial_check, $applied_promotions =
  * @param array $cart cart
  * @return mixed coupon code if coupon exist, false otherwise
  */
-function fn_promotion_validate_coupon(&$promotion, &$cart, $promotion_id = 0)
+function fn_promotion_validate_coupon($promotion, &$cart, $promotion_id = 0)
 {
     $values = fn_explode(',', $promotion['value']);
 
@@ -1293,9 +1145,8 @@ function fn_promotion_validate_coupon(&$promotion, &$cart, $promotion_id = 0)
             $codes = array();
             foreach ($coupons as $coupon_val) {
                 foreach ($values as $cond_val) {
-                    $cond_val = strtolower($cond_val);
                     if (stripos($coupon_val, $cond_val) !== false) {
-                        $codes[] = $cond_val;
+                        $codes[] = $coupon_val;
                         if (!empty($cart['pending_coupon']) && $cart['pending_coupon'] == $coupon_val) {
                             $cart['pending_original_coupon'] = $cond_val;
                         }
@@ -1303,17 +1154,11 @@ function fn_promotion_validate_coupon(&$promotion, &$cart, $promotion_id = 0)
                 }
             }
         } else {
-            $codes = array();
-            foreach ($values as $expected_coupon_code) {
-                if (in_array(strtolower($expected_coupon_code), $coupons)) {
-                    $codes[] = $expected_coupon_code;
-                }
-            }
+            $codes = array_intersect($coupons, $values);
         }
 
         if (!empty($codes) && !empty($promotion_id)) {
             foreach ($codes as $_code) {
-                $_code = strtolower($_code);
                 if (is_array($cart['coupons'][$_code]) && !in_array($promotion_id, $cart['coupons'][$_code])) {
                     $cart['coupons'][$_code][] = $promotion_id;
                 }
@@ -1346,17 +1191,18 @@ function fn_promotion_validate_product($promotion, $product, $cart_products)
 
             if (!empty($cart_products)) { // cart promotion validated
                 foreach ($promotion['value'] as $p_v) {
-                    if ($p_v['product_id'] == $product['product_id']
-                        && empty($p_v['product_options'])
-                        && $p_v['amount'] > 1
-                    ) {
-                        $product['amount'] = 0;
+                    if ($p_v['product_id'] == $product['product_id'] && empty($p_v['product_options']) && $p_v['amount'] > 1) {
+                        $_amount = 0;
                         foreach ($cart_products as $c_pr) {
                             if ($c_pr['product_id'] == $p_v['product_id']) {
-                                $product['amount'] += $c_pr['amount'];
+                                $_amount += $c_pr['amount'];
                             }
                         }
-                        break;
+
+                        if ($_amount == $p_v['amount']) {
+                            $product['amount'] = $p_v['amount'];
+                            break;
+                        }
                     }
                 }
             }
@@ -1370,15 +1216,8 @@ function fn_promotion_validate_product($promotion, $product, $cart_products)
             $upd_product = array('product_id' => $product['product_id'], 'amount' => $product['amount']);
         }
         foreach ($promotion['value'] as $p_v) {
-            if ($p_v['product_id'] == $upd_product['product_id']) {
-                if (
-                    !isset($upd_product['product_options'], $p_v['product_options'])
-                    || (serialize($upd_product['product_options']) == serialize($p_v['product_options']))
-                ) {
-                    if ($upd_product['amount'] >= $p_v['amount']) {
-                        $upd_product['amount'] = $p_v['amount'];
-                    }
-                }
+            if ($upd_product['amount'] >= $p_v['amount']) {
+                $upd_product['amount'] = $p_v['amount'];
             }
         }
     } else {
@@ -1432,44 +1271,6 @@ function fn_promotion_validate_purchased_product($promotion, $product, $auth)
 }
 
 /**
- * Check if the promotion is already used by customer.
- *
- * @param int $promotion_id
- * @param array $cart
- * @return int|bool
- */
-function fn_promotion_check_existence($promotion_id, &$cart)
-{
-    static $statuses = null;
-
-    if (is_null($statuses)) {
-        $order_statuses = fn_get_statuses(STATUSES_ORDER, array(), true);
-        foreach ($order_statuses as $status) {
-            if ($status['params']['inventory'] == 'D') { // decreasing (positive) status
-                $statuses[] = $status['status'];
-            }
-        }
-    }
-
-    if (!$statuses) {
-        return false;
-    }
-
-    $udata = $cart['user_data'];
-    fn_fill_user_fields($udata);
-
-    if (defined('ORDER_MANAGEMENT') && !empty($cart['order_id'])) {
-        $order_management_condition = db_quote(' order_id != ?i AND ', $cart['order_id']);
-    } else {
-        $order_management_condition = '';
-    }
-
-    $exists = db_get_field("SELECT ((firstname = ?s) + (lastname = ?s) + (b_city = ?s) + (b_state = ?s) + (b_country = ?s) + (b_zipcode = ?s) + (email = ?s) * 6) as r FROM ?:orders WHERE ?p FIND_IN_SET(?i, promotion_ids) AND status IN (?a) HAVING r >= ?i LIMIT 1", $udata['firstname'], $udata['lastname'], $udata['b_city'], $udata['b_state'], $udata['b_country'], $udata['b_zipcode'], $udata['email'], $order_management_condition, $promotion_id, $statuses, PROMOTION_MIN_MATCHES);
-
-    return $exists;
-}
-
-/**
  * Get promotion dynamic properties
  *
  * @param array $promotion_id promotion ID
@@ -1484,14 +1285,51 @@ function fn_promotion_get_dynamic($promotion_id, $promotion, $condition, &$cart,
     if ($condition == 'number_of_usages') {
         $usages = db_get_field("SELECT number_of_usages FROM ?:promotions WHERE promotion_id = ?i", $promotion_id);
 
-        return (int) $usages + 1;
+        return intval($usages) + 1;
+
     } elseif ($condition == 'once_per_customer') {
+
+        fn_define('PROMOTION_MIN_MATCHES', 5);
+
+        $order_statuses = fn_get_statuses(STATUSES_ORDER, array(), true);
+        $_statuses = array();
+        foreach ($order_statuses as $status) {
+            if ($status['params']['inventory'] == 'D') { // decreasing (positive) status
+                $_statuses[] = $status['status'];
+            }
+        }
+
         if (empty($cart['user_data'])) {
             return 'Y';
         }
 
-        // This is checkbox with values (Y/N), so we need to return appropriate values
-        return fn_promotion_check_existence($promotion_id, $cart) ? 'N' : 'Y';
+        $udata = $cart['user_data'];
+        fn_fill_user_fields($udata);
+
+        if (!empty($_statuses)) {
+            $exists = db_get_field("SELECT ((firstname = ?s) + (lastname = ?s) + (b_city = ?s) + (b_state = ?s) + (b_country = ?s) + (b_zipcode = ?s) + (email = ?s) * 6) as r FROM ?:orders WHERE FIND_IN_SET(?i, promotion_ids) AND status IN (?a) HAVING r >= ?i LIMIT 1", $udata['firstname'], $udata['lastname'], $udata['b_city'], $udata['b_state'], $udata['b_country'], $udata['b_zipcode'], $udata['email'], $promotion_id, $_statuses, PROMOTION_MIN_MATCHES);
+        }
+
+        $promotion_data = fn_get_promotion_data($promotion_id);
+        $coupon_exist = false;
+        if (!empty($promotion_data['conditions']['conditions'])) {
+            foreach ($promotion_data['conditions']['conditions'] as $val) {
+                if ($val['condition'] == 'coupon_code') {
+                    $coupon_exist = fn_promotion_validate_coupon($val, $cart);
+                    if (!empty($coupon_exist) && !empty($exists)) {
+                        fn_set_notification('W', __('warning'), __('text_can_be_used_once'), "K", 'error_coupon_already_used');
+                        $_SESSION['promotion_notices']['promotion']['messages'][] = 'error_coupon_already_used';
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (!empty($exists)) {
+            return 'N';
+        }
+
+        return 'Y'; // this is checkbox with values (Y/N), so we need to return appropriate values
     }
 }
 
@@ -1648,7 +1486,7 @@ function fn_promotions_get_features($lang_code = CART_LANGUAGE)
 
     $res = array();
     foreach ($features as $k => $v) {
-        if ($v['feature_type'] == ProductFeatures::GROUP) {
+        if ($v['feature_type'] == 'G') {
             $res[$k]['is_group'] = true;
             $res[$k]['group'] = $v['description'];
             $res[$k]['items'] = array();
@@ -1659,7 +1497,7 @@ function fn_promotions_get_features($lang_code = CART_LANGUAGE)
                         foreach ($_v['variants'] as $__k => $__v) {
                             $res[$k]['items'][$_k]['variants'][$__k] = $__v['variant'];
                         }
-                    } elseif ($_v['feature_type'] == ProductFeatures::SINGLE_CHECKBOX) {
+                    } elseif ($_v['feature_type'] == 'C') {
                         $res[$k]['items'][$_k]['variants'] = array(
                             'Y' => __('yes'),
                             'N' => __('no'),
@@ -1673,7 +1511,7 @@ function fn_promotions_get_features($lang_code = CART_LANGUAGE)
                 foreach ($v['variants'] as $__k => $__v) {
                     $res[$k]['variants'][$__k] = $__v['variant'];
                 }
-            } elseif ($v['feature_type'] == ProductFeatures::SINGLE_CHECKBOX) {
+            } elseif ($v['feature_type'] == 'C') {
                 $res[$k]['variants'] = array(
                     'Y' => __('yes'),
                     'N' => __('no'),
@@ -1768,7 +1606,7 @@ function fn_promotions_calculate_order_discount($bonus, $bonus_id, $cart)
             // check that total suborders discount is less than parent_order_discount
             // or this is last sub order, so we have to distract discount, to avoid the extra cents
             $new_suborders_discount = $suborders_discount + $discount;
-            if ($new_suborders_discount > $parent_order_discount || (!empty($cart['companies']) && end($cart['companies']) == $cart['company_id'])) {
+            if ($new_suborders_discount > $parent_order_discount || end($cart['companies']) == $cart['company_id']) {
                 $discount = $parent_order_discount - (!empty($session_orders_discount['suborders_discount']) ? $session_orders_discount['suborders_discount'] : 0);
 
                 if ($discount < 0) {
@@ -1845,6 +1683,8 @@ function fn_delete_promotions($promotion_ids)
     }
 }
 
+
+
 /**
  * Checks if the promotion code input field should be displayed.
  *
@@ -1873,73 +1713,6 @@ function fn_display_promotion_input_field($cart)
      * @param bool $result Checking result
      */
     fn_set_hook('display_promotion_input_field_post', $cart, $result);
-
-    return $result;
-}
-
-function fn_get_cart_subtotal_with_discount($cart)
-{
-    return $cart['subtotal'] - $cart['subtotal_discount'];
-}
-
-/**
- * Checks whether applied coupon code already used by customer. This function is called after all conditions of a single
- * promotion are checked at {{fn_check_promotion_conditions()}}
- *
- * @see fn_check_promotion_conditions()
- *
- * @param array $coupon_code_check_results
- * @param array $all_checked_conditions
- * @param array $promotion_check_result
- */
-function fn_promotion_check_coupon_code_once_per_customer($coupon_code_check_results, $all_checked_conditions, $promotion_check_result)
-{
-    $customer_already_used_coupon = false;
-    foreach ($coupon_code_check_results as $check_result) {
-        if (!empty($check_result['cart']['user_data'])
-            && $check_result['result']
-            && !empty($all_checked_conditions['once_per_customer'])
-        ) {
-            foreach ($all_checked_conditions['once_per_customer'] as $once_per_customer_check) {
-                if (!$once_per_customer_check['result']) {
-                    $customer_already_used_coupon = true;
-                }
-            }
-        }
-    }
-
-    if ($customer_already_used_coupon) {
-        fn_set_notification('W', __('warning'), __('text_can_be_used_once'), "K", 'error_coupon_already_used');
-        $_SESSION['promotion_notices']['promotion']['messages'][] = 'coupon_already_used';
-    }
-}
-
-/**
- * Check if shippings coincide with promotion shipping condition types
- *
- * @param array $this Condition
- * @param array $cart Cart
- * @return bool $result Checking result
- */
-function fn_promotion_shippings($this, $cart)
-{
-    $result = false;
-
-    if ($this['operator'] == 'eq') {
-        $result = false;
-    } elseif ($this['operator'] == 'neq') {
-        $result = true;
-    }
-
-    if (!empty($cart['chosen_shipping'])) {
-        foreach ($cart['chosen_shipping'] as $id) {
-            if ($this['operator'] == 'eq' && $id == $this['value']) {
-                $result = true;
-            } elseif ($this['operator'] == 'neq' && $id != $this['value']) {
-                $result = false;
-            }
-        }
-    }
 
     return $result;
 }

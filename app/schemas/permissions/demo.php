@@ -26,13 +26,6 @@ return array(
             'delete' => array('POST'),
         ),
     ),
-    'companies' => array (
-        'modes' => array (
-            'update' => array('POST'),
-            'delete' => array('GET', 'POST'),
-            'm_delete' => array('GET', 'POST'),
-        ),
-    ),
     'currencies' => array (
         'modes' => array (
             'update' => array('POST'),
@@ -49,7 +42,7 @@ return array(
     'localizations' => array (
         'restrict' => array ('POST')
     ),
-    'datakeeper' => array (
+    'database' => array (
         'restrict' => array ('POST')
     ),
     'exim' => array (
@@ -105,8 +98,8 @@ return array(
             'test' => array('GET'),
         ),
     ),
-    'customization' => array (
-        'restrict' => array ('GET', 'POST')
+    'site_layout' => array (
+        'restrict' => array ('POST')
     ),
     'states' => array (
         'modes' => array (
@@ -122,7 +115,7 @@ return array(
             'm_delete_confirmation' => array('POST'),
         ),
     ),
-    'file_editor' => array (
+    'template_editor' => array (
         'restrict' => array ('POST'),
         'modes' => array (
             'delete_file' => array('GET'),
@@ -158,23 +151,5 @@ return array(
     ),
     'elf_connector' => array(
         'restrict' => array('POST'),
-    ),
-    'themes' => array(
-        'modes' => array(
-            'upload' => array('POST'),
-            'clone' => array('POST'),
-            'styles' => array('GET', 'POST'),
-            'set' => array('GET', 'POST'),
-            'delete' => array('GET', 'POST'),
-            'install' => array('GET', 'POST'),
-        ),
-    ),
-    'upgrade_center' => array (
-        'restrict' => array ('POST'),
-        'modes' => array (
-            'get_upgrade' => array('GET', 'POST'),
-            'run_backup' => array('GET', 'POST'),
-            'check' => array('GET', 'POST'),
-        ),
     ),
 );

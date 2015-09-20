@@ -1,14 +1,13 @@
 <script type="text/javascript">
+//<![CDATA[
 (function(_, $) {
     _.tr('error_exim_layout_missed_fields', '{__("error_exim_layout_required_fields")|escape:"javascript"}');
-
-    $(document).ready(function() {
-        $(_.doc).on('click', '#exim_select_range', function(event){
-            var pattern_id = $('.nav-tabs li.active').attr('id');
-            $(this).attr('href', $(this).attr('href') + '&pattern_id=' + pattern_id);
-        });
+    $(_.doc).on('click', '#exim_select_range', function(event){
+        var pattern_id = $('.nav-tabs li.active').attr('id');
+        $(this).attr('href', $(this).attr('href') + '&pattern_id=' + pattern_id);
     });
 }(Tygh, Tygh.$));
+//]]>
 </script>
 
 {if $pattern.range_options}
@@ -19,10 +18,10 @@
     {if $export_range}
         {__("text_objects_for_export", ["[total]" => $export_range, "[name]" => $oname])}
         <p>
-        <a href="{$r_opt.selector_url|fn_url}">{__("change_range")} &rsaquo;&rsaquo;</a>&nbsp;&nbsp;&nbsp;<a class="cm-post" href="{"exim.delete_range?section=`$pattern.section`&pattern_id=`$pattern.pattern_id`"|fn_url}">{__("delete_range")} &rsaquo;&rsaquo;</a>
+        <a href="{$r_opt.selector_url|fn_url}">{__("change_range")} &#155;&#155;</a>&nbsp;&nbsp;&nbsp;<a href="{"exim.delete_range?section=`$pattern.section`&pattern_id=`$pattern.pattern_id`"|fn_url}">{__("delete_range")} &#155;&#155;</a>
         </p>
     {else}
-        {__("text_select_range", ["[name]" => $oname])}: <a href="{"exim.select_range?section=`$pattern.section`"|fn_url}" id="exim_select_range">{__("select")} &rsaquo;&rsaquo;</a>
+        {__("text_select_range", ["[name]" => $oname])}: <a href="{"exim.select_range?section=`$pattern.section`"|fn_url}" id="exim_select_range">{__("select")} &#155;&#155;</a>
     {/if}
     {/notes}
 {/if}
@@ -57,7 +56,7 @@
 
     </form>
 
-    <form action="{""|fn_url}" method="post" name="{$p_id}_manage_layout_form" class="cm-ajax cm-comet form-edit form-horizontal cm-disable-check-changes">
+    <form action="{""|fn_url}" method="post" name="{$p_id}_manage_layout_form" class="cm-ajax cm-comit form-edit form-horizontal">
     <input type="hidden" name="section" value="{$pattern.section}" />
     <input type="hidden" name="layout_data[pattern_id]" value="{$p_id}" />
     <input type="hidden" name="layout_data[layout_id]" value="{$active_layout.layout_id}" />
@@ -113,10 +112,6 @@
                     {/if}
                     </select>
                 {/if}
-
-                {if $o.notes}
-                    <p class="muted">{$o.notes nofilter}</p>
-                {/if}
             </div>
         </div>
         {/if}
@@ -129,7 +124,7 @@
     <div class="control-group">
         <label class="control-label">{__("csv_delimiter")}:</label>
         <div class="controls">
-            {include file="views/exim/components/csv_delimiters.tpl" name="export_options[delimiter]" value=$active_layout.options.delimiter}
+            {include file="views/exim/components/csv_delimiters.tpl" name="export_options[delimiter]"}
         </div>
     </div>
     {/if}
@@ -139,7 +134,13 @@
     <div class="control-group">
         <label for="output" class="control-label">{__("output")}:</label>
         <div class="controls">
-            {include file="views/exim/components/csv_output.tpl" name="export_options[output]" value=$active_layout.options.output}
+            <select name="export_options[output]" id="output">
+                <option value="D">{__("direct_download")}</option>
+                <option value="C">{__("screen")}</option>
+                {if !$runtime.company_id}
+                <option value="S">{__("server")}</option>
+                {/if}
+            </select>
         </div>
     </div>
     {/if}
@@ -149,10 +150,6 @@
             <input type="text" name="export_options[filename]" id="filename" size="50" class="input-large" value="{if $pattern.filename}{$pattern.filename}{else}{$p_id}_{$l.name}_{$smarty.const.TIME|date_format:"%m%d%Y"}.csv{/if}" />
             {assign var="filename_description" value=$pattern.filename_description}
             {if $pattern.filename_description}<p><small>{__($filename_description)}</small></p>{/if}
-
-            <p class="muted">
-                {__('text_file_editor_notice', ["[href]" => "file_editor.manage?path=/"|fn_url])}
-            </p>
         </div>
     </div>
 </form>
@@ -183,7 +180,7 @@
         <td class="right">
             <div class="hidden-tools">
                 <a href="{"exim.get_file?filename=`$file_name`"|fn_url}" title="{__("download")}" class="cm-tooltip icon-download"></a>    
-                <a class="cm-ajax cm-confirm cm-post icon-trash cm-tooltip" title="{__("delete")}" href="{"exim.delete_file?filename=`$file_name`&redirect_url=`$c_url`"|fn_url}" data-ca-target-id="content_exported_files"></a>
+                <a class="cm-ajax cm-confirm icon-trash cm-tooltip" title="{__("delete")}" href="{"exim.delete_file?filename=`$file_name`&redirect_url=`$c_url`"|fn_url}" data-ca-target-id="content_exported_files"></a>
             </div>
         </td>
     </tr>

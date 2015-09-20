@@ -21,7 +21,7 @@ use Tygh\Api\Response;
 
 class Stores extends AEntity
 {
-    protected $setting_names = array(
+    private $_setting_names = array(
         'company_name',
         'company_address',
         'company_city',
@@ -41,11 +41,11 @@ class Stores extends AEntity
         'company_newsletter_email'
     );
 
-    protected function updateCompanySettings($params, $company_id)
+    private function _updateCompanySettings($params, $company_id)
     {
         $settings = array();
 
-        foreach ($this->setting_names as $setting_name) {
+        foreach ($this->_setting_names as $setting_name) {
             if (isset($params[$setting_name])) {
                 Settings::instance()->updateValue($setting_name, $params[$setting_name], '', false, $company_id);
             }
@@ -53,7 +53,7 @@ class Stores extends AEntity
 
     }
 
-    protected function checkRequiredParams($params, $mode = 'update')
+    private function _checkRequiredParams($params, $mode = 'update')
     {
         $result = array(
             'valid_params' => true,
@@ -62,18 +62,14 @@ class Stores extends AEntity
 
         if ($mode == 'add') {
             if (empty($params['company'])) {
-                $result['message'] = __('api_required_field', array(
-                    '[field]' => 'company'
-                ));
+                $result['message'] = __('api_need_company_name');
                 $result['valid_params'] = false;
-            }
+            }            
+        }
 
-            if (empty($params['storefront'])) {
-                $result['message'] = __('api_required_field', array(
-                    '[field]' => 'storefront'
-                ));
-                $result['valid_params'] = false;
-            }
+        if (empty($params['storefront'])) {
+            $result['message'] = __('api_need_company_storefront');
+            $result['valid_params'] = false;
         }
 
         return array($result['valid_params'], $result['message']);
@@ -83,15 +79,15 @@ class Stores extends AEntity
     {
         $status = Response::STATUS_BAD_REQUEST;
 
-        if (!empty($this->auth['company_id'])) {
-            $params['company_id'] = $this->auth['company_id'];
+        if (!empty($this->_auth['company_id'])) {
+            $params['company_id'] = $this->_auth['company_id'];
         }
 
-        $lang_code = $this->safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
+        $lang_code = $this->_safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
 
         if (!empty($id)) {
 
-            if (!empty($this->auth['company_id']) && $this->auth['company_id'] != $id) {
+            if (!empty($this->_auth['company_id']) && $this->_auth['company_id'] != $id) {
                 $status = Response::STATUS_FORBIDDEN;
                 $data = array();
 
@@ -100,7 +96,7 @@ class Stores extends AEntity
                 $params = array(
                     'company_id' => $id
                 );
-                list($data) = fn_get_companies($params, $this->auth, 0, $lang_code);
+                list($data) = fn_get_companies($params, $this->_auth, 0, $lang_code);
 
                 if (empty($data)) {
                     $status = Response::STATUS_NOT_FOUND;
@@ -113,14 +109,8 @@ class Stores extends AEntity
             }
 
         } else {
-            $items_per_page = $this->safeGet($params, 'items_per_page', Registry::get('settings.Appearance.admin_elements_per_page'));
-            list($data, ) = fn_get_companies($params, $this->auth, $items_per_page, $lang_code);
-            $pathes = explode('\\', get_class($this));
-            $key = strtolower(array_pop($pathes));
-            $data = array(
-                $key => $data,
-                'params' => $params,
-            );
+
+            list($data) = fn_get_companies(array(),$this->_auth, 0, $lang_code);
             $status = Response::STATUS_OK;
         }
 
@@ -141,7 +131,7 @@ class Stores extends AEntity
             Registry::set('runtime.simple_ultimate', false);
         }
 
-        list($valid_params, $data['message']) = $this->checkRequiredParams($params, 'add');
+        list($valid_params, $data['message']) = $this->_checkRequiredParams($params, 'add');
 
         if ($valid_params) {
             $company_id = fn_update_company($params);
@@ -153,6 +143,7 @@ class Stores extends AEntity
                 );
             }
         }
+
 
         return array(
             'status' => $status,
@@ -169,34 +160,27 @@ class Stores extends AEntity
         unset($params['company_id']);
 
         $company_data = fn_get_company_data($id);
-
+        
         if (empty($company_data)) {
-            $message = __('api_need_correct_company_id');
+            $data['message'] = __('api_need_correct_company_id');
             $valid_params = false;
-        } else {
-            list($valid_params, $message) = $this->checkRequiredParams($params);
-        }
+        }            
 
+        list($valid_params, $data['message']) = $this->_checkRequiredParams($params);
         if ($valid_params) {
-            if (!empty($this->auth['company_id']) && $this->auth['company_id'] != $id) {
+            if (!empty($this->_auth['company_id']) && $this->_auth['company_id'] != $id) {
                 $status = Response::STATUS_FORBIDDEN;
                 $data = array();
             } else {
-                $lang_code = $this->safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
+                $lang_code = $this->_safeGet($params, 'lang_code', DEFAULT_LANGUAGE);
 
-                $company_id = fn_update_company($params, $id, $lang_code);
+                fn_update_company($params, $id, $lang_code);
 
-                if ($company_id) {
-                    $this->updateCompanySettings($params, $id);
+                $this->_updateCompanySettings($params, $id);
 
-                    $status = Response::STATUS_OK;
-                    $data['store_id'] = $company_id;
-                }
+                $status = Response::STATUS_OK;
+                $data['store_id'] = $id;
             }
-        }
-
-        if (!empty($message)) {
-            $data['message'] = $message;
         }
 
         return array(
@@ -211,9 +195,8 @@ class Stores extends AEntity
         $status = Response::STATUS_BAD_REQUEST;
 
         if (fn_delete_company($id)) {
-            $status = Response::STATUS_NO_CONTENT;
-        } elseif (!fn_notification_exists('extra', 'company_has_orders')) {
-            $status = Response::STATUS_NOT_FOUND;
+            $status = Response::STATUS_OK;
+            $data['message'] = 'Ok';
         }
 
         return array(
@@ -222,24 +205,23 @@ class Stores extends AEntity
         );
     }
 
-    public function privileges()
+    public function priveleges()
     {
-        $privileges = array(
+        $priveleges = array(
             'create' => 'manage_stores',
             'update' => 'manage_stores',
             'delete' => 'manage_stores',
             'index'  => 'view_stores'
         );
 
-        return $privileges;
+        return $priveleges;
     }
 
     public function childEntities()
     {
         return array(
             'products',
-            'categories',
-            'languages',
+            'categories'
         );
     }
 }

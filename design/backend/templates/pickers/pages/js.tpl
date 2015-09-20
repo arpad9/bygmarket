@@ -6,7 +6,7 @@
 
 {if $multiple}
 <tr {if !$clone}id="{$holder}_{$page_id}" {/if}class="cm-js-item{if $clone} cm-clone hidden{/if}">
-    {if $position_field}<td><input type="text" name="{$input_name}[{$page_id}]" value="{math equation="a*b" a=$position b=10}" size="3" class="input-micro"{if $clone} disabled="disabled"{/if} /></td>{/if}
+    {if $position_field}<td><input type="text" name="{$input_name}[{$page_id}]" value="{math equation="a*b" a=$position b=10}" size="3" class="input-text-short"{if $clone} disabled="disabled"{/if} /></td>{/if}
     
     <td><a href="{"pages.update?page_id=`$page_id`"|fn_url}">{$page}</a></td>
 
@@ -16,7 +16,7 @@
             {capture name="tools_list"}
                 <li>{btn type="list" text=__("remove") onclick="Tygh.$.cePicker('delete_js_item', '{$holder}', '{$page_id}', 'a'); return false;"}</li>
             {/capture}
-            {dropdown content=$smarty.capture.tools_list}
+            {dropdown content=$smarty.capture.tools_list class="dropleft"}
         {/if}
         </div>
     </td>

@@ -12,7 +12,6 @@
 * "copyright.txt" FILE PROVIDED WITH THIS DISTRIBUTION PACKAGE.            *
 ****************************************************************************/
 
-use Tygh\Enum\ProductTracking;
 use Tygh\Registry;
 
 if (!defined('BOOTSTRAP')) { die('Access denied'); }
@@ -34,27 +33,27 @@ function fn_get_discussion($object_id, $object_type, $get_posts = false, $params
     $_cache_key = $object_id . '_' . $object_type;
 
     if (empty($cache[$_cache_key])) {
-        $discussion = db_get_row(
+        $cache[$_cache_key] = db_get_row(
             "SELECT thread_id, type, object_type FROM ?:discussion WHERE object_id = ?i AND object_type = ?s ?p",
             $object_id, $object_type, fn_get_discussion_company_condition('?:discussion.company_id')
         );
 
-        if (empty($discussion) && $object_type == 'M') {
+        if (empty($cache[$_cache_key]) && $object_type == 'M') {
             $company_discussion_type = Registry::ifGet('addons.discussion.company_discussion_type', 'D');
             if ($company_discussion_type != 'D') {
-                $discussion = array('object_type' => 'M', 'object_id' => $object_id, 'type' => $company_discussion_type);
+                $cache[$_cache_key] = array('object_type' => 'M', 'object_id' => $object_id, 'type' => $company_discussion_type);
 
                 if (fn_allowed_for('ULTIMATE') && Registry::get('runtime.company_id')) {
-                    $discussion['company_id'] = Registry::get('runtime.company_id');
+                    $cache[$_cache_key]['company_id'] = Registry::get('runtime.company_id');
                 }
 
-                $discussion['thread_id'] = db_query('INSERT INTO ?:discussion ?e', $discussion);
+                $cache[$_cache_key]['thread_id'] = db_query('INSERT INTO ?:discussion ?e', $cache[$_cache_key]);
             }
         }
 
-        if (!empty($discussion) && AREA == 'C' && $object_type == 'M' && Registry::ifGet('addons.discussion.company_only_buyers', 'Y') == 'Y') {
+        if (!empty($cache[$_cache_key]) && AREA == 'C' && $object_type == 'M' && Registry::ifGet('addons.discussion.company_only_buyers', 'Y') == 'Y') {
             if (empty($_SESSION['auth']['user_id'])) {
-                $discussion['disable_adding'] = true;
+                $cache[$_cache_key]['disable_adding'] = true;
             } else {
                 if ($customer_companies === null) {
                     $customer_companies = db_get_hash_single_array(
@@ -63,14 +62,12 @@ function fn_get_discussion($object_id, $object_type, $get_posts = false, $params
                     );
                 }
                 if (empty($customer_companies[$object_id])) {
-                    $discussion['disable_adding'] = true;
+                    $cache[$_cache_key]['disable_adding'] = true;
                 }
             }
         }
 
-        fn_set_hook('get_discussion', $object_id, $object_type, $discussion);
-
-        $cache[$_cache_key] = $discussion;
+        fn_set_hook('get_discussion', $object_id, $object_type, $cache["{$object_id}_{$object_type}"]);
     }
 
     if (!empty($cache[$_cache_key]) && !isset($cache[$_cache_key]['posts']) && $get_posts == true) {
@@ -80,8 +77,6 @@ function fn_get_discussion($object_id, $object_type, $get_posts = false, $params
         $discussion_object_types = fn_get_discussion_objects();
 
         list($cache[$_cache_key]['posts'], $cache[$_cache_key]['search']) = fn_get_discussion_posts($params, Registry::get('addons.discussion.' . $discussion_object_types[$cache[$_cache_key]['object_type']] . '_posts_per_page'));
-
-        $cache[$_cache_key]['average_rating'] = fn_get_average_rating($cache[$_cache_key]);
     }
 
     $saved_post_data = fn_restore_post_data('post_data');
@@ -114,27 +109,19 @@ function fn_get_discussion_posts($params, $items_per_page = 0)
         return array(array(), $params);
     }
 
-    $thread_condition = fn_generate_thread_condition($thread_data);
-
     $join = $fields = '';
 
     if ($thread_data['type'] == 'C' || $thread_data['type'] == 'B') {
         $join .= " LEFT JOIN ?:discussion_messages ON ?:discussion_messages.post_id = ?:discussion_posts.post_id ";
         $fields .= ", ?:discussion_messages.message";
-
-        if ($thread_data['type'] == 'C') {
-            $thread_condition .= " AND ?:discussion_messages.message <> ''";
-        }
     }
 
     if ($thread_data['type'] == 'R' || $thread_data['type'] == 'B') {
         $join .= " LEFT JOIN ?:discussion_rating ON ?:discussion_rating.post_id = ?:discussion_posts.post_id ";
         $fields .= ", ?:discussion_rating.rating_value";
-
-        if ($thread_data['type'] == 'R') {
-            $thread_condition .= " AND ?:discussion_rating.rating_value > 0";
-        }
     }
+
+    $thread_condition = fn_generate_thread_condition($thread_data);
 
     if ($params['avail_only'] == true) {
         $thread_condition .= " AND ?:discussion_posts.status = 'A'";
@@ -146,25 +133,17 @@ function fn_get_discussion_posts($params, $items_per_page = 0)
         $limit = db_quote("LIMIT ?i", $params['limit']);
 
     } elseif (!empty($params['items_per_page'])) {
-        $params['total_items'] = db_get_field("SELECT COUNT(*) FROM ?:discussion_posts $join WHERE $thread_condition");
-        $limit = db_paginate($params['page'], $params['items_per_page'], $params['total_items']);
+        $params['total_items'] = db_get_field("SELECT COUNT(*) FROM ?:discussion_posts WHERE $thread_condition", $params['thread_id']);
+        $limit = db_paginate($params['page'], $params['items_per_page']);
     }
 
-    $order_by = (isset($params['random']) && $params['random'] == 'Y')
-        ? 'RAND()'
-        : '?:discussion_posts.timestamp DESC';
+    $order_by = empty($params['random']) ? '?:discussion_posts.timestamp DESC' : 'RAND()';
 
     $posts = db_get_array(
         "SELECT ?:discussion_posts.* $fields FROM ?:discussion_posts $join "
         . "WHERE $thread_condition ORDER BY ?p $limit",
         $order_by
     );
-
-    foreach ($posts as $k => $post) {
-        if (isset($post['ip_address'])) {
-            $posts[$k]['ip_address'] = fn_ip_from_db($post['ip_address']);
-        }
-    }
 
     return array($posts, $params);
 }
@@ -180,6 +159,8 @@ function fn_generate_thread_condition($thread_data)
             $thread_condition = fn_generate_thread_condition_by_setting('page_share_discussion', $thread_data);
         } elseif ($thread_data['object_type'] == 'E') {
             $thread_condition = fn_generate_thread_condition_by_setting('testimonials_from_all_stores', $thread_data);
+        } elseif ($thread_data['object_type'] == 'N') {
+            $thread_condition = fn_generate_thread_condition_by_setting('news_share_discussion', $thread_data);
         }
     }
 
@@ -228,22 +209,11 @@ function fn_discussion_update_product_post(&$product_data, &$product_id)
     if (empty($product_data['discussion_type'])) {
         return false;
     }
-    if (empty($product_data['company_id'])) {
-        $product_company_id = db_get_field('SELECT company_id FROM ?:products WHERE product_id = ?i', $product_id);
-        if (!empty($product_company_id)) {
-            $product_data['company_id'] = $product_company_id;
-        } else {
-            if (Registry::get('runtime.company_id')) {
-                $product_company_id = $product_data['company_id'] = Registry::get('runtime.company_id');
-            }
-        }
-    }
 
     $discussion = array(
         'object_type' => 'P',
         'object_id' => $product_id,
-        'type' => $product_data['discussion_type'],
-        'company_id' => $product_data['company_id']
+        'type' => $product_data['discussion_type']
     );
 
     fn_update_discussion($discussion);
@@ -300,6 +270,28 @@ function fn_discussion_delete_page(&$page_id)
     return fn_delete_discussion($page_id, 'A');
 }
 
+function fn_discussion_update_news(&$news_data, &$news_id)
+{
+    if (empty($news_data['discussion_type'])) {
+        return false;
+    }
+
+    $discussion = array(
+        'object_type' => 'N',
+        'object_id' => $news_id,
+        'type' => $news_data['discussion_type'],
+        'for_all_companies' => 1
+    );
+
+    fn_update_discussion($discussion);
+}
+
+// FIX-EVENTS
+function fn_discussion_delete_news(&$news_id)
+{
+    return fn_delete_discussion($news_id, 'N');
+}
+
 function fn_discussion_update_event(&$event_data, &$event_id)
 {
     if (empty($event_data['discussion_type'])) {
@@ -353,17 +345,16 @@ function fn_get_discussion_rating($rating_value)
 //
 // Get thread average rating
 //
-function fn_get_average_rating($discussion)
+function fn_get_average_rating($object_id, $object_type)
 {
+
+    $discussion = fn_get_discussion($object_id, $object_type);
+
     if (empty($discussion) || ($discussion['type'] != 'R' && $discussion['type'] != 'B')) {
         return false;
     }
 
-    $rating = db_get_field("SELECT AVG(a.rating_value) as val FROM ?:discussion_rating as a LEFT JOIN ?:discussion_posts as b ON a.post_id = b.post_id WHERE a.thread_id = ?i AND b.status = 'A' AND a.rating_value > ?i", $discussion['thread_id'], 0);
-
-    $rating = number_format($rating, 1);
-
-    return intval($rating) == $rating ? intval($rating) : $rating;
+    return db_get_field("SELECT AVG(a.rating_value) as val FROM ?:discussion_rating as a LEFT JOIN ?:discussion_posts as b ON a.post_id = b.post_id WHERE a.thread_id = ?i and b.status = 'A'", $discussion['thread_id']);
 }
 
 function fn_get_discussion_object_data($object_id, $object_type, $lang_code = CART_LANGUAGE)
@@ -526,10 +517,7 @@ function fn_get_rating_list($object_type, $parent_object_id = '')
         if (Registry::get('settings.General.inventory_tracking') == 'Y' && Registry::get('settings.General.show_out_of_stock_products') == 'N' && AREA == 'C') {
             $join["?:product_options_inventory AS inventory"] =  "inventory.product_id=?:discussion.object_id";
             $join['?:products'] = "?:products.product_id=?:discussion.object_id";
-            $query .= db_quote(
-                " AND IF(?:products.tracking=?s, inventory.amount>0, ?:products.amount>0)",
-                ProductTracking::TRACK_WITH_OPTIONS
-            );
+            $query .= " AND IF(?:products.tracking='O', inventory.amount>0, ?:products.amount>0)";
         }
     }
 
@@ -612,73 +600,25 @@ function fn_update_discussion($data)
     return true;
 }
 
-function fn_discussion_get_products(&$params, &$fields, &$sortings, &$condition, &$join, &$sorting, &$group_by, &$lang_code, &$having)
+function fn_discussion_get_products(&$params, &$fields, &$sortings, &$condition, &$join, &$sorting, &$limit)
 {
     if (!empty($params['rating'])) {
-        $fields[] = 'AVG(?:discussion_rating.rating_value) AS average_rating';
-        $fields[] = '?:discussion.type AS discussion_type';
-        $fields[] = '?:discussion.thread_id AS discussion_thread_id';
-        $join .= db_quote(" LEFT JOIN ?:discussion ON ?:discussion.object_id = products.product_id AND ?:discussion.object_type = 'P'");
+        $fields[] = 'avg(?:discussion_rating.rating_value) AS rating';
+        $join .= db_quote(" INNER JOIN ?:discussion ON ?:discussion.object_id = products.product_id AND ?:discussion.object_type = 'P'");
 
         if (fn_allowed_for('ULTIMATE') && Registry::ifGet('addons.discussion.product_share_discussion', 'N') == 'N' && Registry::get('runtime.company_id')) {
             $join .= " AND ?:discussion.company_id = " . Registry::get('runtime.company_id');
         }
 
-        $join .= db_quote(" LEFT JOIN ?:discussion_posts ON ?:discussion_posts.thread_id = ?:discussion.thread_id AND ?:discussion_posts.status = 'A'");
-        $join .= db_quote(" LEFT JOIN ?:discussion_rating ON ?:discussion.thread_id = ?:discussion_rating.thread_id AND ?:discussion_rating.post_id = ?:discussion_posts.post_id AND ?:discussion_rating.rating_value != 0");
+        $join .= db_quote(" INNER JOIN ?:discussion_rating ON ?:discussion.thread_id=?:discussion_rating.thread_id");
+        $join .= db_quote(" INNER JOIN ?:discussion_posts ON ?:discussion_posts.post_id=?:discussion_rating.post_id AND ?:discussion_posts.status = 'A'");
 
-        $having[] = db_quote("average_rating > 0");
         $params['sort_by'] = 'rating';
         $params['sort_order'] = 'desc';
-        $sortings['rating'] = 'average_rating';
+        $sortings['rating'] = 'rating';
     }
 
     return true;
-}
-
-
-/**
- * Hook "load_products_extra_data" handler.
- * Performs deferred calculation of average rating of products when there is no need in sorting products by rating.
- *
- * @param $extra_fields
- * @param $products
- * @param $product_ids
- * @param $params
- * @param $lang_code
- */
-function fn_discussion_load_products_extra_data(&$extra_fields, $products, $product_ids, $params, $lang_code)
-{
-    if (!empty($params['rating'])) {
-        return;
-    }
-
-    $extra_fields['?:discussion'] = array(
-        'primary_key' => 'product_id',
-        'fields' => array(
-            'product_id' => '?:discussion.object_id',
-            'average_rating' => 'AVG(?:discussion_rating.rating_value)',
-            'discussion_type' => '?:discussion.type',
-            'discussion_thread_id' => '?:discussion.thread_id',
-        ),
-        'join' =>
-            ' LEFT JOIN ?:discussion_posts' .
-            '   ON ?:discussion_posts.thread_id = ?:discussion.thread_id AND ?:discussion_posts.status = "A"'.
-            ' LEFT JOIN ?:discussion_rating' .
-            '   ON ?:discussion.thread_id = ?:discussion_rating.thread_id' .
-            '   AND ?:discussion_rating.post_id = ?:discussion_posts.post_id' .
-            '   AND ?:discussion_rating.rating_value != 0',
-        'condition' => ' AND ?:discussion.object_type = "P"',
-        'group_by' => 'GROUP BY ?:discussion.object_id'
-    );
-
-    // Append company condition
-    if (fn_allowed_for('ULTIMATE')
-        && Registry::ifGet('addons.discussion.product_share_discussion', 'N') == 'N'
-        && Registry::get('runtime.company_id')
-    ) {
-        $extra_fields['?:discussion']['condition'] .= ' AND ?:discussion.company_id = ' . Registry::get('runtime.company_id');
-    }
 }
 
 function fn_discussion_get_categories(&$params, &$join, &$condition, &$fields, &$group_by, &$sortings)
@@ -720,16 +660,14 @@ function fn_discussion_get_pages(&$params, &$join, &$conditions, &$fields, &$gro
 
 function fn_discussion_get_companies(&$params, &$fields, &$sortings, &$condition, &$join, &$auth, &$lang_code, &$group_by)
 {
-    $fields[] = 'AVG(?:discussion_rating.rating_value) AS average_rating';
-    $fields[] = "CONCAT(?:companies.company_id, '_', IF (?:discussion_rating.thread_id, ?:discussion_rating.thread_id, '0')) AS company_thread_ids";
-    $join .= db_quote(" LEFT JOIN ?:discussion ON ?:discussion.object_id = ?:companies.company_id AND ?:discussion.object_type = 'M'");
-    $join .= db_quote(" LEFT JOIN ?:discussion_posts ON ?:discussion_posts.thread_id = ?:discussion.thread_id AND ?:discussion_posts.status = 'A'");
-    $join .= db_quote(" LEFT JOIN ?:discussion_rating ON ?:discussion.thread_id = ?:discussion_rating.thread_id AND ?:discussion_rating.post_id = ?:discussion_posts.post_id");
-    $group_by = 'GROUP BY company_thread_ids';
-
     if (!empty($params['sort_by']) && $params['sort_by'] == 'rating') {
-        $group_by .= ' HAVING average_rating > 0';
-        $sortings['rating'] = 'average_rating';
+        $fields[] = 'avg(?:discussion_rating.rating_value) AS rating';
+        $fields[] = "CONCAT(?:companies.company_id, '_', IF (?:discussion_rating.thread_id, ?:discussion_rating.thread_id, '0')) AS company_thread_ids";
+        $join .= db_quote(" LEFT JOIN ?:discussion ON ?:discussion.object_id = ?:companies.company_id AND ?:discussion.object_type = 'M'");
+        $join .= db_quote(" LEFT JOIN ?:discussion_rating ON ?:discussion.thread_id=?:discussion_rating.thread_id");
+        $join .= db_quote(" LEFT JOIN ?:discussion_posts ON ?:discussion_posts.post_id=?:discussion_rating.post_id AND ?:discussion_posts.status = 'A'");
+        $group_by = 'GROUP BY company_thread_ids';
+        $sortings['rating'] = 'rating';
     }
 }
 
@@ -781,12 +719,8 @@ function fn_update_discussion_posts($posts)
         $threads = db_get_hash_single_array("SELECT post_id, thread_id FROM ?:discussion_posts WHERE post_id IN (?n)", array('post_id', 'thread_id'), array_keys($posts));
         $messages_exist = db_get_fields("SELECT post_id FROM ?:discussion_messages WHERE post_id IN (?n)", array_keys($posts));
         $rating_exist = db_get_fields("SELECT post_id FROM ?:discussion_rating WHERE post_id IN (?n)", array_keys($posts));
-        fn_delete_notification('company_access_denied');
 
         foreach ($posts as $p_id => $data) {
-            if (!empty($data['date'])) {
-                $data['timestamp'] = fn_discussion_parse_datetime($data['date'] . ' ' . $data['time']);
-            }
             db_query("UPDATE ?:discussion_posts SET ?u WHERE post_id = ?i", $data, $p_id);
             if (in_array($p_id, $messages_exist)) {
                 db_query("UPDATE ?:discussion_messages SET ?u WHERE post_id = ?i", $data, $p_id);
@@ -834,79 +768,4 @@ function fn_get_discussion_ratings()
     );
 
     return $rates;
-}
-
-function fn_create_empty_thread($type, $company_id = null)
-{
-    $discussion = array(
-        'type' => $type,
-        'object_type' => 'E',
-        'object_id' => 0,
-    );
-
-    if (is_null($company_id)) {
-        if (fn_allowed_for('ULTIMATE')) {
-            if (!Registry::get('runtime.company_id')) {
-                $discussion['for_all_companies'] = 1;
-            } else {
-                $discussion['company_id'] = Registry::get('runtime.company_id');
-            }
-        }
-    } else {
-        $discussion['company_id'] = $company_id;
-    }
-
-    if (function_exists('fn_update_discussion')) {
-        fn_update_discussion($discussion);
-    }
-
-    return true;
-}
-
-function fn_discussion_parse_datetime($datetime)
-{
-    $timestamp = 0;
-
-    if (!empty($datetime)) {
-        if (is_numeric($datetime)) {
-            return $datetime;
-        }
-
-        list($date, $time) = explode(' ', $datetime);
-
-        $date_parts = explode('/', $date);
-        $date_parts = array_map('intval', $date_parts);
-        if (empty($date_parts[2])) {
-            $date_parts[2] = date('Y');
-        }
-        if (count($date_parts) == 3) {
-            $time = str_replace(':', '', $time);
-            $h = $m = 0;
-            sscanf($time, '%2d%2d', $h, $m);
-            if (Registry::get('settings.Appearance.calendar_date_format') == 'month_first') {
-                $timestamp = mktime($h, $m, 0, $date_parts[0], $date_parts[1], $date_parts[2]);
-            } else {
-                $timestamp = mktime($h, $m, 0, $date_parts[1], $date_parts[0], $date_parts[2]);
-            }
-        } else {
-            $timestamp = TIME;
-        }
-    }
-
-    return !empty($timestamp) ? $timestamp : TIME;
-}
-
-function fn_discussion_update_company(&$company_data, &$company_id, &$lang_code, &$action)
-{
-    if ($action == 'add') {
-        $type = Registry::get('addons.discussion.home_page_testimonials');
-        if ($type != 'D') {
-            fn_create_empty_thread($type, $company_id);
-        }
-    }
-}
-
-function fn_discussion_settings_variants_image_verification_use_for(&$objects)
-{
-    $objects['discussion'] = __('use_for_discussion');
 }

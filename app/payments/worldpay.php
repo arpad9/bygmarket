@@ -13,7 +13,6 @@
 ****************************************************************************/
 
 use Tygh\Session;
-use Tygh\Registry;
 
 $avs_res = array(
     '0' => 'Not Supported',
@@ -35,9 +34,9 @@ if (defined('PAYMENT_NOTIFICATION')) {
 } elseif (!empty($_REQUEST['cartId']) && !empty($_REQUEST['transStatus'])) {
 
     require './init_payment.php';
-    $order_id = (strpos($_REQUEST['cartId'], '_')) ? substr($_REQUEST['cartId'], 0, strpos($_REQUEST['cartId'], '_')) : $_REQUEST['cartId'];
-    fn_payments_set_company_id($order_id);
+
     $pp_response["reason_text"] = '';
+    $order_id = (strpos($_REQUEST['cartId'], '_')) ? substr($_REQUEST['cartId'], 0, strpos($_REQUEST['cartId'], '_')) : $_REQUEST['cartId'];
 
     $payment_id = db_get_field("SELECT ?:orders.payment_id FROM ?:orders WHERE ?:orders.order_id = ?i", $order_id);
     $processor_data = fn_get_payment_method_data($payment_id);
@@ -54,12 +53,9 @@ if (defined('PAYMENT_NOTIFICATION')) {
         $pp_response['reason_text'] .= '; This a TEST Transaction';
     }
 
-    $area = db_get_field("SELECT data FROM ?:order_data WHERE order_id = ?i AND type = 'E'", $order_id);
-    $override = ($area == 'A') ? true : false;
     fn_finish_payment($order_id, $pp_response, false);
+    echo "<head><meta http-equiv='refresh' content='0; url=" . fn_url("payment_notification.notify?payment=worldpay&order_id=$order_id", 'C', 'current') . "'></head><body><wpdisplay item=banner></body>";
 
-    echo "<head><meta http-equiv='refresh' content='0; url=" . fn_url("payment_notification.notify?payment=worldpay&order_id=$order_id", $area, 'current', CART_LANGUAGE, $override) . "'></head><body><wpdisplay item=banner></body>";
-    exit;
 } else {
 
     if (!defined('BOOTSTRAP')) { die('Access denied'); }
@@ -88,14 +84,6 @@ if (defined('PAYMENT_NOTIFICATION')) {
         "MC_$sess_name" => $s_id,
     );
 
-    $order_data = array(
-        'order_id' => $order_id,
-        'type' => 'E',
-        'data' => AREA,
-    );
-    db_query("REPLACE INTO ?:order_data ?e", $order_data);
-
-    $submit_url = ($processor_data['processor_params']['test'] == $mode_test_declined || $processor_data['processor_params']['test'] == $mode_test) ? 'https://secure-test.worldpay.com/wcc/purchase' : 'https://secure.worldpay.com/wcc/purchase';
-    fn_create_payment_form($submit_url, $data, 'World Pay server', false);
+    fn_create_payment_form('https://secure.worldpay.com/wcc/purchase', $data, 'World Pay server', false);
 exit;
 }

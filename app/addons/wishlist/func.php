@@ -49,27 +49,9 @@ function fn_wishlist_user_init(&$auth, &$user_info, &$first_init)
 
 function fn_wishlist_init_user_session_data(&$sess_data, &$user_id)
 {
-    if (AREA == 'C') {
-        if (empty($_SESSION['wishlist'])) {
-            $_SESSION['wishlist'] = array(
-                'products' => array()
-            );
-        }
-        fn_extract_cart_content($sess_data['wishlist'], $user_id, 'W');
-        fn_save_cart_content($_SESSION['wishlist'], $user_id, 'W');
-    }
+    fn_extract_cart_content($sess_data['wishlist'], $user_id, 'W');
 
     return true;
-}
-
-function fn_wishlist_sucess_user_login($udata, $auth)
-{
-    if (AREA == 'C') {
-        if ($cu_id = fn_get_session_data('cu_id')) {
-            fn_clear_cart($cart);
-            fn_save_cart_content($cart, $cu_id, 'W', 'U');
-        }
-    }
 }
 
 function fn_wishlist_pre_add_to_cart(&$product_data, &$cart, &$auth, &$update)

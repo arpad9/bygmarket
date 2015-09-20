@@ -16,7 +16,6 @@ namespace Tygh\Addons;
 
 use Tygh\ExSimpleXmlElement;
 use Tygh\Registry;
-use Tygh\Languages\Languages;
 
 abstract class AXmlScheme
 {
@@ -24,24 +23,6 @@ abstract class AXmlScheme
      * @var ExSimpleXmlElement
      */
     protected $_xml;
-
-    /**
-     * @var available languages
-     */
-    private $languages;
-
-    /**
-     * Gets available languages
-     * @return array languages list
-     */
-    public function getLanguages()
-    {
-        if (empty($this->languages)) {
-            $this->languages = Languages::getAll();
-        }
-
-        return $this->languages;
-    }
 
     /**
      * Returns array of types for addons setting
@@ -207,7 +188,7 @@ abstract class AXmlScheme
     {
         Registry::set('runtime.database.skip_errors', true);
 
-        $languages = $this->getLanguages();
+        $languages = fn_get_translation_languages();
         $queries = $this->getQueries($mode);
 
         $lang_queries = array();
@@ -270,7 +251,7 @@ abstract class AXmlScheme
     private function _executeQuery($query, $addon_path)
     {
         if (isset($query['type']) && (string) $query['type'] == 'file') {
-            db_import_sql_file($addon_path . '/' . (string) $query, 16384, false, 1, true);
+            db_import_sql_file($addon_path . '/' . (string) $query, 16384, false);
         } else {
             db_query((string) $query);
         }
@@ -404,10 +385,6 @@ abstract class AXmlScheme
         if (!empty($langvars) && is_array($langvars)) {
             foreach ($langvars as $langvar) {
                 db_query("DELETE FROM ?:language_values WHERE name = ?s", (string) $langvar['id']);
-
-                if (fn_allowed_for('ULTIMATE')) {
-                    db_query("DELETE FROM ?:ult_language_values WHERE name = ?s", (string) $langvar['id']);
-                }
             }
         }
     }
@@ -415,89 +392,38 @@ abstract class AXmlScheme
     /**
      * Install all langvars from addon xml scheme
      */
-    public function getLanguageValues($only_originals = false)
+    public function installLanguageValues()
     {
-        $language_variables = array();
         $node = $this->_getLangVarsSectionName();
         $default_lang = $this->getDefaultLanguage();
-
-        $original_langvars = (array) $this->_xml->xpath($node . "/item[@lang='en']");
-        $_original = array();
-
-        foreach ($original_langvars as $_v) {
-            $_original[(string) $_v['id']] = (string) $_v;
-        }
 
         $default_langvars = $this->_xml->xpath($node . "/item[@lang='$default_lang']");
         if (!empty($default_langvars)) {
             // Fill all languages by default laguage values
-            foreach ($this->getLanguages() as $lang_code => $_v) {
+            foreach (fn_get_translation_languages() as $lang_code => $_v) {
                 // Install default
                 foreach ($default_langvars as $lang_var) {
-                    $original = isset($_original[(string) $lang_var['id']]) ? $_original[(string) $lang_var['id']] : (string) $lang_var;
-
-                    if ($only_originals) {
-                        $language_variables[] = array(
-                            'msgctxt' => 'Languages:' . (string) $lang_var['id'],
-                            'msgid' => $original,
-                        );
-
-                    } else {
-                        $language_variables[] = array(
-                            'lang_code' => $lang_code,
-                            'name' => (string) $lang_var['id'],
-                            'value' => (string) $lang_var,
-                        );
-                    }
+                    db_query("REPLACE INTO ?:language_values ?e", array(
+                        'lang_code' => $lang_code,
+                        'name' => (string) $lang_var['id'],
+                        'value' => (string) $lang_var
+                    ));
                 }
 
                 if ($lang_code != $default_lang) {
                     $current_langvars = $this->_xml->xpath($node . "/item[@lang='$lang_code']");
                     if (!empty($current_langvars)) {
                         foreach ($current_langvars as $lang_var) {
-                            $original = isset($_original[(string) $lang_var['id']]) ? $_original[(string) $lang_var['id']] : (string) $lang_var;
-
-                            if ($only_originals) {
-                                $language_variables[] = array(
-                                    'msgctxt' => 'Languages:' . (string) $lang_var['id'],
-                                    'msgid' => $original,
-                                );
-
-                            } else {
-                                $language_variables[] = array(
-                                    'lang_code' => $lang_code,
-                                    'name' => (string) $lang_var['id'],
-                                    'value' => (string) $lang_var,
-                                );
-                            }
+                            db_query("REPLACE INTO ?:language_values ?e", array(
+                                'lang_code' => $lang_code,
+                                'name' => (string) $lang_var['id'],
+                                'value' => (string) $lang_var
+                            ));
                         }
                     }
                 }
             }
         }
-
-        return $language_variables;
-    }
-
-    /**
-     * Gets original values for language-dependence name/description
-     *
-     * @return array Original values
-     */
-    public function getOriginals()
-    {
-        return false;
-    }
-
-    /**
-     * Gets path to PO translation for specified language
-     *
-     * @param  string      $lang_code 2-letters language identifier
-     * @return string|bool Path to file if exists of false otherwise
-     */
-    public function getPoPath($lang_code)
-    {
-        return false;
     }
 
     /**
@@ -554,7 +480,7 @@ abstract class AXmlScheme
         );
 
         // Fill all languages by default laguage values
-        foreach ($this->getLanguages() as $lang_code => $_v) {
+        foreach (fn_get_translation_languages() as $lang_code => $_v) {
             $value = $xml_node->xpath("translations/item[(not(@for) or @for='name') and @lang='$lang_code']");
             $tooltip = $xml_node->xpath("translations/item[@for='tooltip' and @lang='$lang_code']");
             $description = $xml_node->xpath("translations/item[@for='description' and @lang='$lang_code']");
@@ -589,9 +515,7 @@ abstract class AXmlScheme
                 'translations' => $this->_getTranslations($xml_node),
                 'default_value' => isset($xml_node->default_value) ? (string) $xml_node->default_value : '',
                 'variants' => $this->_getVariants($xml_node),
-                'handler' => isset($xml_node->handler) ? (string) $xml_node->handler : '',
-                'parent_id' => isset($xml_node['parent_id']) ? (string) $xml_node['parent_id'] : '',
-                'original' => '',
+                'handler' => isset($xml_node->handler) ? (string) $xml_node->handler : ''
             );
 
             return $setting;
@@ -614,7 +538,6 @@ abstract class AXmlScheme
                     'id' => (string) $variant['id'],
                     'name' => (string) $variant->name,
                     'translations' => $this->_getTranslations($variant),
-                    'original' => '',
                 );
             }
         }

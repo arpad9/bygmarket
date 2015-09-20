@@ -2,16 +2,6 @@
     {assign var="disable_input" value=true}
 {/if}
 
-{if $parent_item}
-<script type="text/javascript">
-(function($, _) {
-    $('#{$parent_item_html_id}').on('click', function() {
-        $('#container_{$html_id}').toggle();
-    });
-}(Tygh.$, Tygh));
-</script>
-{/if}
-
 {* Settings without label*}
 {if $item.type == "O"}
     <div>{$item.info nofilter}</div>
@@ -30,7 +20,7 @@
         <fieldset>
 {elseif $item.type != "D" && $item.type != "B"}
     {* Settings with label*}
-    <div id="container_{$html_id}" class="control-group{if $class} {$class}{/if} {$item.section_name} {if $parent_item && $parent_item.value != "Y"}hidden{/if}">
+    <div class="control-group{if $class} {$class}{/if} {$item.section_name}">
         <label for="{$html_id}" class="control-label {if $highlight && $item.name|in_array:$highlight}highlight{/if}" >{$item.description nofilter}{if $item.tooltip}{include file="common/tooltip.tpl" tooltip=$item.tooltip}{/if}:
         </label>
 
@@ -54,8 +44,6 @@
                     <label for="variant_{$item.name}_{$k}" class="radio">
                         <input type="radio" name="{$html_name}" value="{$k}" {if $item.value == $k}checked="checked"{/if} id="variant_{$item.name}_{$k}" {if $disable_input}disabled="disabled"{/if}> {$v}
                     </label>
-                {foreachelse}
-                    {__("no_items")}
                 {/foreach}
                 </div>
             {elseif $item.type == "M"}
@@ -64,7 +52,7 @@
                 <option value="{$k}" {if $item.value.$k == "Y"}selected="selected"{/if}>{$v}</option>
                 {/foreach}
                 </select>
-                <div class="muted">{__("multiple_selectbox_notice")}</div>
+                {__("multiple_selectbox_notice")}
             {elseif $item.type == "N"}
                 <div class="select-field" id="{$html_id}">
                     <input type="hidden" name="{$html_name}" value="N" {if $disable_input}disabled="disabled"{/if} />
@@ -73,8 +61,6 @@
                             <input type="checkbox" name="{$html_name}[]" id="variant_{$item.name}_{$k}" value="{$k}" {if $item.value.$k == "Y"}checked="checked"{/if} {if $disable_input}disabled="disabled"{/if}>
                             {$v}
                         </label>
-                    {foreachelse}
-                        {__("no_items")}
                     {/foreach}
                 </div>
             {elseif $item.type == "X"}
@@ -102,8 +88,6 @@
                             <input type="checkbox" class="cm-combo-checkbox" id="variant_{$item.name}_{$k}" name="{$html_name}[]" value="{$k}" {if $item.value.$k == "Y"}checked="checked"{/if} {if $disable_input}disabled="disabled"{/if}>
                             {$v}
                         </label>
-                    {foreachelse}
-                        {__("no_items")}
                     {/foreach}
                 </div>
             {elseif $item.type == "K"}
@@ -125,7 +109,7 @@
         {include file="common/selectable_box.tpl" addon=$section name=$html_name id=$html_id fields=$item.variants selected_fields=$item.value}
     </div>
 {/if}
-{if $total == $index && $smarty.capture.header_first == 'true'}
+{if $total-1 == $index && $smarty.capture.header_first == 'true'}
     </fieldset>
         </div>
 {/if}

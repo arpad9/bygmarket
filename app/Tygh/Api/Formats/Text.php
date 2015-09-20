@@ -21,7 +21,7 @@ use Tygh\Api\IFormat;
  */
 class Text implements IFormat
 {
-    protected $mime_types = array(
+    private $mime_types = array(
         'text/plain'
     );
 

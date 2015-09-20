@@ -7,7 +7,7 @@
 {assign var="c_url" value=$config.current_url|fn_query_remove:"sort_by":"sort_order"}
 
 {if $carts_list}
-<table class="table table-sort table-middle">
+<table width="100%" class="table table-sort table-middle">
 <thead>
 <tr>
     <th width="1%">
@@ -20,28 +20,27 @@
     <th width="10%"><a class="cm-ajax{if $search.sort_by == "date"} sort-link-{$search.sort_order_rev}{/if}" href="{"`$c_url`&sort_by=date&sort_order=`$search.sort_order_rev`"|fn_url}" data-ca-target-id="pagination_contents">{__("date")}</a></th>
     <th width="10%">{__("cart_content")}</th>
     <th width="10%">{__("ip")}</th>
-    <th width="10%">{__("order_id")}</th>
     {hook name="cart:items_list_header"}
     {/hook}
 </tr>
 </thead>
 {foreach from=$carts_list item="customer"}
 <tr>
-    <td>
+    <td >
         {if "ULTIMATE"|fn_allowed_for}
-            <input type="checkbox" name="user_ids[{$customer.company_id}][]" value="{$customer.user_id}" class="cm-item" /></td>
+            <input type="checkbox" name="user_ids[{$customer.company_id}][]" value="{$customer.user_id}" class=" cm-item" /></td>
         {/if}
         {if !"ULTIMATE"|fn_allowed_for}
             <input type="checkbox" name="user_ids[]" value="{$customer.user_id}" class="cm-item" /></td>
         {/if}
     <td>
         {if "ULTIMATE"|fn_allowed_for}
-            <span alt="{__("expand_sublist_of_items")}" title="{__("expand_sublist_of_items")}" id="on_user_{$customer.user_id}_{$customer.company_id}" class="cm-combination-carts" onclick="Tygh.$.ceAjax('request', '{"cart.cart_list?user_id=`$customer.user_id`&c_company_id=`$customer.company_id`"|fn_url nofilter}', {$ldelim}result_ids: 'cart_products_{$customer.user_id}_{$customer.company_id},wishlist_products_{$customer.user_id}_{$customer.company_id}', caching: true{$rdelim});"><span class="exicon-expand"></span></span>
+            <span alt="{__("expand_sublist_of_items")}" title="{__("expand_sublist_of_items")}" id="on_user_{$customer.user_id}_{$customer.company_id}" class="cm-combination-carts" onclick="Tygh.$.ceAjax('request', '{"cart.cart_list?user_id=`$customer.user_id`&c_company_id=`$customer.company_id`"|fn_url:'A':'rel' nofilter}', {$ldelim}result_ids: 'cart_products_{$customer.user_id}_{$customer.company_id},wishlist_products_{$customer.user_id}_{$customer.company_id}', caching: true{$rdelim});"><span class="exicon-expand"></span></span>
             <span alt="{__("collapse_sublist_of_items")}" title="{__("collapse_sublist_of_items")}" id="off_user_{$customer.user_id}_{$customer.company_id}" class="hidden cm-combination-carts"><span class="exicon-collapse"></span></span>
         {/if}
 
         {if !"ULTIMATE"|fn_allowed_for}
-            <span alt="{__("expand_sublist_of_items")}" title="{__("expand_sublist_of_items")}" id="on_user_{$customer.user_id}" class="cm-combination-carts" onclick="Tygh.$.ceAjax('request', '{"cart.cart_list?user_id=`$customer.user_id`"|fn_url nofilter}', {$ldelim}result_ids: 'cart_products_{$customer.user_id},wishlist_products_{$customer.user_id}', caching: true{$rdelim});"><span class="exicon-expand"></span></span>
+            <span alt="{__("expand_sublist_of_items")}" title="{__("expand_sublist_of_items")}" id="on_user_{$customer.user_id}" class="cm-combination-carts" onclick="Tygh.$.ceAjax('request', '{"cart.cart_list?user_id=`$customer.user_id`"|fn_url:'A':'rel' nofilter}', {$ldelim}result_ids: 'cart_products_{$customer.user_id},wishlist_products_{$customer.user_id}', caching: true{$rdelim});"><span class="exicon-expand"></span></span>
             <span alt="{__("collapse_sublist_of_items")}" title="{__("collapse_sublist_of_items")}" id="off_user_{$customer.user_id}" class="hidden cm-combination-carts"><span class="exicon-collapse"></span></span>
         {/if}
 
@@ -53,7 +52,6 @@
     </td>
     <td>{$customer.cart_products|default:"0"} {__("product_s")}</td>
     <td>{$customer.ip_address}</td>
-    <td><a href="{"orders.details?order_id=`$customer.order_id`"|fn_url}">{$customer.order_id}</a></td>
     {hook name="cart:items_list"}
     {/hook}
 </tr>
@@ -133,9 +131,9 @@
                 <h4>{__("billing_address")}</h4>
                 <dl>
                     <dt>{__("first_name")}</dt>
-                    <dd>{$user_data.b_firstname}</dd>            
+                    <dd>{$user_data.b_first_name}</dd>            
                     <dt>{__("last_name")}</dt>
-                    <dd>{$user_data.b_lastname}</dd>
+                    <dd>{$user_data.b_last_name}</dd>
                     <dt>{__("address")}</dt>
                     <dd>{$user_data.b_address}</dd>
                     <dt>{__("address_2")}</dt>
@@ -153,9 +151,9 @@
                 <h4>{__("shipping_address")}</h4>
                 <dl>
                     <dt>{__("first_name")}</dt>
-                    <dd>{$user_data.s_firstname}</dd>            
+                    <dd>{$user_data.s_first_name}</dd>            
                     <dt>{__("last_name")}</dt>
-                    <dd>{$user_data.s_lastname}</dd>
+                    <dd>{$user_data.s_last_name}</dd>
                     <dt>{__("address")}</dt>
                     <dd>{$user_data.s_address}</dd>
                     <dt>{__("address_2")}</dt>
