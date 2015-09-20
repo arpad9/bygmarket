@@ -1,0 +1,31 @@
+[0.00000] [Notice] Language Deutsch will be ignored
+[0.00038] [Notice] Language Slovenščina will be ignored
+[0.00603] [Warning] The specified database is not empty. Overwrite?Yes 
+[0.13081] [Notice] Creating database scheme
+[0.70665] [Notice] Importing data
+[1.13015] [Notice] Creating demo
+[2.01916] [Notice] Installing additional language en
+[2.35978] [Notice] Installing additional language en
+[4.27309] [Notice] Installing additional language da
+[4.62444] [Notice] Installing additional language da
+[6.40708] [Missing language pack] Unable to find: /var/www/bygmarket.com/install/database/lang/de/de.po (skipped)
+[6.41681] [Notice] Installing additional language es
+[6.79316] [Notice] Installing additional language es
+[8.65133] [Notice] Installing additional language fr
+[9.00375] [Notice] Installing additional language fr
+[10.87435] [Notice] Installing additional language el
+[11.23096] [Notice] Installing additional language el
+[13.10727] [Notice] Installing additional language it
+[13.47714] [Notice] Installing additional language it
+[15.39698] [Notice] Installing additional language nl
+[15.76445] [Notice] Installing additional language nl
+[17.66717] [Notice] Installing additional language ro
+[18.03828] [Notice] Installing additional language ro
+[19.94917] [Notice] Installing additional language ru
+[20.32948] [Notice] Installing additional language ru
+[22.23300] [Notice] Installing additional language bg
+[22.60092] [Notice] Installing additional language bg
+[24.48153] [Notice] Installing additional language no
+[24.84948] [Notice] Installing additional language no
+[26.73214] [Missing language pack] Unable to find: /var/www/bygmarket.com/install/database/lang/sl/sl.po (skipped)
+[56.77125] [Notice] Successfully finished

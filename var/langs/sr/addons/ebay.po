@@ -1,0 +1,514 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: cs-cart-latest\n"
+"Language-Team: Serbian (Cyrillic)\n"
+"Language: sr_SP\n"
+"Plural-Forms: nplurals=4; plural=(n==1 ? 3 : n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"X-Generator: crowdin.com\n"
+"X-Crowdin-Project: cs-cart-latest\n"
+"X-Crowdin-Language: sr\n"
+"X-Crowdin-File: /addons/ebay.po\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Last-Translator: cscart <zeke@cs-cart.com>\n"
+"PO-Revision-Date: 2015-08-20 09:03-0400\n"
+
+msgctxt "Addons::name::ebay"
+msgid "eBay synchronization"
+msgstr "eBay sinhronizacija"
+
+msgctxt "Addons::description::ebay"
+msgid "Synchronizes products and orders with an eBay account."
+msgstr "Sinhronizacija proizvoda i porudžbina sa eBay nalogom."
+
+msgctxt "Languages::paypal_required_and_selected"
+msgid "For the selected eBay category PayPal payment method is required. It is selected automatically."
+msgstr "Za izabranu eBay kategoriju potreban je PayPal način plaćanja. To je automatski podešeno."
+
+msgctxt "Languages::wait_for_shippings_cached"
+msgid "Wait for shippings cached. Mean time to 3 minutes"
+msgstr "Keširanje podataka o isporuci u toku. Može potrajati i do 3 minuta"
+
+msgctxt "Languages::ebay_duration"
+msgid "Listing duration"
+msgstr "Trajanje spiska"
+
+msgctxt "Languages::list_products_on"
+msgid "List products on"
+msgstr "Prikaz spiska na"
+
+msgctxt "Languages::private_listing"
+msgid "Private listing"
+msgstr "Privatni spisak"
+
+msgctxt "Languages::use_as_default"
+msgid "Use as default"
+msgstr "Koristi kao podrazumevano"
+
+msgctxt "Languages::ebay_root_category"
+msgid "eBay Root category"
+msgstr "eBay početna kategorija"
+
+msgctxt "Languages::ebay_category"
+msgid "eBay Category"
+msgstr "eBay Kategorija"
+
+msgctxt "Languages::ebay_root_sec_category"
+msgid "eBay Secondary root category"
+msgstr "eBay sekundarna početna kategorija"
+
+msgctxt "Languages::ebay_sec_category"
+msgid "eBay Secondary category"
+msgstr "eBay sekundarna kategorija"
+
+msgctxt "Languages::quantity_to_sell"
+msgid "Quantity to sell"
+msgstr "Količina za prodaju"
+
+msgctxt "Languages::just_one"
+msgid "Just one"
+msgstr "Samo jedan"
+
+msgctxt "Languages::more_than_one"
+msgid "More than one"
+msgstr "Više od jedan"
+
+msgctxt "Languages::use_main_image"
+msgid "Export product images"
+msgstr "Izvezi slike proizvoda"
+
+msgctxt "Languages::selling_method"
+msgid "Selling method"
+msgstr "Način prodaje"
+
+msgctxt "Languages::online_auction"
+msgid "Online auction"
+msgstr "Online aukcija"
+
+msgctxt "Languages::buy_it_now"
+msgid "Buy it now"
+msgstr "Kupi sada"
+
+msgctxt "Languages::ebay_requests"
+msgid "eBay requests"
+msgstr "eBay zahtevi"
+
+msgctxt "Languages::log_type_ebay_requests"
+msgid "eBay requests"
+msgstr "eBay zahtevi"
+
+msgctxt "Languages::errors"
+msgid "Errors"
+msgstr "Greške"
+
+msgctxt "Languages::log_action_all"
+msgid "All"
+msgstr "Sve"
+
+msgctxt "Languages::error_code"
+msgid "Error code"
+msgstr "Greška broj"
+
+msgctxt "Languages::editing_ebay_template"
+msgid "Editing eBay template"
+msgstr "Izmena pomoću eBay šeme"
+
+msgctxt "Languages::new_ebay_template"
+msgid "New eBay template"
+msgstr "Nova eBay šema"
+
+msgctxt "Languages::ebay_templates"
+msgid "eBay templates"
+msgstr "eBay šeme"
+
+msgctxt "Languages::ebay_registration_notice"
+msgid "In order to get this information you need first to register your Developer account <a href=\"https://developer.ebay.com/join/\">here</a>.<br /><br />After you registered, you will receive the \"DevID\", \"AppID\" and \"CertID\" keys. So you have to generate the special \"Token\" in order to use this API. In order to generate the \"Token\", please click the \"Get a User Token\" link at the bottom of \"My account\" page (tools box) or follow <a href=\"https://developer.ebay.com/DevZone/account/tokens/default.aspx\">this link</a>.<br /><br />Please complete this form with the given credentials."
+msgstr "Da dobijete ovu informaciju morate registrovati Developer nalog <a href=\"https://developer.ebay.com/join/\">ovde</a>.<br /><br />Nakon registracije, primićete \"DevID\", \"AppID\" i \"CertID\" ključeve. Morate generisati specijalan \"Token\" kako biste koristili ovaj API. Da generišete \"Token\", kliknite na \"Get a User Token\" link na dnu \"My account\" stranice (tools box) ili pratite <a href=\"https://developer.ebay.com/DevZone/account/tokens/default.aspx\">ovaj link</a>.<br /><br />Molimo, popunite ovaj formular datim podacima."
+
+msgctxt "Languages::add_ebay_template"
+msgid "Add eBay template"
+msgstr "Dodaj eBay šemu"
+
+msgctxt "Languages::shipping_type"
+msgid "Shipping type"
+msgstr "Način isporuke"
+
+msgctxt "Languages::flat"
+msgid "Flat"
+msgstr "Direktno"
+
+msgctxt "Languages::calculated"
+msgid "Calculated"
+msgstr "Izračunato"
+
+msgctxt "Languages::domestic_shipping_service"
+msgid "Domestic shipping service"
+msgstr "Domaća kurisrska služba"
+
+msgctxt "Languages::international_shipping_service"
+msgid "International shipping service"
+msgstr "Međunarodna kurirska služba"
+
+msgctxt "Languages::dispatch_days"
+msgid "Dispatch days"
+msgstr "Dani za otpremanje"
+
+msgctxt "Languages::ebay_payment_methods"
+msgid "eBay payment methods"
+msgstr "eBay načini plaćanja"
+
+msgctxt "Languages::paypal_email"
+msgid "PayPal email"
+msgstr "PayPal e-mail"
+
+msgctxt "Languages::ebay_category_condition"
+msgid "eBay category condition"
+msgstr "uslov eBay kategorije"
+
+msgctxt "Languages::export_to_ebay"
+msgid "Export to eBay"
+msgstr "Izvezi na eBay"
+
+msgctxt "Languages::ebay_template"
+msgid "eBay template"
+msgstr "eBay template"
+
+msgctxt "Languages::ebay_orders"
+msgid "eBay orders"
+msgstr "eBay porudžbine"
+
+msgctxt "Languages::get_ebay_orders"
+msgid "Get eBay orders"
+msgstr "Preuzmi eBay porudžbine"
+
+msgctxt "Languages::ebay"
+msgid "eBay"
+msgstr "eBay"
+
+msgctxt "Languages::wait_for_categories_cached"
+msgid "Please wait for the categories to cache, it will take about 3 minutes. Before that, the Shippings, Payments, and Return Policy tabs will remain empty."
+msgstr "Pričekajte da se kategorije cache-uju, to će trajati oko 3 minuta. Pre toga, slanje, plaćanje i reklamacije će ostati prazni."
+
+msgctxt "Languages::Some_parameters_is_missing"
+msgid "Some parameters is missing. Please check ebay add-on settings"
+msgstr "Nedostaju neki parametri. Proverite podešavanja ebay dodataka"
+
+msgctxt "Languages::ebay_export_error"
+msgid "An error occurred during product export."
+msgstr "Nastupila greška tokom izvoza proizvoda."
+
+msgctxt "Languages::ebay_success_products_notice"
+msgid "Products have been successfully exported."
+msgstr "Proizvodi uspešno izvezeni."
+
+msgctxt "Languages::ebay_success_orders_notice"
+msgid "Orders have been successfully imported."
+msgstr "Porudžbine uspešno uvezene."
+
+msgctxt "Languages::ebay_failed_orders_notice"
+msgid "An error occurred during order import."
+msgstr "Nastupila greška tokom uvoza porudžbina."
+
+msgctxt "Languages::exporting_products_to_ebay"
+msgid "Exporting products to eBay."
+msgstr "Izvozim proizvode na eBay."
+
+msgctxt "Languages::ebay_default_template_not_found"
+msgid "Default template for the [company_name] was not found."
+msgstr "Podrazumevana šema za [company_name] nije pronađena."
+
+msgctxt "Languages::delete_this_template"
+msgid "Delete this template"
+msgstr "Obriši ovu temu"
+
+msgctxt "Languages::test_version"
+msgid "You're using a test version of this module, the validity of which ended on December 7th, 2013. After the end of the test period, the functions of the module will not be available. You can purchase the full version via a <a href=\"http://www.cs-cart.com/ebay-synchronization.html\">HelpDesk</a>"
+msgstr "Koristite probnu verziju ovog modula, čija je validnost istekla 7. decembra 2013. Nakon probnog perioda, funkcije modula neće biti dostupne. Možete kupiti punu verziju preko <a href=\"http://www.cs-cart.com/ebay-synchronization.html\">Korisničke podrške</a>"
+
+msgctxt "Languages::list_product_on_tooltip"
+msgid "Choose the region of the ebay auction for which your site will work"
+msgstr "Izaberite region ebay aukcije za koji će Vaš sajt raditi"
+
+msgctxt "Languages::use_as_default_tooltip"
+msgid "Use this template for products with no template defined"
+msgstr "Koristite ovaj obrazac za proizvode sa nedefinisanim obrascima"
+
+msgctxt "Languages::ebay_root_category_tooltip"
+msgid "The product root category at eBay"
+msgstr "Početna kategorija proizvoda na eBay"
+
+msgctxt "Languages::ebay_secondary_root_category_tooltip"
+msgid "The additional product root category at ebay"
+msgstr "Dodatna početna kategorija proizvoda na ebay"
+
+msgctxt "Languages::ebay_second_category_tooltip"
+msgid "The additional product subcategory at ebay"
+msgstr "Dodatna potkategorija proizvoda na ebay"
+
+msgctxt "Languages::shipping_type_tooltip"
+msgid "Choose whether to use calculated or flat shipping type. Calculated - shipping will be calculated according to the customers ZIP address, the weight of the package, and the type of shipping services you offer; Flat - shipping rate will be fixed"
+msgstr "Izaberite da li koristite fiksnu naknadu ili naknadu po daljini isporuke. Naknada po daljini - troškovi isporuke će se računati u skladu sa udaljenošću do mesta isporuke, težinom pošiljke, i kurirskom službom koju koristite; Fiksna naknada - troškovi isporuke su nepromenljivi"
+
+msgctxt "Languages::domestic_shipping_service_tooltip"
+msgid "Choose the shipping service that will be used for delivering products in the domestic region"
+msgstr "Izaberite kurirsku službu koja će se koristiti da dostavu proizvoda u zemlji"
+
+msgctxt "Languages::international_shipping_service_tooltip"
+msgid "Choose the shipping service that will be used for delivering products worldwide"
+msgstr "Izaberite kurirsku službu koja će se koristiti za dostavu proizvoda u inostranstvo"
+
+msgctxt "Languages::dispatch_days_tooltip"
+msgid "The period of product delivery to a customer  (in days)"
+msgstr "Vreme isporuke do kupca (u danima)"
+
+msgctxt "Languages::ebay_payment_method_tooltip"
+msgid "Payment method(s), available for a template"
+msgstr "Način(i) plaćanja, dostupno za šemu"
+
+msgctxt "Languages::paypal_email_tooltip"
+msgid "Define login of the PayPal account"
+msgstr "Definiši prijavu PayPal naloga"
+
+msgctxt "Languages::eBay_category_condition_tooltip"
+msgid "Define login of the PayPal account"
+msgstr "Definiši prijavu PayPal naloga"
+
+msgctxt "Languages::free_shipping_tooltip"
+msgid "Choose, if you want free shipping to be applied to products in a template"
+msgstr "Izaberite ukoliko želite besplatnu dostavu primenjenu na proizvode u šemi"
+
+msgctxt "Languages::shipping_cost_tooltip"
+msgid "Fixed shipping price for one item (if shipping type is Flat). The Shipping and handling setting at eBay."
+msgstr "Nepromenljivi troškovi isporuke za jedan proizvod (ukoliko je izabrana fiksna naknada). Podešavanja o načinu isporuke na eBay."
+
+msgctxt "Languages::shipping_cost_additional_tooltip"
+msgid "Shipping price for each additional item in an order (the Each additional item setting at eBay)"
+msgstr "Troškovi isporuke za svaki dodatni proizvod u porudžbini (podeđavanja na eBay)"
+
+msgctxt "Languages::shipping_cost_additional"
+msgid "Shipping cost additional"
+msgstr "Dodatni troškovi isporuke"
+
+msgctxt "Languages::text_ult_ebay_template_store_field_tooltip"
+msgid "The storefront, for which a template will be created"
+msgstr "Prodavnica za koju će šema biti kreirana"
+
+msgctxt "Languages::shipping_cost_cannot_be_null"
+msgid "Shipping cost must be non-zero"
+msgstr "Troškovi isporuke moraju biti veći od nula"
+
+msgctxt "Languages::ebay_title"
+msgid "eBay product title"
+msgstr "eBay naziv proizvoda"
+
+msgctxt "Languages::ebay_title_tooltip"
+msgid "eBay title the title of the product to be used at eBay"
+msgstr "eBay naziv naziv proizvoda koji će se koristiti naeBay"
+
+msgctxt "Languages::ebay_description"
+msgid "eBay product description"
+msgstr "eBay opis proizvoda"
+
+msgctxt "Languages::ebay_description_tooltip"
+msgid "eBay description the description of the product to be used at eBay"
+msgstr "eBay opis opis proizvoda koji će se koristiti na eBay"
+
+msgctxt "Languages::override"
+msgid "Override title and description"
+msgstr "Alternativni naslov i opis"
+
+msgctxt "Languages::override_tooltip"
+msgid "Choose, if you want the original product name and description to be replaced with that, specified in the ebay product title and the ebay product description fields"
+msgstr "Izaberite ako želite da originalni naziv proizvoda i opis budu zamenjeni, precizirani u ebay poljima za naziv proizvoda i opis"
+
+msgctxt "Languages::return_policy"
+msgid "Return Policy"
+msgstr "Uslovi vraćanja"
+
+msgctxt "Languages::return_policy_tooltip"
+msgid "Choose whether returns are allowed or not for products grouped under this template"
+msgstr "Izaberite da li je moguće vraćanje robe ili ne za proizvode koji su grupisani ovom šemom"
+
+msgctxt "Languages::returns_accepted"
+msgid "Returns Accepted"
+msgstr "Vraćanje dozvoljeno"
+
+msgctxt "Languages::no_returns_accepted"
+msgid "No returns accepted"
+msgstr "Vraćanje nije dozvoljeno"
+
+msgctxt "Languages::contact_time"
+msgid "After receiving the item, your buyer should contact you within"
+msgstr "Nakon prijema proizvoda, kupac treba da Vas kontaktira u roku od"
+
+msgctxt "Languages::contact_time_tooltip"
+msgid "Choose the period of time within that the buyer must contact you to approve the purchase reception"
+msgstr "Izaberite vremenski period u kojem Vas kupac mora kontaktirati da odobri prijem pošiljke"
+
+msgctxt "Languages::refund_method"
+msgid "Refund will be given as"
+msgstr "Refundiranje će biti dato kao"
+
+msgctxt "Languages::refund_method_tooltip"
+msgid "Choose the action that will replace the return, if it is not allowed"
+msgstr "Izaberite akciju koja će zameniti vraćanje, ukoliko povraćaj nije dozvoljen"
+
+msgctxt "Languages::money_back"
+msgid "Money Back"
+msgstr "Povraćaj novca"
+
+msgctxt "Languages::money_back_or_replace"
+msgid "Money back or replacement (buyer's choice)"
+msgstr "Povraćaj novca ili zamena (po izboru kupca)"
+
+msgctxt "Languages::money_back_or_exchange"
+msgid "Money back or exchange (buyer's choice)"
+msgstr "Povraćaj novca ili razmena (po izboru kupca)"
+
+msgctxt "Languages::cost_paid_by"
+msgid "Return shipping will be paid by"
+msgstr "Troškovi povraćaja će biti na teret"
+
+msgctxt "Languages::cost_paid_by_tooltip"
+msgid "Choose, who will pay for the shipping of the return purchase - the seller or the buyer"
+msgstr "Izaberite ko će platiti troškove transporta vraćenih proizvoda - prodavac ili kupac"
+
+msgctxt "Languages::seller"
+msgid "Seller"
+msgstr "Prodavac"
+
+msgctxt "Languages::buyer"
+msgid "Buyer"
+msgstr "Kupac"
+
+msgctxt "Languages::return_policy_descr"
+msgid "Policy description"
+msgstr "Opis uslova"
+
+msgctxt "Languages::return_policy_descr_tooltip"
+msgid "Write the detailed description of your return policy here"
+msgstr "Napišite detaljne uslove vraćanja kupljenih proizvoda"
+
+msgctxt "Languages::large_envelope"
+msgid "Large envelope"
+msgstr "Veliki koverat"
+
+msgctxt "Languages::large_package"
+msgid "Large package"
+msgstr "Veliki paket"
+
+msgctxt "Languages::package_type_tooltip"
+msgid "If you don't know your package type, select the \"Large package\" option. To ensure the most accurate cost, you will be asked to enter exact package dimensions."
+msgstr "Ako ne znate vrstu paketa, izaberite opciju \"Veliki paket\". Da osigurate najtačnije troškove, zamolićemo Vas da unesete tačne dimenzije paketa."
+
+msgctxt "Languages::product_out_of_weight"
+msgid "Products with the [ids] id were not exported because their weight equals zero."
+msgstr "Proizvodi sa [ids] id nisu izvezeni jer je njihova težina nula."
+
+msgctxt "Languages::exported_to_ebay"
+msgid "Exported to eBay"
+msgstr "Izvezeno na eBay"
+
+msgctxt "Languages::revised_after_the_latest_export"
+msgid "Revised after the latest export"
+msgstr "Revidirano nakon poslednjeg izvoza"
+
+msgctxt "Languages::exporting_images_to_ebay"
+msgid "Exporting images to Ebay"
+msgstr "Izvozim slike na eBay"
+
+msgctxt "Languages::ebay_package"
+msgid "Package/thick envelope"
+msgstr "Paket/debela koverta"
+
+msgctxt "Languages::ebay_cant_remove_template"
+msgid "You don't have permissions to remove some of the templates as they belong to another owner."
+msgstr "Nemate dozvole da uklonite neke od šema jer pripadaju drugom korisniku."
+
+msgctxt "Languages::ebay_addon_license_invalid"
+msgid "The current licence number is invalid. The \"Ebay\" add-on was disabled. To re-activate it, please check the add-on license number."
+msgstr "Trenutni licencni broj nije važeći. \"eBay\" dodatak je onemogućen. Za reaktivaciju, proverite licencni broj dodatka."
+
+msgctxt "Languages::ebay_commercial_using_title"
+msgid "Activate add-on"
+msgstr "Aktiviraj dodatak"
+
+msgctxt "Languages::ebay_commercial_using_text"
+msgid "You have installed a commercial add-on. To activate it, enter an add-on license number on the add-on settings page."
+msgstr "Instalirali ste komercijalni dodatak. Da ga aktivirate, morate uneti licencni broj dodatka u njegovim podešavanjima."
+
+msgctxt "Languages::ebay_empty_license_number"
+msgid "The add-on license number is empty."
+msgstr "Polje za unos licencnog broja je prazno."
+
+msgctxt "Languages::ebay_templates_not_found"
+msgid "Ebay templates not found"
+msgstr "eBay šeme nisu pronađene"
+
+msgctxt "SettingsSections::ebay::general"
+msgid "General"
+msgstr "Opšte"
+
+msgctxt "SettingsOptions::ebay::ebay_license_number"
+msgid "The eBay add-on license number"
+msgstr "Licencni broj eBay dodatka"
+
+msgctxt "SettingsOptions::ebay::notice"
+msgid "Notice"
+msgstr "Beleška"
+
+msgctxt "SettingsOptions::ebay::dev_id"
+msgid "eBay DevID"
+msgstr "eBay DevID"
+
+msgctxt "SettingsOptions::ebay::app_id"
+msgid "eBay AppID"
+msgstr "eBay AppID"
+
+msgctxt "SettingsOptions::ebay::cert_id"
+msgid "eBay CertID"
+msgstr "eBay CertID"
+
+msgctxt "SettingsOptions::ebay::token"
+msgid "eBay User Token"
+msgstr "eBay korisnički Token"
+
+msgctxt "SettingsOptions::ebay::listing_mode"
+msgid "Sandbox / Production"
+msgstr "Pakovanje / Proizvodnja"
+
+msgctxt "SettingsOptions::ebay::site_id"
+msgid "Default site"
+msgstr "Podrazumevani sajt"
+
+msgctxt "SettingsOptions::ebay::ebay_timestamp"
+msgid "eBay timestamp"
+msgstr "eBay vremenski pečat"
+
+msgctxt "SettingsVariants::ebay::listing_mode::S"
+msgid "Sandbox"
+msgstr "Pakovanje"
+
+msgctxt "SettingsVariants::ebay::listing_mode::P"
+msgid "Production"
+msgstr "Proizvodnja"
+
+msgctxt "Languages::wait_for_shippings_cached"
+msgid "Please wait, shipping information is loaded."
+msgstr "Sačekajte, prenosim podatke o isporuci."
+
+msgctxt "SettingsSections::ebay::license_info"
+msgid "License info"
+msgstr "Informacije o licenci"
+
+msgctxt "Languages::ebay_license_notice"
+msgid "This add-on requires a license to work. You can purchase an eBay add-on license on <a href=\"[ebay_license_url]\" target=\"_blank\">eBay Synchronization</a> page."
+msgstr "Ovaj dodatak zahteva dozvolu da bi radio. Možete da kupite licencu za eBay dodatak na stranici <a href=\"[ebay_license_url]\" target=\"_blank\"> </a>."
+
+msgctxt "Languages::privileges.view_ebay_templates"
+msgid "View eBay templates"
+msgstr "Prikaz eBay obrazaca"
+
+msgctxt "Languages::privileges.manage_ebay_templates"
+msgid "Manage eBay templates"
+msgstr "Urešivanje eBay obrazaca"
+

@@ -1,0 +1,86 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: cs-cart-latest\n"
+"Language-Team: Dutch\n"
+"Language: nl_NL\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: crowdin.com\n"
+"X-Crowdin-Project: cs-cart-latest\n"
+"X-Crowdin-Language: nl\n"
+"X-Crowdin-File: /addons/paypal.po\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Last-Translator: cscart <zeke@cs-cart.com>\n"
+"PO-Revision-Date: 2015-09-01 07:02-0400\n"
+
+msgctxt "Addons::name::paypal"
+msgid "PayPal payments"
+msgstr "PayPal betalingen"
+
+msgctxt "Addons::description::paypal"
+msgid "Lets you accept payments via PayPal Express Checkout, PayPal Pro, PayPal Standard, PayPal Advanced, and PayPal Payflow Pro."
+msgstr "Betalingen accepteren via PayPal Express Checkout, PayPal Pro, PayPal Standard, PayPal Advanced, en PayPal Payflow Pro."
+
+msgctxt "SettingsOptions::paypal::override_customer_info"
+msgid "Override customer info"
+msgstr "Klantgegevens overschrijven"
+
+msgctxt "SettingsOptions::paypal::test_mode"
+msgid "Test mode"
+msgstr "Testmodus"
+
+msgctxt "SettingsSections::paypal::general"
+msgid "General"
+msgstr "Algemeen"
+
+msgctxt "Languages::protection_eligibility"
+msgid "Protection eligibility"
+msgstr "In aanmerking komen voor bescherming"
+
+msgctxt "SettingsOptions::paypal::paypal_ipn_settings"
+msgid "Instant payment notification settings"
+msgstr "Directe betaal notificatie instellingen"
+
+msgctxt "SettingsOptions::paypal::paypal_status_map"
+msgid "PayPal order status conversion map"
+msgstr "PayPal bestelstatus conversie kaart"
+
+msgctxt "SettingsOptions::paypal::paypal_logo_uploader"
+msgid "PayPal logo settings"
+msgstr "PayPal logo instellingen"
+
+msgctxt "Languages::text_paypal_surcharge"
+msgid "<b>Note:</b> According to the PayPal <a href='https://www.paypal.com/webapps/mpp/ua/useragreement-full#4' target='_blank'>policy</a> (4.6), surcharges are not supported."
+msgstr "<b>Opmerking:</b> Volgens het PayPal <a href='https://www.paypal.com/webapps/mpp/ua/useragreement-full#4' target='_blank'> beleid</a> (4.6), worden toeslagen niet ondersteund."
+
+msgctxt "Languages::txn_id"
+msgid "Transaction ID"
+msgstr "Transactie ID"
+
+msgctxt "Languages::paypal_logo"
+msgid "PayPal logo"
+msgstr "PayPal logo"
+
+msgctxt "Languages::ttc_paypal_logo"
+msgid "Use a valid graphics format, such as .gif, .jpg, or .png. Limit the image to 190 pixels wide by 60 pixels high. PayPal crops images that are larger. PayPal places your logo image at the top of the cart review area."
+msgstr "Gebruik een geldige grafische indeling, zoals .gif, .jpg of .png. Beperk de afbeelding tot 190 pixels breed en 60 pixels hoog. Afbeeldingen die groter zijn worden door PayPal bijgesneden. PayPal plaatst de afbeelding van het logo aan de bovenkant van de winkelwagen."
+
+msgctxt "Languages::ipn_errors"
+msgid "IPN errors"
+msgstr "IPN fouten"
+
+msgctxt "Languages::pp_product_count_is_incorrect"
+msgid "Number of paid items is different than the number of items in the order"
+msgstr "Aantal betaalde items verschilt met het aantal items in de bestelling"
+
+msgctxt "Languages::pp_currency_is_incorrect"
+msgid "Currency used for the payment is different than the order currency."
+msgstr "De gebruikte valuta bij de betaling verschilt met de valuta van de bestelling."
+
+msgctxt "Languages::pp_total_is_incorrect"
+msgid "Payment total is different than the order total."
+msgstr "Totaalbedrag verschilt met het totaal van de bestelling."
+
+msgctxt "Languages::pp_mode"
+msgid "Paypal mode"
+msgstr "PayPal modus"
+

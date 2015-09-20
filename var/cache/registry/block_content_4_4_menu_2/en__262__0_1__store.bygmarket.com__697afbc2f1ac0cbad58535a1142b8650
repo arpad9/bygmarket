@@ -1,0 +1,26 @@
+a:2:{s:4:"data";a:1:{s:7:"content";s:1218:"    <div class=" top-quick-links ty-float-right">
+        
+    
+
+        <div class="ty-text-links-wrapper">
+        <span id="sw_text_links_4" class="ty-text-links-btn cm-combination visible-phone">
+            <i class="ty-icon-short-list"></i>
+            <i class="ty-icon-down-micro ty-text-links-btn__arrow"></i>
+        </span>
+    
+        <ul id="text_links_4" class="ty-text-links cm-popup-box ty-text-links_show_inline">
+                            <li class="ty-text-links__item ty-level-0">
+                    <a class="ty-text-links__a" href="http://store.bygmarket.com/blog/">Our blog</a> 
+                                    </li>
+                            <li class="ty-text-links__item ty-level-0">
+                    <a class="ty-text-links__a" href="http://store.bygmarket.com/gift-certificates/">Gift certificates</a> 
+                                    </li>
+                            <li class="ty-text-links__item ty-level-0">
+                    <a class="ty-text-links__a" href="http://store.bygmarket.com/index.php?dispatch=product_features.view_all&amp;filter_id=10">Our brands</a> 
+                                    </li>
+                    </ul>
+
+        </div>
+    
+    </div>
+";}s:6:"expiry";i:0;}

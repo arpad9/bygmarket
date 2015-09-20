@@ -1,0 +1,19 @@
+a:2:{s:4:"data";a:1:{s:7:"content";s:694:"    <div class="ty-mainbox-simple-container clearfix ty-homepage-vendors">
+                    <h2 class="ty-mainbox-simple-title">
+                
+                                    Vendors
+                                
+
+            </h2>
+                <div class="ty-mainbox-simple-body">
+    <ul>
+            <li><a href="http://store.bygmarket.com/acme-corp/">ACME Corp</a></li>
+            <li><a href="http://store.bygmarket.com/simtech/">Simtech</a></li>
+        </ul>
+    
+    <div class="ty-homepage-vendors__devider">
+        <a class="ty-btn ty-btn__tertiary" href="http://store.bygmarket.com/index.php?dispatch=companies.catalog">All vendors</a>
+    </div>
+</div>
+    </div>
+";}s:6:"expiry";i:0;}

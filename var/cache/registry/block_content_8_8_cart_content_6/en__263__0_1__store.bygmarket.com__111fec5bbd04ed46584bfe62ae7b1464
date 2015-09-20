@@ -1,0 +1,39 @@
+a:2:{s:4:"data";a:1:{s:7:"content";s:1772:"    <div class=" top-cart-content ty-float-right">
+        
+    <div class="ty-dropdown-box" id="cart_status_8">
+         <div id="sw_dropdown_8" class="ty-dropdown-box__title cm-combination">
+        <a href="http://store.bygmarket.com/cart/">
+            
+                                    <i class="ty-minicart__icon ty-icon-basket empty"></i>
+                    <span class="ty-minicart-title empty-cart ty-hand">Cart is empty</span>
+                    <i class="ty-icon-down-micro"></i>
+                            
+
+        </a>
+        </div>
+        <div id="dropdown_8" class="cm-popup-box ty-dropdown-box__content hidden">
+            
+                <div class="cm-cart-content cm-cart-content-thumb cm-cart-content-delete">
+                        <div class="ty-cart-items">
+                                                            <div class="ty-cart-items__empty ty-center">Cart is empty</div>
+                                                    </div>
+
+                                                <div class="cm-cart-buttons ty-cart-content__buttons buttons-container hidden">
+                            <div class="ty-float-left">
+                                <a href="http://store.bygmarket.com/cart/" rel="nofollow" class="ty-btn ty-btn__secondary">View cart</a>
+                            </div>
+                                                        <div class="ty-float-right">
+                                <a href="http://store.bygmarket.com/checkout/" rel="nofollow" class="ty-btn ty-btn__primary">Checkout</a>
+                            </div>
+                                                    </div>
+                        
+                </div>
+            
+
+        </div>
+    <!--cart_status_8--></div>
+
+
+
+    </div>
+";}s:6:"expiry";i:0;}

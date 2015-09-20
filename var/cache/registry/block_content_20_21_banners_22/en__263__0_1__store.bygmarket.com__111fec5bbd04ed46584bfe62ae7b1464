@@ -1,0 +1,28 @@
+a:2:{s:4:"data";a:2:{s:10:"javascript";s:600:"<script type="text/javascript">
+(function(_, $) {
+    $.ceEvent('on', 'ce.commoninit', function(context) {
+        var slider = context.find('#banner_slider_21');
+        if (slider.length) {
+            slider.owlCarousel({
+                direction: 'ltr',
+                items: 1,
+                singleItem : true,
+                slideSpeed: 400,
+                autoPlay: '7000',
+                stopOnHover: true,
+                                                    pagination: true
+                                                            });
+        }
+    });
+}(Tygh, Tygh.$));
+</script>";s:7:"content";s:678:"    <div class=" homepage-banners">
+        
+    <div id="banner_slider_21" class="banners owl-carousel">
+                    <div class="ty-banner__image-item">
+                                    <a class="banner__link" href="http://store.bygmarket.com/electronics/computers/tablets/nokia-n1-pad-7.9-quad-core-64bit-2.3ghz-2gb-32gb-android-5.0/" >                        <img class="ty-pict  ty-banner__image  "  id="det_img_1585147227"  src="http://store.bygmarket.com/images/promo/1/nokian1.png?t=1441800589" alt="" title=""  />
+                    </a>                            </div>
+            </div>
+
+<!-- Inline script moved to the bottom of the page -->
+    </div>
+";}s:6:"expiry";i:0;}

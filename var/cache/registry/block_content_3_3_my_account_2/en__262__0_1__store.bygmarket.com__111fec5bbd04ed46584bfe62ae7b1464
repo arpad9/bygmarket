@@ -1,0 +1,96 @@
+a:2:{s:4:"data";a:1:{s:7:"content";s:5490:"        <div class="ty-dropdown-box  top-my-account ty-float-right">
+        <div id="sw_dropdown_3" class="ty-dropdown-box__title cm-combination unlogged">
+            
+                                <a class="ty-account-info__title" href="http://store.bygmarket.com/profiles-update/">
+        <i class="ty-icon-user"></i>&nbsp;
+        <span class="ty-account-info__title-txt" >My Account</span>
+        <i class="ty-icon-down-micro ty-account-info__user-arrow"></i>
+    </a>
+
+                        
+
+        </div>
+        <div id="dropdown_3" class="cm-popup-box ty-dropdown-box__content hidden">
+            
+
+<div id="account_info_3">
+        <ul class="ty-account-info">
+        
+                        <li class="ty-account-info__item ty-dropdown-box__item"><a class="ty-account-info__a underlined" href="http://store.bygmarket.com/orders/" rel="nofollow">Orders</a></li>
+                        <li class="ty-account-info__item ty-dropdown-box__item"><a class="ty-account-info__a underlined" href="http://store.bygmarket.com/compare/" rel="nofollow">Comparison list</a></li>
+        
+<li class="ty-account-info__item ty-dropdown-box__item"><a class="ty-account-info__a" href="http://store.bygmarket.com/wishlist/" rel="nofollow">Wish list</a></li>
+
+                    <li class="ty-account-info__item ty-dropdown-box__item"><a class="ty-account-info__a underlined" href="http://store.bygmarket.com/index.php?dispatch=companies.apply_for_vendor&amp;return_previous_url=index.php%3Fdispatch%3Dcategories.view%26category_id%3D250" rel="nofollow">Apply for a vendor account</a></li>
+            </ul>
+
+            <div class="ty-account-info__orders updates-wrapper track-orders" id="track_orders_block_3">
+            <form action="http://store.bygmarket.com/" method="get" class="cm-ajax cm-ajax-full-render" name="track_order_quick">
+                <input type="hidden" name="result_ids" value="track_orders_block_*" />
+                <input type="hidden" name="return_url" value="index.php?dispatch=categories.view&amp;category_id=250" />
+
+                <div class="ty-account-info__orders-txt">Track my order(s)</div>
+
+                <div class="ty-account-info__orders-input ty-control-group ty-input-append">
+                    <label for="track_order_item3" class="cm-required hidden">Track my order(s)</label>
+                    <input type="text" size="20" class="ty-input-text cm-hint" id="track_order_item3" name="track_data" value="Order ID/Email" />
+                    <button title="Go" class="ty-btn-go" type="submit"><i class="ty-btn-go__icon ty-icon-right-dir"></i></button>
+<input type="hidden" name="dispatch" value="orders.track_request" />
+                    
+                </div>
+            </form>
+        <!--track_orders_block_3--></div>
+    
+    <div class="ty-account-info__buttons buttons-container">
+                    <a href="http://store.bygmarket.com/login/?return_url=index.php%3Fdispatch%3Dcategories.view%26category_id%3D250"  data-ca-target-id="login_block3" class="cm-dialog-opener cm-dialog-auto-size ty-btn ty-btn__secondary" rel="nofollow">Sign in</a><a href="http://store.bygmarket.com/profiles-add/" rel="nofollow" class="ty-btn ty-btn__primary">Register</a>
+                            <div  id="login_block3" class="hidden" title="Sign in">
+                    <div class="ty-login-popup">
+                        
+
+        <form name="popup3_form" action="http://store.bygmarket.com/" method="post">
+    <input type="hidden" name="return_url" value="index.php?dispatch=categories.view&amp;category_id=250" />
+    <input type="hidden" name="redirect_url" value="index.php?dispatch=categories.view&amp;category_id=250" />
+
+                <div class="ty-control-group">
+            <label for="login_popup3" class="ty-login__filed-label ty-control-group__label cm-required cm-trim cm-email">Email</label>
+            <input type="text" id="login_popup3" name="user_login" size="30" value="" class="ty-login__input cm-focus" />
+        </div>
+
+        <div class="ty-control-group ty-password-forgot">
+            <label for="psw_popup3" class="ty-login__filed-label ty-control-group__label ty-password-forgot__label cm-required">Password</label><a href="http://store.bygmarket.com/index.php?dispatch=auth.recover_password" class="ty-password-forgot__a"  tabindex="5">Forgot your password?</a>
+            <input type="password" id="psw_popup3" name="password" size="30" value="" class="ty-login__input" maxlength="32" />
+        </div>
+
+                    <div class="ty-login-reglink ty-center">
+                <a class="ty-login-reglink__a" href="http://store.bygmarket.com/profiles-add/" rel="nofollow">Register for a new account</a>
+            </div>
+        
+        
+
+        
+        
+            <div class="buttons-container clearfix">
+                <div class="ty-float-right">
+                        
+ 
+    <button  class="ty-btn__login ty-btn__secondary ty-btn" type="submit" name="dispatch[auth.login]" >Sign in</button>
+
+
+                </div>
+                <div class="ty-login__remember-me">
+                    <label for="remember_me_popup3" class="ty-login__remember-me-label"><input class="checkbox" type="checkbox" name="remember_me" id="remember_me_popup3" value="Y" />Remember me</label>
+                </div>
+            </div>
+        
+
+    </form>
+
+
+                    </div>
+                </div>
+                        </div>
+<!--account_info_3--></div>
+
+        </div>
+    </div>
+";}s:6:"expiry";i:0;}

@@ -1,0 +1,291 @@
+a:2:{s:4:"data";a:2:{s:10:"javascript";s:2167:"<script type="text/javascript">
+(function(_, $) {
+    $.ceEvent('on', 'ce.commoninit', function(context) {
+        var elm = context.find('#scroll_list_25');
+
+        $('.ty-float-left:contains(.ty-scroller-list),.ty-float-right:contains(.ty-scroller-list)').css('width', '100%');
+
+        var item = 7,
+            // default setting of carousel
+            itemsDesktop = 4,
+            itemsDesktopSmall = 3;
+            itemsTablet = 2;
+
+        if (item > 3) {
+            itemsDesktop = item;
+            itemsDesktopSmall = item - 1;
+            itemsTablet = item - 2;
+        } else if (item == 1) {
+            itemsDesktop = itemsDesktopSmall = itemsTablet = 1;
+        } else {
+            itemsDesktop = item;
+            itemsDesktopSmall = itemsTablet = item - 1;
+        }
+
+        var desktop = [1199, itemsDesktop],
+            desktopSmall = [979, itemsDesktopSmall],
+            tablet = [768, itemsTablet],
+            mobile = [479, 1];
+
+                function outsideNav () {
+            if(this.options.items >= this.itemsAmount){
+                $("#owl_outside_nav_25").hide();
+            } else {
+                $("#owl_outside_nav_25").show();
+            }
+        }
+        
+        if (elm.length) {
+            elm.owlCarousel({
+                direction: 'ltr',
+                items: item,
+                itemsDesktop: desktop,
+                itemsDesktopSmall: desktopSmall,
+                itemsTablet: tablet,
+                itemsMobile: mobile,
+                                scrollPerPage: true,
+                                                autoPlay: false,
+                                lazyLoad: true,
+                slideSpeed: 400,
+                stopOnHover: true,
+                                pagination: false,
+                            afterInit: outsideNav,
+                afterUpdate : outsideNav
+            });
+
+              $('#owl_prev_25000').click(function(){
+                elm.trigger('owl.prev');
+              });
+              $('#owl_next_25000').click(function(){
+                elm.trigger('owl.next');
+              });
+
+            
+        }
+    });
+}(Tygh, Tygh.$));
+</script>";s:7:"content";s:17002:"    <div class="ty-mainbox-simple-container clearfix homepage-our-brands">
+                    <h2 class="ty-mainbox-simple-title">
+                
+                                    Our brands
+                                
+
+            </h2>
+                <div class="ty-mainbox-simple-body">
+    <div class="owl-theme ty-owl-controls">
+        <div class="owl-controls clickable owl-controls-outside" id="owl_outside_nav_25">
+            <div class="owl-buttons">
+                <div id="owl_prev_25000" class="owl-prev"><i class="ty-icon-left-open-thin"></i></div>
+                <div id="owl_next_25000" class="owl-next"><i class="ty-icon-right-open-thin"></i></div>
+            </div>
+        </div>
+    </div>
+
+<div id="scroll_list_25" class="owl-carousel">
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/abbey-road-studios/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/79085903.jpg?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/acer/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/250px-Acer_2011.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/adidas/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Adidas_Logo.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/aiko/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/aiko_safe_t.gif?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/apple/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Apple_logo_black.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/arc-system-works/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Arc_system_works.jpg?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/asus/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/200px-ASUS_Logo.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/camelback/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/CamelBak_Logo.jpg?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/capcom/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/220px-Capcom_logo.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/casio/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Casio_logo.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/cleveland/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Clevelandgolf_logo.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/cobra/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/cobra-logo.jpg?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/concord-records/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Concordjazzlogo.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/creative/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Creative_Technology_logo.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/d-link/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/250px-D-Link.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/entertainment-one-ltd/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Entertainment_One_logo.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/garmin/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/225px-Garmin_logo.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/gopro/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/gopro-logo-whitebgd.jpg?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/hewlett-packard/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/150px-HP_logo_2012.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/htc/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/200px-Htc_new_logo.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/intel/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Intel-logo.jpg?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/kenwood/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/175px-Company-Logo-of-Kenwood001.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/koss/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/koss_logo.jpg?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/lg/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/LG_Logo.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/montblanc/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Montblanc_logo.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/motorola/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/250px-Motorola.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/namco/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/230px-Namco_logo.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/namco-bandai-games/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Namco_Bandai_Games_Logo.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/nike/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/200px-Logo_NIKE.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/nikon/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Nikon_logo.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/nokia/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Nokia_wordmark.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/panasonic/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Panasonic_logo_(Blue).svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/pioneer/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/230px-Pioneer_logo.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/quartet-manufacturing/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Quartet_Logo_jpg.jpg?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/rhino/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Rhinologo_whiteonwhite.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/roadrunner-records/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/225px-Roadrunner_Records_Logo.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/samsung/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Samsung_Logo.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/sandisk/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/SanDisk_Logo_2007.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/sony/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Sony_logo.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/swingline/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Swingline_Logo.jpg?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/tissot/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Tissot_Logo.svg.png?t=1442595985" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/tomtom/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/190px-TomTom.svg.png?t=1442595986" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/toshiba/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/200px-Toshiba_logo.svg.png?t=1442595986" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/tp-link/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/TP-Link_logo.jpg?t=1442595986" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/universal-music-group/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Universal_Music_Group.svg.png?t=1442595986" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/warner-bros./"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/200px-Warner_Bros.svg.png?t=1442595986" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/warner-home-video/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/200px-Warner_Bros.svg.png?t=1442595986" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/wilson-jones/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/logo_wilsonjones.gif?t=1442595986" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/wilson-staff/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/Wilson_Staff_Logo.jpg?t=1442595986" alt="" title=""  /></a>
+            </div>
+                
+            <div class="ty-center">
+                <a href="http://store.bygmarket.com/yamaha/"><img class="ty-pict  ty-grayscale lazyOwl "    data-src="http://store.bygmarket.com/images/thumbnails/75/75/feature_variant/1/200px-YamahaCorp.svg.png?t=1442595986" alt="" title=""  /></a>
+            </div>
+    </div>
+
+<!-- Inline script moved to the bottom of the page -->
+
+</div>
+    </div>
+";}s:6:"expiry";i:0;}

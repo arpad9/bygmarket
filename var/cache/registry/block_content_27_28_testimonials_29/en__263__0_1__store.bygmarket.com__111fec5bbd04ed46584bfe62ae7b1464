@@ -1,0 +1,152 @@
+a:2:{s:4:"data";a:2:{s:10:"javascript";s:1828:"<script type="text/javascript">
+(function(_, $) {
+    $.ceEvent('on', 'ce.commoninit', function(context) {
+        var elm = context.find('#scroll_list_27');
+
+        var item = 2,
+            // default setting of carousel
+            itemsDesktop = 3,
+            itemsDesktopSmall = 3;
+            itemsTablet = 2;
+
+        if (item > 3) {
+            itemsDesktop = item;
+            itemsDesktopSmall = item - 1;
+            itemsTablet = item - 2;
+        } else if (item == 1) {
+            itemsDesktop = itemsDesktopSmall = itemsTablet = 1;
+        } else {
+            itemsDesktop = item;
+            itemsDesktopSmall = itemsTablet = item - 1;
+        }
+
+                function outsideNav () {
+            if(this.options.items >= this.itemsAmount){
+                $("#owl_outside_nav_27").hide();
+            } else {
+                $("#owl_outside_nav_27").show();
+            }
+        }
+        
+        if (elm.length) {
+            elm.owlCarousel({
+                direction: 'ltr',
+                items: item,
+                itemsDesktop: [1199, itemsDesktop],
+                itemsDesktopSmall: [979, itemsDesktopSmall],
+                itemsTablet: [768, itemsTablet],
+                itemsMobile: [479, 1],
+                                                autoPlay: false,
+                                slideSpeed: 400,
+                stopOnHover: true,
+                                pagination: false,
+                            afterInit: outsideNav,
+                afterUpdate : outsideNav
+            });
+
+              $('#owl_prev_27000').click(function(){
+                elm.trigger('owl.prev');
+              });
+              $('#owl_next_27000').click(function(){
+                elm.trigger('owl.next');
+              });
+
+            
+        }
+    });
+}(Tygh, Tygh.$));
+</script>";s:7:"content";s:3782:"    <div class="ty-mainbox-simple-container clearfix">
+                    <h2 class="ty-mainbox-simple-title">
+                
+                                    Reviews
+                                
+
+            </h2>
+                <div class="ty-mainbox-simple-body">
+
+
+
+    <div class="owl-theme ty-owl-controls">
+        <div class="owl-controls clickable owl-controls-outside" id="owl_outside_nav_27">
+            <div class="owl-buttons">
+                <div id="owl_prev_27000" class="owl-prev"><i class="ty-icon-left-open-thin"></i></div>
+                <div id="owl_next_27000" class="owl-next"><i class="ty-icon-right-open-thin"></i></div>
+            </div>
+        </div>
+    </div>
+
+<div class="ty-mb-l">
+    <div class="ty-scroller-discussion-list">
+        <div id="scroll_list_27" class="owl-carousel ty-scroller-list">
+
+                    <div class="ty-discussion-post__content ty-scroller-discussion-list__item">
+                
+                <a href="http://store.bygmarket.com/index.php?dispatch=discussion.view&amp;thread_id=26&amp;post_id=18#post_18">
+                    <div class="ty-discussion-post " id="post_18">
+
+                                                <div class="ty-discussion-post__message">You guys have the BEST customer service known to man!!! I have always been impressed with how...</div>
+                        
+                        <span class="ty-caret-bottom"><span class="ty-caret-outer"></span><span class="ty-caret-inner"></span></span>
+                    
+                    </div>
+                </a>
+
+                <span class="ty-discussion-post__author">Alex</span>
+                <span class="ty-discussion-post__date">11/08/2013</span>
+                                    <div class="clearfix ty-discussion-post__rating">
+                        <span class="ty-nowrap ty-stars">
+    
+            <i class="ty-stars__icon ty-icon-star"></i>
+            <i class="ty-stars__icon ty-icon-star"></i>
+            <i class="ty-stars__icon ty-icon-star"></i>
+            <i class="ty-stars__icon ty-icon-star"></i>
+    
+    
+            <i class="ty-stars__icon ty-icon-star-empty"></i>
+    
+    </span>
+                    </div>
+                                
+
+            </div>
+                    <div class="ty-discussion-post__content ty-scroller-discussion-list__item">
+                
+                <a href="http://store.bygmarket.com/index.php?dispatch=discussion.view&amp;thread_id=26&amp;post_id=19#post_19">
+                    <div class="ty-discussion-post  ty-discussion-post_even" id="post_19">
+
+                                                <div class="ty-discussion-post__message">You're the best! Thank you most graciously and appreciatively!</div>
+                        
+                        <span class="ty-caret-bottom"><span class="ty-caret-outer"></span><span class="ty-caret-inner"></span></span>
+                    
+                    </div>
+                </a>
+
+                <span class="ty-discussion-post__author">Michael</span>
+                <span class="ty-discussion-post__date">11/08/2013</span>
+                                    <div class="clearfix ty-discussion-post__rating">
+                        <span class="ty-nowrap ty-stars">
+    
+            <i class="ty-stars__icon ty-icon-star"></i>
+            <i class="ty-stars__icon ty-icon-star"></i>
+            <i class="ty-stars__icon ty-icon-star"></i>
+            <i class="ty-stars__icon ty-icon-star"></i>
+            <i class="ty-stars__icon ty-icon-star"></i>
+    
+    
+    
+    </span>
+                    </div>
+                                
+
+            </div>
+        
+        </div>
+    </div>
+</div>
+
+
+<!-- Inline script moved to the bottom of the page -->
+
+</div>
+    </div>
+";}s:6:"expiry";i:0;}

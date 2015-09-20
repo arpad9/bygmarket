@@ -1,0 +1,442 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: cs-cart-latest\n"
+"Language-Team: Dutch\n"
+"Language: nl_NL\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: crowdin.com\n"
+"X-Crowdin-Project: cs-cart-latest\n"
+"X-Crowdin-Language: nl\n"
+"X-Crowdin-File: /addons/store_import.po\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Last-Translator: cscart <zeke@cs-cart.com>\n"
+"PO-Revision-Date: 2015-09-01 07:02-0400\n"
+
+msgctxt "Addons::name::store_import"
+msgid "Store Import"
+msgstr "Winkel importeren"
+
+msgctxt "Addons::description::store_import"
+msgid "Lets you import data from any existing version of CS-Cart from 2.2.4 (except for Community edition) into the current version."
+msgstr "Hiermee kunnen  gegevens van een bestaande CS-Cart webwinkel (vanaf versie 2.2.4, en met uitzondering van de community editie) geïmporteerd worden naar de huidige versie."
+
+msgctxt "Languages::store_import.full_path_installation_directory"
+msgid "Full path to the store installation directory"
+msgstr "Volledige pad naar de installatie-map van de webwinkel"
+
+msgctxt "Languages::store_import.start_new_store_import"
+msgid "Start new store import"
+msgstr "Met het importeren van een nieuwe webwinkel starten"
+
+msgctxt "Languages::store_import.first_step"
+msgid "Select store"
+msgstr "Kies een webwinkel"
+
+msgctxt "Languages::store_import.second_step"
+msgid "Validate and import"
+msgstr "Valideren en importeren"
+
+msgctxt "Languages::store_import.cannot_connect_to_database_server"
+msgid "Cannot connect to the database server"
+msgstr "Connectie maken met de database server is mislukt"
+
+msgctxt "Languages::store_import.check_company_count_failed"
+msgid "Cannot start actualizing data due to Storefront/Vendor changes"
+msgstr "Als gevolg van wijzigingen in de webwinkel kan niet worden gestart met het actualiseren van de gegevens"
+
+msgctxt "Languages::store_import.completed"
+msgid "<p>The store import is complete!</p>"
+msgstr "<p>Het importeren is voltooid!</p>"
+
+msgctxt "Languages::store_import.completed_text_ult"
+msgid "<p>In order to go live, you should perform the following steps:</p><ul><li>Overwrite your existing store folder with the new one.</li><li>Set the correct values for the following variables: http_host, http_path, https_host, https_path, customer_index, admin_index, vendor_index.</li><li>Set the correct Storefront URL in the Administration->Stores section.</li></ul><p>To start another store import, click <b>Start new store import.</b></p>"
+msgstr "<p>Om de webwinkel live te zetten, moeten de volgende stappen worden ondernomen:</p><ul><li>Overschrijf de bestaande map van uw installatie met de nieuwe.</li><li>Stel de juiste waarden in voor de volgende variabelen: http_host, http_path, https_host, https_path, customer_index, admin_index, vendor_index.</li><li>Stel de juiste Webwinkel URL in het menu : Administratie ->Winkels.</li></ul><p>Om te beginnen met het importeren van een nieuwe webwinkel, klik op <b>Met het importeren van een nieuwe webwinkel starten</b></p>"
+
+msgctxt "Languages::store_import.completed_text_mve"
+msgid "<p>In order to go live, you should perform the following steps:</p><ul><li>Overwrite your existing store folder with the new one.</li><li>Set the correct values for the following variables: http_host, http_path, https_host, https_path, customer_index, admin_index, vendor_index.</li><p>To start another store import, click <b>Start new store import.</b></p>"
+msgstr "<p>Om de webwinkel live te zetten, moeten de volgende stappen worden ondernomen:</p><ul><li>Overschrijf de bestaande map van uw installatie met de nieuwe.</li><li>Stel de juiste waarden in voor de volgende variabelen: http_host, http_path, https_host, https_path, customer_index, admin_index, vendor_index.</li></ul><p>Om te beginnen met het importeren van een nieuwe webwinkel, klik op <b>Met het importeren van een nieuwe webwinkel starten</b></p>"
+
+msgctxt "Languages::store_import.actualize_data_text"
+msgid "<p>Last data import was made on <b>[date]</b> from <b>CS-Cart [version] [edition].</b></p><p>To actualize the data since the last import, click <b>Actualize data</b> (Only design and settings <span>will be kept</span>.) This process can be done repeatedly. When actualizing is over you will see this page again.</p><p>Whenever you're ready to go live or start the Store import again, click <b>Complete Store import</b></p>"
+msgstr "<p>Laatste gegevens import is gemaakt op <b>[date]</b> van <b>CS-Cart [version] [edition].</b></p><p>Om de gegevens te actualiseren sinds de laatste import, klik op <b>Gegevens actualiseren</b> (Alleen het ontwerp en instellingen <span>blijven behouden</span>.) Dit proces kan worden herhaald. Zodra het actualiseren is voltooid wordt deze pagina opnieuw weergegeven.</p><p>Indien klaar om live te gaan of opnieuw een webshop te importeren klik op <b>Importeren webshop afronden</b></p>"
+
+msgctxt "Languages::store_import.actualize_data"
+msgid "Actualize data"
+msgstr "Gegevens actualiseren"
+
+msgctxt "Languages::store_import.import_from"
+msgid "Import from"
+msgstr "Importeren vanuit"
+
+msgctxt "Languages::store_import.complete_store_import"
+msgid "Complete Store import"
+msgstr "Complete webwinkel importeren"
+
+msgctxt "Languages::store_import.import_data"
+msgid "Import data"
+msgstr "Gegevens importeren"
+
+msgctxt "Languages::store_import.complete_configuration"
+msgid "Proceed to actualizing data"
+msgstr "Ga verder om gegevens te actualiseren"
+
+msgctxt "Languages::store_import.admin_url"
+msgid "Admin panel URL"
+msgstr "URL van admin paneel"
+
+msgctxt "Languages::store_import.companies_count"
+msgid "Number of storefronts"
+msgstr "Aantal webwinkels"
+
+msgctxt "Languages::store_import.store_import"
+msgid "Store import"
+msgstr "Webwinkel importeren"
+
+msgctxt "Languages::store_import.local_store"
+msgid "Store path"
+msgstr "Pad naar webwinkel"
+
+msgctxt "Languages::store_import.select_store"
+msgid "Validate"
+msgstr "Valideren"
+
+msgctxt "Languages::store_import.local_store_tooltip"
+msgid "Enter the full path to the installation root directory of the store you want to import data from. For example '/var/www/examplestore' on UNIX-based systems or 'C:\\examplestore' on Windows"
+msgstr "Geef het volledige pad op naar de hoofdmap van de installatie van de webwinkel waaruit gegevens worden geïmporteerd. Bijvoorbeeld: '/var/www/voorbeeldwinkel' op een UNIX-systeem of 'C:\\voorbeeldwinkel' Windows"
+
+msgctxt "Languages::store_import.configure_store"
+msgid "Configure your store"
+msgstr "Configureer de webwinkel"
+
+msgctxt "Languages::store_import.finish_store"
+msgid "Finish store import"
+msgstr "Importeren webwinkel voltooien"
+
+msgctxt "Languages::store_import.storefront_url"
+msgid "Storefront URL"
+msgstr "Webwinkel URL"
+
+msgctxt "Languages::store_import.secure_storefront_url"
+msgid "Secure storefront URL"
+msgstr "Veilige webwinkel URL"
+
+msgctxt "Languages::store_import.db_host"
+msgid "Database host"
+msgstr "Database host"
+
+msgctxt "Languages::store_import.db_name"
+msgid "Database name"
+msgstr "Database naam"
+
+msgctxt "Languages::store_import.db_user"
+msgid "Database user"
+msgstr "Database gebruikersnaam"
+
+msgctxt "Languages::store_import.table_prefix"
+msgid "Table prefix"
+msgstr "Tabel voorvoegsel"
+
+msgctxt "Languages::store_import.fill_form"
+msgid "<p>Check the data below before proceeding to the data import.</p><p><b>Warning!</b> The data import during this step <b>will overwrite everything (including your existing settings, products, design and layouts, etc.)</b><br />Also, all logs and statistics will be removed.</p><p><b>Pay attention</b> that the <b>Affiliate, Statistics, Recurring billing, Product configurator and Gift registry</b> add-ons are no longer supported, so, none of the related data will be imported from your old store to the new installation.</p>"
+msgstr "<p>Controleer de gegevens hieronder alvorens verder te gaan met het importeren van data.</p><p><b>Waarschuwing!</b> Het importeren van gegevens tijdens deze stap <b>zal alles overschrijven (inclusief de bestaande instellingen, producten, ontwerp en opmaak, etc.)</b><br />Ook alle logbestanden en statistieken worden verwijderd.</p><p><b>Let op</b> dat de <b>affiliate, statistieken, terugkerend factureren, productconfigurator en de cadeaulijst</b> plug-ins niet langer worden ondersteund. Er worden hiervoor dus geen gegevens geïmporteerd vanuit de oude webwinkel naar de nieuwe.</p>"
+
+msgctxt "Languages::store_import.second_step_22x_notice"
+msgid "<p>Note that your original core settings and design will not be transferred, except for add-ons' settings and all custom blocks under \"Products\" location on the Layouts page with <i>Content: Products</i> and <i>Filling: Manually</i>. During the next step you will be able to locate them on the \"Products\" location under the main content block.</p>"
+msgstr "<p>Let er op dat de oorspronkelijke instellingen en het ontwerp niet worden overgenomen, behalve voor plug-in instellingen en alle aangepaste blokken onder de locatie \"Producten\" op de layout pagina met <i>Inhoud: Producten</i> en <i>Vulling: Handmatig</i>. Tijdens de volgende stap kunnen deze worden geplaatst in de \"Producten\" locatie onder het blok met de hoofd inhoud.</p>"
+
+msgctxt "Languages::store_import.second_step_30x_notice"
+msgid "<p></p>"
+msgstr "<p></p>"
+
+msgctxt "Languages::store_import.text_from"
+msgid "[product_name] [product_version] [product_edition]"
+msgstr "[product_name] [product_version] [product_edition]"
+
+msgctxt "Languages::store_import.from"
+msgid "From:"
+msgstr "Van:"
+
+msgctxt "Languages::store_import.text_to"
+msgid "To: [product_edition] [product_version]"
+msgstr "Aan: [product_edition] [product_version]"
+
+msgctxt "Languages::store_import.edition_mapping_failed"
+msgid "Import from this edition is not supported"
+msgstr "Importeren vanuit deze versie wordt niet ondersteund"
+
+msgctxt "Languages::store_import.configuration_test_failed"
+msgid "Configuration test failed"
+msgstr "Configuratie test is mislukt"
+
+msgctxt "Languages::store_import.wrong_table_prefix"
+msgid "Store tables with the specified prefix are missing in the specified database."
+msgstr "Tabellen van de winkel met het opgegeven voorvoegsel ontbreken in de opgegeven database."
+
+msgctxt "Languages::store_import.path_does_not_exist"
+msgid "The specified directory does not exist. Please check if the path you entered is correct."
+msgstr "De opgegeven map bestaat niet. Controleer of het opgegeven pad juist is."
+
+msgctxt "Languages::store_import.this_is_not_cart_path"
+msgid "The specified directory is not a valid store installation root folder."
+msgstr "De opgegeven map is geen geldige installatie-map van een webwinkel."
+
+msgctxt "Languages::store_import.text_configuration"
+msgid "<p><h4>The data from the old store was successfully imported.</h4><br/>You are now free to leave the Store import tool and customize the settings and design of your store. First of all, do the following:</p>"
+msgstr "<p><h4>De gegevens van de oude webwinkel is geïmporteerd.</h4><br/>De pagina 'Webwinkel importeren' kan worden verlaten en de instellingen en ontwerp van de webshop kunnen worden aangepast. Doe eerst het volgende:</p>"
+
+msgctxt "Languages::store_import.text_configuration2"
+msgid "<p>When you are ready customizing, you will be able to actualize the data by going to the Store import tool again and proceeding directly to the next step. Unlike the initial store import, data actualization will keep all your settings, layouts, and design.</p><p><strong>Attention!</strong> Data actualization will be impossible if you modify, remove, or add new [storefronts_vendors]. In this case, you will have to re-start the store import from the first step.</p>"
+msgstr "<p>Indien klaar met aanpassen is het mogelijk om de gegevens te actualiseren door opnieuw naar de het importeren te gaan, en daar direct verder te gaan naar de volgende stap. In tegenstelling tot de eerste import, gegevens actualiseren behoudt alle instellingen, layouts en opmaak.</p><p><strong>Attentie!</strong> Gegevens actualiseren is niet mogelijk bij het bewerken, verwijderen of toevoegen van nieuwe [storefronts_vendors]. In dat geval, moet het importeren opnieuw worden gestart vanaf de eerste stap.</p>"
+
+msgctxt "Languages::store_import.424_ultimate"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.423_ultimate"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.422_ultimate"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.421_ultimate"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.415_ultimate"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.414_ultimate"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.413_ultimate"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.412_ultimate"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.411_ultimate"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.401_ultimate"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.402_ultimate"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.403_ultimate"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.306_ultimate"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.305_ultimate"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.304_ultimate"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.303_ultimate"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.302_ultimate"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.301_ultimate"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.224_professional"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for a Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages section and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>Your settings were set to default.</li><li>The Company Settings were set to default.</li><li>Your design (theme, styles and layout) was set to default.</li><li>All custom blocks under \"Products\" location of the Block Manager with <i>Content: Products</i> and <i>Filling: Manually</i> were placed on the \"Products\" location under the main content block.</li><li>All your custom product tabs (except the product tabs added by add-ons) were not transferred.</li><li>\"Description\", \"Features\" and \"Files\" tabs were added to the \"Product tabs\" section.</li><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor een bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>De instellingen zijn ingesteld op standaard.</li><li>De bedrijfsgegevens worden ingesteld op standaard.</li><li>Het ontwerp (thema, stijlen en opmaak) zijn ingesteld op standaard.</li><li>Alle handmatige blokken onder de locatie \"Producten\" in het blokkenbeheer met <i>Inhoud: Producten</i> en <i>Vulling: Handmatig</i> werden onder het main inhoud blok geplaatst in de locatie \"Producten\".</li><li>Alle aangepaste product tabs (behalve de product-tabs toegevoegd door plug-ins) zijn niet overgenomen. </li><li>\"Omschrijving\", \"Kenmerken\" en \"Bestanden\" tabs zijn toegevoegd aan de \"Producten tabs\" sectie.</li><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.225_professional"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for a Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages section and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>Your settings were set to default.</li><li>The Company Settings were set to default.</li><li>Your design (theme, styles and layout) was set to default.</li><li>All custom blocks under \"Products\" location of the Block Manager with <i>Content: Products</i> and <i>Filling: Manually</i> were placed on the \"Products\" location under the main content block.</li><li>All your custom product tabs (except the product tabs added by add-ons) were not transferred.</li><li>\"Description\", \"Features\" and \"Files\" tabs were added to the \"Product tabs\" section.</li><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor een bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>De instellingen zijn ingesteld op standaard.</li><li>De bedrijfsgegevens worden ingesteld op standaard.</li><li>Het ontwerp (thema, stijlen en opmaak) zijn ingesteld op standaard.</li><li>Alle handmatige blokken onder de locatie \"Producten\" in het blokkenbeheer met <i>Inhoud: Producten</i> en <i>Vulling: Handmatig</i> werden onder het main inhoud blok geplaatst in de locatie \"Producten\".</li><li>Alle aangepaste product tabs (behalve de product-tabs toegevoegd door plug-ins) zijn niet overgenomen. </li><li>\"Omschrijving\", \"Kenmerken\" en \"Bestanden\" tabs zijn toegevoegd aan de \"Producten tabs\" sectie.</li><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.301_professional"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.302_professional"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.303_professional"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.304_professional"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.305_professional"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.306_professional"
+msgid "<ul><li>Go to <a href=\"[stores_section_link]\">Stores</a> section and set the correct <b>Storefront URL</b> for each Company.</li><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[stores_section_link]\">Webwinkels</a> en stel de juiste <b>Webwinkel URL</b> in voor elk bedrijf.</li><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.401_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.402_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.403_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.411_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.412_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.413_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.414_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.415_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.421_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.422_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.423_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.424_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.306_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.305_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.304_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.303_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.302_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.301_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.225_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages section and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>Your settings were set to default.</li><li>The Company Settings were set to default.</li><li>Your design (theme, styles and layout) was set to default.</li><li>All custom blocks under \"Products\" location of the Block Manager with <i>Content: Products</i> and <i>Filling: Manually</i> were placed on the \"Products\" location under the main content block.</li><li>All your custom product tabs (except the product tabs added by add-ons) were not transferred.</li><li>\"Description\", \"Features\" and \"Files\" tabs were added to the \"Product tabs\" section.</li><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>De instellingen zijn ingesteld op standaard.</li><li>De bedrijfsgegevens worden ingesteld op standaard.</li><li>Het ontwerp (thema, stijlen en opmaak) zijn ingesteld op standaard.</li><li>Alle aangepaste blokken onder de locatie \"Producten\" in het blokkenbeheer met <i>Inhoud: Producten</i> en <i>Vulling: Handmatig</i> werden onder het main inhoud blok geplaatst in de locatie \"Producten\".</li><li>Alle aangepaste product tabs (behalve de product-tabs toegevoegd door plug-ins) zijn niet overgenomen. </li><li>\"Omschrijving\", \"Kenmerken\" en \"Bestanden\" tabs zijn toegevoegd aan de \"Producten tabs\" sectie.</li><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.224_multivendor"
+msgid "<ul><li>Go to <a href=\"[manage_languages_link]\">Languages</a> languages section and set the correct <b>Country</b> value for each language.</li></ul><p>Please pay attention to the following:</p><ul><li>Your settings were set to default.</li><li>The Company Settings were set to default.</li><li>Your design (theme, styles and layout) was set to default.</li><li>All custom blocks under \"Products\" location of the Block Manager with <i>Content: Products</i> and <i>Filling: Manually</i> were placed on the \"Products\" location under the main content block.</li><li>All your custom product tabs (except the product tabs added by add-ons) were not transferred.</li><li>\"Description\", \"Features\" and \"Files\" tabs were added to the \"Product tabs\" section.</li><li>The <b>Quick menu</b> was set to default.</li></ul>"
+msgstr "<ul><li>Ga naar <a href=\"[manage_languages_link]\">Talen</a> talen en stel het juiste <b>Land</b> in voor elke taal.</li></ul><p>Let op het volgende:</p><ul><li>De instellingen zijn ingesteld op standaard.</li><li>De bedrijfsgegevens worden ingesteld op standaard.</li><li>Het ontwerp (thema, stijlen en opmaak) zijn ingesteld op standaard.</li><li>Alle aangepaste blokken onder de locatie \"Producten\" in het blokkenbeheer met <i>Inhoud: Producten</i> en <i>Vulling: Handmatig</i> werden onder het main inhoud blok geplaatst in de locatie \"Producten\".</li><li>Alle aangepaste product tabs (behalve de product-tabs toegevoegd door plug-ins) zijn niet overgenomen. </li><li>\"Omschrijving\", \"Kenmerken\" en \"Bestanden\" tabs zijn toegevoegd aan de \"Producten tabs\" sectie.</li><li>Het <b>Snelmenu</b> is standaard ingesteld.</li></ul>"
+
+msgctxt "Languages::store_import.progress_title"
+msgid "Upgrading to [to]"
+msgstr "Upgraden naar [to]"
+
+msgctxt "Languages::store_import.updating_data"
+msgid "Updating data"
+msgstr "Gegevens bijwerken"
+
+msgctxt "Languages::store_import.converting_orders"
+msgid "Converting orders"
+msgstr "Bestellingen converteren"
+
+msgctxt "Languages::store_import.import_failed"
+msgid "Store import failed"
+msgstr "Importeren webwinkel is mislukt"
+
+msgctxt "Languages::store_import.cloning_database"
+msgid "Cloning database"
+msgstr "Database klonen"
+
+msgctxt "Languages::store_import.updating_languages"
+msgid "Updating languages"
+msgstr "Talen bijwerken"
+
+msgctxt "Languages::store_import.done"
+msgid "Done"
+msgstr "Klaar"
+
+msgctxt "Languages::store_import.class_not_found"
+msgid "Import from this version is not supported"
+msgstr "Importeren vanuit deze versie wordt niet ondersteund"
+
+msgctxt "Languages::store_import.processing_addons"
+msgid "Updating add-ons"
+msgstr "Plug-ins bijwerken"
+
+msgctxt "Languages::store_import.actualization_completed"
+msgid "Actualization completed"
+msgstr "Actualiseren afgerond"
+
+msgctxt "Languages::store_import.actualization_failed"
+msgid "Actualization failed"
+msgstr "Actualiseren is mislukt"
+
+msgctxt "Languages::store_import.invalid_license"
+msgid "Sorry, the data import is impossible: no valid upgrade subscription found (read more about the <a title=\"Store Import: License Requirements\" target=\"_blank\" href=\"http://kb.cs-cart.com/store-import#license-requirements\">license requirements</a> for a store import).<br /><br />Contact us at <a href=\"mailto:sales@cs-cart.com\">sales@cs-cart.com</a> if you have any questions."
+msgstr "Excuus, importeren van gegevens is niet mogelijk: geen geldige upgrade van de licentie gevonden (lees meer over de <a title=\"Webwinkel importeren: Licentie vereisten\" target=\"_blank\" href=\"http://kb.cs-cart.com/store-import#license-requirements\">licentie vereisten</a> voor het importeren van een webwinkel).<br /><br />Bij vragen neem contact op met <a href=\"mailto:sales@cs-cart.com\">sales@cs-cart.com</a>."
+
+msgctxt "Languages::store_import.cant_connect_to_imported"
+msgid "Store import has been canceled to prevent the loss of data. Could not connect to the imported database. Please contact tech support."
+msgstr "Het importeren van de webwinkel is geannuleerd om te voorkomen dat gegevens verloren gaan. Verbindingen maken met de geïmporteerde database is mislukt. Neem contact op met de technische ondersteuning."
+
+msgctxt "Languages::store_import.cant_connect_to_original"
+msgid "Store import has been canceled to prevent the loss of data. Could not connect to the original database. Please contact tech support."
+msgstr "Het importeren van de webwinkel is geannuleerd om te voorkomen dat gegevens verloren gaan. Verbindingen maken met de originele database is mislukt. Neem contact op met de technische ondersteuning."
+
+msgctxt "SettingsSections::store_import::general"
+msgid "General"
+msgstr "Algemeen"
+
+msgctxt "SettingsOptions::store_import::si_data"
+msgid "Store import data"
+msgstr "Gegevens importeren in webwinkel"
+
+msgctxt "Languages::store_import.design_changes_not_allowed"
+msgid "Store import is impossible after LESS-to-CSS conversion in the Visual Editor. Please enable LESS in the editor to proceed."
+msgstr "Importeren webwinkel is niet mogelijk na LESS-to-CSS conversie in de Visuele Editor. Activeer LESS in de editor om door te gaan."
+
